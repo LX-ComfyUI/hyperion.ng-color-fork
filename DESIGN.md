@@ -183,6 +183,29 @@ protobuf/mbedtls from scratch: 30-60+ minutes).
   correct adjustment data, no SPI/exception/segfault lines in the log.
   **This is the first time the fork has driven the real LEDs.**
 
+**Web UI now shows the new fields, plus UX polish (2026-09-16, commit
+`ddf5205`):** the fields were being served correctly but not rendered —
+root cause was that `controlPoints`/`grayAxisTrim` lacked this schema's
+`"required": true` convention (every other property has it), which this
+project's JSONEditor treats as "always show". Fixing that surfaced a second
+issue: `"required": true` also makes it a real JSON-schema requirement on
+the backend, so the live (pre-existing) config failed validation on the next
+boot — but Hyperion's own `DBConfigManager::updateConfiguration()` already
+has a self-healing correction pass for exactly this (schema evolution) case:
+it auto-backfills missing required fields with their schema defaults,
+writes an automatic timestamped backup first
+(`~/.hyperion/archive/HyperionBackup_*.json`), then persists the corrected
+config — no manual DB surgery needed. Also updated the bundled
+`settings/hyperion.settings.json.default` template so brand-new instances
+validate cleanly too. On top of that, added: user-friendly German titles for
+every new field (was raw internal names like `hue`, `lumaGate`), full
+title+description i18n text (function, value range, step) in German and
+English for both the new fields and the pre-existing stock fields (which
+were also missing range/step info), a small hover-info icon next to every
+field on the color page (custom-built since this JSONEditor build's own
+info-button plumbing turned out to be dead/unwired code), and a CSS-only fix
+to keep the "LED-Instances" sidebar section permanently expanded.
+
 **Known gap surfaced by the live test — companion services are offline:**
 `hyperion-shelly-control.service` (Shelly-PSU auto-control, see
 [[hrpg-300-5-psu-control]]) and `video-signal-monitor.service` (see
