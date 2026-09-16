@@ -35,7 +35,7 @@ $(document).ready(function () {
   //access
   storedAccess = getStorage("accesslevel");
   if (storedAccess == null) {
-    storedAccess = "expert";
+    storedAccess = "default";
     setStorage("accesslevel", storedAccess);
   }
 
