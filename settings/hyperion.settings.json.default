@@ -211,7 +211,15 @@
                "brightnessCompensation":100,
                "saturationGain":1.0,
                "brightnessGain":1.0,
-               "temperature" : 6600
+               "temperature" : 6600,
+               "controlPoints":[],
+               "grayAxisTrim":{
+                  "enabled":false,
+                  "saturationThreshold":0.12,
+                  "gainRed":1.0,
+                  "gainGreen":1.0,
+                  "gainBlue":1.0
+               }
             }
          ]
       },

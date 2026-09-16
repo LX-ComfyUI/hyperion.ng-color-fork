@@ -293,30 +293,33 @@
 					{
 						"type" : "array",
 						"title" : "edt_conf_color_controlPoints_title",
+						"required" : true,
 						"propertyOrder" : 21,
 						"items" :
 						{
 							"type" : "object",
 							"properties" :
 							{
-								"id" : { "type" : "string" },
-								"hue" : { "type" : "number", "minimum" : 0.0, "maximum" : 1.0, "default" : 0.0 },
-								"influence" : { "type" : "number", "minimum" : 0.0, "maximum" : 0.5, "default" : 0.0833 },
-								"targetHueShift" : { "type" : "number", "minimum" : -1.0, "maximum" : 1.0, "default" : 0.0 },
-								"targetSaturationGain" : { "type" : "number", "minimum" : 0.0, "maximum" : 10.0, "default" : 1.0 },
-								"gamma" : { "type" : "number", "minimum" : 0.1, "maximum" : 100.0, "default" : 1.0 },
+								"id" : { "type" : "string", "title" : "edt_conf_color_controlPoints_id_title", "required" : true },
+								"hue" : { "type" : "number", "title" : "edt_conf_color_controlPoints_hue_title", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.0 },
+								"influence" : { "type" : "number", "title" : "edt_conf_color_controlPoints_influence_title", "required" : true, "minimum" : 0.0, "maximum" : 0.5, "step" : 0.01, "default" : 0.0833 },
+								"targetHueShift" : { "type" : "number", "title" : "edt_conf_color_controlPoints_targetHueShift_title", "required" : true, "minimum" : -1.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.0 },
+								"targetSaturationGain" : { "type" : "number", "title" : "edt_conf_color_controlPoints_targetSaturationGain_title", "required" : true, "minimum" : 0.0, "maximum" : 10.0, "step" : 0.1, "default" : 1.0 },
+								"gamma" : { "type" : "number", "title" : "edt_conf_color_controlPoints_gamma_title", "required" : true, "minimum" : 0.1, "maximum" : 100.0, "step" : 0.1, "default" : 1.0 },
 								"lumaGate" :
 								{
 									"type" : "object",
+									"title" : "edt_conf_color_controlPoints_lumaGate_title",
+									"required" : true,
 									"properties" :
 									{
-										"enabled" : { "type" : "boolean", "default" : false },
-										"triggerBelow" : { "type" : "integer", "minimum" : 0, "maximum" : 255, "default" : 20 },
-										"releaseAbove" : { "type" : "integer", "minimum" : 0, "maximum" : 255, "default" : 30 },
-										"debounceFrames" : { "type" : "integer", "minimum" : 1, "maximum" : 60, "default" : 3 },
-										"mode" : { "type" : "string", "enum" : ["off", "minBrightness", "hueShift"], "default" : "minBrightness" },
-										"gatedHueShift" : { "type" : "number", "minimum" : -1.0, "maximum" : 1.0, "default" : 0.0 },
-										"minBrightness" : { "type" : "integer", "minimum" : 0, "maximum" : 255, "default" : 0 }
+										"enabled" : { "type" : "boolean", "title" : "edt_conf_color_controlPoints_lumaGate_enabled_title", "required" : true, "default" : false },
+										"triggerBelow" : { "type" : "integer", "title" : "edt_conf_color_controlPoints_lumaGate_triggerBelow_title", "required" : true, "minimum" : 0, "maximum" : 255, "default" : 20 },
+										"releaseAbove" : { "type" : "integer", "title" : "edt_conf_color_controlPoints_lumaGate_releaseAbove_title", "required" : true, "minimum" : 0, "maximum" : 255, "default" : 30 },
+										"debounceFrames" : { "type" : "integer", "title" : "edt_conf_color_controlPoints_lumaGate_debounceFrames_title", "required" : true, "minimum" : 1, "maximum" : 60, "default" : 3 },
+										"mode" : { "type" : "string", "title" : "edt_conf_color_controlPoints_lumaGate_mode_title", "required" : true, "enum" : ["off", "minBrightness", "hueShift"], "options" : { "enum_titles" : ["Ausblenden (schwarz)", "Auf Mindesthelligkeit begrenzen", "Anderen Farbton verwenden"] }, "default" : "minBrightness" },
+										"gatedHueShift" : { "type" : "number", "title" : "edt_conf_color_controlPoints_lumaGate_gatedHueShift_title", "required" : true, "minimum" : -1.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.0 },
+										"minBrightness" : { "type" : "integer", "title" : "edt_conf_color_controlPoints_lumaGate_minBrightness_title", "required" : true, "minimum" : 0, "maximum" : 255, "default" : 0 }
 									},
 									"additionalProperties" : false
 								}
@@ -328,14 +331,15 @@
 					{
 						"type" : "object",
 						"title" : "edt_conf_color_grayAxisTrim_title",
+						"required" : true,
 						"propertyOrder" : 22,
 						"properties" :
 						{
-							"enabled" : { "type" : "boolean", "default" : false },
-							"saturationThreshold" : { "type" : "number", "minimum" : 0.0, "maximum" : 1.0, "default" : 0.12 },
-							"gainRed" : { "type" : "number", "minimum" : 0.0, "maximum" : 4.0, "default" : 1.0 },
-							"gainGreen" : { "type" : "number", "minimum" : 0.0, "maximum" : 4.0, "default" : 1.0 },
-							"gainBlue" : { "type" : "number", "minimum" : 0.0, "maximum" : 4.0, "default" : 1.0 }
+							"enabled" : { "type" : "boolean", "title" : "edt_conf_color_grayAxisTrim_enabled_title", "required" : true, "default" : false },
+							"saturationThreshold" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_saturationThreshold_title", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.12 },
+							"gainRed" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainRed_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
+							"gainGreen" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainGreen_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
+							"gainBlue" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainBlue_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 }
 						},
 						"additionalProperties" : false
 					}

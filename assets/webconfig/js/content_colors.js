@@ -50,6 +50,121 @@ $(document).ready(function () {
     requestWriteConfig(editor_color.getValue());
   });
 
+  // Fork-Erweiterung: kleines Info-Symbol neben jedem Feld der
+  // Farbanpassungs-Seite, das per Hover den passenden "_expl"-Beschreibungs-
+  // text zeigt (Funktion, Wertebereich, Schrittweite). Nutzt das native
+  // HTML-title-Attribut statt Bootstraps Tooltip-Plugin, da dieses in der
+  // hier eingebundenen bootstrap.min.js nicht enthalten ist.
+  (function addColorFieldInfoIcons(editor) {
+    function attachInfoIcon(path, explKey) {
+      var fieldEditor;
+      try {
+        fieldEditor = editor.getEditor(path);
+      } catch (e) {
+        return;
+      }
+      if (!fieldEditor || !fieldEditor.label) return;
+      var $label = $(fieldEditor.label);
+      if ($label.data('forkInfoIconAdded')) return;
+      var explText = $.i18n(explKey);
+      if (!explText || explText === explKey) return; // keine Übersetzung vorhanden
+      $label.append(
+        $('<i>')
+          .addClass('fa fa-info-circle')
+          .attr('title', explText)
+          .css({ 'margin-left': '6px', cursor: 'help', color: '#3a87ad' })
+      );
+      $label.data('forkInfoIconAdded', true);
+    }
+
+    var PROFILE_BASE = 'root.color.channelAdjustment.0.';
+
+    // Bestehende + neue feste (nicht dynamische) Felder des Profils
+    var staticFields = {
+      'id': 'edt_conf_color_id_expl',
+      'leds': 'edt_conf_color_leds_expl',
+      'white': 'edt_conf_color_white_expl',
+      'red': 'edt_conf_color_red_expl',
+      'green': 'edt_conf_color_green_expl',
+      'blue': 'edt_conf_color_blue_expl',
+      'cyan': 'edt_conf_color_cyan_expl',
+      'magenta': 'edt_conf_color_magenta_expl',
+      'yellow': 'edt_conf_color_yellow_expl',
+      'saturationGain': 'edt_conf_color_saturationGain_expl',
+      'backlightThreshold': 'edt_conf_color_backlightThreshold_expl',
+      'backlightColored': 'edt_conf_color_backlightColored_expl',
+      'brightness': 'edt_conf_color_brightness_expl',
+      'brightnessCompensation': 'edt_conf_color_brightnessComp_expl',
+      'brightnessGain': 'edt_conf_color_brightnessGain_expl',
+      'temperature': 'edt_conf_color_temperature_expl',
+      'gammaRed': 'edt_conf_color_gammaRed_expl',
+      'gammaGreen': 'edt_conf_color_gammaGreen_expl',
+      'gammaBlue': 'edt_conf_color_gammaBlue_expl',
+      'controlPoints': 'edt_conf_color_controlPoints_expl',
+      'grayAxisTrim': 'edt_conf_color_grayAxisTrim_expl'
+    };
+    Object.keys(staticFields).forEach(function (key) {
+      attachInfoIcon(PROFILE_BASE + key, staticFields[key]);
+    });
+
+    // grayAxisTrim ist ein festes (nicht-dynamisches) Unterobjekt
+    var grayAxisFields = {
+      'enabled': 'edt_conf_color_grayAxisTrim_enabled_expl',
+      'saturationThreshold': 'edt_conf_color_grayAxisTrim_saturationThreshold_expl',
+      'gainRed': 'edt_conf_color_grayAxisTrim_gainRed_expl',
+      'gainGreen': 'edt_conf_color_grayAxisTrim_gainGreen_expl',
+      'gainBlue': 'edt_conf_color_grayAxisTrim_gainBlue_expl'
+    };
+    Object.keys(grayAxisFields).forEach(function (key) {
+      attachInfoIcon(PROFILE_BASE + 'grayAxisTrim.' + key, grayAxisFields[key]);
+    });
+
+    // controlPoints ist eine dynamische Liste (0..n Zeilen) - Felder pro
+    // Zeile werden erst beim Hinzufügen einer Zeile erzeugt, daher per
+    // MutationObserver auf dem Container erneut anhängen statt einmalig.
+    var controlPointFields = {
+      '': 'edt_conf_color_controlPoints_lumaGate_expl', // Platzhalter, wird unten nicht genutzt
+      'id': 'edt_conf_color_controlPoints_id_expl',
+      'hue': 'edt_conf_color_controlPoints_hue_expl',
+      'influence': 'edt_conf_color_controlPoints_influence_expl',
+      'targetHueShift': 'edt_conf_color_controlPoints_targetHueShift_expl',
+      'targetSaturationGain': 'edt_conf_color_controlPoints_targetSaturationGain_expl',
+      'gamma': 'edt_conf_color_controlPoints_gamma_expl',
+      'lumaGate': 'edt_conf_color_controlPoints_lumaGate_expl',
+      'lumaGate.enabled': 'edt_conf_color_controlPoints_lumaGate_enabled_expl',
+      'lumaGate.triggerBelow': 'edt_conf_color_controlPoints_lumaGate_triggerBelow_expl',
+      'lumaGate.releaseAbove': 'edt_conf_color_controlPoints_lumaGate_releaseAbove_expl',
+      'lumaGate.debounceFrames': 'edt_conf_color_controlPoints_lumaGate_debounceFrames_expl',
+      'lumaGate.mode': 'edt_conf_color_controlPoints_lumaGate_mode_expl',
+      'lumaGate.gatedHueShift': 'edt_conf_color_controlPoints_lumaGate_gatedHueShift_expl',
+      'lumaGate.minBrightness': 'edt_conf_color_controlPoints_lumaGate_minBrightness_expl'
+    };
+    delete controlPointFields[''];
+
+    var controlPointsEditor;
+    try {
+      controlPointsEditor = editor.getEditor(PROFILE_BASE + 'controlPoints');
+    } catch (e) {
+      controlPointsEditor = null;
+    }
+    if (controlPointsEditor && controlPointsEditor.container) {
+      var attachAllRows = function () {
+        var rowCount = (controlPointsEditor.rows || []).length;
+        for (var i = 0; i < rowCount; i++) {
+          var rowBase = PROFILE_BASE + 'controlPoints.' + i + '.';
+          Object.keys(controlPointFields).forEach(function (key) {
+            attachInfoIcon(rowBase + key, controlPointFields[key]);
+          });
+        }
+      };
+      attachAllRows();
+      var controlPointsObserver = new MutationObserver(function () {
+        attachAllRows();
+      });
+      controlPointsObserver.observe(controlPointsEditor.container, { childList: true, subtree: true });
+    }
+  })(editor_color);
+
   //smoothing
   editor_smoothing = createJsonEditor('editor_container_smoothing', {
     smoothing: window.schema.smoothing

@@ -1041,3 +1041,12 @@ input[type="checkbox"] .styled:checked + label::after,
 input[type="radio"] .styled:checked + label::after {
   color: #fff;
 }
+
+/* Fork-Erweiterung: "LED-Instances"-Menugruppe in der Seitenleiste bleibt
+   immer aufgeklappt, unabhängig von metisMenu/SwitchToMenuItem's
+   collapse/"in"-Klassen-Logik, die diese Gruppe sonst beim Navigieren zu
+   anderen Menüpunkten wieder einklappen würde. */
+#MenuItemLedInstances + ul.nav-second-level {
+  display: block !important;
+  height: auto !important;
+}
