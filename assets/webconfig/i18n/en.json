@@ -331,6 +331,8 @@
   "edt_conf_color_cyan_title": "Cyan",
   "edt_conf_color_gammaBlue_expl": "The gamma of blue. 1.0 is neutral. Over 1.0 it reduces blue, lower than 1.0 it adds blue.",
   "edt_conf_color_gammaBlue_title": "Gamma blue",
+  "edt_conf_color_controlPoints_title": "Control points (fork extension)",
+  "edt_conf_color_grayAxisTrim_title": "Gray-axis trim (fork extension)",
   "edt_conf_color_gammaGreen_expl": "The gamma of green. 1.0 is neutral. Over 1.0 it reduces green, lower than 1.0 it adds green.",
   "edt_conf_color_gammaGreen_title": "Gamma green",
   "edt_conf_color_gammaRed_expl": "The gamma of red. 1.0 is neutral. Over 1.0 it reduces red, lower than 1.0 it adds red.",

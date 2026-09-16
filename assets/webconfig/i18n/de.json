@@ -327,6 +327,8 @@
   "edt_conf_color_cyan_title": "Cyan",
   "edt_conf_color_gammaBlue_expl": "Gamma Blau. 1.0 ist neutral. Über 1.0 wird der Blauanteil reduziert, unter 1.0 wird der Blauanteil erhöht.",
   "edt_conf_color_gammaBlue_title": "Gamma Blau",
+  "edt_conf_color_controlPoints_title": "Farbpunkte (Fork-Erweiterung)",
+  "edt_conf_color_grayAxisTrim_title": "Grauachsen-Korrektur (Fork-Erweiterung)",
   "edt_conf_color_gammaGreen_expl": "Gamma Grün. 1.0 ist neutral. Über 1.0 wird der Grünanteil reduziert, unter 1.0 wird der Grünanteil erhöht.",
   "edt_conf_color_gammaGreen_title": "Gamma Grün",
   "edt_conf_color_gammaRed_expl": "Gamma Rot. 1.0 ist neutral. Über 1.0 wird der Rotanteil reduziert, unter 1.0 wird der Rotanteil  erhöht.",

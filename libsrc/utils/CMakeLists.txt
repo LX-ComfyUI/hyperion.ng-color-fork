@@ -41,6 +41,10 @@ add_library(hyperion-utils
 	# Color transformation (saturation/value) of Okhsv colors
 	${CMAKE_SOURCE_DIR}/include/utils/OkhsvTransform.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/OkhsvTransform.cpp
+	# Fork: arbitrary hue control points + gray-axis trim (see DESIGN.md)
+	${CMAKE_SOURCE_DIR}/include/utils/ColorControlPoint.h
+	${CMAKE_SOURCE_DIR}/include/utils/ColorControlPointTransform.h
+	${CMAKE_SOURCE_DIR}/libsrc/utils/ColorControlPointTransform.cpp
 	# Signal handler
 	${CMAKE_SOURCE_DIR}/include/utils/DefaultSignalHandler.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/DefaultSignalHandler.cpp

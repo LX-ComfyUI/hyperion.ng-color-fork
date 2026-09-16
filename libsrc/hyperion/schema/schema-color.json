@@ -288,6 +288,56 @@
 						"default" : 2.2,
 						"step" : 0.1,
 						"propertyOrder" : 20
+					},
+					"controlPoints" :
+					{
+						"type" : "array",
+						"title" : "edt_conf_color_controlPoints_title",
+						"propertyOrder" : 21,
+						"items" :
+						{
+							"type" : "object",
+							"properties" :
+							{
+								"id" : { "type" : "string" },
+								"hue" : { "type" : "number", "minimum" : 0.0, "maximum" : 1.0, "default" : 0.0 },
+								"influence" : { "type" : "number", "minimum" : 0.0, "maximum" : 0.5, "default" : 0.0833 },
+								"targetHueShift" : { "type" : "number", "minimum" : -1.0, "maximum" : 1.0, "default" : 0.0 },
+								"targetSaturationGain" : { "type" : "number", "minimum" : 0.0, "maximum" : 10.0, "default" : 1.0 },
+								"gamma" : { "type" : "number", "minimum" : 0.1, "maximum" : 100.0, "default" : 1.0 },
+								"lumaGate" :
+								{
+									"type" : "object",
+									"properties" :
+									{
+										"enabled" : { "type" : "boolean", "default" : false },
+										"triggerBelow" : { "type" : "integer", "minimum" : 0, "maximum" : 255, "default" : 20 },
+										"releaseAbove" : { "type" : "integer", "minimum" : 0, "maximum" : 255, "default" : 30 },
+										"debounceFrames" : { "type" : "integer", "minimum" : 1, "maximum" : 60, "default" : 3 },
+										"mode" : { "type" : "string", "enum" : ["off", "minBrightness", "hueShift"], "default" : "minBrightness" },
+										"gatedHueShift" : { "type" : "number", "minimum" : -1.0, "maximum" : 1.0, "default" : 0.0 },
+										"minBrightness" : { "type" : "integer", "minimum" : 0, "maximum" : 255, "default" : 0 }
+									},
+									"additionalProperties" : false
+								}
+							},
+							"additionalProperties" : false
+						}
+					},
+					"grayAxisTrim" :
+					{
+						"type" : "object",
+						"title" : "edt_conf_color_grayAxisTrim_title",
+						"propertyOrder" : 22,
+						"properties" :
+						{
+							"enabled" : { "type" : "boolean", "default" : false },
+							"saturationThreshold" : { "type" : "number", "minimum" : 0.0, "maximum" : 1.0, "default" : 0.12 },
+							"gainRed" : { "type" : "number", "minimum" : 0.0, "maximum" : 4.0, "default" : 1.0 },
+							"gainGreen" : { "type" : "number", "minimum" : 0.0, "maximum" : 4.0, "default" : 1.0 },
+							"gainBlue" : { "type" : "number", "minimum" : 0.0, "maximum" : 4.0, "default" : 1.0 }
+						},
+						"additionalProperties" : false
 					}
 				},
 				"additionalProperties" : false
