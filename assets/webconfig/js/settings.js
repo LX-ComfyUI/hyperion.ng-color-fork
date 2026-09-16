@@ -90,6 +90,13 @@ $(document).ready(function () {
     requestSystemRestart();
   });
 
+  // The restart is fast enough under systemd (Restart=on-failure) that the
+  // passive connection-lost watchdog (needs ~9-12s of failed polling) never
+  // trips. React to the server's own restart acknowledgement instead.
+  $(window.hyperion).on("cmd-system-restart", function () {
+    setTimeout(initRestart, 100);
+  });
+
   //Lock Ui
   $('#btn_lock_ui').off().on('click', function () {
     removeStorage('loginToken');
