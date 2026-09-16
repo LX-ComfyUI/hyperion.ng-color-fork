@@ -45,6 +45,10 @@ struct ColorControlPoint
 {
 	QString id;
 
+	/// Master on/off switch for this point. When false, the point is skipped
+	/// entirely during nearest-point matching, as if it weren't in the list.
+	bool enabled = true;
+
 	/// Hue center this point is anchored to, turns in [0.0, 1.0) matching
 	/// ColorSys::rgb2okhsv's hue convention.
 	double hue = 0.0;

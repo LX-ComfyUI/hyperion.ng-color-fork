@@ -125,6 +125,7 @@ $(document).ready(function () {
     var controlPointFields = {
       '': 'edt_conf_color_controlPoints_lumaGate_expl', // Platzhalter, wird unten nicht genutzt
       'id': 'edt_conf_color_controlPoints_id_expl',
+      'enabled': 'edt_conf_color_controlPoints_enabled_expl',
       'hue': 'edt_conf_color_controlPoints_hue_expl',
       'influence': 'edt_conf_color_controlPoints_influence_expl',
       'targetHueShift': 'edt_conf_color_controlPoints_targetHueShift_expl',

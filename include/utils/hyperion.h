@@ -114,6 +114,7 @@ namespace hyperion {
 			const QJsonObject p = v.toObject();
 			ColorControlPoint point;
 			point.id                   = p["id"].toString(QString::number(points.size()));
+			point.enabled              = p["enabled"].toBool(true);
 			point.hue                  = p["hue"].toDouble(0.0);
 			point.influence            = p["influence"].toDouble(1.0 / 12.0);
 			point.targetHueShift       = p["targetHueShift"].toDouble(0.0);

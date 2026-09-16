@@ -75,6 +75,10 @@ void ColorControlPointTransform::apply(uint8_t & red, uint8_t & green, uint8_t &
 	double bestDistance = 0.0;
 	for (int i = 0; i < points.size(); ++i)
 	{
+		if (!points[i].enabled)
+		{
+			continue;
+		}
 		const double d = circularDistance(hue, points[i].hue);
 		const double w = falloffWeight(d, points[i].influence);
 		if (w > bestWeight)
