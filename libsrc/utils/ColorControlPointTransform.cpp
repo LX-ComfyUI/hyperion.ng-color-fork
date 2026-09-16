@@ -104,6 +104,14 @@ void ColorControlPointTransform::apply(uint8_t & red, uint8_t & green, uint8_t &
 		value = clamp01(std::pow(value, 1.0 / blendedGamma));
 	}
 
+	// Per-point linear brightness gain, blended toward identity (gain 1.0)
+	// at the window edge, same as gamma above.
+	if (point.brightnessGain != 1.0)
+	{
+		const double blendedGain = 1.0 + (point.brightnessGain - 1.0) * bestWeight;
+		value = clamp01(value * blendedGain);
+	}
+
 	// Luma gate: hysteresis + debounce against `value` (0-1 -> 0-255 scale).
 	LumaGateMode effectiveMode = LumaGateMode::HUE_SHIFT; // "not gated" == normal shift below
 	bool gated = false;

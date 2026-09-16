@@ -71,6 +71,12 @@ struct ColorControlPoint
 	/// gammaRed/Green/Blue.
 	double gamma = 1.0;
 
+	/// Per-point linear brightness gain, applied to the value/brightness
+	/// channel after `gamma` and blended by the same falloff weight.
+	/// Distinct from `gamma` (a curve): this is a plain multiplier, mirroring
+	/// OkhsvTransform's profile-wide brightnessGain but scoped to this point.
+	double brightnessGain = 1.0;
+
 	LumaGate lumaGate;
 };
 

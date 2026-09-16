@@ -303,9 +303,10 @@
 							{
 								"id" : { "type" : "string", "title" : "edt_conf_color_controlPoints_id_title", "required" : true },
 								"enabled" : { "type" : "boolean", "title" : "edt_conf_color_controlPoints_enabled_title", "required" : true, "default" : true },
-								"hue" : { "type" : "number", "title" : "edt_conf_color_controlPoints_hue_title", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.0 },
+								"hue" : { "type" : "number", "title" : "edt_conf_color_controlPoints_hue_title", "format" : "huePicker", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.0 },
 								"gamma" : { "type" : "number", "title" : "edt_conf_color_controlPoints_gamma_title", "required" : true, "minimum" : 0.1, "maximum" : 100.0, "step" : 0.1, "default" : 1.0 },
-								"influence" : { "type" : "number", "title" : "edt_conf_color_controlPoints_influence_title", "required" : true, "minimum" : 0.0, "maximum" : 0.5, "step" : 0.01, "default" : 0.0833 },
+								"brightnessGain" : { "type" : "number", "title" : "edt_conf_color_controlPoints_brightnessGain_title", "required" : true, "minimum" : 0.1, "maximum" : 10.0, "step" : 0.1, "default" : 1.0 },
+								"influence" : { "type" : "number", "title" : "edt_conf_color_controlPoints_influence_title", "format" : "turnsPercent", "required" : true, "minimum" : 0, "maximum" : 50, "step" : 1, "default" : 0.0833, "append" : "edt_append_percent" },
 								"targetHueShift" : { "type" : "number", "title" : "edt_conf_color_controlPoints_targetHueShift_title", "required" : true, "minimum" : -1.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.0 },
 								"targetSaturationGain" : { "type" : "number", "title" : "edt_conf_color_controlPoints_targetSaturationGain_title", "required" : true, "minimum" : 0.0, "maximum" : 10.0, "step" : 0.1, "default" : 1.0 },
 								"lumaGate" :

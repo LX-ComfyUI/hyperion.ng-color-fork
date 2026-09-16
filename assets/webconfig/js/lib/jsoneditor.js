@@ -6459,6 +6459,106 @@ JSONEditor.defaults.editors.colorPickerRGBA = JSONEditor.defaults.editors.string
   }
 });
 
+// huePicker (fork extension): a single-hue picker built on top of the same
+// bootstrap-colorpicker widget as colorPicker above, but bound to one plain
+// number in [0,1) (turns) instead of an [r,g,b] array. Saturation/value are
+// pinned to 1.0 -- only the hue survives the round trip -- matching
+// ColorControlPoint::hue's convention exactly, so no unit conversion is
+// needed on the C++/schema side.
+JSONEditor.defaults.editors.huePicker = JSONEditor.defaults.editors.string.extend({
+    getValue: function() {
+        if ($(this.input).data("colorpicker") !== undefined) {
+            return $(this.input).data('colorpicker').color.value.h;
+        }
+        else {
+            return 0;
+        }
+    },
+
+    setValue: function(val) {
+        function hueToRgbBytes(h) {
+            h = ((h % 1) + 1) % 1;
+            var i = Math.floor(h * 6);
+            var f = h * 6 - i;
+            var q = 1 - f, t = f, rgb;
+            switch (i % 6) {
+                case 0: rgb = [1, t, 0]; break;
+                case 1: rgb = [q, 1, 0]; break;
+                case 2: rgb = [0, 1, t]; break;
+                case 3: rgb = [0, q, 1]; break;
+                case 4: rgb = [t, 0, 1]; break;
+                default: rgb = [1, 0, q]; break;
+            }
+            return [Math.round(rgb[0]*255), Math.round(rgb[1]*255), Math.round(rgb[2]*255)];
+        }
+        function rgb2hex(rgb)
+        {
+            return "#" +
+            ("0" + rgb[0].toString(16)).slice(-2) +
+            ("0" + rgb[1].toString(16)).slice(-2) +
+            ("0" + rgb[2].toString(16)).slice(-2);
+        }
+
+        var rgb = hueToRgbBytes((typeof val === 'number' && !isNaN(val)) ? val : 0);
+        $(this.input).colorpicker('updateInput', 'rgb('+rgb+')');
+        $(this.input).colorpicker('updateData', rgb);
+        $(this.input).colorpicker('updatePicker', rgb2hex(rgb));
+        $(this.input).colorpicker('updateComponent', 'rgb('+rgb+')');
+     },
+
+    build: function() {
+        this._super();
+        var myinput = this;
+        $(myinput.input).parent().attr("class", $(myinput.input).parent().attr('class') + " colorpicker-element input-group");
+        $(myinput.input).append("<span class='input-group-addon' id='event_catcher'><i></i></span>");
+        $(myinput.input).colorpicker({
+            format: 'rgb',
+            customClass: 'colorpicker-2x',
+            sliders: {
+                saturation: {
+                    maxLeft: 200,
+                    maxTop: 200
+                },
+                hue: {
+                    maxTop: 200
+                },
+            },
+        })
+
+        $("#event_catcher").detach().insertAfter(myinput.input);
+        $("#event_catcher").attr("id", "selector");
+
+        $(this.input).colorpicker().on('changeColor', function(e) {
+            $(myinput).val(e.color.value.h).change();
+        });
+    },
+
+  destroy: function() {
+	$(this.input).colorpicker('destroy');
+  }
+});
+
+// turnsPercent (fork extension): displays a fraction-of-circle "turns" value
+// (native range e.g. 0.0-0.5) as a friendlier 0-50 percent-like number in
+// the input box, while still reading/writing the real turns value to the
+// underlying JSON document. Relies on the schema itself declaring
+// minimum/maximum/step in the *display* (percent) scale -- see
+// schema-color.json's "influence" field -- since those feed straight into
+// this input's native min/max/step attributes.
+JSONEditor.defaults.editors.turnsPercent = JSONEditor.defaults.editors.number.extend({
+    setValue: function(val, initial, from_template) {
+        var displayVal = val;
+        if (typeof val === 'number' || (typeof val === 'string' && val !== '' && !isNaN(val))) {
+            displayVal = Math.round(parseFloat(val) * 100 * 100) / 100;
+        }
+        this._super(displayVal, initial, from_template);
+    },
+    getValue: function() {
+        var raw = this._super();
+        return (typeof raw === 'number' && !isNaN(raw)) ? raw / 100 : raw;
+    }
+});
+
 var matchKey = (function () {
   var elem = document.documentElement;
 
@@ -7345,6 +7445,18 @@ JSONEditor.defaults.resolvers.unshift(function(schema) {
 JSONEditor.defaults.resolvers.unshift(function(schema) {
     if(schema.type === "array" && schema.format === "colorpickerRGBA") {
         return "colorPickerRGBA";
+    }
+});
+// huePicker extend for numbers (fork extension)
+JSONEditor.defaults.resolvers.unshift(function(schema) {
+    if(schema.type === "number" && schema.format === "huePicker") {
+        return "huePicker";
+    }
+});
+// turnsPercent extend for numbers (fork extension)
+JSONEditor.defaults.resolvers.unshift(function(schema) {
+    if(schema.type === "number" && schema.format === "turnsPercent") {
+        return "turnsPercent";
     }
 });
 

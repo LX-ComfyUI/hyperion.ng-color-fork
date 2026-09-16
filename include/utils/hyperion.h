@@ -120,6 +120,7 @@ namespace hyperion {
 			point.targetHueShift       = p["targetHueShift"].toDouble(0.0);
 			point.targetSaturationGain = p["targetSaturationGain"].toDouble(1.0);
 			point.gamma                = p["gamma"].toDouble(1.0);
+			point.brightnessGain       = p["brightnessGain"].toDouble(1.0);
 
 			const QJsonObject gate = p["lumaGate"].toObject();
 			if (!gate.isEmpty())
