@@ -150,9 +150,23 @@ protobuf/mbedtls from scratch: 30-60+ minutes).
   kicked off 16:26, finished 16:43) **succeeded with zero compile errors**,
   including `ColorControlPointTransform.cpp` in the `hyperion-utils` target.
   Binary present at `build/bin/hyperiond` (15MB, linked 16:43).
-- Still **uncommitted** (unstaged modifications + untracked new files) on
-  `fork/extended-color-calibration`, branched from tag `1a00360`
-  ("Release 2.2.1").
+- Committed on `fork/extended-color-calibration` (branched from tag
+  `1a00360`, "Release 2.2.1") as commit `ec800ba`, plus a required upstream
+  build fix in the vendored protobuf submodule (libatomic linking scoped to
+  the `libprotobuf` target only), committed inside that submodule as
+  `956435f0d` and referenced via the updated gitlink.
+- **Baseline regression smoke test passed** (2026-09-16 17:15): ran the fork
+  binary against an isolated copy of the live production `hyperion.db`
+  (`-u <isolated dir> --readonlyMode --debug`, live service left untouched).
+  `DB-CONFIGMGR` validated the config against the extended
+  `schema-color.json` with no errors, `LedDevice 'hd108'` loaded with the
+  exact known-good values (644 LEDs, brightness 15/48%, SPI 5MHz), no
+  `controlPoints`/`grayAxisTrim` log activity (confirming the empty/disabled
+  default path was taken, i.e. no behavior change), and the process shut
+  down cleanly (`Application ended with code 0`). The only `<ERROR>` lines
+  were expected artifacts of running two Hyperion instances against the same
+  V4L2 device/ports simultaneously (device busy, port already in use) — not
+  related to the fork code.
 
 **Not started:**
 - Feature 5 (source-side color classification) — idea only, no design.
