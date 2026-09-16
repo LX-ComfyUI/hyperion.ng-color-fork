@@ -168,14 +168,51 @@ protobuf/mbedtls from scratch: 30-60+ minutes).
   V4L2 device/ports simultaneously (device busy, port already in use) — not
   related to the fork code.
 
+- **Pushed to GitHub**: fork `LX-ComfyUI/hyperion.ng-color-fork` (forked from
+  `hyperion-project/hyperion.ng`, renamed from the fork's default name),
+  branch `fork/extended-color-calibration` pushed and tracking `myfork`
+  remote.
+- **Live-hardware smoke test, running now** (2026-09-16 17:31): stopped the
+  real `hyperion@alexo` systemd service (`sudo systemctl stop`) and started
+  the fork binary directly (`build/bin/hyperiond --service --debug`, real
+  `~/.hyperion` userdata, **not** read-only this time) against the actual
+  SPI LED strip and V4L2 capture card, which are now free. Result so far:
+  clean startup, `LedDevice 'hd108'` ON with the same known-good values, V4L2
+  grabber initializes without the earlier "device busy" errors (real device,
+  no longer contested), JSON API on port 19444 answers `serverinfo` with
+  correct adjustment data, no SPI/exception/segfault lines in the log.
+  **This is the first time the fork has driven the real LEDs.**
+
+**Known gap surfaced by the live test — companion services are offline:**
+`hyperion-shelly-control.service` (Shelly-PSU auto-control, see
+[[hrpg-300-5-psu-control]]) and `video-signal-monitor.service` (see
+[[video-signal-monitor]]) both declare `Requires=hyperion@alexo.service` in
+their systemd units, so stopping that unit auto-stopped both. Restarting them
+normally would also re-trigger systemd to start the *stock* `hyperion@alexo`
+unit (fighting the fork for the same SPI/V4L2 device) because of that
+`Requires=`. Worse, `video_signal_monitor.py` hard-codes
+`journalctl -u hyperion@alexo` to track V4L2 start/stop and USB error events
+— even hand-started, it cannot see equivalent events from a fork process
+running outside that unit. A true parity test needs the fork to run *as*
+the `hyperion@alexo` unit (temporarily repointing that unit's `ExecStart`),
+not as a bare background process. **Deferred by user decision (2026-09-16):
+PSU control + flicker monitor integration is explicitly out of scope for
+now** — current live test only covers core Hyperion (LED output, capture,
+JSON API), not the PSU/monitor companion services.
+
 **Not started:**
 - Feature 5 (source-side color classification) — idea only, no design.
 - Web-config UI panel/widget for editing control points and gray-axis trim
   visually (currently schema-only, so only the raw JSON editor can touch it).
-- Validation against the known-good baseline config
-  (`hyperion-good-state-2026-09-16-1mhz`) once built.
-- Replacing the apt-installed `hyperion@alexo` service with this self-built
-  fork.
+- Reconnecting PSU control (`hyperion-shelly-control`) and flicker/video
+  monitoring (`video-signal-monitor`) to the fork — see gap above, deferred.
+- Making the live-hardware test durable/observed over time (current test is
+  a fresh, short-lived manual run, not yet watched through a TV-pause cycle
+  or over an extended period the way [[hyperion-flicker-2026-09-15]] and
+  related flicker investigations required).
+- Replacing the apt-installed `hyperion@alexo` service definition with this
+  self-built fork (i.e. making the swap durable/reboot-safe via the actual
+  systemd unit, vs. today's manual foreground run).
 - Exposing/documenting the capture device's V4L2 `saturation` control
   (currently 255, driver default 180) as a tunable, to reduce how hard any
   calibration workaround has to fight the amplified sensor tint at the
@@ -183,15 +220,22 @@ protobuf/mbedtls from scratch: 30-60+ minutes).
 
 ## Next steps
 
-1. Let the current build finish; check for compile errors in the new files
-   (`ColorControlPointTransform.cpp` especially — not yet reached by the log
-   as of the last check).
-2. Commit the current working-tree changes to `fork/extended-color-calibration`.
-3. Smoke-test with an empty `controlPoints`/disabled `grayAxisTrim` config to
-   confirm byte-identical behavior to stock (no regression on the known-good
-   baseline).
-4. Add a minimal control point + gray-axis trim config reproducing the
+1. ~~Let the current build finish~~ — done, zero errors.
+2. ~~Commit the current working-tree changes~~ — done (`ec800ba`).
+3. ~~Smoke-test with an empty `controlPoints`/disabled `grayAxisTrim` config
+   against the baseline~~ — done, passed.
+4. ~~Push to GitHub~~ — done (`LX-ComfyUI/hyperion.ng-color-fork`).
+5. ~~Run against real hardware~~ — done, core Hyperion functionality
+   confirmed healthy; PSU control + flicker monitor integration explicitly
+   deferred.
+6. Watch the live-hardware run for stability over time, including a TV-pause
+   cycle (known past flicker trigger, see
+   [[hyperion-flicker-2026-09-15]]) — not yet observed against the fork.
+7. Add a minimal control point + gray-axis trim config reproducing the
    concrete/green fix without the global-anchor side effect on real greens,
    validate against the same video source used to find the original bug.
-5. Extend the web-config UI panel for the new schema sections.
-6. Only then consider swapping the apt-installed service for this build.
+8. Extend the web-config UI panel for the new schema sections.
+9. Reconnect PSU control + flicker monitor (see deferred gap above) — decide
+   whether to adapt the scripts to work against a bare fork process, or to
+   make the fork assume the `hyperion@alexo` unit identity.
+10. Only then consider making the fork the permanent, reboot-safe service.
