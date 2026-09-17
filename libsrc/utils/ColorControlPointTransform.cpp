@@ -98,10 +98,12 @@ void ColorControlPointTransform::apply(uint8_t & red, uint8_t & green, uint8_t &
 	const ColorControlPoint & point = points[bestIdx];
 
 	// Per-point gamma, blended toward identity (gamma 1.0) at the window edge.
+	// Same convention as the standard gammaRed/Green/Blue (RgbTransform):
+	// exponent applied directly, gamma>1 darkens, gamma<1 brightens.
 	if (point.gamma != 1.0)
 	{
 		const double blendedGamma = 1.0 + (point.gamma - 1.0) * bestWeight;
-		value = clamp01(std::pow(value, 1.0 / blendedGamma));
+		value = clamp01(std::pow(value, blendedGamma));
 	}
 
 	// Per-point linear brightness gain, blended toward identity (gain 1.0)
