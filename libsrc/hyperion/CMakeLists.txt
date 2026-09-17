@@ -28,6 +28,9 @@ add_library(hyperion
 	# Image Processor
 	${CMAKE_SOURCE_DIR}/include/hyperion/ImageProcessor.h
 	${CMAKE_SOURCE_DIR}/libsrc/hyperion/ImageProcessor.cpp
+	# Gray still-image detector (fork extension)
+	${CMAKE_SOURCE_DIR}/include/hyperion/GrayStillImageDetector.h
+	${CMAKE_SOURCE_DIR}/libsrc/hyperion/GrayStillImageDetector.cpp
 	# ImageToLedsMap class
 	${CMAKE_SOURCE_DIR}/include/hyperion/ImageToLedsMap.h
 	${CMAKE_SOURCE_DIR}/libsrc/hyperion/ImageToLedsMap.cpp

@@ -19,6 +19,9 @@
 // Black border includes
 #include <blackborder/BlackBorderProcessor.h>
 
+// Gray still-image detector (fork extension)
+#include <hyperion/GrayStillImageDetector.h>
+
 Q_DECLARE_LOGGING_CATEGORY(imageProcessor_track);
 
 class Hyperion;
@@ -162,6 +165,10 @@ public:
 			default:
 				colors = _imageToLedColors->getMeanLedColor(image);
 			}
+
+			// Fork extension: detect/handle a gray, dimmed still image (e.g. a paused
+			// streaming player fading out) and override colors in place if confirmed
+			_grayStillDetector->process(colors);
 		}
 		else
 		{
@@ -216,6 +223,10 @@ public:
 			default:
 				_imageToLedColors->getMeanLedColor(image, ledColors);
 			}
+
+			// Fork extension: detect/handle a gray, dimmed still image (e.g. a paused
+			// streaming player fading out) and override colors in place if confirmed
+			_grayStillDetector->process(ledColors);
 		}
 		else
 		{
@@ -293,6 +304,9 @@ private:
 
 	/// The processor for black border detection
 	QScopedPointer <hyperion::BlackBorderProcessor> _borderProcessor;
+
+	/// Fork extension: detector for a gray, dimmed still image (e.g. paused streaming players)
+	QScopedPointer <hyperion::GrayStillImageDetector> _grayStillDetector;
 
 	/// The mapping of image-pixels to LEDs
 	QSharedPointer<hyperion::ImageToLedsMap> _imageToLedColors;

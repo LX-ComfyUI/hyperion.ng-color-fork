@@ -26,6 +26,10 @@ $(document).ready(function () {
       $('#conf_cont').append(createRow('conf_cont_blackborder'));
       $('#conf_cont_blackborder').append(createOptPanel('fa-photo', $.i18n("edt_conf_bb_heading_title"), 'editor_container_blackborder', 'btn_submit_blackborder'));
       $('#conf_cont_blackborder').append(createHelpTable(window.schema.blackborderdetector.properties, $.i18n("edt_conf_bb_heading_title"), "blackborderHelpPanelId"));
+
+      //gray still-image detection (fork extension) - own area, placed right below black border detection
+      $('#conf_cont').append(createRow('conf_cont_graystill'));
+      $('#conf_cont_graystill').append(createOptPanel('fa-photo', $.i18n("edt_conf_bb_grayStillImageDetector_title"), 'editor_container_graystill', 'btn_submit_graystill'));
     }
   }
   else {
@@ -34,6 +38,9 @@ $(document).ready(function () {
     $('#conf_cont').append(createOptPanel('fa-photo', $.i18n("edt_conf_smooth_heading_title"), 'editor_container_smoothing', 'btn_submit_smoothing'));
     if (BORDERDETECT_ENABLED) {
       $('#conf_cont').append(createOptPanel('fa-photo', $.i18n("edt_conf_bb_heading_title"), 'editor_container_blackborder', 'btn_submit_blackborder'));
+
+      //gray still-image detection (fork extension) - own area, placed right below black border detection
+      $('#conf_cont').append(createOptPanel('fa-photo', $.i18n("edt_conf_bb_grayStillImageDetector_title"), 'editor_container_graystill', 'btn_submit_graystill'));
     }
   }
 
@@ -269,10 +276,67 @@ $(document).ready(function () {
         $('#blackborderHelpPanelId').hide();
         $('#blackborderWikiLinkId').hide();
       }
-      editor_blackborder.validate().length || window.readOnlyMode ? $('#btn_submit_blackborder').prop('disabled', true) : $('#btn_submit_blackborder').prop('disabled', false);
+      var blackborderInvalid = editor_blackborder.validate().length || window.readOnlyMode;
+      $('#btn_submit_blackborder').prop('disabled', blackborderInvalid);
+      $('#btn_submit_graystill').prop('disabled', blackborderInvalid);
     });
 
     $('#btn_submit_blackborder').off().on('click', function () {
+      requestWriteConfig(editor_blackborder.getValue());
+    });
+
+    // Fork-Erweiterung: Info-Symbole fuer die Graues-Standbild-Erkennung,
+    // gleiches Muster wie bei den Farbkalibrierungs-Feldern oben.
+    (function addGrayStillInfoIcons(editor) {
+      function attachInfoIcon(path, explKey) {
+        var fieldEditor;
+        try {
+          fieldEditor = editor.getEditor(path);
+        } catch (e) {
+          return;
+        }
+        if (!fieldEditor || !fieldEditor.label) return;
+        var $label = $(fieldEditor.label);
+        if ($label.data('forkInfoIconAdded')) return;
+        var explText = $.i18n(explKey);
+        if (!explText || explText === explKey) return;
+        $label.append(
+          $('<i>')
+            .addClass('fa fa-info-circle')
+            .attr('title', explText)
+            .css({ 'margin-left': '6px', cursor: 'help', color: '#3a87ad' })
+        );
+        $label.data('forkInfoIconAdded', true);
+      }
+
+      var BASE = 'root.blackborderdetector.grayStillImageDetector.';
+      var fields = {
+        'enabled': 'edt_conf_bb_grayStillImageDetector_enabled_expl',
+        'stillTimeSeconds': 'edt_conf_bb_grayStillImageDetector_stillTimeSeconds_expl',
+        'brightnessDropThreshold': 'edt_conf_bb_grayStillImageDetector_brightnessDropThreshold_expl',
+        'dropWindowSeconds': 'edt_conf_bb_grayStillImageDetector_dropWindowSeconds_expl',
+        'changeThreshold': 'edt_conf_bb_grayStillImageDetector_changeThreshold_expl',
+        'mode': 'edt_conf_bb_grayStillImageDetector_mode_expl'
+      };
+      Object.keys(fields).forEach(function (key) {
+        attachInfoIcon(BASE + key, fields[key]);
+      });
+    })(editor_blackborder);
+
+    // Fork-Erweiterung: Graues-Standbild-Erkennung als eigener Bereich unterhalb
+    // der Schwarze-Balken-Erkennung. Technisch bleibt es Teil desselben
+    // blackborderdetector-Objekts/Editors (ein Formular, ein "Speichern" fuer
+    // beide Bereiche) - so kann das separate Speichern hier nicht versehentlich
+    // ungespeicherte Aenderungen im Schwarze-Balken-Bereich ueberschreiben.
+    var grayStillEditor = editor_blackborder.getEditor('root.blackborderdetector.grayStillImageDetector');
+    if (grayStillEditor && grayStillEditor.container) {
+      if (grayStillEditor.title) {
+        grayStillEditor.title.style.display = 'none';
+      }
+      $('#editor_container_graystill').append(grayStillEditor.container);
+    }
+
+    $('#btn_submit_graystill').off().on('click', function () {
       requestWriteConfig(editor_blackborder.getValue());
     });
   }

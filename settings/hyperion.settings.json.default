@@ -154,7 +154,15 @@
          "borderFrameCnt":50,
          "maxInconsistentCnt":10,
          "blurRemoveCnt":1,
-         "mode":"default"
+         "mode":"default",
+         "grayStillImageDetector":{
+            "enabled":false,
+            "stillTimeSeconds":5,
+            "brightnessDropThreshold":40,
+            "dropWindowSeconds":1.0,
+            "changeThreshold":6,
+            "mode":"freeze"
+         }
       },
       "boblightServer":{
          "enable":false,

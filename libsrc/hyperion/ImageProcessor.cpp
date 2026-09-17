@@ -128,6 +128,7 @@ ImageProcessor::ImageProcessor(const LedString& ledString, const QSharedPointer<
 	, _log(nullptr)
 	, _ledString(ledString)
 	, _borderProcessor(nullptr)
+	, _grayStillDetector(nullptr)
 	, _imageToLedColors(nullptr)
 	, _mappingType(0)
 	, _userMappingType(0)
@@ -147,6 +148,7 @@ ImageProcessor::ImageProcessor(const LedString& ledString, const QSharedPointer<
 	TRACK_SCOPE_SUBCOMPONENT();
 
 	_borderProcessor.reset(new BlackBorderProcessor(hyperion));
+	_grayStillDetector.reset(new GrayStillImageDetector(hyperion));
 
 	// init
 	handleSettingsUpdate(settings::COLOR, hyperion->getSetting(settings::COLOR));

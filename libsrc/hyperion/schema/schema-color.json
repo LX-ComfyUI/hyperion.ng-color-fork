@@ -298,11 +298,11 @@
 						"propertyOrder" : 21,
 						"properties" :
 						{
-							"enabled" : { "type" : "boolean", "title" : "edt_conf_color_grayAxisTrim_enabled_title", "required" : true, "default" : false },
-							"saturationThreshold" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_saturationThreshold_title", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.12 },
-							"gainRed" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainRed_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
-							"gainGreen" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainGreen_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
-							"gainBlue" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainBlue_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 }
+							"enabled" : { "type" : "boolean", "title" : "edt_conf_color_grayAxisTrim_enabled_title", "required" : true, "default" : false, "propertyOrder" : 1 },
+							"saturationThreshold" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_saturationThreshold_title", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.12, "propertyOrder" : 2 },
+							"gainRed" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainRed_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0, "propertyOrder" : 3 },
+							"gainGreen" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainGreen_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0, "propertyOrder" : 4 },
+							"gainBlue" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainBlue_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0, "propertyOrder" : 5 }
 						},
 						"additionalProperties" : false
 					},

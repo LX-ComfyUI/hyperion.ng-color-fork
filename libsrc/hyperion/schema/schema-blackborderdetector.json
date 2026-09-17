@@ -66,6 +66,24 @@
 				"enum_titles" : ["edt_conf_enum_bbdefault", "edt_conf_enum_bbclassic", "edt_conf_enum_bbosd", "edt_conf_enum_bbletterbox"]
 			},
 			"propertyOrder" : 7
+		},
+		"grayStillImageDetector" :
+		{
+			"type" : "object",
+			"title" : "edt_conf_bb_grayStillImageDetector_title",
+			"required" : true,
+			"access" : "expert",
+			"propertyOrder" : 8,
+			"properties" :
+			{
+				"enabled" : { "type" : "boolean", "title" : "edt_conf_bb_grayStillImageDetector_enabled_title", "required" : true, "default" : false, "propertyOrder" : 1 },
+				"stillTimeSeconds" : { "type" : "integer", "title" : "edt_conf_bb_grayStillImageDetector_stillTimeSeconds_title", "required" : true, "minimum" : 1, "maximum" : 60, "default" : 5, "append" : "edt_append_s", "propertyOrder" : 2 },
+				"brightnessDropThreshold" : { "type" : "integer", "title" : "edt_conf_bb_grayStillImageDetector_brightnessDropThreshold_title", "required" : true, "minimum" : 5, "maximum" : 255, "default" : 40, "propertyOrder" : 3 },
+				"dropWindowSeconds" : { "type" : "number", "title" : "edt_conf_bb_grayStillImageDetector_dropWindowSeconds_title", "required" : true, "minimum" : 0.2, "maximum" : 5.0, "step" : 0.1, "default" : 1.0, "append" : "edt_append_s", "propertyOrder" : 4 },
+				"changeThreshold" : { "type" : "integer", "title" : "edt_conf_bb_grayStillImageDetector_changeThreshold_title", "required" : true, "minimum" : 0, "maximum" : 64, "default" : 6, "propertyOrder" : 5 },
+				"mode" : { "type" : "string", "title" : "edt_conf_bb_grayStillImageDetector_mode_title", "required" : true, "enum" : ["freeze", "off"], "options" : { "enum_titles" : ["edt_conf_enum_grayStillFreeze", "edt_conf_enum_grayStillOff"] }, "default" : "freeze", "propertyOrder" : 6 }
+			},
+			"additionalProperties" : false
 		}
 	},
 	"additionalProperties" : false
