@@ -43,8 +43,6 @@ struct LumaGate
 ///
 struct ColorControlPoint
 {
-	QString id;
-
 	/// Master on/off switch for this point. When false, the point is skipped
 	/// entirely during nearest-point matching, as if it weren't in the list.
 	bool enabled = true;

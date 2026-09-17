@@ -52,15 +52,25 @@ void ColorControlPointTransform::apply(uint8_t & red, uint8_t & green, uint8_t &
 	double hue, saturation, value;
 	ColorSys::rgb2okhsv(red, green, blue, hue, saturation, value);
 
-	if (trim.enabled && saturation < trim.saturationThreshold)
+	if (trim.enabled && trim.saturationThreshold > 0.0 && saturation < trim.saturationThreshold)
 	{
 		// Near-neutral pixel: correct sensor/white-balance tint directly in
 		// RGB and skip the hue-anchor system entirely -- this is the
 		// "don't let a saturated hue anchor also govern gray pixels" fix
 		// from DESIGN.md item 4/5.
-		red   = static_cast<uint8_t>(std::lround(std::min(255.0, red   * trim.gainRed)));
-		green = static_cast<uint8_t>(std::lround(std::min(255.0, green * trim.gainGreen)));
-		blue  = static_cast<uint8_t>(std::lround(std::min(255.0, blue  * trim.gainBlue)));
+		//
+		// Blend the gain smoothly from full strength at saturation 0 down to
+		// no effect at the threshold, instead of a hard on/off cut. A hard
+		// cut flickers whenever saturation hovers near the threshold from
+		// frame to frame -- most visible when gain < 1.0 darkens a
+		// near-black tinted pixel toward pure black right at the boundary.
+		const double weight = clamp01(1.0 - saturation / trim.saturationThreshold);
+		const double scaleRed   = 1.0 + (trim.gainRed   - 1.0) * weight;
+		const double scaleGreen = 1.0 + (trim.gainGreen - 1.0) * weight;
+		const double scaleBlue  = 1.0 + (trim.gainBlue  - 1.0) * weight;
+		red   = static_cast<uint8_t>(std::lround(std::min(255.0, red   * scaleRed)));
+		green = static_cast<uint8_t>(std::lround(std::min(255.0, green * scaleGreen)));
+		blue  = static_cast<uint8_t>(std::lround(std::min(255.0, blue  * scaleBlue)));
 		return;
 	}
 

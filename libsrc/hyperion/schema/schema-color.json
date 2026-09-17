@@ -289,20 +289,36 @@
 						"step" : 0.1,
 						"propertyOrder" : 20
 					},
+					"grayAxisTrim" :
+					{
+						"type" : "object",
+						"title" : "edt_conf_color_grayAxisTrim_title",
+						"required" : true,
+						"access" : "expert",
+						"propertyOrder" : 21,
+						"properties" :
+						{
+							"enabled" : { "type" : "boolean", "title" : "edt_conf_color_grayAxisTrim_enabled_title", "required" : true, "default" : false },
+							"saturationThreshold" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_saturationThreshold_title", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.12 },
+							"gainRed" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainRed_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
+							"gainGreen" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainGreen_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
+							"gainBlue" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainBlue_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 }
+						},
+						"additionalProperties" : false
+					},
 					"controlPoints" :
 					{
 						"type" : "array",
 						"title" : "edt_conf_color_controlPoints_title",
 						"required" : true,
 						"access" : "expert",
-						"propertyOrder" : 21,
+						"propertyOrder" : 22,
 						"items" :
 						{
 							"type" : "object",
 							"title" : "edt_conf_color_controlPoints_itemtitle",
 							"properties" :
 							{
-								"id" : { "type" : "string", "title" : "edt_conf_color_controlPoints_id_title", "required" : true },
 								"enabled" : { "type" : "boolean", "title" : "edt_conf_color_controlPoints_enabled_title", "required" : true, "default" : true },
 								"hue" : { "type" : "number", "title" : "edt_conf_color_controlPoints_hue_title", "format" : "huePicker", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.0 },
 								"gamma" : { "type" : "number", "title" : "edt_conf_color_controlPoints_gamma_title", "required" : true, "minimum" : 0.1, "maximum" : 100.0, "step" : 0.1, "default" : 1.0 },
@@ -330,23 +346,6 @@
 							},
 							"additionalProperties" : false
 						}
-					},
-					"grayAxisTrim" :
-					{
-						"type" : "object",
-						"title" : "edt_conf_color_grayAxisTrim_title",
-						"required" : true,
-						"access" : "expert",
-						"propertyOrder" : 22,
-						"properties" :
-						{
-							"enabled" : { "type" : "boolean", "title" : "edt_conf_color_grayAxisTrim_enabled_title", "required" : true, "default" : false },
-							"saturationThreshold" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_saturationThreshold_title", "required" : true, "minimum" : 0.0, "maximum" : 1.0, "step" : 0.01, "default" : 0.12 },
-							"gainRed" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainRed_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
-							"gainGreen" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainGreen_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 },
-							"gainBlue" : { "type" : "number", "title" : "edt_conf_color_grayAxisTrim_gainBlue_title", "required" : true, "minimum" : 0.0, "maximum" : 4.0, "step" : 0.05, "default" : 1.0 }
-						},
-						"additionalProperties" : false
 					}
 				},
 				"additionalProperties" : false
