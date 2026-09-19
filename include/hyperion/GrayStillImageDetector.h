@@ -22,7 +22,7 @@ namespace hyperion
 	/// a while. Operates on the already mapped per-LED colors (cheap, mapping-mode agnostic)
 	/// instead of scanning the raw image.
 	///
-	/// Detection happens in two stages:
+	/// Detection happens in up to two stages:
 	///  1. The image must stay unchanged (within a noise tolerance) without interruption for
 	///     `stillTimeSeconds` - this distinguishes a genuinely paused/still image from normal
 	///     motion (incl. dark/desaturated motion, which must NOT trigger).
@@ -30,10 +30,15 @@ namespace hyperion
 	///     (`brightnessDropThreshold` within `dropWindowSeconds`) - this is the actual "player is
 	///     fading out to standby" event.
 	///
-	/// Only once both stages are satisfied does the configured reaction (freeze the last real
-	/// colors, or force the LEDs to black) apply - in place, on the given LED colors. It releases
-	/// again as soon as the brightness recovers from its post-trigger low point, or (before ever
-	/// triggering) as soon as the image changes again. The LEDs never freeze permanently.
+	/// `brightnessDropThreshold` can be set to 0 to disable stage 2 entirely: the reaction then
+	/// applies as soon as stage 1 alone confirms a still image, whether or not it ever dims - for
+	/// players that pause on an unchanged, still-bright frame instead of fading to a dark standby.
+	///
+	/// Only once all enabled stages are satisfied does the configured reaction (freeze the last
+	/// real colors, or force the LEDs to black) apply - in place, on the given LED colors. It
+	/// releases again as soon as the image changes (real content resumed), or - only while
+	/// `brightnessDropThreshold` is > 0 - as soon as the brightness recovers from its post-trigger
+	/// low point. The LEDs never freeze permanently.
 	///
 	class GrayStillImageDetector : public QObject
 	{
@@ -70,7 +75,8 @@ namespace hyperion
 		/// how long the image must stay unchanged before watching for a brightness drop
 		int _stillTimeSeconds;
 
-		/// minimum brightness drop (0-255) within the drop window to count as "sudden"
+		/// minimum brightness drop (0-255) within the drop window to count as "sudden";
+		/// 0 disables the brightness-drop requirement entirely (see class comment)
 		int _brightnessDropThreshold;
 
 		/// time window within which the drop must happen to count as "sudden"

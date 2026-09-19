@@ -138,15 +138,26 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 	const QVector<ColorRgb> raw = ledColors;
 	const double brightness = meanBrightness(raw);
 
+	const bool dropThresholdDisabled = (_brightnessDropThreshold <= 0);
+
 	if (_triggered)
 	{
 		const bool changed = hasChanged(raw);
 
-		if (brightness < _minBrightnessSinceTrigger)
+		// With the brightness-drop requirement disabled, "recovered" has no
+		// meaning (there was no drop to recover from) -- release relies
+		// solely on `changed` in that case. Without this guard, the formula
+		// below would evaluate true on the very frame it triggers (delta 0
+		// >= threshold 0), immediately undoing the reaction every frame.
+		bool recovered = false;
+		if (!dropThresholdDisabled)
 		{
-			_minBrightnessSinceTrigger = brightness;
+			if (brightness < _minBrightnessSinceTrigger)
+			{
+				_minBrightnessSinceTrigger = brightness;
+			}
+			recovered = (brightness - _minBrightnessSinceTrigger) >= _brightnessDropThreshold;
 		}
-		const bool recovered = (brightness - _minBrightnessSinceTrigger) >= _brightnessDropThreshold;
 
 		_prevColors = raw;
 		_hasPrevColors = true;
@@ -190,7 +201,20 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 		return;
 	}
 
-	// confirmed still image - now watch for a sudden brightness drop
+	// confirmed still image
+	if (dropThresholdDisabled)
+	{
+		// No brightness-drop requirement configured: stage 1 alone is enough,
+		// whether or not the still image ever dims.
+		_triggered = true;
+		_minBrightnessSinceTrigger = brightness;
+		Debug(_log, "Gray still image confirmed (still for %ds, brightness-drop requirement disabled) - applying mode '%s'",
+			_stillTimeSeconds, QSTRING_CSTR(_mode));
+		applyReaction(ledColors);
+		return;
+	}
+
+	// now watch for a sudden brightness drop
 	if (!_dropWindowActive || _dropWindowTimer.hasExpired(static_cast<qint64>(_dropWindowSeconds * 1000.0)))
 	{
 		_dropWindowStartBrightness = brightness;
