@@ -3,7 +3,7 @@
 // Hyperion includes
 
 #include <utils/Logger.h>
-#include <utils/ColorControlPointTransform.h>
+#include <utils/GrayAxisTrimTransform.h>
 #include <hyperion/MultiColorAdjustment.h>
 
 MultiColorAdjustment::MultiColorAdjustment(int ledCnt)
@@ -120,10 +120,9 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors)
 			adjustment->_okhsvTransform.transform(ored, ogreen, oblue);
 		}
 
-		if (!adjustment->_controlPoints.isEmpty() || adjustment->_grayAxisTrim.enabled)
+		if (adjustment->_grayAxisTrim.enabled)
 		{
-			ColorControlPointTransform::apply(ored, ogreen, oblue,
-				adjustment->_controlPoints, adjustment->_gateStates, adjustment->_grayAxisTrim);
+			GrayAxisTrimTransform::apply(ored, ogreen, oblue, adjustment->_grayAxisTrim);
 		}
 
 		adjustment->_rgbTransform.applyGamma(ored,ogreen,oblue);

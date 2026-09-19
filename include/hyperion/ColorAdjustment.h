@@ -9,8 +9,8 @@
 #include <utils/RgbChannelAdjustment.h>
 #include <utils/RgbTransform.h>
 #include <utils/OkhsvTransform.h>
-#include <utils/ColorControlPoint.h>
-#include <utils/ColorControlPointTransform.h>
+#include <utils/GrayAxisTrim.h>
+#include <utils/GrayAxisTrimTransform.h>
 
 class ColorAdjustment
 {
@@ -38,18 +38,10 @@ public:
 	RgbTransform _rgbTransform;
 	OkhsvTransform _okhsvTransform;
 
-	/// Fork extension: arbitrary hue control points (DESIGN.md features 1-3),
-	/// applied after _okhsvTransform and before the fixed 6-anchor mapping
-	/// above, so this profile stays byte-identical to stock Hyperion when
-	/// _controlPoints is empty.
-	QVector<ColorControlPoint> _controlPoints;
-	/// Parallel to _controlPoints; persists luma-gate hysteresis/debounce
-	/// state across frames. Kept in sync with _controlPoints' size by
-	/// whatever loads/updates this profile from config.
-	QVector<ColorControlPointGateState> _gateStates;
-
 	/// Fork extension: independent gray-axis / white-balance trim (DESIGN.md
-	/// feature 4), applied before _controlPoints.
+	/// feature 4), applied after _okhsvTransform and before the fixed
+	/// 6-anchor mapping above, so this profile stays byte-identical to stock
+	/// Hyperion when _grayAxisTrim is disabled.
 	GrayAxisTrim _grayAxisTrim;
 };
 

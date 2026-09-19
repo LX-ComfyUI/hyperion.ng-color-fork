@@ -220,7 +220,6 @@
                "saturationGain":1.0,
                "brightnessGain":1.0,
                "temperature" : 6600,
-               "controlPoints":[],
                "grayAxisTrim":{
                   "enabled":false,
                   "stops":[

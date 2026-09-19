@@ -33,70 +33,56 @@ compete with saturated-hue correction.
 
 ## Requested features
 
-1. **Arbitrary/more hue anchor points** — not just the fixed 6. E.g. a
-   dedicated turquoise anchor between cyan and blue, so intermediate hues get
-   independent control instead of pure interpolation between neighbors.
-2. **Per-anchor gamma** — today there are only 3 global
-   `gammaRed/gammaGreen/gammaBlue` values. The gamma curve itself should be
-   able to vary by hue region.
-3. **Brightness-gated color shift ("qualifier with luma gate")** — for a given
-   hue/anchor, define a brightness threshold below which that color is
-   remapped to a different target (including "just go dark"). Concrete case:
-   dark brown/dark gray reads as visible red on the LEDs because hue is
-   nearly undefined near the gray axis at low saturation; below a threshold
-   it should go dark instead of showing a wrong hue.
-4. **Independent gray-axis / white-balance trim** — the concrete/green defect
-   above is actually a white-balance problem (a low-saturation/neutral-axis
-   tint from the capture sensor), not a hue-mapping problem. Routing the fix
-   through a saturated hue anchor is a workaround with real side effects.
-   Needs its own gain correction that only touches near-neutral, low-chroma
-   pixels, orthogonal to the saturated-hue control-point system above.
-5. **(Not yet designed) Smarter source-side color classification** — instead
-   of only correcting after the fact via a single global anchor, distinguish
-   low-saturation "concrete gray" pixels from genuine saturated greens before
-   applying any hue shift. Noted as a possible future angle; no code exists
-   for this yet.
-4b. **Staged gray-axis gain ("Grauachsen-Stufen")** — feature 4's single
-    `saturationThreshold`/`gainRed/Green/Blue` quartet only allowed one gain
-    for the whole near-neutral band. Real captures often need different
-    corrections at different shades of near-gray (e.g. true black-level noise
-    vs. a slightly warmer dark gray a bit further out on the saturation
-    axis). Replaced with an ordered list of `GrayAxisTrimStop` entries
-    (`saturationUpTo`, `gainRed/Green/Blue`), each an anchor point on a
-    piecewise-linear gain curve over saturation — see `GrayAxisTrimStop` in
-    Architecture below. Deliberately a smooth ramp between stops, not a flat
-    staircase: a hard step at a band boundary reproduces the exact flicker
-    bug the single-threshold version had before its own smoothing fix
-    (commit `a6c62488`).
-    `hyperion::createGrayAxisTrim` sorts stops ascending defensively
-    server-side regardless of input order, but `content_colors.js` also
-    actively *enforces* strictly-ascending `saturationUpTo` in the WebUI
-    itself (blocking warning + disabled Speichern-button on violation,
-    offending rows outlined) — a user was able to enter stop 1 with a
-    higher `saturationUpTo` than stop 2 and only notice the visual list
-    order didn't match the applied curve, so relying on the silent
-    server-side sort alone was confusing and got upgraded to a hard UI
-    block.
+**Removed 2026-09-19, per explicit request:** the arbitrary hue
+control-point system (former features 1-3: free hue anchors, per-anchor
+gamma, brightness-gated luma-gate color shift) and the "(Not yet designed)
+smarter source-side classification" idea that built on it (former feature
+5) were deliberately torn out of the fork entirely — code, schema, i18n,
+WebUI. The user's own words: *"lass uns die Erweiterte Farbkalibrierung
+(Fork-Erweiterung) komplett entfernen ... lass sie komplett entfernen aus
+dem fork"*. The full pre-removal state (structs, transform logic, schema,
+WebUI panel, `huePicker`/`turnsPercent` JSONEditor formats) is preserved at
+git tag `archive/extended-color-calibration-controlpoints` (last commit
+`517ae806`) for reference or restoration; see
+[[hyperion-fork-schema-change-gotcha]] before restoring it against a config
+that has since moved on. Everything below describes the fork as it exists
+after that removal — only the gray-axis trim remains.
+
+**Independent gray-axis / white-balance trim** — the concrete/green defect
+described in Motivation above is a white-balance problem (a
+low-saturation/neutral-axis tint from the capture sensor), not a
+hue-mapping problem; routing the fix through a saturated hue anchor (the
+removed control-point system) was a workaround with real side effects on
+genuine saturated greens. `GrayAxisTrim` corrects only near-neutral,
+low-chroma pixels directly in RGB, never touching saturated colors.
+
+**Staged gray-axis gain ("Grauachsen-Stufen")** — the trim's original
+single `saturationThreshold`/`gainRed/Green/Blue` quartet only allowed one
+gain for the whole near-neutral band. Real captures often need different
+corrections at different shades of near-gray (e.g. true black-level noise
+vs. a slightly warmer dark gray a bit further out on the saturation axis).
+It's driven by an ordered list of `GrayAxisTrimStop` entries
+(`saturationUpTo`, `gainRed/Green/Blue`), each an anchor point on a
+piecewise-linear gain curve over saturation — see `GrayAxisTrimStop` in
+Architecture below. Deliberately a smooth ramp between stops, not a flat
+staircase: a hard step at a band boundary reproduces the exact flicker bug
+the single-threshold version had before its own smoothing fix (commit
+`a6c62488`).
+`hyperion::createGrayAxisTrim` sorts stops ascending defensively
+server-side regardless of input order, but `content_colors.js` also
+actively *enforces* strictly-ascending `saturationUpTo` in the WebUI itself
+(blocking warning + disabled Speichern-button on violation, offending rows
+outlined) — a user was able to enter stop 1 with a higher `saturationUpTo`
+than stop 2 and only notice the visual list order didn't match the applied
+curve, so relying on the silent server-side sort alone was confusing and
+got upgraded to a hard UI block.
 
 ## Architecture
 
-Rather than patching the old fixed 6-anchor struct three separate times, this
-fork introduces one flexible data model that serves features 1-3, plus a
-separate orthogonal path for feature 4:
-
-- **`ColorControlPoint`** (`include/utils/ColorControlPoint.h`) — a free list
-  entry: `hue` center (turns, matches `ColorSys::rgb2okhsv`), `influence`
-  (half-width of a raised-cosine falloff window around `hue`), additive
-  `targetHueShift`, multiplicative `targetSaturationGain`, its own `gamma`,
-  and an optional `LumaGate`.
-- **`LumaGate`** — `triggerBelow` / `releaseAbove` (hysteresis band, not a
-  single threshold), `debounceFrames` (consecutive-frame requirement), and a
-  `LumaGateMode` (`OFF`, `MIN_BRIGHTNESS`, `HUE_SHIFT`).
-- **`GrayAxisTrim`** — independent near-neutral RGB gain correction, applied
-  *before* the control-point pass so it never competes with saturated hue
-  anchors. As of feature 4b ("Grauachsen-Stufen") it's driven by an ordered
-  `QVector<GrayAxisTrimStop>` (`saturationUpTo`, `gainRed/Green/Blue`)
-  instead of one fixed threshold+gain — see feature 4b below.
+- **`GrayAxisTrim`** (`include/utils/GrayAxisTrim.h`) — independent
+  near-neutral RGB gain correction. Driven by an ordered
+  `QVector<GrayAxisTrimStop>` (`saturationUpTo`, `gainRed/Green/Blue`), the
+  "Grauachsen-Stufen" staged gain curve.
 - **`GrayAxisTrimStop`** — one Stuetzstelle of the trim's staged gain curve:
   flat at the first stop's gain from saturation 0 up to its `saturationUpTo`;
   linearly blended between two consecutive stops across the saturation span
@@ -104,62 +90,45 @@ separate orthogonal path for feature 4:
   colors always stay untouched). `hyperion::createGrayAxisTrim` sorts the
   vector ascending by `saturationUpTo` once at config-parse time, so the
   per-pixel transform never re-sorts.
-- **`ColorControlPointTransform`** (`libsrc/utils/ColorControlPointTransform.cpp`)
-  — the engine. Operates per-pixel in Okhsv space
-  (`ColorSys::rgb2okhsv`/`okhsv2rgb`). Order: gray-axis trim first (pixel
-  returned immediately if it applies); otherwise, find the *nearest* control
-  point whose influence window covers the pixel's hue.
-
-  **Design choice: nearest-point-wins, not blending.** When a hue falls in
-  more than one point's window, only the highest-weight point applies —
-  blending independently configured hue shifts from two points can cancel or
-  double up in ways that are hard to reason about. Effect strength still
-  eases smoothly to 0 at each point's own window edge (raised cosine), so
-  there's no hard seam between points, but two points never mix.
+- **`GrayAxisTrimTransform`** (`libsrc/utils/GrayAxisTrimTransform.cpp`) —
+  the engine. Operates per-pixel in Okhsv space (`ColorSys::rgb2okhsv`) just
+  to read the pixel's saturation; the actual correction is a per-channel RGB
+  multiply, no re-encode through `okhsv2rgb` needed. Skips pixels above the
+  last stop's `saturationUpTo` entirely, leaving them byte-identical to
+  stock Hyperion.
 
 ## Integration into stock Hyperion
 
 - `ColorAdjustment` (`include/hyperion/ColorAdjustment.h`) gained
-  `_controlPoints` (`QVector<ColorControlPoint>`), a parallel
-  `_gateStates` (`QVector<ColorControlPointGateState>`) for hysteresis/debounce
-  runtime state, and `_grayAxisTrim`.
-- `hyperion::createColorAdjustment` (`include/utils/hyperion.h`) parses new
-  JSON keys `controlPoints` (array) and `grayAxisTrim` (object) from the color
-  adjustment config, defaulting to empty/disabled — **when both are absent,
-  this profile is byte-identical to stock Hyperion.**
+  `_grayAxisTrim`.
+- `hyperion::createColorAdjustment` (`include/utils/hyperion.h`) parses the
+  `grayAxisTrim` JSON key from the color adjustment config, defaulting to
+  disabled — **when absent/disabled, this profile is byte-identical to
+  stock Hyperion.**
 - `MultiColorAdjustment::applyAdjustment` calls
-  `ColorControlPointTransform::apply(...)` right after `_okhsvTransform` and
+  `GrayAxisTrimTransform::apply(...)` right after `_okhsvTransform` and
   before `_rgbTransform.applyGamma`, i.e. after the existing global HSV
   saturation/value transform but before the final gamma/brightness-component
   split.
-- `libsrc/hyperion/schema/schema-color.json` exposes both `controlPoints` and
-  `grayAxisTrim` as JSON-schema objects (so the config validates and the
-  existing web-config JSON-editor can at least show/edit raw values).
-- `assets/webconfig/i18n/{de,en}.json` got title strings for the two new
-  schema sections; **no dedicated visual panel/widget** (like the existing
-  6-anchor color-wheel editor) has been built yet — this is still open work.
+- `libsrc/hyperion/schema/schema-color.json` exposes `grayAxisTrim` as a
+  JSON-schema object.
+- `assets/webconfig/i18n/{de,en}.json` has full title+description text for
+  every field; `content_colors.js` builds a dedicated WebUI panel (own
+  Stufen list with add/remove rows, live tooltips, and the ascending-order
+  enforcement described above) — not just the raw JSON editor.
 
 ## Flicker safety (critical constraint)
 
 This Hyperion install has hard-won flicker fixes (star grounding, SPI clock
 rate tuning — see the project's `hyperion-good-state-2026-09-16-1mhz` /
-`hyperion-flicker-*` history). A **hard per-frame brightness threshold** for
-the luma gate would itself be a flicker source: video noise/compression
-artifacts near the threshold would cause frame-by-frame flapping between the
-normal color and the gated target. This is why `LumaGate` is *not* a single
-threshold:
-
-- **Hysteresis**: `triggerBelow` (enter gate) and `releaseAbove` (leave gate)
-  are separate values with a gap between them.
-- **Temporal debouncing**: `debounceFrames` consecutive frames past the
-  relevant threshold are required before the gate actually switches state,
-  implemented via `ColorControlPointGateState::consecutiveFrames` in
-  `ColorControlPointTransform::apply`.
-
-**Known v1 simplification**, documented in `ColorControlPointGateState`'s
-header comment: gate state is tracked **per `ColorAdjustment` profile, not
-per physical LED**. All LEDs sharing the same adjustment profile share one
-gate state. Acceptable for now; revisit if per-LED gating is ever needed.
+`hyperion-flicker-*` history). `GrayAxisTrim`'s staged gain curve is
+designed around that constraint: a hard on/off or stop-to-stop step would
+itself be a flicker source, since saturation noise hovering around a
+boundary would toggle the correction frame to frame. That's why every
+transition — the original single-threshold cutoff *and* every boundary
+between `GrayAxisTrimStop` entries — is a smooth blend
+(`GrayAxisTrimTransform::apply`), never a hard switch. See "Staged gray-axis
+gain" above for the concrete mechanism and its commit history.
 
 ## Fork maintenance cost (accepted tradeoff)
 
@@ -170,6 +139,16 @@ Pi 5 itself is feasible but slow (CMake/Qt5 + vendored deps like abseil/
 protobuf/mbedtls from scratch: 30-60+ minutes).
 
 ## Status as of 2026-09-16
+
+> **This section is a frozen historical snapshot from the fork's first
+> implementation session and is known stale** — it predates the
+> control-point/luma-gate removal (2026-09-19, see "Requested features"
+> above), the staged gray-axis gain work, and the gray-still-image
+> detector. Items below mentioning `controlPoints`/`LumaGate` as "not yet
+> built" are obsolete, not open — that system was built, then removed
+> entirely. For current status, check the project's memory notes
+> ([[hyperion-fork-idea]] and linked entries) rather than this section.
+
 
 **Done, and build-verified:**
 - `ColorControlPoint.h`, `ColorControlPointTransform.h/.cpp` — features 1, 2, 3.

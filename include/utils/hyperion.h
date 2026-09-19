@@ -103,55 +103,6 @@ namespace hyperion {
 		);
 	}
 
-	/// Fork extension: parse the free-form "controlPoints" array (DESIGN.md
-	/// features 1-3). Each entry is an object; missing fields fall back to
-	/// identity so a point can be as small as {"hue": 0.5}.
-	static QVector<ColorControlPoint> createControlPoints(const QJsonObject& adjustmentConfig)
-	{
-		QVector<ColorControlPoint> points;
-		const QJsonArray pointsConfig = adjustmentConfig["controlPoints"].toArray();
-		for (const QJsonValue & v : pointsConfig)
-		{
-			const QJsonObject p = v.toObject();
-			ColorControlPoint point;
-			point.enabled              = p["enabled"].toBool(true);
-			point.hue                  = p["hue"].toDouble(0.0);
-			point.influence            = p["influence"].toDouble(1.0 / 12.0);
-			point.targetHueShift       = p["targetHueShift"].toDouble(0.0);
-			point.targetSaturationGain = p["targetSaturationGain"].toDouble(1.0);
-			point.gamma                = p["gamma"].toDouble(1.0);
-			point.brightnessGain       = p["brightnessGain"].toDouble(1.0);
-
-			const QJsonObject gate = p["lumaGate"].toObject();
-			if (!gate.isEmpty())
-			{
-				point.lumaGate.enabled        = gate["enabled"].toBool(true);
-				point.lumaGate.triggerBelow   = static_cast<uint8_t>(gate["triggerBelow"].toInt(20));
-				point.lumaGate.releaseAbove   = static_cast<uint8_t>(gate["releaseAbove"].toInt(30));
-				point.lumaGate.debounceFrames = static_cast<uint8_t>(gate["debounceFrames"].toInt(3));
-				point.lumaGate.gatedHueShift  = gate["gatedHueShift"].toDouble(0.0);
-				point.lumaGate.minBrightness  = static_cast<uint8_t>(gate["minBrightness"].toInt(0));
-
-				const QString mode = gate["mode"].toString("minBrightness");
-				if (mode == "off")
-				{
-					point.lumaGate.mode = LumaGateMode::OFF;
-				}
-				else if (mode == "hueShift")
-				{
-					point.lumaGate.mode = LumaGateMode::HUE_SHIFT;
-				}
-				else
-				{
-					point.lumaGate.mode = LumaGateMode::MIN_BRIGHTNESS;
-				}
-			}
-
-			points.push_back(point);
-		}
-		return points;
-	}
-
 	/// Fork extension: parse the "grayAxisTrim" object (DESIGN.md feature 4),
 	/// including its staged gain curve (feature 4b, "Grauachsen-Stufen").
 	static GrayAxisTrim createGrayAxisTrim(const QJsonObject& adjustmentConfig)
@@ -218,8 +169,6 @@ namespace hyperion {
 		adjustment->_rgbYellowAdjustment  = createRgbChannelAdjustment(adjustmentConfig, "yellow" , ColorRgb::YELLOW);
 		adjustment->_rgbTransform         = createRgbTransform(adjustmentConfig);
 		adjustment->_okhsvTransform       = createOkhsvTransform(adjustmentConfig);
-		adjustment->_controlPoints        = createControlPoints(adjustmentConfig);
-		adjustment->_gateStates.fill(ColorControlPointGateState{}, adjustment->_controlPoints.size());
 		adjustment->_grayAxisTrim         = createGrayAxisTrim(adjustmentConfig);
 
 		return adjustment;

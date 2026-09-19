@@ -107,7 +107,6 @@ $(document).ready(function () {
       'gammaRed': 'edt_conf_color_gammaRed_expl',
       'gammaGreen': 'edt_conf_color_gammaGreen_expl',
       'gammaBlue': 'edt_conf_color_gammaBlue_expl',
-      'controlPoints': 'edt_conf_color_controlPoints_expl',
       'grayAxisTrim': 'edt_conf_color_grayAxisTrim_expl'
     };
     Object.keys(staticFields).forEach(function (key) {
@@ -119,8 +118,8 @@ $(document).ready(function () {
 
     // grayAxisTrim.stops ist eine dynamische Liste (Grauachsen-Stufen,
     // Fork-Erweiterung) - Felder pro Zeile werden erst beim Hinzufügen
-    // einer Zeile erzeugt, daher wie bei controlPoints per MutationObserver
-    // erneut anhängen statt einmalig.
+    // einer Zeile erzeugt, daher per MutationObserver erneut anhängen
+    // statt einmalig.
     var grayAxisStopFields = {
       'saturationUpTo': 'edt_conf_color_grayAxisTrim_stops_saturationUpTo_expl',
       'gainRed': 'edt_conf_color_grayAxisTrim_gainRed_expl',
@@ -236,115 +235,6 @@ $(document).ready(function () {
       });
     }
 
-    // controlPoints ist eine dynamische Liste (0..n Zeilen) - Felder pro
-    // Zeile werden erst beim Hinzufügen einer Zeile erzeugt, daher per
-    // MutationObserver auf dem Container erneut anhängen statt einmalig.
-    var controlPointFields = {
-      '': 'edt_conf_color_controlPoints_lumaGate_expl', // Platzhalter, wird unten nicht genutzt
-      'enabled': 'edt_conf_color_controlPoints_enabled_expl',
-      'hue': 'edt_conf_color_controlPoints_hue_expl',
-      'influence': 'edt_conf_color_controlPoints_influence_expl',
-      'targetHueShift': 'edt_conf_color_controlPoints_targetHueShift_expl',
-      'targetSaturationGain': 'edt_conf_color_controlPoints_targetSaturationGain_expl',
-      'gamma': 'edt_conf_color_controlPoints_gamma_expl',
-      'brightnessGain': 'edt_conf_color_controlPoints_brightnessGain_expl',
-      'lumaGate': 'edt_conf_color_controlPoints_lumaGate_expl',
-      'lumaGate.enabled': 'edt_conf_color_controlPoints_lumaGate_enabled_expl',
-      'lumaGate.triggerBelow': 'edt_conf_color_controlPoints_lumaGate_triggerBelow_expl',
-      'lumaGate.releaseAbove': 'edt_conf_color_controlPoints_lumaGate_releaseAbove_expl',
-      'lumaGate.debounceFrames': 'edt_conf_color_controlPoints_lumaGate_debounceFrames_expl',
-      'lumaGate.mode': 'edt_conf_color_controlPoints_lumaGate_mode_expl',
-      'lumaGate.gatedHueShift': 'edt_conf_color_controlPoints_lumaGate_gatedHueShift_expl',
-      'lumaGate.minBrightness': 'edt_conf_color_controlPoints_lumaGate_minBrightness_expl'
-    };
-    delete controlPointFields[''];
-
-    // Vorher/Nachher-Farbvorschau (fork extension) fuer die beiden
-    // Verschiebungsfelder: targetHueShift und lumaGate.gatedHueShift sind
-    // *Differenzwerte*, kein absoluter Farbton, daher kein Farb-Auswahl-Feld
-    // (wie bei "hue" oben) -- stattdessen zwei kleine Kreise, die die Farbe
-    // vor und nach der Verschiebung zeigen, live nachgefuehrt ueber
-    // editor.watch() auf das jeweilige Verschiebungsfeld und das
-    // zugehoerige "hue"-Feld derselben Zeile.
-    function hueToCss(h) {
-      h = ((h % 1) + 1) % 1;
-      var i = Math.floor(h * 6);
-      var f = h * 6 - i;
-      var q = 1 - f, t = f, rgb;
-      switch (i % 6) {
-        case 0: rgb = [1, t, 0]; break;
-        case 1: rgb = [q, 1, 0]; break;
-        case 2: rgb = [0, 1, t]; break;
-        case 3: rgb = [0, q, 1]; break;
-        case 4: rgb = [t, 0, 1]; break;
-        default: rgb = [1, 0, q]; break;
-      }
-      return 'rgb(' + Math.round(rgb[0] * 255) + ',' + Math.round(rgb[1] * 255) + ',' + Math.round(rgb[2] * 255) + ')';
-    }
-
-    function attachHueShiftPreview(rowBase, shiftKey) {
-      var hueEditor, shiftEditor;
-      try {
-        hueEditor = editor.getEditor(rowBase + 'hue');
-        shiftEditor = editor.getEditor(rowBase + shiftKey);
-      } catch (e) {
-        return;
-      }
-      if (!hueEditor || !shiftEditor || !shiftEditor.label) return;
-      var $label = $(shiftEditor.label);
-      if ($label.data('forkHueShiftPreviewAdded')) return;
-
-      var swatchCss = { display: 'inline-block', width: '14px', height: '14px', 'border-radius': '50%', 'vertical-align': 'middle', border: '1px solid #888' };
-      var $before = $('<span>').css($extendCss(swatchCss, { 'margin-left': '8px' }));
-      var $arrow = $('<i>').addClass('fa fa-long-arrow-right').css({ margin: '0 4px', color: '#888' });
-      var $after = $('<span>').css(swatchCss);
-      $label.append($before, $arrow, $after);
-      $label.data('forkHueShiftPreviewAdded', true);
-
-      function update() {
-        var hueVal = hueEditor.getValue();
-        var shiftVal = shiftEditor.getValue();
-        if (typeof hueVal !== 'number' || typeof shiftVal !== 'number') return;
-        $before.css('background-color', hueToCss(hueVal));
-        $after.css('background-color', hueToCss(hueVal + shiftVal));
-      }
-      update();
-
-      editor.watch(rowBase + 'hue', update);
-      editor.watch(rowBase + shiftKey, update);
-    }
-
-    function $extendCss(base, extra) {
-      var merged = {};
-      for (var k in base) { merged[k] = base[k]; }
-      for (var k2 in extra) { merged[k2] = extra[k2]; }
-      return merged;
-    }
-
-    var controlPointsEditor;
-    try {
-      controlPointsEditor = editor.getEditor(PROFILE_BASE + 'controlPoints');
-    } catch (e) {
-      controlPointsEditor = null;
-    }
-    if (controlPointsEditor && controlPointsEditor.container) {
-      var attachAllRows = function () {
-        var rowCount = (controlPointsEditor.rows || []).length;
-        for (var i = 0; i < rowCount; i++) {
-          var rowBase = PROFILE_BASE + 'controlPoints.' + i + '.';
-          Object.keys(controlPointFields).forEach(function (key) {
-            attachInfoIcon(rowBase + key, controlPointFields[key]);
-          });
-          attachHueShiftPreview(rowBase, 'targetHueShift');
-          attachHueShiftPreview(rowBase, 'lumaGate.gatedHueShift');
-        }
-      };
-      attachAllRows();
-      var controlPointsObserver = new MutationObserver(function () {
-        attachAllRows();
-      });
-      controlPointsObserver.observe(controlPointsEditor.container, { childList: true, subtree: true });
-    }
   })(editor_color);
 
   //smoothing
