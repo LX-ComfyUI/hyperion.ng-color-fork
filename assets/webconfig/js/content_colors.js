@@ -148,6 +148,92 @@ $(document).ready(function () {
         attachAllGrayAxisRows();
       });
       grayAxisStopsObserver.observe(grayAxisStopsEditor.container, { childList: true, subtree: true });
+
+      // Fork-Erweiterung: die Stufen muessen aufsteigend nach "Saettigung
+      // bis" sortiert sein. Der Server sortiert zwar defensiv vor der
+      // Auswertung, aber eine unsortierte Eingabe hier waere trotzdem
+      // verwirrend, weil die sichtbare Zeilenreihenfolge dann nicht der
+      // tatsaechlich angewendeten Kurve entspricht -- deshalb wird die
+      // Reihenfolge hier aktiv erzwungen statt nur intern stillschweigend
+      // korrigiert: bei einer Unsortierung erscheint eine Warnung, die
+      // betroffenen Zeilen werden rot markiert, und der Speichern-Button
+      // bleibt gesperrt (siehe editor.on('change', ...) unten), bis die
+      // Reihenfolge stimmt.
+      var $grayAxisOrderWarning = $('<div>')
+        .attr('id', 'grayAxisStopsOrderWarning')
+        .css({
+          display: 'none',
+          color: '#a94442',
+          background: '#f2dede',
+          border: '1px solid #ebccd1',
+          borderRadius: '4px',
+          padding: '6px 10px',
+          margin: '4px 0 8px'
+        });
+      $(grayAxisStopsEditor.container).before($grayAxisOrderWarning);
+
+      var getGrayAxisStopField = function (rowIndex) {
+        try {
+          return editor.getEditor(PROFILE_BASE + 'grayAxisTrim.stops.' + rowIndex + '.saturationUpTo');
+        } catch (e) {
+          return null;
+        }
+      };
+
+      var findGrayAxisStopsOrderViolation = function () {
+        var stops;
+        try {
+          stops = grayAxisStopsEditor.getValue();
+        } catch (e) {
+          return -1;
+        }
+        if (!Array.isArray(stops)) return -1;
+        for (var i = 1; i < stops.length; i++) {
+          var prev = stops[i - 1] ? stops[i - 1].saturationUpTo : undefined;
+          var cur = stops[i] ? stops[i].saturationUpTo : undefined;
+          if (typeof prev === 'number' && typeof cur === 'number' && cur <= prev) {
+            return i;
+          }
+        }
+        return -1;
+      };
+
+      var updateGrayAxisStopsOrderCheck = function () {
+        var rowCount = (grayAxisStopsEditor.rows || []).length;
+        for (var i = 0; i < rowCount; i++) {
+          var fieldEditor = getGrayAxisStopField(i);
+          if (fieldEditor && fieldEditor.input) {
+            $(fieldEditor.input).css('border-color', '');
+          }
+        }
+
+        var violationIndex = findGrayAxisStopsOrderViolation();
+        if (violationIndex < 0) {
+          $grayAxisOrderWarning.hide();
+          return false;
+        }
+
+        $grayAxisOrderWarning
+          .text($.i18n('edt_conf_color_grayAxisTrim_stops_order_error') +
+            ' (' + $.i18n('edt_conf_color_grayAxisTrim_stops_itemtitle') + ' ' + violationIndex + ' / ' + (violationIndex + 1) + ')')
+          .show();
+
+        [violationIndex - 1, violationIndex].forEach(function (i) {
+          var fieldEditor = getGrayAxisStopField(i);
+          if (fieldEditor && fieldEditor.input) {
+            $(fieldEditor.input).css('border-color', '#a94442');
+          }
+        });
+
+        return true;
+      };
+
+      updateGrayAxisStopsOrderCheck();
+      editor.on('change', function () {
+        if (updateGrayAxisStopsOrderCheck()) {
+          $('#btn_submit_color').prop('disabled', true);
+        }
+      });
     }
 
     // controlPoints ist eine dynamische Liste (0..n Zeilen) - Felder pro

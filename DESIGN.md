@@ -68,6 +68,15 @@ compete with saturated-hue correction.
     staircase: a hard step at a band boundary reproduces the exact flicker
     bug the single-threshold version had before its own smoothing fix
     (commit `a6c62488`).
+    `hyperion::createGrayAxisTrim` sorts stops ascending defensively
+    server-side regardless of input order, but `content_colors.js` also
+    actively *enforces* strictly-ascending `saturationUpTo` in the WebUI
+    itself (blocking warning + disabled Speichern-button on violation,
+    offending rows outlined) — a user was able to enter stop 1 with a
+    higher `saturationUpTo` than stop 2 and only notice the visual list
+    order didn't match the applied curve, so relying on the silent
+    server-side sort alone was confusing and got upgraded to a hard UI
+    block.
 
 ## Architecture
 
