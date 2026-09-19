@@ -238,7 +238,13 @@
                   ]
                }
             }
-         ]
+         ],
+         "edgeTransitionBoost":{
+            "enabled":false,
+            "ledWidth":2,
+            "edgeSensitivity":60,
+            "boostStrength":1.0
+         }
       },
       "device":{
          "type":"file",

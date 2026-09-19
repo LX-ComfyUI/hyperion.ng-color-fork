@@ -331,6 +331,22 @@
 				},
 				"additionalProperties" : false
 			}
+		},
+		"edgeTransitionBoost" :
+		{
+			"type" : "object",
+			"title" : "edt_conf_color_edgeTransitionBoost_title",
+			"required" : true,
+			"access" : "expert",
+			"propertyOrder" : 5,
+			"properties" :
+			{
+				"enabled" : { "type" : "boolean", "title" : "edt_conf_color_edgeTransitionBoost_enabled_title", "required" : true, "default" : false, "propertyOrder" : 1 },
+				"ledWidth" : { "type" : "integer", "title" : "edt_conf_color_edgeTransitionBoost_ledWidth_title", "required" : true, "minimum" : 1, "maximum" : 3, "default" : 2, "propertyOrder" : 2 },
+				"edgeSensitivity" : { "type" : "integer", "title" : "edt_conf_color_edgeTransitionBoost_edgeSensitivity_title", "required" : true, "minimum" : 5, "maximum" : 255, "default" : 60, "propertyOrder" : 3 },
+				"boostStrength" : { "type" : "number", "title" : "edt_conf_color_edgeTransitionBoost_boostStrength_title", "required" : true, "minimum" : 0.0, "maximum" : 2.0, "step" : 0.05, "default" : 1.0, "propertyOrder" : 4 }
+			},
+			"additionalProperties" : false
 		}
 	},
 	"additionalProperties" : false

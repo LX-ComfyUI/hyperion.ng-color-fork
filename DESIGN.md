@@ -130,6 +130,57 @@ between `GrayAxisTrimStop` entries — is a smooth blend
 (`GrayAxisTrimTransform::apply`), never a hard switch. See "Staged gray-axis
 gain" above for the concrete mechanism and its commit history.
 
+## Edge transition boost (added 2026-09-19)
+
+Independent fork feature, added under "Bildverarbeitung" right after the
+gray-axis trim on the WebUI's Farbe page: **`EdgeTransitionBoost`**
+(`include/utils/EdgeTransitionBoost.h` +
+`EdgeTransitionBoostTransform.h`/`.cpp`) brightens the last 1-3 LEDs on the
+bright side of a sharp brightness edge along the LED strip (e.g. a
+saturated object against a dark/black background), where the mapped camera
+pixels often carry too little clean color, producing a dull or slightly
+dark-reddish edge.
+
+**Architecturally distinct from `GrayAxisTrim`/the removed control-point
+system**: those operate per-pixel in isolation (Okhsv saturation of a
+single LED's own color). This needs the *spatial neighbors* along the
+strip to find brightness edges, so it cannot live inside `ColorAdjustment`
+(a per-profile, per-pixel struct). Instead it's a single
+`EdgeTransitionBoost` member on `MultiColorAdjustment` itself, parsed from
+a new top-level `edgeTransitionBoost` property in `schema-color.json`
+(sibling of `channelAdjustment`, not nested inside it), and applied as a
+whole-array second pass at the end of `MultiColorAdjustment::
+applyAdjustment()`, after every LED's per-profile color adjustment (gamma,
+gray-axis trim, channel adjustment) has already run. No wraparound: LED 0
+and the last LED are never treated as neighbors, since most physical
+layouts (unlike this specific room-perimeter install) are not closed
+loops.
+
+**Math, same anti-flicker doctrine as the gray-axis trim:**
+- Edge detection is stepless, not a hard threshold: `edgeStrength =
+  clamp01(|drop| / edgeSensitivity)` where `drop` is the brightness
+  (`max(R,G,B)`) difference between two adjacent LEDs. A hard cutoff here
+  would reproduce the exact class of flicker bug already fixed once for
+  `GrayAxisTrim`.
+- Spatial falloff across `ledWidth` reuses the same raised-cosine shape
+  the (now-removed) control-point system used for its hue-influence
+  windows.
+- When a LED sits near more than one qualifying edge, the *strongest*
+  weight wins, not a sum — same "don't blend competing effects" principle
+  documented above for control points.
+- Brightening uses a "screen" blend (`value + (255-value) * intensity`)
+  per channel instead of a multiplicative gain: self-limiting by
+  construction (can't overflow/clip), gives large absolute lift to dark
+  LEDs and very little to already-bright ones, so bright scenes can't blow
+  out at boosted edges.
+
+Performance: one read-only O(n) pass building a per-LED weight buffer,
+capped at `ledWidth` (max 3) neighbor writes per detected edge, then one
+O(n) apply pass — negligible relative to typical LED counts (~600-650 on
+this install) at real-time frame rates. Allocates one `QVector<double>`
+scratch buffer per frame; not pooled/reused, since profiling never showed
+a need to.
+
 ## Fork maintenance cost (accepted tradeoff)
 
 No more `apt upgrade` for Hyperion once this ships — self-build and

@@ -174,10 +174,24 @@ namespace hyperion {
 		return adjustment;
 	}
 
+	/// Fork extension: parse the "edgeTransitionBoost" object (whole-strip,
+	/// not per profile -- see MultiColorAdjustment::_edgeTransitionBoost).
+	static EdgeTransitionBoost createEdgeTransitionBoost(const QJsonObject& colorConfig)
+	{
+		EdgeTransitionBoost boost;
+		const QJsonObject b = colorConfig["edgeTransitionBoost"].toObject();
+		boost.enabled         = b["enabled"].toBool(false);
+		boost.ledWidth         = b["ledWidth"].toInt(2);
+		boost.edgeSensitivity  = b["edgeSensitivity"].toInt(60);
+		boost.boostStrength    = b["boostStrength"].toDouble(1.0);
+		return boost;
+	}
+
 	static MultiColorAdjustment * createLedColorsAdjustment(int ledCnt, const QJsonObject & colorConfig)
 	{
 		// Create the result, the transforms are added to this
 		MultiColorAdjustment * adjustment = new MultiColorAdjustment(ledCnt);
+		adjustment->_edgeTransitionBoost = createEdgeTransitionBoost(colorConfig);
 
 		const QJsonValue adjustmentConfig = colorConfig["channelAdjustment"];
 		const QRegularExpression overallExp("([0-9]+(\\-[0-9]+)?)(,[ ]*([0-9]+(\\-[0-9]+)?))*");

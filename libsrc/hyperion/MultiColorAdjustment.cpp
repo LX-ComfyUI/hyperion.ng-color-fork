@@ -4,6 +4,7 @@
 
 #include <utils/Logger.h>
 #include <utils/GrayAxisTrimTransform.h>
+#include <utils/EdgeTransitionBoostTransform.h>
 #include <hyperion/MultiColorAdjustment.h>
 
 MultiColorAdjustment::MultiColorAdjustment(int ledCnt)
@@ -166,5 +167,10 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors)
 
 		adjustment->_rgbTransform.applyTemperature(color);
 		adjustment->_rgbTransform.applyBacklight(color.red, color.green, color.blue);
+	}
+
+	if (_edgeTransitionBoost.enabled)
+	{
+		EdgeTransitionBoostTransform::apply(ledColors, _edgeTransitionBoost);
 	}
 }

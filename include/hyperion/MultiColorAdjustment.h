@@ -7,6 +7,7 @@
 
 // Hyperion includes
 #include <utils/ColorRgb.h>
+#include <utils/EdgeTransitionBoost.h>
 #include <hyperion/ColorAdjustment.h>
 
 ///
@@ -53,6 +54,12 @@ public:
 	/// @param ledColors The list with raw colors
 	///
 	void applyAdjustment(QVector<ColorRgb>& ledColors);
+
+	/// Fork extension: settings for the whole-strip edge-transition boost
+	/// pass, applied at the end of applyAdjustment(). Not per-LED like
+	/// ColorAdjustment's fields -- this needs neighbor access along the
+	/// strip, so it lives here rather than on an individual profile.
+	EdgeTransitionBoost _edgeTransitionBoost;
 
 private:
 	/// List with transform ids

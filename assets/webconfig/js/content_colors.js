@@ -235,6 +235,24 @@ $(document).ready(function () {
       });
     }
 
+    // edgeTransitionBoost (Bereichsuebergangsverstaerkung, Fork-Erweiterung)
+    // ist ein eigener, fester Abschnitt auf Ebene von "color" selbst (nicht
+    // pro Farbprofil wie grayAxisTrim), da die Kantenerkennung Nachbar-LEDs
+    // entlang des Streifens braucht statt nur einen einzelnen Bildpunkt.
+    var EDGE_BOOST_BASE = 'root.color.edgeTransitionBoost.';
+    var edgeBoostFields = {
+      '': 'edt_conf_color_edgeTransitionBoost_expl', // Platzhalter fuer den Abschnitt selbst
+      'enabled': 'edt_conf_color_edgeTransitionBoost_enabled_expl',
+      'ledWidth': 'edt_conf_color_edgeTransitionBoost_ledWidth_expl',
+      'edgeSensitivity': 'edt_conf_color_edgeTransitionBoost_edgeSensitivity_expl',
+      'boostStrength': 'edt_conf_color_edgeTransitionBoost_boostStrength_expl'
+    };
+    attachInfoIcon('root.color.edgeTransitionBoost', edgeBoostFields['']);
+    delete edgeBoostFields[''];
+    Object.keys(edgeBoostFields).forEach(function (key) {
+      attachInfoIcon(EDGE_BOOST_BASE + key, edgeBoostFields[key]);
+    });
+
   })(editor_color);
 
   //smoothing
