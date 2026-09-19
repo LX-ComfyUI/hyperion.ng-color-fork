@@ -114,17 +114,41 @@ $(document).ready(function () {
       attachInfoIcon(PROFILE_BASE + key, staticFields[key]);
     });
 
-    // grayAxisTrim ist ein festes (nicht-dynamisches) Unterobjekt
-    var grayAxisFields = {
-      'enabled': 'edt_conf_color_grayAxisTrim_enabled_expl',
-      'saturationThreshold': 'edt_conf_color_grayAxisTrim_saturationThreshold_expl',
+    // grayAxisTrim.enabled ist ein festes (nicht-dynamisches) Feld
+    attachInfoIcon(PROFILE_BASE + 'grayAxisTrim.enabled', 'edt_conf_color_grayAxisTrim_enabled_expl');
+
+    // grayAxisTrim.stops ist eine dynamische Liste (Grauachsen-Stufen,
+    // Fork-Erweiterung) - Felder pro Zeile werden erst beim Hinzufügen
+    // einer Zeile erzeugt, daher wie bei controlPoints per MutationObserver
+    // erneut anhängen statt einmalig.
+    var grayAxisStopFields = {
+      'saturationUpTo': 'edt_conf_color_grayAxisTrim_stops_saturationUpTo_expl',
       'gainRed': 'edt_conf_color_grayAxisTrim_gainRed_expl',
       'gainGreen': 'edt_conf_color_grayAxisTrim_gainGreen_expl',
       'gainBlue': 'edt_conf_color_grayAxisTrim_gainBlue_expl'
     };
-    Object.keys(grayAxisFields).forEach(function (key) {
-      attachInfoIcon(PROFILE_BASE + 'grayAxisTrim.' + key, grayAxisFields[key]);
-    });
+    var grayAxisStopsEditor;
+    try {
+      grayAxisStopsEditor = editor.getEditor(PROFILE_BASE + 'grayAxisTrim.stops');
+    } catch (e) {
+      grayAxisStopsEditor = null;
+    }
+    if (grayAxisStopsEditor && grayAxisStopsEditor.container) {
+      var attachAllGrayAxisRows = function () {
+        var rowCount = (grayAxisStopsEditor.rows || []).length;
+        for (var i = 0; i < rowCount; i++) {
+          var rowBase = PROFILE_BASE + 'grayAxisTrim.stops.' + i + '.';
+          Object.keys(grayAxisStopFields).forEach(function (key) {
+            attachInfoIcon(rowBase + key, grayAxisStopFields[key]);
+          });
+        }
+      };
+      attachAllGrayAxisRows();
+      var grayAxisStopsObserver = new MutationObserver(function () {
+        attachAllGrayAxisRows();
+      });
+      grayAxisStopsObserver.observe(grayAxisStopsEditor.container, { childList: true, subtree: true });
+    }
 
     // controlPoints ist eine dynamische Liste (0..n Zeilen) - Felder pro
     // Zeile werden erst beim Hinzufügen einer Zeile erzeugt, daher per

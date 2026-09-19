@@ -52,22 +52,46 @@ void ColorControlPointTransform::apply(uint8_t & red, uint8_t & green, uint8_t &
 	double hue, saturation, value;
 	ColorSys::rgb2okhsv(red, green, blue, hue, saturation, value);
 
-	if (trim.enabled && trim.saturationThreshold > 0.0 && saturation < trim.saturationThreshold)
+	if (trim.enabled && !trim.stops.isEmpty() && saturation <= trim.stops.last().saturationUpTo)
 	{
 		// Near-neutral pixel: correct sensor/white-balance tint directly in
 		// RGB and skip the hue-anchor system entirely -- this is the
 		// "don't let a saturated hue anchor also govern gray pixels" fix
 		// from DESIGN.md item 4/5.
 		//
-		// Blend the gain smoothly from full strength at saturation 0 down to
-		// no effect at the threshold, instead of a hard on/off cut. A hard
-		// cut flickers whenever saturation hovers near the threshold from
-		// frame to frame -- most visible when gain < 1.0 darkens a
-		// near-black tinted pixel toward pure black right at the boundary.
-		const double weight = clamp01(1.0 - saturation / trim.saturationThreshold);
-		const double scaleRed   = 1.0 + (trim.gainRed   - 1.0) * weight;
-		const double scaleGreen = 1.0 + (trim.gainGreen - 1.0) * weight;
-		const double scaleBlue  = 1.0 + (trim.gainBlue  - 1.0) * weight;
+		// `trim.stops` is a staged gain curve (fork feature 4b,
+		// "Grauachsen-Stufen"), pre-sorted ascending by `saturationUpTo` at
+		// config-parse time: flat at the first stop's gain from saturation 0
+		// up to its `saturationUpTo`, then linearly blended between each
+		// pair of consecutive stops across the span between them. This is a
+		// deliberate ramp, not a flat staircase -- a hard step at a band
+		// boundary reproduces the exact flicker bug that the old
+		// single-threshold cutoff had (saturation noise hovering around a
+		// boundary toggles the correction frame to frame). Above the last
+		// stop's `saturationUpTo` this whole block is skipped (guard above),
+		// so strongly saturated colors stay completely untouched, same
+		// guarantee the single-threshold design made.
+		const GrayAxisTrimStop * lower = &trim.stops.first();
+		const GrayAxisTrimStop * upper = &trim.stops.first();
+		for (int i = 0; i + 1 < trim.stops.size(); ++i)
+		{
+			if (saturation <= trim.stops[i].saturationUpTo)
+			{
+				break;
+			}
+			lower = &trim.stops[i];
+			upper = &trim.stops[i + 1];
+		}
+
+		double t = 0.0;
+		if (lower != upper)
+		{
+			const double span = upper->saturationUpTo - lower->saturationUpTo;
+			t = (span > 0.0) ? clamp01((saturation - lower->saturationUpTo) / span) : 1.0;
+		}
+		const double scaleRed   = lower->gainRed   + (upper->gainRed   - lower->gainRed)   * t;
+		const double scaleGreen = lower->gainGreen + (upper->gainGreen - lower->gainGreen) * t;
+		const double scaleBlue  = lower->gainBlue  + (upper->gainBlue  - lower->gainBlue)  * t;
 		red   = static_cast<uint8_t>(std::lround(std::min(255.0, red   * scaleRed)));
 		green = static_cast<uint8_t>(std::lround(std::min(255.0, green * scaleGreen)));
 		blue  = static_cast<uint8_t>(std::lround(std::min(255.0, blue  * scaleBlue)));

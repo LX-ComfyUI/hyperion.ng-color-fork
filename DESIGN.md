@@ -56,6 +56,18 @@ compete with saturated-hue correction.
    low-saturation "concrete gray" pixels from genuine saturated greens before
    applying any hue shift. Noted as a possible future angle; no code exists
    for this yet.
+4b. **Staged gray-axis gain ("Grauachsen-Stufen")** — feature 4's single
+    `saturationThreshold`/`gainRed/Green/Blue` quartet only allowed one gain
+    for the whole near-neutral band. Real captures often need different
+    corrections at different shades of near-gray (e.g. true black-level noise
+    vs. a slightly warmer dark gray a bit further out on the saturation
+    axis). Replaced with an ordered list of `GrayAxisTrimStop` entries
+    (`saturationUpTo`, `gainRed/Green/Blue`), each an anchor point on a
+    piecewise-linear gain curve over saturation — see `GrayAxisTrimStop` in
+    Architecture below. Deliberately a smooth ramp between stops, not a flat
+    staircase: a hard step at a band boundary reproduces the exact flicker
+    bug the single-threshold version had before its own smoothing fix
+    (commit `a6c62488`).
 
 ## Architecture
 
@@ -71,9 +83,18 @@ separate orthogonal path for feature 4:
 - **`LumaGate`** — `triggerBelow` / `releaseAbove` (hysteresis band, not a
   single threshold), `debounceFrames` (consecutive-frame requirement), and a
   `LumaGateMode` (`OFF`, `MIN_BRIGHTNESS`, `HUE_SHIFT`).
-- **`GrayAxisTrim`** — independent near-neutral RGB gain correction, gated by
-  an Okhsv `saturationThreshold`, applied *before* the control-point pass so
-  it never competes with saturated hue anchors.
+- **`GrayAxisTrim`** — independent near-neutral RGB gain correction, applied
+  *before* the control-point pass so it never competes with saturated hue
+  anchors. As of feature 4b ("Grauachsen-Stufen") it's driven by an ordered
+  `QVector<GrayAxisTrimStop>` (`saturationUpTo`, `gainRed/Green/Blue`)
+  instead of one fixed threshold+gain — see feature 4b below.
+- **`GrayAxisTrimStop`** — one Stuetzstelle of the trim's staged gain curve:
+  flat at the first stop's gain from saturation 0 up to its `saturationUpTo`;
+  linearly blended between two consecutive stops across the saturation span
+  between them; no effect above the last stop's `saturationUpTo` (saturated
+  colors always stay untouched). `hyperion::createGrayAxisTrim` sorts the
+  vector ascending by `saturationUpTo` once at config-parse time, so the
+  per-pixel transform never re-sorts.
 - **`ColorControlPointTransform`** (`libsrc/utils/ColorControlPointTransform.cpp`)
   — the engine. Operates per-pixel in Okhsv space
   (`ColorSys::rgb2okhsv`/`okhsv2rgb`). Order: gray-axis trim first (pixel

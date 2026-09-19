@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sstream>
+#include <algorithm>
 
 #include <hyperion/ColorAdjustment.h>
 #include <hyperion/MultiColorAdjustment.h>
@@ -151,16 +152,53 @@ namespace hyperion {
 		return points;
 	}
 
-	/// Fork extension: parse the "grayAxisTrim" object (DESIGN.md feature 4).
+	/// Fork extension: parse the "grayAxisTrim" object (DESIGN.md feature 4),
+	/// including its staged gain curve (feature 4b, "Grauachsen-Stufen").
 	static GrayAxisTrim createGrayAxisTrim(const QJsonObject& adjustmentConfig)
 	{
 		GrayAxisTrim trim;
 		const QJsonObject t = adjustmentConfig["grayAxisTrim"].toObject();
-		trim.enabled             = t["enabled"].toBool(false);
-		trim.saturationThreshold = t["saturationThreshold"].toDouble(0.12);
-		trim.gainRed             = t["gainRed"].toDouble(1.0);
-		trim.gainGreen           = t["gainGreen"].toDouble(1.0);
-		trim.gainBlue            = t["gainBlue"].toDouble(1.0);
+		trim.enabled = t["enabled"].toBool(false);
+
+		QVector<GrayAxisTrimStop> stops;
+		const QJsonArray stopsConfig = t["stops"].toArray();
+		for (const QJsonValue & v : stopsConfig)
+		{
+			const QJsonObject s = v.toObject();
+			GrayAxisTrimStop stop;
+			stop.saturationUpTo = s["saturationUpTo"].toDouble(0.1);
+			stop.gainRed        = s["gainRed"].toDouble(1.0);
+			stop.gainGreen      = s["gainGreen"].toDouble(1.0);
+			stop.gainBlue       = s["gainBlue"].toDouble(1.0);
+			stops.push_back(stop);
+		}
+
+		if (stops.isEmpty() && t.contains("saturationThreshold"))
+		{
+			// Legacy pre-"Grauachsen-Stufen" shape: a single
+			// saturationThreshold/gainRed/Green/Blue quartet describing one
+			// ramp from full gain at saturation 0 down to identity at the
+			// threshold. Synthesize the equivalent two-stop curve so an
+			// existing config keeps behaving exactly as before until it is
+			// resaved through the new staged editor.
+			GrayAxisTrimStop base;
+			base.saturationUpTo = 0.0;
+			base.gainRed   = t["gainRed"].toDouble(1.0);
+			base.gainGreen = t["gainGreen"].toDouble(1.0);
+			base.gainBlue  = t["gainBlue"].toDouble(1.0);
+
+			GrayAxisTrimStop edge;
+			edge.saturationUpTo = t["saturationThreshold"].toDouble(0.12);
+			edge.gainRed = edge.gainGreen = edge.gainBlue = 1.0;
+
+			stops = { base, edge };
+		}
+
+		std::sort(stops.begin(), stops.end(), [](const GrayAxisTrimStop & a, const GrayAxisTrimStop & b) {
+			return a.saturationUpTo < b.saturationUpTo;
+		});
+
+		trim.stops = stops;
 		return trim;
 	}
 
