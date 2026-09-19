@@ -181,6 +181,50 @@ this install) at real-time frame rates. Allocates one `QVector<double>`
 scratch buffer per frame; not pooled/reused, since profiling never showed
 a need to.
 
+## Stray LED suppressor (added 2026-09-19)
+
+Post-processing filter, architecturally distinct from every other fork
+feature so far: instead of sitting in the color-adjustment pipeline, it
+runs as the *very last* step before LED values reach the hardware, device-
+agnostic, in `LedDevice` itself (`include/utils/StrayLedSuppressor.h` +
+`libsrc/utils/StrayLedSuppressor.cpp`, applied in
+`LedDevice::updateLeds()` right after the incoming values are copied into
+`_ledUpdateBuffer`, before `write()` is ever called). Settings live in
+`schema-device.json` (sibling of `hardwareLedCount`/`colorOrder`/...), so
+they show up on the WebUI's LED-hardware page using that page's existing
+`options.infoText` tooltip mechanism, not the fork's own custom hover-icon
+system used on the Farbe page (`content_leds.js` needed zero changes).
+
+**Problem it solves**: isolated LEDs glowing faintly in a wrong color
+(typically dark red) in scenes that should render fully black — sensor/
+quantization noise near black, not real content.
+
+**Detection** (Okhsv per LED, `ColorSys::rgb2okhsv`): a candidate is a LED
+whose value is at/below `brightnessThreshold`, saturation at/above
+`saturationThreshold`, and hue within `hueToleranceDegrees` of
+`targetColor`'s hue.
+
+**Global ratio gate**: candidates are counted once per frame; if more than
+`maxAffectedRatioPercent` of all LEDs qualify, the filter is skipped
+entirely for that frame. Cheap (one O(n) counting pass, no spatial
+clustering/connected-components needed) and sufficient to tell "a handful
+of scattered stray pixels" apart from "an intentional, widespread dark-red
+scene" (e.g. tail lights) without ever touching the latter.
+
+**Debounce**: per-LED persistent state (`suppressed` + `consecutiveFrames`
+counter, `QVector<LedState>` owned by the `StrayLedSuppressor` instance,
+resized lazily on first use / LED-count change) — mirrors the
+hysteresis+debounce pattern the fork's removed `LumaGate` used, just
+symmetric (`debounceFrames` applies to entering and leaving suppression
+alike, no separate trigger/release values) since the underlying condition
+here is already a single combined candidate test, not two independent
+thresholds.
+
+**Action**: full off (R=G=B=0) only, deliberately not a selective single-
+channel zero — a stray dark-red LED is almost always broadband near-black
+noise, not "correct G/B with a wrong R channel"; zeroing only R would
+likely leave a dim, oddly cyan-tinted glow instead of true black.
+
 ## Fork maintenance cost (accepted tradeoff)
 
 No more `apt upgrade` for Hyperion once this ships — self-build and

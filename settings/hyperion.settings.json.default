@@ -255,7 +255,16 @@
          "latchTime":0,
          "rewriteTime":0,
          "enableAttempts":6,
-         "enableAttemptsInterval":15
+         "enableAttemptsInterval":15,
+         "strayLedSuppressor":{
+            "enabled":false,
+            "targetColor":[255,0,0],
+            "brightnessThreshold":30,
+            "hueToleranceDegrees":30,
+            "saturationThreshold":0.15,
+            "maxAffectedRatioPercent":15,
+            "debounceFrames":15
+         }
       },
       "foregroundEffect":{
          "enable":true,

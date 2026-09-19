@@ -49,6 +49,9 @@ add_library(hyperion-utils
 	${CMAKE_SOURCE_DIR}/include/utils/EdgeTransitionBoost.h
 	${CMAKE_SOURCE_DIR}/include/utils/EdgeTransitionBoostTransform.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/EdgeTransitionBoostTransform.cpp
+	# Fork: stray LED suppressor (see DESIGN.md)
+	${CMAKE_SOURCE_DIR}/include/utils/StrayLedSuppressor.h
+	${CMAKE_SOURCE_DIR}/libsrc/utils/StrayLedSuppressor.cpp
 	# Signal handler
 	${CMAKE_SOURCE_DIR}/include/utils/DefaultSignalHandler.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/DefaultSignalHandler.cpp

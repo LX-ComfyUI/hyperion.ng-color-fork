@@ -28,6 +28,7 @@
 #include <functional>
 #include <utils/Components.h>
 #include <utils/JsonUtils.h>
+#include <utils/StrayLedSuppressor.h>
 
 Q_DECLARE_LOGGING_CATEGORY(leddevice_config);
 Q_DECLARE_LOGGING_CATEGORY(leddevice_control);
@@ -454,6 +455,12 @@ protected:
 
 	/// The buffer containing the packed RGB values
 	QVector<uint8_t> _ledBuffer;
+
+	/// Fork extension: suppresses isolated stray-colored LEDs (e.g. faint
+	/// dark-red noise on LEDs that should be black) right before output.
+	/// Applied in updateLeds(), the last point before values reach the
+	/// device -- see StrayLedSuppressor.
+	StrayLedSuppressor _strayLedSuppressor;
 
 	/// Timer object which makes sure that LED data is written at a minimum rate
 	/// e.g. some devices will switch off when they do not receive data at least every 15 seconds

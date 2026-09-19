@@ -251,6 +251,8 @@ bool LedDevice::init(const QJsonObject& deviceConfig)
 	std::chrono::seconds(deviceConfig[CONFIG_ENABLE_ATTEMPTS_INTERVALL].toInt(DEFAULT_ENABLE_ATTEMPTS_INTERVAL.count()))
 	);
 
+	_strayLedSuppressor.configure(createStrayLedSuppressorSettings(deviceConfig));
+
 	return true;
 }
 
@@ -335,6 +337,7 @@ int LedDevice::updateLeds(const QVector<ColorRgb>& ledValues)
 	{
 		QMutexLocker locker(&_ledBufferMutex);
 		_ledUpdateBuffer = ledValues;
+		_strayLedSuppressor.apply(_ledUpdateBuffer);
 	}
 
 	// If a frame processing is NOT already scheduled, schedule one.
