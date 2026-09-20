@@ -23,6 +23,7 @@ GrayStillImageDetector::GrayStillImageDetector(const QSharedPointer<Hyperion>& h
 	, _dropWindowStartBrightness(0.0)
 	, _dropWindowActive(false)
 	, _dropDetected(false)
+	, _dimJumpTolerated(false)
 	, _triggered(false)
 	, _minBrightnessSinceTrigger(0.0)
 {
@@ -79,6 +80,7 @@ void GrayStillImageDetector::reset()
 	_stillActive = false;
 	_dropWindowActive = false;
 	_dropDetected = false;
+	_dimJumpTolerated = false;
 	_triggered = false;
 }
 
@@ -177,25 +179,57 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 	}
 
 	const bool changed = hasChanged(raw);
-	_prevColors = raw;
-	_hasPrevColors = true;
+	const double previousBrightness = _hasPrevColors ? meanBrightness(_prevColors) : brightness;
 
 	if (changed)
 	{
-		_stillActive = false;
+		// A sudden jump while already inside a still episode, if it's a brightness
+		// *decrease*, is tolerated once per episode as the expected "dim to standby"
+		// transition rather than a disqualifying content change. Without this, a
+		// dim that happens well after the image was already confirmed still (e.g.
+		// the still image has already been up for 28s, but the dim only occurs at
+		// 60s) would itself register as "changed" and wipe out everything -
+		// forcing a full new stillTimeSeconds wait on top of an already-dark image,
+		// by which point the drop is over and undetectable (same failure mode as
+		// the confirmation-timing bug, just triggered by a discrete jump instead of
+		// a gradual fade). A second jump shortly after this one is real motion, not
+		// part of the same dim event, and resets normally.
+		const bool toleratedDimJump = _stillActive && !dropThresholdDisabled && !_dimJumpTolerated
+			&& (brightness < previousBrightness);
+
+		if (!toleratedDimJump)
+		{
+			_stillActive = false;
+			_dropWindowActive = false;
+			_dropDetected = false;
+			_dimJumpTolerated = false;
+			_lastGoodColors = raw;
+			_prevColors = raw;
+			_hasPrevColors = true;
+			return;
+		}
+
+		_dimJumpTolerated = true;
+		if (previousBrightness - brightness >= _brightnessDropThreshold)
+		{
+			_dropDetected = true;
+		}
+		// re-baseline the rolling drop window from this new, darker level instead
+		// of comparing further frames back against the pre-jump brightness
 		_dropWindowActive = false;
-		_dropDetected = false;
-		_lastGoodColors = raw;
-		return;
 	}
 
-	// image is static relative to the previous frame
+	_prevColors = raw;
+	_hasPrevColors = true;
+
+	// image is static relative to the previous frame (or a tolerated dim jump)
 	if (!_stillActive)
 	{
 		_stillActive = true;
 		_stillTimer.start();
 		_dropWindowActive = false;
 		_dropDetected = false;
+		_dimJumpTolerated = false;
 	}
 
 	// Watch for a sudden brightness drop continuously throughout the still episode,

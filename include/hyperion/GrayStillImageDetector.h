@@ -108,6 +108,13 @@ namespace hyperion
 		/// lost by the time stillTimeSeconds elapses
 		bool _dropDetected;
 
+		/// whether a single disqualifying-looking brightness-decrease jump has
+		/// already been tolerated as "the dim to standby" during the current still
+		/// episode -- limits the tolerance to one such jump per episode, so real
+		/// continued motion (which keeps producing further jumps) still resets
+		/// normally
+		bool _dimJumpTolerated;
+
 		/// whether the reaction (freeze/off) is currently applied
 		bool _triggered;
 
