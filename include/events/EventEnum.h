@@ -15,6 +15,7 @@ enum class Event
 	ToggleIdle,
 	Reload,
 	Restart,
+	UsbResetAndRestart,
 	Quit,
 	Lock,
 	Unlock
@@ -33,6 +34,7 @@ inline const char* eventToString(Event event)
 	case Event::ToggleIdle:    return "ToggleIdle";
 	case Event::Reload:        return "Reload";
 	case Event::Restart:       return "Restart";
+	case Event::UsbResetAndRestart: return "UsbResetAndRestart";
 	case Event::Lock:          return "Lock";
 	case Event::Unlock:        return "Unlock";
 	case Event::Unknown:
@@ -51,6 +53,7 @@ inline Event stringToEvent(const QString& event)
 	if (event.compare("ToggleIdle")==0)    return Event::ToggleIdle;
 	if (event.compare("Reload")==0)        return Event::Reload;
 	if (event.compare("Restart")==0)       return Event::Restart;
+	if (event.compare("UsbResetAndRestart")==0) return Event::UsbResetAndRestart;
 	if (event.compare("Lock") == 0)        return Event::Lock;
 	if (event.compare("Unlock") == 0)      return Event::Unlock;
 	return Event::Unknown;

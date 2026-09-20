@@ -97,6 +97,15 @@ $(document).ready(function () {
     setTimeout(initRestart, 100);
   });
 
+  //USB reset + restart (recover a stuck/hanging capture grabber, no replug needed)
+  $('#btn_systemUsbResetRestart').off().on('click', function () {
+    requestSystemUsbResetRestart();
+  });
+
+  $(window.hyperion).on("cmd-system-usbResetRestart", function () {
+    setTimeout(initRestart, 100);
+  });
+
   //Lock Ui
   $('#btn_lock_ui').off().on('click', function () {
     removeStorage('loginToken');

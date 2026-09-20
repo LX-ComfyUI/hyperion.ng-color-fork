@@ -405,6 +405,10 @@ function requestSystemRestart() {
   sendToHyperion("system", "restart");
 }
 
+function requestSystemUsbResetRestart() {
+  sendToHyperion("system", "usbResetRestart");
+}
+
 function requestServerConfigSchema() {
   sendToHyperion("config", "getschema");
   return Promise.resolve();

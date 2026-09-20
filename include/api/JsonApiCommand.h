@@ -109,6 +109,7 @@ public:
 		RenameToken,
 		RequestToken,
 		Restart,
+		UsbResetRestart,
 		RestoreConfig,
 		Resume,
 		SaveName,
@@ -161,6 +162,7 @@ public:
 		case RenameToken: return "renameToken";
 		case RequestToken: return "requestToken";
 		case Restart: return "restart";
+		case UsbResetRestart: return "usbResetRestart";
 		case RestoreConfig: return "restoreconfig";
 		case Resume: return "resume";
 		case SaveName: return "saveName";
@@ -351,6 +353,7 @@ public:
 			{ {"sourceselect", ""},                      { Command::SourceSelect,   SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::Multi,        InstanceCmd::MustRun_Yes,    NoListenerCmd::Yes } },
 			{ {"sysinfo", ""},                           { Command::SysInfo,        SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "restart"},                     { Command::System,         SubCommand::Restart,                 Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
+			{ {"system", "usbResetRestart"},             { Command::System,         SubCommand::UsbResetRestart,         Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "resume"},                      { Command::System,         SubCommand::Resume,                  Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "suspend"},                     { Command::System,         SubCommand::Suspend,                 Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "idle"},                        { Command::System,         SubCommand::Idle,                    Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },

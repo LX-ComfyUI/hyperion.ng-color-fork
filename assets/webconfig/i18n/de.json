@@ -13,6 +13,7 @@
   "InfoDialog_systemRestart_title": "Neustart",
   "InfoDialog_systemResume_title": "Aktivieren",
   "InfoDialog_systemSuspend_title": "Ruhezustand",
+  "InfoDialog_systemUsbResetRestart_title": "USB-Reset + Neustart",
   "about_3rd_party_licenses": "Drittanbieter Lizenzen",
   "about_3rd_party_licenses_error": "Wir hatten Probleme beim Laden der Drittanbieter Lizenzen aus dem Internet. <br />Klicke hier, um die Datei auf GitHub aufzurufen.",
   "about_build": "Build",

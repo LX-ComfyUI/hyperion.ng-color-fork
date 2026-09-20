@@ -204,6 +204,16 @@ void EventHandler::handleEvent(Event event)
 		Process::restartHyperion(11);
 		break;
 
+	case Event::UsbResetAndRestart:
+		emit signalEvent(Event::UsbResetAndRestart);
+		// USB3.0 Capture (MacroSilicon 534d:2109) can wedge and start delivering a
+		// flat no-signal frame; a USB reset clears it without a physical replug.
+		// The device node is root:root, hence sudo (alexo has NOPASSWD:ALL).
+		Info(_log, "Resetting USB capture device 534d:2109 before restart");
+		Process::command_exec("sudo -n usbreset 534d:2109");
+		Process::restartHyperion(12);
+		break;
+
 	case Event::Quit:
 		emit signalEvent(Event::Quit);
 		break;

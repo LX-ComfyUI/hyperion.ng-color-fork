@@ -5,6 +5,8 @@
 	#include <utils/Logger.h>
 	#include <QString>
 	#include <QByteArray>
+	#include <QFile>
+	#include <QDir>
 
 	namespace Process
 	{
@@ -12,6 +14,8 @@
 		{
 			QSharedPointer<Logger> log = Logger::getInstance("Process");
 			Info(log, "Restarting hyperion ...");
+
+			QFile(skipBootSequenceMarkerPath()).open(QIODevice::WriteOnly);
 
 			auto arguments = QCoreApplication::arguments();
 			if (!arguments.contains("--wait-hyperion"))
@@ -37,6 +41,8 @@
 	#include <QCoreApplication>
 	#include <QProcess>
 	#include <QStringList>
+	#include <QFile>
+	#include <QDir>
 
 	#include <unistd.h>
 	#include <cstdio>
@@ -60,6 +66,8 @@
 				<< "      *******************************************" << std::endl
 				<< "      *      hyperion will restart now          *" << std::endl
 				<< "      *******************************************" << std::endl << std::endl;
+
+			QFile(skipBootSequenceMarkerPath()).open(QIODevice::WriteOnly);
 
 			auto arguments = QCoreApplication::arguments();
 			if (!arguments.contains("--wait-hyperion"))
@@ -90,3 +98,8 @@
 	};
 
 #endif
+
+QString Process::skipBootSequenceMarkerPath()
+{
+	return QDir::tempPath() + "/hyperion-skip-bootsequence";
+}

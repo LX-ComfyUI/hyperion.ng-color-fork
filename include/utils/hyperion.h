@@ -7,7 +7,9 @@
 #include <hyperion/MultiColorAdjustment.h>
 #include <hyperion/LedString.h>
 #include <utils/KelvinToRgb.h>
+#include <utils/Process.h>
 #include <QRegularExpression>
+#include <QFile>
 
 // fg effect
 #include <hyperion/Hyperion.h>
@@ -24,6 +26,17 @@ namespace hyperion {
 	static void handleInitialEffect(Hyperion* hyperion, const QJsonObject& FGEffectConfig)
 	{
 		#define FGCONFIG_ARRAY fgColorConfig.toArray()
+
+		// Process::restartHyperion() touches this marker before exiting. Consuming it
+		// here means the boot effect only plays on a real cold start, not on every
+		// restart - regardless of whether systemd's own respawn or Hyperion's own
+		// self-relaunch is the process instance that ends up running.
+		QFile skipMarker(Process::skipBootSequenceMarkerPath());
+		if (skipMarker.exists())
+		{
+			skipMarker.remove();
+			return;
+		}
 
 		// initial foreground effect/color
 		if (FGEffectConfig["enable"].toBool(true))

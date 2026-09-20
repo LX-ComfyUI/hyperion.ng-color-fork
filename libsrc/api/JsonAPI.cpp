@@ -1918,6 +1918,9 @@ void JsonAPI::handleSystemCommand(const QJsonObject& /*message*/, const JsonApiC
 	case SubCommand::Restart:
 		emit signalEvent(Event::Restart);
 	break;
+	case SubCommand::UsbResetRestart:
+		emit signalEvent(Event::UsbResetAndRestart);
+	break;
 	case SubCommand::ToggleSuspend:
 		emit signalEvent(Event::ToggleSuspend);
 	break;
