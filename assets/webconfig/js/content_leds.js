@@ -2116,7 +2116,26 @@ function saveLedConfig(genDefLayout = false) {
   }
 
   requestWriteConfig(result);
-  location.reload();
+
+  // Fork-Erweiterung: requestWriteConfig() only fires the websocket message,
+  // it doesn't wait for the server to actually process/persist it -- reloading
+  // immediately after races the write (and the device restart every LED
+  // config save triggers), so on a loaded system the reload can win and the
+  // just-entered values (e.g. Stoerlicht-Filter) never actually get saved.
+  // Same race class already fixed for the "Restart Hyperion" button in
+  // settings.js (see cmd-system-restart there) -- wait for the server's own
+  // setconfig acknowledgement here instead, with a generous fallback in case
+  // it's ever missed (e.g. connection dropped exactly at the wrong moment).
+  var reloadAfterConfigSaved = (function () {
+    var done = false;
+    return function () {
+      if (done) return;
+      done = true;
+      location.reload();
+    };
+  })();
+  $(window.hyperion).one('cmd-config-setconfig', reloadAfterConfigSaved);
+  setTimeout(reloadAfterConfigSaved, 5000);
 }
 
 // build dynamic enum for hosts or output paths
