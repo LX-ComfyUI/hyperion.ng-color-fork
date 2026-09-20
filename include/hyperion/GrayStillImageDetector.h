@@ -101,6 +101,13 @@ namespace hyperion
 		double _dropWindowStartBrightness;
 		bool _dropWindowActive;
 
+		/// whether a sudden brightness drop has already been observed during the
+		/// current still episode -- tracked continuously from the moment stillness
+		/// begins (not just after stillTimeSeconds confirms it), so a drop that
+		/// completes early (e.g. right after pausing, before confirmation) is not
+		/// lost by the time stillTimeSeconds elapses
+		bool _dropDetected;
+
 		/// whether the reaction (freeze/off) is currently applied
 		bool _triggered;
 

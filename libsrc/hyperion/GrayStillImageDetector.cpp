@@ -22,6 +22,7 @@ GrayStillImageDetector::GrayStillImageDetector(const QSharedPointer<Hyperion>& h
 	, _stillActive(false)
 	, _dropWindowStartBrightness(0.0)
 	, _dropWindowActive(false)
+	, _dropDetected(false)
 	, _triggered(false)
 	, _minBrightnessSinceTrigger(0.0)
 {
@@ -77,6 +78,7 @@ void GrayStillImageDetector::reset()
 	_hasPrevColors = false;
 	_stillActive = false;
 	_dropWindowActive = false;
+	_dropDetected = false;
 	_triggered = false;
 }
 
@@ -182,6 +184,7 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 	{
 		_stillActive = false;
 		_dropWindowActive = false;
+		_dropDetected = false;
 		_lastGoodColors = raw;
 		return;
 	}
@@ -192,6 +195,30 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 		_stillActive = true;
 		_stillTimer.start();
 		_dropWindowActive = false;
+		_dropDetected = false;
+	}
+
+	// Watch for a sudden brightness drop continuously throughout the still episode,
+	// starting right away rather than only after stillTimeSeconds has already
+	// confirmed the image as genuinely still. Players typically dim to standby
+	// within a second or two of pausing - well inside a default 5s confirmation
+	// window - so if the drop-window baseline were only captured at confirmation
+	// time, the drop would already be over (and thus invisible) by then. Once a
+	// qualifying drop is seen, it's latched via _dropDetected for the rest of this
+	// still episode so it isn't lost while waiting for stillTimeSeconds to elapse.
+	if (!dropThresholdDisabled)
+	{
+		if (!_dropWindowActive || _dropWindowTimer.hasExpired(static_cast<qint64>(_dropWindowSeconds * 1000.0)))
+		{
+			_dropWindowStartBrightness = brightness;
+			_dropWindowTimer.start();
+			_dropWindowActive = true;
+		}
+
+		if (_dropWindowStartBrightness - brightness >= _brightnessDropThreshold)
+		{
+			_dropDetected = true;
+		}
 	}
 
 	if (!_stillTimer.hasExpired(static_cast<qint64>(_stillTimeSeconds) * 1000))
@@ -214,15 +241,7 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 		return;
 	}
 
-	// now watch for a sudden brightness drop
-	if (!_dropWindowActive || _dropWindowTimer.hasExpired(static_cast<qint64>(_dropWindowSeconds * 1000.0)))
-	{
-		_dropWindowStartBrightness = brightness;
-		_dropWindowTimer.start();
-		_dropWindowActive = true;
-	}
-
-	if (_dropWindowStartBrightness - brightness >= _brightnessDropThreshold)
+	if (_dropDetected)
 	{
 		_triggered = true;
 		_minBrightnessSinceTrigger = brightness;
@@ -232,6 +251,7 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 		return;
 	}
 
-	// still static, no sudden drop (yet) - keep passing through, keep tracking as last good
+	// still static, no sudden drop observed during this still episode (yet) -
+	// keep passing through, keep tracking as last good
 	_lastGoodColors = raw;
 }
