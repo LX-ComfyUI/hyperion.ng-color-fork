@@ -1112,10 +1112,12 @@ $(document).ready(function () {
         'enabled': 'edt_dev_general_strayLedSuppressor_enabled_expl',
         'targetColor': 'edt_dev_general_strayLedSuppressor_targetColor_expl',
         'brightnessThreshold': 'edt_dev_general_strayLedSuppressor_brightnessThreshold_expl',
+        'brightnessSoftZone': 'edt_dev_general_strayLedSuppressor_brightnessSoftZone_expl',
         'hueToleranceDegrees': 'edt_dev_general_strayLedSuppressor_hueToleranceDegrees_expl',
         'saturationThreshold': 'edt_dev_general_strayLedSuppressor_saturationThreshold_expl',
         'maxAffectedRatioPercent': 'edt_dev_general_strayLedSuppressor_maxAffectedRatioPercent_expl',
-        'debounceFrames': 'edt_dev_general_strayLedSuppressor_debounceFrames_expl'
+        'debounceFrames': 'edt_dev_general_strayLedSuppressor_debounceFrames_expl',
+        'fadeFrames': 'edt_dev_general_strayLedSuppressor_fadeFrames_expl'
       };
       Object.keys(fields).forEach(function (key) {
         attachInfoIcon(BASE + key, fields[key]);

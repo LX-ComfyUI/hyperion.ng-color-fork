@@ -23,6 +23,14 @@ struct StrayLedSuppressorSettings
 	/// to be a suppression candidate.
 	int brightnessThreshold = 30;
 
+	/// Width (0-255 scale, same units as brightnessThreshold) of a soft
+	/// transition band immediately below brightnessThreshold. A LED's
+	/// suppression weight ramps linearly from 1 (at
+	/// brightnessThreshold - brightnessSoftZone or darker) to 0 (at
+	/// brightnessThreshold or brighter), instead of flipping at a single
+	/// hard brightness value. 0 reproduces the old hard cutoff.
+	int brightnessSoftZone = 20;
+
 	/// Maximum circular hue distance (degrees, 0-180) from targetColor's hue
 	/// for a LED to still count as matching the stray color.
 	int hueToleranceDegrees = 30;
@@ -40,8 +48,16 @@ struct StrayLedSuppressorSettings
 	/// How many consecutive frames a LED's desired suppression state must
 	/// hold before it actually flips, in either direction. 0-60; 0 reacts
 	/// immediately (no flicker protection), higher values trade
-	/// responsiveness for stability.
+	/// responsiveness for stability. This only gates WHETHER a LED is armed
+	/// for suppression -- it does not control how fast the visible effect
+	/// ramps in/out, see fadeFrames.
 	int debounceFrames = 15;
+
+	/// Once a LED's suppression is armed/disarmed (see debounceFrames), the
+	/// applied suppression strength ramps towards its target over this many
+	/// frames (at most 1/fadeFrames change per frame), instead of jumping
+	/// straight to fully suppressed/fully restored. 1-60.
+	int fadeFrames = 10;
 };
 
 StrayLedSuppressorSettings createStrayLedSuppressorSettings(const QJsonObject& deviceConfig);
@@ -71,6 +87,10 @@ private:
 	{
 		bool suppressed = false;
 		uint8_t consecutiveFrames = 0;
+		/// Smoothed, continuous suppression strength actually applied to the
+		/// LED's color (0 = untouched, 1 = fully suppressed to black). Moves
+		/// towards its target by at most 1/fadeFrames per frame.
+		double currentWeight = 0.0;
 	};
 
 	StrayLedSuppressorSettings _settings;

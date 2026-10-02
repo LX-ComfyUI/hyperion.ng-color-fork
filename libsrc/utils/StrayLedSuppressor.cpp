@@ -29,10 +29,12 @@ StrayLedSuppressorSettings createStrayLedSuppressorSettings(const QJsonObject& d
 
 	settings.enabled                 = s["enabled"].toBool(false);
 	settings.brightnessThreshold     = s["brightnessThreshold"].toInt(30);
+	settings.brightnessSoftZone      = s["brightnessSoftZone"].toInt(20);
 	settings.hueToleranceDegrees     = s["hueToleranceDegrees"].toInt(30);
 	settings.saturationThreshold     = s["saturationThreshold"].toDouble(0.15);
 	settings.maxAffectedRatioPercent = s["maxAffectedRatioPercent"].toInt(15);
 	settings.debounceFrames          = s["debounceFrames"].toInt(15);
+	settings.fadeFrames              = s["fadeFrames"].toInt(10);
 
 	const QJsonArray colorArray = s["targetColor"].toArray();
 	settings.targetColor = ColorRgb(
@@ -68,12 +70,21 @@ void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors)
 	(void) targetValue;
 
 	const double toleranceTurns = clamp01(_settings.hueToleranceDegrees / 360.0);
-	const double brightnessLimit = clamp01(_settings.brightnessThreshold / 255.0);
 
-	// Pass 1: determine per-LED candidacy and count it, without touching
-	// any color yet -- the global ratio gate below needs the full-frame
-	// count before any suppression decision can be made.
+	// Brightness is no longer a single hard cutoff: a LED's suppression
+	// weight ramps linearly from 1 at/below brightnessLowerEdge to 0 at/above
+	// brightnessUpperEdge, instead of snapping between "candidate" and "not"
+	// at one exact value. brightnessSoftZone==0 reproduces the old hard cut.
+	const double brightnessUpperEdge = clamp01(_settings.brightnessThreshold / 255.0);
+	const double brightnessLowerEdge = clamp01((_settings.brightnessThreshold - _settings.brightnessSoftZone) / 255.0);
+	const double brightnessRampSpan = std::max(brightnessUpperEdge - brightnessLowerEdge, 1.0 / 255.0);
+
+	// Pass 1: determine per-LED candidacy/brightness weight and count
+	// candidates, without touching any color yet -- the global ratio gate
+	// below needs the full-frame count before any suppression decision can
+	// be made.
 	QVector<bool> candidate(ledColors.size(), false);
+	QVector<double> brightnessWeight(ledColors.size(), 0.0);
 	int candidateCount = 0;
 
 	for (int i = 0; i < ledColors.size(); ++i)
@@ -82,10 +93,16 @@ void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors)
 		double hue, saturation, value;
 		ColorSys::rgb2okhsv(c.red, c.green, c.blue, hue, saturation, value);
 
-		const bool isCandidate = value <= brightnessLimit
-			&& saturation >= _settings.saturationThreshold
+		const bool hueSatMatch = saturation >= _settings.saturationThreshold
 			&& std::fabs(circularHueDistance(hue, targetHue)) <= toleranceTurns;
 
+		const double weight = hueSatMatch
+			? clamp01((brightnessUpperEdge - value) / brightnessRampSpan)
+			: 0.0;
+
+		brightnessWeight[i] = weight;
+
+		const bool isCandidate = weight > 0.0;
 		candidate[i] = isCandidate;
 		if (isCandidate)
 		{
@@ -99,8 +116,13 @@ void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors)
 	const double maxRatio = clamp01(_settings.maxAffectedRatioPercent / 100.0);
 	const bool globalGateOpen = candidateCount <= maxRatio * ledColors.size();
 
-	// Pass 2: debounce each LED's candidacy into a stable suppressed/normal
-	// state, then apply it.
+	// Pass 2: debounce each LED's candidacy into a stable armed/disarmed
+	// state (unchanged purpose -- ignore brief noise blips before even
+	// starting a fade), then ease the actually-applied strength towards its
+	// target over fadeFrames instead of snapping straight to fully
+	// suppressed/restored.
+	const double maxStepPerFrame = 1.0 / std::max(_settings.fadeFrames, 1);
+
 	for (int i = 0; i < ledColors.size(); ++i)
 	{
 		const bool wantsSuppressed = globalGateOpen && candidate[i];
@@ -120,9 +142,25 @@ void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors)
 			}
 		}
 
-		if (state.suppressed)
+		const double targetWeight = state.suppressed ? brightnessWeight[i] : 0.0;
+		const double delta = targetWeight - state.currentWeight;
+		if (std::fabs(delta) <= maxStepPerFrame)
 		{
-			ledColors[i] = ColorRgb::BLACK;
+			state.currentWeight = targetWeight;
+		}
+		else
+		{
+			state.currentWeight += (delta > 0.0 ? maxStepPerFrame : -maxStepPerFrame);
+		}
+
+		if (state.currentWeight > 0.0)
+		{
+			const ColorRgb& c = ledColors[i];
+			const double w = state.currentWeight;
+			ledColors[i] = ColorRgb(
+				static_cast<uint8_t>(c.red   * (1.0 - w)),
+				static_cast<uint8_t>(c.green * (1.0 - w)),
+				static_cast<uint8_t>(c.blue  * (1.0 - w)));
 		}
 	}
 }
