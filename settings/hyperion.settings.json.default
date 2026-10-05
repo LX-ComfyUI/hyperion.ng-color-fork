@@ -262,8 +262,10 @@
             "brightnessThreshold":30,
             "hueToleranceDegrees":30,
             "saturationThreshold":0.15,
+            "brightnessSoftZone":20,
             "maxAffectedRatioPercent":15,
-            "debounceFrames":15
+            "debounceFrames":15,
+            "fadeFrames":10
          }
       },
       "foregroundEffect":{

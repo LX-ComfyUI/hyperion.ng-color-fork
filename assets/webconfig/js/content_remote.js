@@ -68,6 +68,8 @@ $(document).ready(function () {
     const values = window.serverInfo.adjustment[0];
 
     for (const key in sColor) {
+      // Object-typed entries (grayAxisTrim) are not single values; they have no slider here
+      if (sColor[key].type === "object") continue;
       if (sColor[key].key !== "id" && sColor[key].key !== "leds") {
         const title = `<label for="cr_${sColor[key].key}">${$.i18n(sColor[key].title)}</label>`;
         let property;
