@@ -245,6 +245,18 @@ public:
 	/// @return true if the parameters could be retrieved
 	bool getScanParameters(size_t led, double & hscanBegin, double & hscanEnd, double & vscanBegin, double & vscanEnd) const;
 
+	///
+	/// Fork extension: state snapshot of the black-border and gray-still-image detectors for
+	/// debugging tools (JSON-API command "forkdebug"). Thread safe.
+	///
+	QJsonObject getDebugState() const
+	{
+		return QJsonObject{
+			{ "blackborder", _borderProcessor->debugState() },
+			{ "grayStill", _grayStillDetector->debugState() }
+		};
+	}
+
 private:
 
 	void registerProcessingUnit(

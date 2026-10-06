@@ -478,6 +478,9 @@ void JsonAPI::handleCommand(const JsonApiCommand& cmd, const QJsonObject &messag
 	case Command::SysInfo:
 		handleSysInfoCommand(message, cmd);
 	break;
+	case Command::ForkDebug:
+		handleForkDebugCommand(message, cmd);
+	break;
 	case Command::ServerInfo:
 		handleServerInfoCommand(message, cmd);
 	break;
@@ -764,6 +767,21 @@ void JsonAPI::handleDeleteEffectCommand(const QJsonObject &message, const JsonAp
 	const QString resultMsg = EffectFileHandler::getInstance()->deleteEffect(message["name"].toString());
 	resultMsg.isEmpty() ? sendSuccessReply(cmd) : sendErrorReply(resultMsg, cmd);
 #endif
+}
+
+void JsonAPI::handleForkDebugCommand(const QJsonObject & /*unused*/, const JsonApiCommand& cmd)
+{
+	// the instance is bound by the API from the message's "instance" field (InstanceCmd::Single)
+	QSharedPointer<Hyperion> const hyperion = _hyperionWeak.toStrongRef();
+	if (hyperion.isNull() || hyperion->getImageProcessor().isNull())
+	{
+		sendErrorReply("No running instance", cmd);
+		return;
+	}
+
+	QJsonObject info = hyperion->getImageProcessor()->getDebugState();
+	info["instance"] = static_cast<int>(_currInstanceIndex);
+	sendSuccessDataReply(info, cmd);
 }
 
 void JsonAPI::handleSysInfoCommand(const QJsonObject & /*unused*/, const JsonApiCommand& cmd)

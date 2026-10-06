@@ -171,6 +171,12 @@ private:
 	void handleSysInfoCommand(const QJsonObject &message, const JsonApiCommand& cmd);
 
 	///
+	/// Fork extension: returns the black-border and gray-still-image detector state
+	/// of the current instance (read-only, for the TV test app's debug views)
+	///
+	void handleForkDebugCommand(const QJsonObject &message, const JsonApiCommand& cmd);
+
+	///
 	/// Handle an incoming JSON Server info message
 	///
 	/// @param message the incoming message

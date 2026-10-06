@@ -5,6 +5,7 @@
         <file alias="schema-image">JSONRPC_schema/schema-image.json</file>
         <file alias="schema-serverinfo">JSONRPC_schema/schema-serverinfo.json</file>
         <file alias="schema-sysinfo">JSONRPC_schema/schema-sysinfo.json</file>
+        <file alias="schema-forkdebug">JSONRPC_schema/schema-forkdebug.json</file>
         <file alias="schema-clear">JSONRPC_schema/schema-clear.json</file>
         <file alias="schema-clearall">JSONRPC_schema/schema-clearall.json</file>
         <file alias="schema-adjustment">JSONRPC_schema/schema-adjustment.json</file>

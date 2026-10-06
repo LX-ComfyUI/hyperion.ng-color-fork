@@ -3,6 +3,8 @@
 // QT includes
 #include <QElapsedTimer>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <QMutex>
 #include <QVector>
 #include <QSharedPointer>
 #include <QWeakPointer>
@@ -53,6 +55,12 @@ namespace hyperion
 		///                  in place if a gray still image has been detected and confirmed.
 		///
 		void process(QVector<ColorRgb>& ledColors);
+
+		///
+		/// @brief Fork extension: read-only snapshot of the detector state for debugging tools
+		/// (still timer, brightness, drop/trigger flags). Thread safe.
+		///
+		QJsonObject debugState() const;
 
 	private slots:
 		void handleSettingsUpdate(settings::type type, const QJsonDocument& config);
@@ -123,5 +131,12 @@ namespace hyperion
 
 		/// last known-good LED colors (most recent frame before/while not yet triggered)
 		QVector<ColorRgb> _lastGoodColors;
+
+		/// debug snapshot data: last evaluated brightness and mean per-LED change (0-255)
+		double _lastBrightness;
+		mutable double _lastChangeDelta;
+
+		/// guards all state above against debugState() calls from the API thread
+		mutable QMutex _mutex;
 	};
 } // end namespace hyperion

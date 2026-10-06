@@ -5,6 +5,8 @@
 
 // QT includes
 #include <QJsonObject>
+#include <QMutex>
+#include <QMutexLocker>
 
 // util
 #include <utils/Logger.h>
@@ -42,6 +44,12 @@ namespace hyperion
 		bool enabled() const;
 
 		///
+		/// Fork extension: read-only snapshot of the detector state for debugging tools
+		/// (current and last single-frame border, mode, image size). Thread safe.
+		///
+		QJsonObject debugState() const;
+
+		///
 		/// Set activation state of black border detector
 		/// @param enable current state
 		///
@@ -67,6 +75,11 @@ namespace hyperion
 		bool process(const Image<Pixel_T> & image)
 		{
 			qCDebug(image_track) << "Image [" << image.id() << "]";
+
+			// guards the state read by debugState() from the API thread
+			QMutexLocker debugLocker(&_debugMutex);
+			_lastImageWidth = image.width();
+			_lastImageHeight = image.height();
 
 			// get the border for the single image
 			BlackBorder imageBorder;
@@ -99,6 +112,7 @@ namespace hyperion
 				imageBorder.verticalSize += _blurRemoveCnt;
 			}
 
+			_lastImageBorder = imageBorder;
 			const bool borderUpdated = updateBorder(imageBorder);
 			return borderUpdated;
 		}
@@ -168,6 +182,12 @@ namespace hyperion
 		bool _hardDisabled;
 		/// Reflect the last component state request from user (comp change)
 		bool _userEnabled;
+
+		/// Fork extension: debug snapshot data, guarded by _debugMutex
+		mutable QMutex _debugMutex;
+		BlackBorder _lastImageBorder;
+		int _lastImageWidth;
+		int _lastImageHeight;
 
 	};
 } // end namespace hyperion

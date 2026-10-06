@@ -4,6 +4,7 @@
 #include <cstdlib>
 
 #include <QJsonObject>
+#include <QMutexLocker>
 
 #include <hyperion/Hyperion.h>
 
@@ -26,6 +27,8 @@ GrayStillImageDetector::GrayStillImageDetector(const QSharedPointer<Hyperion>& h
 	, _dimJumpTolerated(false)
 	, _triggered(false)
 	, _minBrightnessSinceTrigger(0.0)
+	, _lastBrightness(0.0)
+	, _lastChangeDelta(0.0)
 {
 	QString subComponent{ "__" };
 
@@ -55,6 +58,7 @@ void GrayStillImageDetector::handleSettingsUpdate(settings::type type, const QJs
 {
 	if (type == settings::BLACKBORDER)
 	{
+		QMutexLocker locker(&_mutex);
 		const QJsonObject& obj = config.object()["grayStillImageDetector"].toObject();
 
 		_enabled                  = obj["enabled"].toBool(false);
@@ -114,6 +118,7 @@ bool GrayStillImageDetector::hasChanged(const QVector<ColorRgb>& colors) const
 		deltaSum += std::abs(int(a.red) - int(b.red)) + std::abs(int(a.green) - int(b.green)) + std::abs(int(a.blue) - int(b.blue));
 	}
 	const double meanDelta = (static_cast<double>(deltaSum) / colors.size()) / 3.0;
+	_lastChangeDelta = meanDelta;
 	return meanDelta > _changeThreshold;
 }
 
@@ -129,8 +134,33 @@ void GrayStillImageDetector::applyReaction(QVector<ColorRgb>& ledColors) const
 	}
 }
 
+QJsonObject GrayStillImageDetector::debugState() const
+{
+	QMutexLocker locker(&_mutex);
+	return QJsonObject{
+		{ "enabled", _enabled },
+		{ "mode", _mode },
+		{ "stillTimeSeconds", _stillTimeSeconds },
+		{ "brightnessDropThreshold", _brightnessDropThreshold },
+		{ "dropWindowSeconds", _dropWindowSeconds },
+		{ "changeThreshold", _changeThreshold },
+		{ "stillActive", _stillActive },
+		{ "stillElapsedMs", _stillActive ? static_cast<double>(_stillTimer.elapsed()) : 0.0 },
+		{ "dropWindowActive", _dropWindowActive },
+		{ "dropWindowStartBrightness", _dropWindowStartBrightness },
+		{ "dropDetected", _dropDetected },
+		{ "dimJumpTolerated", _dimJumpTolerated },
+		{ "triggered", _triggered },
+		{ "minBrightnessSinceTrigger", _minBrightnessSinceTrigger },
+		{ "brightness", _lastBrightness },
+		{ "changeDelta", _lastChangeDelta }
+	};
+}
+
 void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 {
+	QMutexLocker locker(&_mutex);
+
 	if (!_enabled || ledColors.isEmpty())
 	{
 		reset();
@@ -141,6 +171,7 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 	// independent of whatever we might overwrite ledColors with below.
 	const QVector<ColorRgb> raw = ledColors;
 	const double brightness = meanBrightness(raw);
+	_lastBrightness = brightness;
 
 	const bool dropThresholdDisabled = (_brightnessDropThreshold <= 0);
 

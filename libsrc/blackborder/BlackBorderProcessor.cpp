@@ -25,6 +25,9 @@ BlackBorderProcessor::BlackBorderProcessor(const QSharedPointer<Hyperion>& hyper
 	, _oldThreshold(-0.1)
 	, _hardDisabled(false)
 	, _userEnabled(false)
+	, _lastImageBorder({ true, -1, -1 })
+	, _lastImageWidth(0)
+	, _lastImageHeight(0)
 {
 	QString subComponent{ "__" };
 
@@ -75,7 +78,10 @@ void BlackBorderProcessor::handleSettingsUpdate(settings::type type, const QJson
 			_borderSwitchCnt = obj["borderFrameCnt"].toInt(50);
 			_maxInconsistentCnt = obj["maxInconsistentCnt"].toInt(10);
 			_blurRemoveCnt = obj["blurRemoveCnt"].toInt(1);
-			_detectionMode = obj["mode"].toString("default");
+			{
+				QMutexLocker debugLocker(&_debugMutex);
+				_detectionMode = obj["mode"].toString("default");
+			}
 			const double newThreshold = obj["threshold"].toDouble(5.0) / 100.0;
 
 			if (fabs(_oldThreshold - newThreshold) > std::numeric_limits<double>::epsilon())
@@ -130,6 +136,35 @@ void BlackBorderProcessor::setHardDisable(bool disable)
 	}
 	_hardDisabled = disable;
 };
+
+QJsonObject BlackBorderProcessor::debugState() const
+{
+	QMutexLocker debugLocker(&_debugMutex);
+
+	const auto borderJson = [](const BlackBorder& border) {
+		return QJsonObject{
+			{ "unknown", border.unknown },
+			{ "horizontalSize", border.horizontalSize },
+			{ "verticalSize", border.verticalSize }
+		};
+	};
+
+	return QJsonObject{
+		{ "enabled", _enabled },
+		{ "mode", _detectionMode },
+		{ "threshold", _oldThreshold },
+		{ "imageWidth", _lastImageWidth },
+		{ "imageHeight", _lastImageHeight },
+		{ "currentBorder", borderJson(_currentBorder) },
+		{ "lastFrameBorder", borderJson(_lastImageBorder) },
+		{ "consistentCnt", static_cast<int>(_consistentCnt) },
+		{ "inconsistentCnt", static_cast<int>(_inconsistentCnt) },
+		{ "borderFrameCnt", static_cast<int>(_borderSwitchCnt) },
+		{ "unknownFrameCnt", static_cast<int>(_unknownSwitchCnt) },
+		{ "maxInconsistentCnt", static_cast<int>(_maxInconsistentCnt) },
+		{ "blurRemoveCnt", static_cast<int>(_blurRemoveCnt) }
+	};
+}
 
 BlackBorder BlackBorderProcessor::getCurrentBorder() const
 {
