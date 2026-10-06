@@ -1,0 +1,5 @@
+node_modules/
+backups/
+state.json
+hyperion-token
+server.log

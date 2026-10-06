@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyperion TV-Testseite</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; }
+  #screen { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: #000; }
+  .bar { position: fixed; background: #000; }
+  #bar-top    { top: 0;    left: 0; right: 0;  height: 0; }
+  #bar-bottom { bottom: 0; left: 0; right: 0;  height: 0; }
+  #bar-left   { left: 0;   top: 0;  bottom: 0; width: 0; }
+  #bar-right  { right: 0;  top: 0;  bottom: 0; width: 0; }
+
+  /* Connect hint: kept in the middle, so the screen edges (what the LEDs sample) stay free */
+  #connect {
+    /* left/right 0 + auto margins: centered without halving the available width like left: 50% would */
+    position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0 auto;
+    width: max-content; max-width: 86vw;
+    display: flex; align-items: center; gap: 4vh; box-sizing: border-box;
+    padding: 4vh; border-radius: 2vh; background: rgba(20, 20, 24, .94); color: #eee;
+  }
+  #connect[hidden] { display: none; }
+  #qr { width: 42vh; height: 42vh; flex: none; background: #fff; border-radius: 1vh; }
+  #qr svg { display: block; width: 100%; height: 100%; }
+  #connect .logo { display: block; height: 6vh; width: auto; margin: 0 0 2.4vh; }
+  #connect h1 { font-size: 4vh; margin: 0 0 2vh; color: #fff; }
+  #connect p { font-size: 2.6vh; line-height: 1.45; margin: 0 0 1.6vh; max-width: 80vh; }
+  #connect .url { font-size: 3vh; font-weight: 700; color: #fff; }
+  #connect .small { font-size: 2.1vh; color: #999; margin: 0; }
+
+  /* debug views (only when switched on for the TV on the phone) */
+  #bb-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+  #bb-overlay svg { width: 100%; height: 100%; display: block; }
+  .dbg-box {
+    position: fixed; left: 50%; transform: translateX(-50%); box-sizing: border-box; max-width: 60vw;
+    padding: 1.4vh 2vh; border-radius: 1.2vh; background: rgba(10, 10, 14, .85); color: #fff;
+    font-size: 2.2vh; line-height: 1.4; pointer-events: none;
+  }
+  /* above 2/3 of the height, so the bottom-up center scan line stays visible */
+  #bb-text { top: 29vh; }
+  #gs-box { top: 36vh; width: 56vh; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="screen"></div>
+<div class="bar" id="bar-top"></div>
+<div class="bar" id="bar-bottom"></div>
+<div class="bar" id="bar-left"></div>
+<div class="bar" id="bar-right"></div>
+
+<div id="bb-overlay" hidden></div>
+<div class="dbg-box" id="bb-text" hidden></div>
+<div class="dbg-box" id="gs-box" hidden></div>
+
+<div id="connect">
+  <div id="qr" role="img" aria-label="QR-Code zur Steuerung"></div>
+  <div>
+    <img class="logo" src="/static/hyperion-logo.png" alt="Hyperion">
+    <h1>Mit dem Smartphone steuern</h1>
+    <p>Der Test wird über dein Telefon gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser:</p>
+    <p class="url" id="url"></p>
+    <p>Sobald das Telefon verbunden ist, verschwindet dieser Hinweis und das Testbild ist frei.</p>
+    <p class="small">OK auf der Fernbedienung blendet den Hinweis ein und aus.</p>
+  </div>
+</div>
+
+<script type="module">
+import { blackborderSvg, blackborderText, grayStillHtml, GRAY_STILL_CSS } from "/static/overlay.js";
+
+const style = document.createElement("style");
+style.textContent = GRAY_STILL_CSS;
+document.head.appendChild(style);
+
+const $ = (id) => document.getElementById(id);
+const screenEl = $("screen");
+const barEls = { top: $("bar-top"), bottom: $("bar-bottom"), left: $("bar-left"), right: $("bar-right") };
+const connectEl = $("connect");
+
+let state = { color: "#000000", bars: { top: 0, bottom: 0, left: 0, right: 0 } };
+let phones = 0;
+let manualToggle = null; // null = automatic, true/false = forced by the remote
+let clockOffset = 0;      // Pi clock minus TV clock
+let grayTimer = null;
+let debug = null;
+
+$("url").textContent = location.host + "/";
+
+function renderBars() {
+  barEls.top.style.height = state.bars.top + "%";
+  barEls.bottom.style.height = state.bars.bottom + "%";
+  barEls.left.style.width = state.bars.left + "%";
+  barEls.right.style.width = state.bars.right + "%";
+}
+
+// Gray test: show the tone, and dim it after dropAfter seconds like a paused player fading out
+function renderGrayTest() {
+  clearTimeout(grayTimer);
+  const g = state.grayTest;
+  if (!g?.active) {
+    screenEl.style.transition = "";
+    screenEl.style.background = state.color;
+    return;
+  }
+  const gray = (v) => `rgb(${v}, ${v}, ${v})`;
+  const dimmed = Math.round(g.tone * (1 - g.dropPercent / 100));
+  const dropAt = g.startedAt + g.dropAfter * 1000 - clockOffset; // in TV clock
+  const wait = dropAt - Date.now();
+  if (!g.dropEnabled || wait > 0) {
+    screenEl.style.transition = "";
+    screenEl.style.background = gray(g.tone);
+    if (g.dropEnabled) grayTimer = setTimeout(() => {
+      screenEl.style.transition = `background-color ${g.dropDuration ?? 0.4}s linear`;
+      screenEl.style.background = gray(dimmed);
+    }, wait);
+  } else {
+    screenEl.style.transition = "";
+    screenEl.style.background = gray(dimmed);
+  }
+}
+
+function renderDebug() {
+  const o = state.overlays ?? {};
+  const bb = debug?.ok ? debug.blackborder : null;
+  const gs = debug?.ok ? debug.grayStill : null;
+  $("bb-overlay").hidden = !o.bbTv;
+  $("bb-text").hidden = !o.bbTv;
+  if (o.bbTv) {
+    $("bb-overlay").innerHTML = blackborderSvg(bb);
+    $("bb-text").textContent = debug?.ok ? blackborderText(bb) : "Keine Daten von Hyperion" + (debug?.error ? ` (${debug.error})` : "");
+  }
+  $("gs-box").hidden = !o.gsTv;
+  if (o.gsTv) $("gs-box").innerHTML = grayStillHtml(gs);
+}
+
+function render() {
+  renderGrayTest();
+  renderBars();
+  // automatic: show the hint while no phone is connected
+  connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle;
+  renderDebug();
+}
+
+async function loadQr() {
+  try {
+    $("qr").innerHTML = await (await fetch("/api/qr.svg")).text();
+  } catch { /* the URL text next to the code still works */ }
+}
+
+// Some Android TV browsers report the D-pad center as keyCode 23 instead of Enter
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" || ev.keyCode === 13 || ev.keyCode === 23) {
+    manualToggle = connectEl.hidden;
+    render();
+    ev.preventDefault();
+  }
+});
+
+function connectEvents() {
+  const es = new EventSource("/api/events?role=tv");
+  es.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    // a phone joining or leaving resets a manual toggle back to automatic
+    if (msg.phones !== phones) manualToggle = null;
+    phones = msg.phones ?? 0;
+    if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
+    const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || msg.color !== state.color;
+    state = msg;
+    if (grayChanged) render();
+    else { renderBars(); renderDebug(); connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle; }
+  };
+  es.addEventListener("debug", (ev) => {
+    debug = JSON.parse(ev.data);
+    renderDebug();
+  });
+}
+
+loadQr();
+render();
+connectEvents();
+</script>
+</body>
+</html>

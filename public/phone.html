@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Hyperion TV-Testseite Steuerung</title>
+<script>
+  // Before first paint: saved theme and the kind of device (the width decides the layout, the device name is a hint)
+  try { const t = localStorage.getItem("tvtest-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+  (function () {
+    const ua = navigator.userAgent;
+    const tv = /Android TV|AFT[A-Z]|SHIELD|BRAVIA|GoogleTV|CrKey|SMART-TV|HbbTV/i.test(ua);
+    const phone = /Mobi|iPhone|iPod/i.test(ua);
+    const tablet = /iPad|Android(?!.*Mobi)/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+    document.documentElement.dataset.device = tv ? "tv" : phone ? "phone" : tablet ? "tablet" : "desktop";
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f2f2f5; --card: #ffffff; --text: #111114; --muted: #5d5d66; --line: #d9d9e0;
+    --btn: #ffffff; --btn-text: #111114; --btn-line: #c9c9d2; --accent: #0a74e8; --accent-text: #ffffff;
+    --chip-line: rgba(0, 0, 0, .18); --danger: #d93025; --warn: #9a5b00; --shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    --gap: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #121215; --card: #1f1f25; --text: #ececf1; --muted: #a3a3ad; --line: #34343d;
+      --btn: #2a2a32; --btn-text: #ececf1; --btn-line: #44444f; --accent: #3d95ff; --accent-text: #ffffff;
+      --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #121215; --card: #1f1f25; --text: #ececf1; --muted: #a3a3ad; --line: #34343d;
+    --btn: #2a2a32; --btn-text: #ececf1; --btn-line: #44444f; --accent: #3d95ff; --accent-text: #ffffff;
+    --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: none;
+  }
+
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 560px; margin: 0 auto; padding: var(--gap); box-sizing: border-box; }
+  /* wide screens (laptop, tablet, TV browser) get more room */
+  @media (min-width: 760px) { :root:not([data-device="phone"]) main { max-width: 1120px; } }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 var(--gap); flex-wrap: wrap; }
+  header .titles { min-width: 0; }
+  h1 { font-size: 20px; margin: 0; }
+  .devicelabel { font-size: 12px; color: var(--muted); }
+  .card { background: var(--card); border-radius: 12px; padding: var(--gap); margin-bottom: var(--gap); box-shadow: var(--shadow); box-sizing: border-box; scroll-margin-top: var(--gap); }
+  h2 { font-size: 16px; margin: 0 0 8px; }
+  h3 { font-size: 14px; margin: 18px 0 8px; }
+  h4 { font-size: 13px; margin: 18px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .help { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
+  .help b, .help strong { color: var(--text); }
+  .jump { color: var(--accent); font-weight: 700; text-decoration: underline; }
+  .warn { font-size: 13px; color: var(--warn); margin: 6px 0 0; }
+  code { font-size: 13px; }
+  a { color: var(--accent); }
+  [hidden] { display: none !important; }
+
+  button { font: inherit; color: var(--btn-text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 10px; padding: 12px 16px; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.wide { width: 100%; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+  /* segmented buttons: theme switch, modes, bar presets */
+  .seg { display: inline-flex; border: 1px solid var(--btn-line); border-radius: 9px; overflow: hidden; flex: none; }
+  .seg button { border: none; border-radius: 0; padding: 6px 10px; font-size: 13px; background: var(--btn); }
+  .seg button + button { border-left: 1px solid var(--btn-line); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+  .seg.full { display: flex; }
+  .seg.full button { flex: 1; padding: 9px 4px; font-size: 14px; }
+  .seg.small button { padding: 4px 9px; font-size: 12px; }
+
+  /* sliders: thick track and big thumb for touch */
+  input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; margin: 0; height: 40px; width: 100%; accent-color: var(--accent); }
+  input[type=range]::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -10px; border-radius: 50%; background: var(--accent); border: 3px solid var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  input[type=range]::-moz-range-track { height: 10px; border-radius: 5px; background: var(--line); }
+  input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 3px solid var(--card); }
+  input[type=range]:disabled { opacity: .5; }
+
+  /* test colors: one row per color, tools on the right */
+  .crow { display: flex; align-items: stretch; gap: 6px; margin: 0 0 8px; border-radius: 10px; border: 1px solid var(--btn-line); background: var(--btn); box-sizing: border-box; }
+  .crow.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .crow-main { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; border-radius: 10px;
+               -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  .crow-main:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chip { flex: none; width: 46px; height: 34px; border-radius: 7px; border: 1px solid var(--chip-line); }
+  .cname { display: flex; flex-direction: column; min-width: 0; }
+  .cname b { font-weight: 600; font-size: 15px; }
+  .cname small { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .crow.active .cname small::after { content: " · aktiv"; color: var(--accent); }
+  .tools { display: flex; align-items: center; gap: 2px; padding-right: 6px; flex: none; }
+  .ibtn { width: 40px; height: 40px; padding: 0; border: none; background: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  .ibtn:hover:not(:disabled) { color: var(--text); background: var(--bg); }
+  .ibtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ibtn.done { color: var(--accent); }
+  .crow.add { border-style: dashed; }
+  .crow.add .crow-main { color: var(--muted); }
+  .crow.add .chip { display: flex; align-items: center; justify-content: center; background: transparent; font-size: 22px; line-height: 1; }
+  .crow .del { position: absolute; top: -8px; right: -6px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--card);
+               background: var(--danger); color: #fff; font-size: 16px; line-height: 21px; padding: 0; display: none; }
+  .crow.custom { position: relative; }
+  .deleting .crow.custom .del { display: block; }
+  .deleting .crow.custom .chip { animation: wiggle .25s ease-in-out infinite alternate; }
+  @keyframes wiggle { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+  @media (prefers-reduced-motion: reduce) { .deleting .crow.custom .chip { animation: none; } }
+  #picker { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .hintline { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+
+  /* two columns for the test colors: list left, Hyperion values right */
+  .color-grid { display: grid; gap: var(--gap); grid-template-columns: 1fr; }
+  @media (min-width: 760px) { :root:not([data-device="phone"]) .color-grid { grid-template-columns: minmax(300px, 380px) 1fr; } }
+  .col { min-width: 0; }
+  .hy-col { background: var(--bg); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
+  .rgbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+  .rgbrow .rgbname { font-size: 14px; min-width: 64px; }
+  .inputs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .inputs input { width: 62px; font: inherit; font-size: 15px; padding: 7px 4px; text-align: center; box-sizing: border-box; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; font-variant-numeric: tabular-nums; }
+  .inputs input:disabled { opacity: .5; }
+  .inputs .wide-in { width: 90px; }
+  .frow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0; font-size: 14px; }
+  .frow > label { flex: 1; min-width: 0; }
+  .srow { margin: 12px 0 4px; }
+  .srow > label { display: flex; justify-content: space-between; font-size: 14px; }
+  .srow .val { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .stoprow { display: grid; grid-template-columns: 1fr; gap: 6px; background: var(--card); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+  .stoprow .inputs { justify-content: flex-start; }
+  .stoprow small { font-size: 12px; color: var(--muted); }
+  select { font: inherit; color: var(--btn-text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 8px; padding: 8px; width: 100%; box-sizing: border-box; }
+
+  label.field { display: block; margin: 14px 0 2px; font-size: 14px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row input[type=range] { flex: 1; min-width: 0; }
+  .val { min-width: 76px; text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; }
+  .check { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0 0; font-size: 15px; }
+  .check input { width: 22px; height: 22px; margin: 1px 0 0; flex: none; accent-color: var(--accent); }
+  .check small { display: block; color: var(--muted); font-size: 13px; }
+  .indent { margin-left: 30px; }
+  .numgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 12px; }
+  .numgrid input { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 8px; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; }
+
+  /* black bars test: head row with label and buttons, full width slider below */
+  .bar-row { margin-bottom: 18px; }
+  .bar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+  .bar-head label { font-size: 15px; font-weight: 600; }
+  .bar-head .right { display: flex; align-items: center; gap: 10px; }
+  .bar-head .val { min-width: 0; font-size: 14px; }
+
+  details.more { margin-top: 6px; border-top: 1px solid var(--line); }
+  details.more summary { list-style: none; cursor: pointer; padding: 12px 0 4px; color: var(--accent); font-size: 15px; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before { content: "▸ "; }
+  details.more[open] summary::before { content: "▾ "; }
+  .collapse { margin-top: 14px; width: 100%; }
+
+  .sub { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line); }
+  .status { font-size: 14px; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 10px 0 0; font-variant-numeric: tabular-nums; }
+  .note { font-size: 13px; color: var(--muted); margin: 8px 0 0; min-height: 1.2em; }
+  .grayswatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--chip-line); flex: none; }
+
+  /* live boxes (developer view), same look as the gray still status */
+  .gsbox { background: #16161b; color: #fff; border-radius: 10px; padding: 12px; font-size: 14px; line-height: 1.45; margin-top: 10px; }
+
+  /* grabber preview: a chat-style button bottom right, opens a panel that can be moved and docks to the bottom edge */
+  .pv-fab { position: fixed; right: 16px; bottom: 16px; z-index: 50; width: 60px; height: 60px; border-radius: 50%; padding: 0; border: none;
+            display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-text); box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+  .pv-fab svg { width: 32px; height: 32px; }
+  .pv-panel { position: fixed; right: 16px; bottom: 0; z-index: 50; width: min(460px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 12px 12px;
+              background: var(--card); border: 1px solid var(--line); border-radius: 12px 12px 0 0; box-shadow: 0 -4px 20px rgba(0, 0, 0, .25); }
+  .pv-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; cursor: move; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .pv-head b { font-size: 15px; }
+  .pv-grip { color: var(--muted); font-size: 14px; letter-spacing: 2px; }
+  .pv-x { width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 22px; line-height: 1; cursor: pointer; }
+  .preview { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; }
+  .preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+  .preview .ov { position: absolute; inset: 0; pointer-events: none; }
+  .preview .ov svg { width: 100%; height: 100%; display: block; }
+  .preview .gsc { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 8px 5px; font-size: 11px; color: #fff; background: rgba(10, 10, 14, .78); }
+  .preview .gsc .gs-bar { height: 4px; margin-bottom: 3px; }
+  .preview .gsc b { color: #ffb020; }
+  .preview .bbtext { position: absolute; left: 0; top: 0; right: 0; font-size: 11px; color: #fff; background: rgba(10, 10, 14, .7); padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preview .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; text-align: center; padding: 12px; }
+
+  /* backups */
+  ul { list-style: none; padding: 0; margin: 12px 0 0; }
+  li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  li > span:first-child { white-space: nowrap; }
+  .actions { display: flex; gap: 14px; align-items: center; }
+  .linkbtn { padding: 0; border: none; background: none; color: var(--accent); font-size: 14px; text-decoration: underline; }
+  .linkbtn:disabled { color: var(--muted); text-decoration: none; cursor: default; opacity: 1; }
+  #conn { font-size: 14px; margin-bottom: 12px; }
+  #connect { margin-bottom: 12px; }
+  #status { min-height: 1.4em; font-size: 14px; margin-top: 8px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main id="main">
+  <header>
+    <div class="titles">
+      <h1>Hyperion TV-Testseite</h1>
+      <div class="devicelabel">Dieses Gerät: <span id="dev-label"></span></div>
+    </div>
+    <div class="seg" role="group" aria-label="Darstellung">
+      <button data-theme-choice="auto">Auto</button>
+      <button data-theme-choice="light">Hell</button>
+      <button data-theme-choice="dark">Dunkel</button>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>So funktioniert's</h2>
+    <p class="help" style="margin:0">Auf dem TV-Gerät (TV-Stick, Browser am Fernseher) öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
+    <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Backup</b></a> (ganz unten) sicherst du die komplette Hyperion-Konfiguration auf dem Pi. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf das Wort <b>Backup</b> springt dorthin.</p>
+  </section>
+
+  <!-- ===== test colors ===== -->
+  <section class="card" id="card-color">
+    <h2>Testfarben</h2>
+    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Mit dem Stift an einer Farbe änderst du ihren Wert, mit dem Kreis setzt du ihn auf den Standard zurück, und mit dem Kopier-Symbol übernimmst du den RGB-Wert.</p>
+    <p class="note" id="list-note"></p>
+
+    <div class="color-grid">
+      <div class="col">
+        <div id="crow-presets"></div>
+        <h3>Eigene Farben</h3>
+        <div id="crow-custom"></div>
+        <p class="hintline" id="custom-hint"></p>
+        <input type="color" id="picker" tabindex="-1" aria-hidden="true">
+      </div>
+
+      <div class="col">
+        <div class="hy-col" id="hy-col">
+          <h3 style="margin-top:0">Farben in Hyperion</h3>
+          <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort.</p>
+          <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
+
+          <h4>Farben</h4>
+          <div id="hy-rgb"></div>
+
+          <h4>Helligkeit und Sättigung</h4>
+          <div class="srow"><label for="hy-brightness">Helligkeit <span class="val" id="hy-brightness_v"></span></label><input type="range" id="hy-brightness" data-cfield="brightness" data-slider min="0" max="100" step="1"></div>
+          <div class="srow"><label for="hy-saturationGain">Sättigungsverstärkung <span class="val" id="hy-saturationGain_v"></span></label><input type="range" id="hy-saturationGain" data-cfield="saturationGain" data-slider min="0" max="10" step="0.1"></div>
+          <div class="srow"><label for="hy-backlightThreshold">Hintergrundbeleuchtung ab <span class="val" id="hy-backlightThreshold_v"></span></label><input type="range" id="hy-backlightThreshold" data-cfield="backlightThreshold" data-slider min="0" max="100" step="1"></div>
+          <label class="check"><input type="checkbox" data-cfield="backlightColored"><span>Farbige Hintergrundbeleuchtung</span></label>
+
+          <h4>Gamma und Farbtemperatur</h4>
+          <div class="frow"><label>Gamma Rot</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaRed" min="0.1" max="100" step="0.1" inputmode="decimal"></span></div>
+          <div class="frow"><label>Gamma Grün</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaGreen" min="0.1" max="100" step="0.1" inputmode="decimal"></span></div>
+          <div class="frow"><label>Gamma Blau</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaBlue" min="0.1" max="100" step="0.1" inputmode="decimal"></span></div>
+          <div class="frow"><label>Farbtemperatur (K)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="temperature" min="1000" max="40000" step="100" inputmode="numeric"></span></div>
+
+          <h4>Kantenverstärkung (Fork-Erweiterung)</h4>
+          <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="edgeTransitionBoost.enabled"><span>Aktiviert</span></label>
+          <div class="frow"><label>Übergangsbreite (LEDs, 1–3)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.ledWidth" min="1" max="3" step="1" inputmode="numeric"></span></div>
+          <div class="frow"><label>Kanten-Empfindlichkeit (5–255)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.edgeSensitivity" min="5" max="255" step="1" inputmode="numeric"></span></div>
+          <div class="frow"><label>Verstärkungsfaktor (0–2)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.boostStrength" min="0" max="2" step="0.05" inputmode="decimal"></span></div>
+
+          <h4>Grauachsen-Korrektur (Fork-Erweiterung)</h4>
+          <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayAxisTrim.enabled"><span>Aktiviert</span></label>
+          <div id="hy-stops"></div>
+          <p class="note" id="hy-note"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== black bars test ===== -->
+  <section class="card" id="card-bars">
+    <h2>Schwarze Balken Test</h2>
+    <p class="help">Simuliert Balken wie bei Kinofilmen. Damit testest du die Schwarzbalken-Erkennung von Hyperion: Die LEDs am Rand sollten den Balken ignorieren und weiter die Bildfarbe zeigen. Werte in Prozent der Bildhöhe bzw.&nbsp;‑breite.</p>
+
+    <div id="bars-pairs"></div>
+
+    <details class="more" id="more-bars">
+      <summary>Einzeln einstellen (oben, unten, links, rechts)</summary>
+      <div id="bars-single" style="margin-top:12px"></div>
+      <button class="collapse" id="collapse-bars">▴ Einklappen</button>
+    </details>
+    <button class="wide" id="reset" style="margin-top:12px">Alle Balken auf 0 %</button>
+  </section>
+
+  <!-- ===== Hyperion black-border detection ===== -->
+  <section class="card" id="card-bb">
+    <h2>Schwarzbalken-Erkennung (Hyperion)</h2>
+    <p class="help">So erkennt Hyperion die Balken im Grabber-Bild. Die Werte werden direkt in Hyperion gespeichert.</p>
+    <div class="status" id="bb-status">Warte auf Daten von Hyperion …</div>
+
+    <label class="check"><input type="checkbox" id="bb-enabled"><span>Schwarzbalken-Erkennung aktiv</span></label>
+
+    <label class="field">Modus</label>
+    <div class="seg full" role="group" aria-label="Erkennungsmodus" id="bb-mode">
+      <button data-bb-mode="default">Standard</button>
+      <button data-bb-mode="classic">Klassisch</button>
+      <button data-bb-mode="osd">OSD</button>
+      <button data-bb-mode="letterbox">Letterbox</button>
+    </div>
+    <p class="note" id="bb-mode-help"></p>
+
+    <label class="field" for="bb-threshold">Schwelle</label>
+    <div class="row"><input type="range" id="bb-threshold" min="0" max="100" step="1"><span class="val" id="bb-threshold_v"></span></div>
+
+    <h3>Zählwerte</h3>
+    <div class="numgrid">
+      <div><label class="field" for="bb-unknown">Unbekannte Bilder</label><input type="number" id="bb-unknown" min="0" inputmode="numeric"></div>
+      <div><label class="field" for="bb-border">Randbilder</label><input type="number" id="bb-border" min="0" inputmode="numeric"></div>
+      <div><label class="field" for="bb-inconsistent">Inkonsistente Bilder</label><input type="number" id="bb-inconsistent" min="0" inputmode="numeric"></div>
+      <div><label class="field" for="bb-blur">Unscharfe Pixel</label><input type="number" id="bb-blur" min="0" inputmode="numeric"></div>
+    </div>
+    <p class="note" id="bb-cfg-note"></p>
+
+    <div class="sub">
+      <h3>Anzeige beim Testen</h3>
+      <label class="check"><input type="checkbox" id="ov-bbPreview"><span>Erkennungsbereich in der Grabber-Vorschau anzeigen</span></label>
+      <label class="check"><input type="checkbox" id="ov-bbTv"><span>Erkennungsbereich auf dem TV anzeigen<small>Türkis: wo Hyperion nach Balken sucht. Pink gestrichelt: der übernommene Bildbereich.</small></span></label>
+      <p class="warn" id="bb-tv-warn" hidden>Der Grabber sieht die Linien auf dem TV mit, sie verfälschen die Erkennung und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
+    </div>
+
+    <div class="sub">
+      <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
+      <label class="check" style="margin-top:0"><input type="checkbox" id="bb-live"><span>Hier auf dem Handy anzeigen</span></label>
+      <div class="gsbox" id="bb-live-box" hidden></div>
+    </div>
+  </section>
+
+  <!-- ===== gray still image test ===== -->
+  <section class="card" id="card-gs">
+    <h2>Graues Standbild Test</h2>
+    <p class="help">Manche Player blenden ein pausiertes Video nach kurzer Zeit zu einem grauen, dunkleren Standbild ab. Hyperion erkennt das und friert die LEDs ein oder schaltet sie aus. Hier kannst du das nachstellen und beobachten.</p>
+
+    <div class="sub" style="margin-top:0;border-top:none;padding-top:0">
+      <h3 style="margin-top:0">Live-Ablauf (Entwickler-Ansicht)</h3>
+      <label class="check" style="margin-top:0"><input type="checkbox" id="gs-live"><span>Hier auf dem Handy anzeigen</span></label>
+      <div class="gsbox" id="gs-live-box" hidden></div>
+      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>In der Grabber-Vorschau anzeigen</span></label>
+      <label class="check"><input type="checkbox" id="ov-gsTv"><span>Auf dem TV anzeigen<small>Kleine Box in der Bildmitte. Die LEDs werten nur die Ränder aus, sie stört die Erkennung deshalb kaum.</small></span></label>
+    </div>
+
+    <div style="margin-top:12px">
+      <label class="field" for="gt-tone">Grauton</label>
+      <div class="row"><span class="grayswatch" id="gt-swatch"></span><input type="range" id="gt-tone" min="0" max="255" step="1"><span class="val" id="gt-tone_v"></span></div>
+      <label class="check"><input type="checkbox" id="gt-drop"><span>Helligkeitsabfall simulieren</span></label>
+      <div id="gt-drop-settings" class="indent">
+        <label class="field" for="gt-after">Abfall nach</label>
+        <div class="row"><input type="range" id="gt-after" min="0" max="30" step="0.5"><span class="val" id="gt-after_v"></span></div>
+        <label class="field" for="gt-percent">Abfall um</label>
+        <div class="row"><input type="range" id="gt-percent" min="5" max="100" step="5"><span class="val" id="gt-percent_v"></span></div>
+        <label class="field" for="gt-duration">Dauer des Abfalls</label>
+        <div class="row"><input type="range" id="gt-duration" min="0" max="5" step="0.1"><span class="val" id="gt-duration_v"></span></div>
+        <p class="note" id="gt-drop-note"></p>
+      </div>
+      <button class="wide primary" id="gt-toggle" style="margin-top:12px">Test starten</button>
+      <button class="wide" id="gt-restart" style="margin-top:10px">Test neu starten</button>
+    </div>
+
+    <div class="sub">
+      <h3>Einstellungen in Hyperion</h3>
+      <p class="note" id="gs-cfg-note" style="margin-top:0"></p>
+      <label class="check"><input type="checkbox" id="gs-enabled"><span>Graues-Standbild-Erkennung aktiv</span></label>
+      <label class="field" for="gs-still">Standbild muss mindestens gleich bleiben für</label>
+      <div class="row"><input type="range" id="gs-still" min="1" max="60" step="1"><span class="val" id="gs-still_v"></span></div>
+      <label class="field" for="gs-drop">Nötiger Helligkeitsabfall (0 = nicht nötig)</label>
+      <div class="row"><input type="range" id="gs-drop" min="0" max="255" step="1"><span class="val" id="gs-drop_v"></span></div>
+      <label class="field" for="gs-window">… innerhalb von</label>
+      <div class="row"><input type="range" id="gs-window" min="0.2" max="5" step="0.1"><span class="val" id="gs-window_v"></span></div>
+      <label class="field" for="gs-change">Toleranz für Bildänderung</label>
+      <div class="row"><input type="range" id="gs-change" min="0" max="64" step="1"><span class="val" id="gs-change_v"></span></div>
+      <label class="field">Reaktion</label>
+      <div class="seg full" role="group" aria-label="Reaktion">
+        <button data-gs-mode="freeze">Farben einfrieren</button>
+        <button data-gs-mode="off">LEDs aus</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== backup ===== -->
+  <section class="card" id="card-backup">
+    <h2>Backup</h2>
+    <p class="help">Sichert die komplette Hyperion-Konfiguration (LEDs, Farben, Grabber) auf dem Pi. Mit <b>Wiederherstellen</b> kehrst du zu einem gesicherten Stand zurück. Dabei wird vorher automatisch der aktuelle Stand gesichert, und Hyperion startet neu.</p>
+    <div id="conn">Verbindung zu Hyperion wird geprüft …</div>
+    <button class="wide" id="connect" hidden>Mit Hyperion verbinden</button>
+    <button class="wide primary" id="backup">Backup erstellen</button>
+    <ul id="backups"></ul>
+    <div id="status" role="status"></div>
+  </section>
+</main>
+
+<!-- grabber preview: closed = button, open = movable panel (docks to the bottom edge by default) -->
+<button class="pv-fab" id="pv-fab" aria-label="Grabber-Vorschau öffnen" title="Grabber-Vorschau">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3" y="7" width="18" height="12" rx="2"/>
+    <path d="M9 3l3 4 3-4"/>
+    <path d="M8 22h8"/>
+  </svg>
+</button>
+<section class="pv-panel" id="pv-panel" hidden aria-label="Grabber-Vorschau">
+  <div class="pv-head" id="pv-head" title="Zum Verschieben ziehen">
+    <span><b>Grabber-Vorschau</b> <span class="pv-grip" aria-hidden="true">⋮⋮</span></span>
+    <button class="pv-x" id="pv-close" aria-label="Vorschau schließen">×</button>
+  </div>
+  <div class="preview" id="preview">
+    <img id="pv-img" alt="Grabber-Bild">
+    <div class="empty" id="pv-empty">Warte auf Bild vom Grabber …</div>
+    <div class="ov" id="pv-bb"></div>
+    <div class="bbtext" id="pv-bbtext" hidden></div>
+    <div class="gsc" id="pv-gs" hidden></div>
+  </div>
+</section>
+
+<script type="module">
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillCompactHtml, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
+
+const EDGES = ["top", "bottom", "left", "right"];
+const BAR_PAIRS = [
+  { id: "topbottom", label: "Oben + Unten", edges: ["top", "bottom"] },
+  { id: "leftright", label: "Links + Rechts", edges: ["left", "right"] },
+];
+const BAR_SINGLE = [
+  { id: "top", label: "Oben", edges: ["top"] },
+  { id: "bottom", label: "Unten", edges: ["bottom"] },
+  { id: "left", label: "Links", edges: ["left"] },
+  { id: "right", label: "Rechts", edges: ["right"] },
+];
+const BAR_PRESETS = [0, 5, 10];
+const LONG_PRESS_MS = 500;
+const BB_MODE_HELP = {
+  default: "Sucht an drei Stellen pro Seite. Gut für normale Filme mit Balken oben/unten oder links/rechts.",
+  classic: "Sucht nur auf einer Diagonalen oben links. Alter Modus, schnell aber leicht zu täuschen.",
+  osd: "Wie Standard, sucht oben/unten aber an der erkannten Seitenkante. Robuster bei Einblendungen (OSD).",
+  letterbox: "Nur Balken oben und unten. Die Mitte wird unten ignoriert, damit Untertitel nicht stören.",
+};
+// Hyperion's own German labels (assets/webconfig/i18n/de.json)
+const COLOR_RGB = [["white", "Weiß"], ["red", "Rot"], ["green", "Grün"], ["blue", "Blau"], ["cyan", "Cyan"], ["magenta", "Magenta"], ["yellow", "Gelb"]];
+const COLOR_SLIDER_UNITS = { brightness: [" %", 0], saturationGain: ["×", 1], backlightThreshold: [" %", 0] };
+const BB_NUMBERS = [
+  { id: "bb-unknown", key: "unknownFrameCnt" },
+  { id: "bb-border", key: "borderFrameCnt" },
+  { id: "bb-inconsistent", key: "maxInconsistentCnt" },
+  { id: "bb-blur", key: "blurRemoveCnt" },
+];
+const GS_FIELDS = [
+  ["gs-still", "stillTimeSeconds", (v) => `${v} s`],
+  ["gs-drop", "brightnessDropThreshold", (v) => (v > 0 ? String(v) : "aus")],
+  ["gs-window", "dropWindowSeconds", (v) => `${fmt(v)} s`],
+  ["gs-change", "changeThreshold", (v) => String(v)],
+];
+// icons: feather-style strokes
+const ICON = {
+  edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+};
+
+let state = null;
+let presets = [];              // standard presets from the server (id, color = standard, name)
+let dirty = false;             // true while a local change is being sent
+let deleting = false;          // custom colors show their delete badges
+let debug = null;              // latest "forkdebug" snapshot from Hyperion
+let bbConfig = null;           // Hyperion's blackborderdetector settings
+let colorConfig = null;        // Hyperion's color settings
+let colorIndex = 0;            // which channelAdjustment entry the right column edits
+let stopsBuiltFor = -1;        // number of gray-axis stops currently built in the editor
+let listKey = "";              // changes when the list of colors has to be rebuilt
+let hyperionConnected = false;
+let previewSource = null;
+let pickerTarget = null;       // what the color picker edits: { kind: "preset" | "custom", id, from }
+
+const $ = (id) => document.getElementById(id);
+const fmt = (v, d = 1) => Number(v).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const rgbText = (rgb) => rgb.join(", ");
+const presetColor = (p) => state?.presetColors?.[p.id] ?? p.color;
+
+const gsStyle = document.createElement("style");
+gsStyle.textContent = GRAY_STILL_CSS;
+document.head.appendChild(gsStyle);
+
+// ---------- theme and device ----------
+
+function applyTheme(choice) {
+  if (choice === "light" || choice === "dark") document.documentElement.dataset.theme = choice;
+  else delete document.documentElement.dataset.theme;
+  document.querySelectorAll("[data-theme-choice]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === choice)));
+  try { choice === "auto" ? localStorage.removeItem("tvtest-theme") : localStorage.setItem("tvtest-theme", choice); } catch {}
+}
+document.querySelectorAll("[data-theme-choice]").forEach(b => b.addEventListener("click", () => applyTheme(b.dataset.themeChoice)));
+applyTheme(document.documentElement.dataset.theme ?? "auto");
+
+const DEVICE_NAMES = { phone: "Handy", tablet: "Tablet", desktop: "Laptop oder PC", tv: "TV-Browser" };
+$("dev-label").textContent = DEVICE_NAMES[document.documentElement.dataset.device] ?? "unbekannt";
+
+// ---------- shared state ----------
+
+async function send(patch) {
+  dirty = true;
+  try {
+    const res = await fetch("/api/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    state = body;
+    return body;
+  } catch (e) {
+    $("status").textContent = "Fehler: " + e.message;
+    return null;
+  } finally {
+    dirty = false;
+  }
+}
+
+function renderState() {
+  if (!state) return;
+  const key = JSON.stringify([state.presetColors ?? {}, state.customColors ?? []]);
+  if (key !== listKey) buildColorList();
+  else updateActiveRows();
+  $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert." : "";
+  renderBars();
+  renderGrayTest();
+  renderOverlayChecks();
+}
+
+// ---------- copy helper (works on plain http, where navigator.clipboard is missing) ----------
+
+function legacyCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch {}
+  ta.remove();
+  return ok;
+}
+
+async function copyText(text) {
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+  }
+  return legacyCopy(text);
+}
+
+// ---------- test colors: list ----------
+
+function makeTool(icon, label, onClick, extraClass = "") {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "ibtn " + extraClass;
+  b.setAttribute("aria-label", label);
+  b.title = label;
+  b.innerHTML = ICON[icon];
+  b.addEventListener("click", (ev) => { ev.stopPropagation(); onClick(b); });
+  return b;
+}
+
+// one row: the main part sets the color for the TV, the tools edit, reset and copy the value
+function makeRow({ color, name, kind, id, edited }) {
+  const row = document.createElement("div");
+  row.className = "crow" + (kind === "custom" ? " custom" : "");
+  row.dataset.color = color;
+
+  const main = document.createElement("button");
+  main.type = "button";
+  main.className = "crow-main";
+  main.dataset.role = "pick";
+  const chip = document.createElement("span");
+  chip.className = "chip";
+  chip.style.background = color;
+  const label = document.createElement("span");
+  label.className = "cname";
+  const b = document.createElement("b");
+  b.textContent = name;
+  const small = document.createElement("small");
+  small.textContent = rgbText(hexToRgb(color));
+  label.append(b, small);
+  main.append(chip, label);
+  main.addEventListener("click", () => { if (!deleting) setColor(color); });
+  row.appendChild(main);
+
+  const tools = document.createElement("span");
+  tools.className = "tools";
+  tools.appendChild(makeTool("edit", "Farbe einstellen", () => openPickerFor({ kind, id, from: color, chip })));
+  if (kind === "preset") {
+    const reset = makeTool("reset", "Auf Standard zurücksetzen", () => send({ resetPreset: id }));
+    reset.disabled = !edited;
+    tools.appendChild(reset);
+  }
+  tools.appendChild(makeTool("copy", "RGB-Wert kopieren", async (btn) => {
+    const ok = await copyText(rgbText(hexToRgb(color)));
+    btn.classList.toggle("done", ok);
+    btn.title = ok ? "Kopiert" : "Nicht kopiert";
+    setTimeout(() => { btn.classList.remove("done"); btn.title = "RGB-Wert kopieren"; }, 1200);
+  }));
+  row.appendChild(tools);
+
+  if (kind === "custom") {
+    const del = document.createElement("span");
+    del.className = "del";
+    del.setAttribute("role", "button");
+    del.setAttribute("aria-label", `${color} löschen`);
+    del.textContent = "×";
+    del.addEventListener("click", (ev) => { ev.stopPropagation(); removeCustom(color); });
+    row.appendChild(del);
+    attachLongPress(main, () => setDeleting(true));
+  }
+  return row;
+}
+
+function buildColorList() {
+  listKey = JSON.stringify([state.presetColors ?? {}, state.customColors ?? []]);
+  const pres = $("crow-presets");
+  pres.innerHTML = "";
+  presets.forEach(p => {
+    const color = presetColor(p);
+    pres.appendChild(makeRow({ color, name: p.name, kind: "preset", id: p.id, edited: color !== p.color }));
+  });
+
+  const box = $("crow-custom");
+  const colors = state?.customColors ?? [];
+  if (!colors.length) deleting = false;
+  box.innerHTML = "";
+  colors.forEach(color => {
+    box.appendChild(makeRow({ color, name: color.toUpperCase(), kind: "custom", id: color }));
+  });
+  const add = document.createElement("div");
+  add.className = "crow add";
+  const addMain = document.createElement("button");
+  addMain.type = "button";
+  addMain.className = "crow-main";
+  addMain.innerHTML = `<span class="chip" aria-hidden="true">+</span><span class="cname"><b>Neue Farbe</b><small>Farbwähler öffnen</small></span>`;
+  addMain.addEventListener("click", openNewPicker);
+  add.appendChild(addMain);
+  box.appendChild(add);
+  renderDeleting();
+  updateActiveRows();
+}
+
+function updateActiveRows() {
+  document.querySelectorAll(".crow[data-color]").forEach(r => r.classList.toggle("active", !state.grayTest?.active && r.dataset.color === state.color));
+}
+
+function renderDeleting() {
+  $("crow-custom").classList.toggle("deleting", deleting);
+  $("custom-hint").innerHTML = deleting
+    ? "Auf <b>×</b> tippen zum Löschen. Woanders tippen zum Beenden."
+    : "Gedrückt halten zum Löschen.";
+}
+
+function attachLongPress(el, onLongPress) {
+  let timer = null, startX = 0, startY = 0, fired = false;
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  el.addEventListener("pointerdown", (ev) => {
+    fired = false;
+    startX = ev.clientX; startY = ev.clientY;
+    timer = setTimeout(() => { fired = true; timer = null; navigator.vibrate?.(30); onLongPress(); }, LONG_PRESS_MS);
+  });
+  el.addEventListener("pointermove", (ev) => { if (timer && Math.hypot(ev.clientX - startX, ev.clientY - startY) > 10) cancel(); });
+  el.addEventListener("pointerup", cancel);
+  el.addEventListener("pointercancel", cancel);
+  el.addEventListener("pointerleave", cancel);
+  el.addEventListener("contextmenu", (ev) => ev.preventDefault());
+  // the click that follows a long press must not also pick the color
+  el.addEventListener("click", (ev) => { if (fired) { ev.stopImmediatePropagation(); fired = false; } }, true);
+}
+
+function setDeleting(on) {
+  if (deleting === on) return;
+  deleting = on;
+  renderDeleting();
+}
+
+document.addEventListener("pointerdown", (ev) => {
+  if (deleting && !$("crow-custom").contains(ev.target)) setDeleting(false);
+});
+
+function setColor(color) {
+  // picking a color ends the gray still test, the TV shows the color again
+  const patch = state.grayTest?.active ? { color, grayTest: { active: false } } : { color };
+  state = { ...state, color, grayTest: { ...state.grayTest, active: false } };
+  renderState();
+  send(patch);
+}
+
+// ---------- color picker: edits a preset or a custom color, or adds a new one ----------
+
+const picker = $("picker");
+
+function openPickerFor(target) {
+  setDeleting(false);
+  pickerTarget = target;
+  picker.value = target.from;
+  try { picker.showPicker ? picker.showPicker() : picker.click(); } catch { picker.click(); }
+}
+
+function openNewPicker() {
+  setDeleting(false);
+  pickerTarget = { kind: "new" };
+  picker.value = state.color;
+  try { picker.showPicker ? picker.showPicker() : picker.click(); } catch { picker.click(); }
+}
+
+// live preview while the picker moves, the change is saved once it is confirmed
+picker.addEventListener("input", (ev) => {
+  if (pickerTarget?.kind === "new") return setColor(ev.target.value);
+  if (pickerTarget?.chip) pickerTarget.chip.style.background = ev.target.value;
+});
+picker.addEventListener("change", async (ev) => {
+  const color = ev.target.value.toLowerCase();
+  const t = pickerTarget;
+  pickerTarget = null;
+  if (!t) return;
+  if (t.kind === "new") {
+    if (await send({ color, addCustom: color })) buildColorList();
+  } else if (t.kind === "preset") {
+    send({ setPreset: { id: t.id, color } });
+  } else if (t.kind === "custom") {
+    if (await send({ replaceCustom: { from: t.from, to: color } })) buildColorList();
+  }
+});
+
+async function removeCustom(color) {
+  if (await send({ removeCustom: color })) buildColorList();
+}
+
+// ---------- Hyperion color values (right column) ----------
+
+// current value of one editable field, same paths as COLOR_FIELDS on the server
+function readField(entry, field, stop) {
+  if (!entry) return undefined;
+  if (field.startsWith("edgeTransitionBoost.")) return colorConfig?.edgeTransitionBoost?.[field.split(".")[1]];
+  if (field.startsWith("grayAxisTrim.stop.")) return entry.grayAxisTrim?.stops?.[stop]?.[field.split(".")[2]];
+  if (field === "grayAxisTrim.enabled") return entry.grayAxisTrim?.enabled;
+  return entry[field];
+}
+
+function buildColorEditor() {
+  $("hy-rgb").innerHTML = COLOR_RGB.map(([key, label]) => `
+    <div class="rgbrow">
+      <span class="rgbname">${label}</span>
+      <span class="inputs">${[0, 1, 2].map(ch => `<input type="number" inputmode="numeric" min="0" max="255" step="1" data-rgb="${key}" data-ch="${ch}" aria-label="${label} ${"RGB"[ch]}">`).join("")}</span>
+    </div>`).join("");
+  $("hy-rgb").querySelectorAll("input").forEach(inp => inp.addEventListener("change", () => saveRgbRow(inp.dataset.rgb)));
+}
+
+// stop rows are built for the number of stops Hyperion has
+function buildStops(n) {
+  $("hy-stops").innerHTML = Array.from({ length: n }, (_, i) => `
+    <div class="stoprow">
+      <small>Stufe ${i + 1}</small>
+      <div class="frow" style="margin:0"><label>Sättigung bis</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayAxisTrim.stop.saturationUpTo" data-stop="${i}" min="0" max="1" step="0.01" inputmode="decimal"></span></div>
+      <div class="frow" style="margin:0"><label>Verstärkung Rot / Grün / Blau</label><span class="inputs">
+        <input type="number" data-cfield="grayAxisTrim.stop.gainRed" data-stop="${i}" min="0" max="4" step="0.05" inputmode="decimal" aria-label="Verstärkung Rot Stufe ${i + 1}">
+        <input type="number" data-cfield="grayAxisTrim.stop.gainGreen" data-stop="${i}" min="0" max="4" step="0.05" inputmode="decimal" aria-label="Verstärkung Grün Stufe ${i + 1}">
+        <input type="number" data-cfield="grayAxisTrim.stop.gainBlue" data-stop="${i}" min="0" max="4" step="0.05" inputmode="decimal" aria-label="Verstärkung Blau Stufe ${i + 1}">
+      </span></div>
+    </div>`).join("");
+  stopsBuiltFor = n;
+}
+
+function renderColorEditor() {
+  const entries = colorConfig?.channelAdjustment ?? [];
+  const entry = entries[colorIndex] ?? null;
+  const writable = hyperionConnected && !!entry;
+
+  // several entries (own LED ranges) get a picker, one entry needs none
+  $("hy-entry-row").hidden = entries.length < 2;
+  const sel = $("hy-entry");
+  sel.innerHTML = "";
+  entries.forEach((e, i) => {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = `${e.id} · LEDs ${e.leds}`;
+    sel.appendChild(o);
+  });
+  sel.value = String(colorIndex);
+
+  const stops = entry?.grayAxisTrim?.stops?.length ?? 0;
+  if (stops !== stopsBuiltFor) buildStops(stops);
+
+  document.querySelectorAll("#hy-rgb input").forEach(inp => {
+    if (document.activeElement !== inp) inp.value = entry?.[inp.dataset.rgb]?.[Number(inp.dataset.ch)] ?? "";
+    inp.disabled = !writable;
+  });
+  document.querySelectorAll("#hy-col [data-cfield]").forEach(el => {
+    const value = readField(entry, el.dataset.cfield, Number(el.dataset.stop));
+    if (el.type === "checkbox") el.checked = value === true;
+    else if (document.activeElement !== el && value !== undefined) el.value = value;
+    if (el.type === "range") {
+      const [unit, dec] = COLOR_SLIDER_UNITS[el.dataset.cfield] ?? ["", 0];
+      $(el.id + "_v").textContent = value === undefined ? "" : `${fmt(value, dec)}${unit}`;
+    }
+    el.disabled = !writable;
+  });
+
+  if (!colorConfig) $("hy-note").textContent = "Farbwerte nicht lesbar.";
+  else if (!hyperionConnected) $("hy-note").textContent = "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“.";
+  else if (!entry) $("hy-note").textContent = "Kein Farbeintrag gefunden.";
+}
+
+async function loadColorConfig() {
+  try {
+    const res = await fetch("/api/hyperion/color");
+    if (!res.ok) throw new Error((await res.json()).error);
+    colorConfig = await res.json();
+  } catch (e) {
+    colorConfig = null;
+    $("hy-note").textContent = "Farbwerte nicht lesbar: " + e.message;
+    return;
+  }
+  renderColorEditor();
+}
+
+// one save per field: { index, field, value, stop }
+async function saveColor(field, value, stop) {
+  $("hy-note").textContent = "Speichere in Hyperion …";
+  try {
+    const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, field, value, stop }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    colorConfig = body;
+    $("hy-note").textContent = "Gespeichert, wirkt sofort auf die LEDs.";
+  } catch (e) {
+    $("hy-note").textContent = "Speichern fehlgeschlagen: " + e.message;
+    await loadColorConfig();
+    return;
+  }
+  renderColorEditor();
+}
+
+async function saveRgbRow(field) {
+  const inputs = [...document.querySelectorAll(`#hy-rgb input[data-rgb="${field}"]`)];
+  const values = inputs.map(i => i.value.trim());
+  const rgb = values.map(Number);
+  if (values.some(v => v === "") || rgb.some((c) => !Number.isInteger(c) || c < 0 || c > 255)) {
+    $("hy-note").textContent = "RGB braucht drei ganze Zahlen von 0 bis 255.";
+    return renderColorEditor();
+  }
+  await saveColor(field, rgb);
+}
+
+// one delegated listener for every field in the Hyperion column
+$("hy-col").addEventListener("input", (ev) => {
+  const el = ev.target;
+  if (el.type === "range" && el.dataset.cfield) {
+    const [unit, dec] = COLOR_SLIDER_UNITS[el.dataset.cfield] ?? ["", 0];
+    $(el.id + "_v").textContent = `${fmt(el.value, dec)}${unit}`;
+  }
+});
+$("hy-col").addEventListener("change", (ev) => {
+  const el = ev.target;
+  if (!el.dataset.cfield) return;
+  if (el.type === "checkbox") return saveColor(el.dataset.cfield, el.checked);
+  const v = Number(el.value);
+  if (el.value === "" || !Number.isFinite(v)) {
+    $("hy-note").textContent = "Bitte eine Zahl eingeben.";
+    return renderColorEditor();
+  }
+  saveColor(el.dataset.cfield, v, el.dataset.stop === undefined ? undefined : Number(el.dataset.stop));
+});
+$("hy-entry").addEventListener("change", (ev) => { colorIndex = Number(ev.target.value); renderColorEditor(); });
+
+// ---------- black bars ----------
+
+function buildBarRow(c, container) {
+  const row = document.createElement("div");
+  row.className = "bar-row";
+  row.innerHTML = `
+    <div class="bar-head">
+      <label for="${c.id}">${c.label}</label>
+      <span class="right">
+        <span class="val" id="${c.id}_v"></span>
+        <span class="seg small" role="group" aria-label="Voreinstellungen ${c.label}">
+          ${BAR_PRESETS.map(v => `<button type="button" data-set="${c.id}" data-value="${v}">${v} %</button>`).join("")}
+        </span>
+      </span>
+    </div>
+    <input type="range" id="${c.id}" min="0" max="50" step="0.5">`;
+  container.appendChild(row);
+  const input = row.querySelector("input");
+  input.addEventListener("input", () => setBars(Object.fromEntries(c.edges.map(e => [e, parseFloat(input.value)]))));
+  row.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => setBars(Object.fromEntries(c.edges.map(e => [e, Number(b.dataset.value)])))));
+}
+
+function renderBars() {
+  for (const c of [...BAR_PAIRS, ...BAR_SINGLE]) {
+    const vals = c.edges.map(e => state.bars[e]);
+    const same = vals.every(v => v === vals[0]);
+    if (document.activeElement !== $(c.id)) $(c.id).value = vals.reduce((a, b) => a + b, 0) / vals.length;
+    $(c.id + "_v").textContent = same ? `${vals[0]} %` : vals.join(" / ") + " %";
+    document.querySelectorAll(`[data-set="${c.id}"]`).forEach(b => b.setAttribute("aria-pressed", String(same && Number(b.dataset.value) === vals[0])));
+  }
+}
+
+function setBars(patch) {
+  state = { ...state, bars: { ...state.bars, ...patch } };
+  renderState();
+  send({ bars: patch });
+}
+
+BAR_PAIRS.forEach(c => buildBarRow(c, $("bars-pairs")));
+BAR_SINGLE.forEach(c => buildBarRow(c, $("bars-single")));
+$("reset").addEventListener("click", () => setBars({ top: 0, bottom: 0, left: 0, right: 0 }));
+$("collapse-bars").addEventListener("click", () => {
+  $("more-bars").open = false;
+  $("card-bars").scrollIntoView({ block: "start", behavior: "smooth" });
+});
+$("more-bars").addEventListener("toggle", () => store.set("tvtest-more-bars", $("more-bars").open ? "1" : "0"));
+$("more-bars").open = store.get("tvtest-more-bars") === "1";
+
+// ---------- overlay switches (shared, the TV reads them too) ----------
+
+const OVERLAY_KEYS = ["bbTv", "bbPreview", "gsTv", "gsPreview"];
+
+function renderOverlayChecks() {
+  OVERLAY_KEYS.forEach(k => { $("ov-" + k).checked = !!state.overlays?.[k]; });
+  $("bb-tv-warn").hidden = !state.overlays?.bbTv;
+}
+
+OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", (ev) => {
+  state = { ...state, overlays: { ...state.overlays, [k]: ev.target.checked } };
+  renderState();
+  renderDebug();
+  send({ overlays: { [k]: ev.target.checked } });
+}));
+
+// ---------- gray still test pattern ----------
+
+function renderGrayTest() {
+  const g = state.grayTest;
+  const toggle = $("gt-toggle");
+  toggle.textContent = g.active ? "Test stoppen" : "Test starten";
+  toggle.className = g.active ? "wide danger" : "wide primary";
+  $("gt-drop").checked = g.dropEnabled;
+  $("gt-drop-settings").hidden = !g.dropEnabled;
+  if (document.activeElement !== $("gt-tone")) $("gt-tone").value = g.tone;
+  $("gt-tone_v").textContent = `${g.tone} (${Math.round(g.tone / 2.55)} %)`;
+  $("gt-swatch").style.background = `rgb(${g.tone},${g.tone},${g.tone})`;
+  if (document.activeElement !== $("gt-after")) $("gt-after").value = g.dropAfter;
+  $("gt-after_v").textContent = `${fmt(g.dropAfter)} s`;
+  if (document.activeElement !== $("gt-percent")) $("gt-percent").value = g.dropPercent;
+  $("gt-percent_v").textContent = `${g.dropPercent} %`;
+  if (document.activeElement !== $("gt-duration")) $("gt-duration").value = g.dropDuration;
+  $("gt-duration_v").textContent = g.dropDuration > 0 ? `${fmt(g.dropDuration)} s` : "sofort";
+  const drop = g.tone - Math.round(g.tone * (1 - g.dropPercent / 100));
+  const need = bbConfig?.grayStillImageDetector?.brightnessDropThreshold;
+  $("gt-drop-note").textContent = need === undefined
+    ? `Helligkeit fällt von ${g.tone} auf ${g.tone - drop} (um ${drop}).`
+    : `Helligkeit fällt um ${drop}. Hyperion braucht mindestens ${need}${need > 0 && drop < need ? ", das reicht also nicht" : ""}.`;
+}
+
+function sendGrayTest(patch) {
+  state = { ...state, grayTest: { ...state.grayTest, ...patch } };
+  renderState();
+  send({ grayTest: patch });
+}
+
+$("gt-toggle").addEventListener("click", () => sendGrayTest({ active: !state.grayTest.active }));
+$("gt-drop").addEventListener("change", (ev) => sendGrayTest({ dropEnabled: ev.target.checked }));
+// sliders restart the test on release, not while dragging
+for (const [id, key] of [["gt-tone", "tone"], ["gt-after", "dropAfter"], ["gt-percent", "dropPercent"], ["gt-duration", "dropDuration"]]) {
+  $(id).addEventListener("input", (ev) => { state.grayTest[key] = Number(ev.target.value); renderGrayTest(); });
+  $(id).addEventListener("change", (ev) => sendGrayTest({ [key]: Number(ev.target.value) }));
+}
+$("gt-restart").addEventListener("click", () => send({ grayRestart: true }));
+
+// ---------- Hyperion settings: black-border detector and gray still detector ----------
+
+function renderBbConfig() {
+  const writable = hyperionConnected && !!bbConfig;
+  const mode = bbConfig?.mode;
+  document.querySelectorAll("[data-bb-mode]").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.bbMode === mode));
+    b.disabled = !writable;
+  });
+  $("bb-mode-help").textContent = BB_MODE_HELP[mode] ?? "";
+  $("bb-enabled").checked = !!bbConfig?.enable;
+  $("bb-enabled").disabled = !writable;
+  if (bbConfig && document.activeElement !== $("bb-threshold")) $("bb-threshold").value = bbConfig.threshold;
+  $("bb-threshold_v").textContent = bbConfig ? `${bbConfig.threshold} %` : "";
+  $("bb-threshold").disabled = !writable;
+  for (const { id, key } of BB_NUMBERS) {
+    if (bbConfig && document.activeElement !== $(id)) $(id).value = bbConfig[key];
+    $(id).disabled = !writable;
+  }
+
+  const g = bbConfig?.grayStillImageDetector ?? {};
+  $("gs-enabled").checked = !!g.enabled;
+  $("gs-enabled").disabled = !writable;
+  for (const [id, key, label] of GS_FIELDS) {
+    if (g[key] === undefined) continue;
+    if (document.activeElement !== $(id)) $(id).value = g[key];
+    $(id + "_v").textContent = label(g[key]);
+    $(id).disabled = !writable;
+  }
+  document.querySelectorAll("[data-gs-mode]").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.gsMode === g.mode));
+    b.disabled = !writable;
+  });
+  const note = !bbConfig ? "Einstellungen nicht lesbar." : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“." : "";
+  $("bb-cfg-note").textContent = note;
+  $("gs-cfg-note").textContent = note;
+  renderGrayTest();
+}
+
+async function loadBbConfig() {
+  try {
+    const res = await fetch("/api/hyperion/blackborder");
+    if (!res.ok) throw new Error((await res.json()).error);
+    bbConfig = await res.json();
+  } catch (e) {
+    bbConfig = null;
+    $("bb-cfg-note").textContent = "Einstellungen nicht lesbar: " + e.message;
+  }
+  renderBbConfig();
+}
+
+async function saveBb(patch, what) {
+  $("bb-cfg-note").textContent = "Speichere in Hyperion …";
+  try {
+    const res = await fetch("/api/hyperion/blackborder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    bbConfig = body;
+    $("bb-cfg-note").textContent = `${what} in Hyperion gespeichert.`;
+  } catch (e) {
+    $("bb-cfg-note").textContent = "Speichern fehlgeschlagen: " + e.message;
+    await loadBbConfig();
+    return;
+  }
+  renderBbConfig();
+}
+
+document.querySelectorAll("[data-bb-mode]").forEach(b => b.addEventListener("click", () => {
+  const m = b.dataset.bbMode;
+  bbConfig = { ...bbConfig, mode: m };
+  renderBbConfig();
+  saveBb({ mode: m }, `Modus „${BB_MODE_NAMES[m]}“`);
+}));
+$("bb-enabled").addEventListener("change", (ev) => saveBb({ enable: ev.target.checked }, "Erkennung " + (ev.target.checked ? "an" : "aus")));
+$("bb-threshold").addEventListener("input", (ev) => { $("bb-threshold_v").textContent = `${ev.target.value} %`; });
+$("bb-threshold").addEventListener("change", (ev) => saveBb({ threshold: Number(ev.target.value) }, "Schwelle"));
+for (const { id, key } of BB_NUMBERS) {
+  $(id).addEventListener("change", (ev) => saveBb({ [key]: Number(ev.target.value) }, "Wert"));
+}
+$("gs-enabled").addEventListener("change", (ev) => saveBb({ grayStillImageDetector: { enabled: ev.target.checked } }, "Erkennung " + (ev.target.checked ? "an" : "aus")));
+for (const [id, key, label] of GS_FIELDS) {
+  $(id).addEventListener("input", (ev) => { $(id + "_v").textContent = label(Number(ev.target.value)); });
+  $(id).addEventListener("change", (ev) => saveBb({ grayStillImageDetector: { [key]: Number(ev.target.value) } }, "Wert"));
+}
+document.querySelectorAll("[data-gs-mode]").forEach(b => b.addEventListener("click", () =>
+  saveBb({ grayStillImageDetector: { mode: b.dataset.gsMode } }, "Reaktion")));
+
+// ---------- live debug data ----------
+
+$("gs-live").checked = store.get("tvtest-gs-live") === "1";
+$("gs-live").addEventListener("change", (ev) => { store.set("tvtest-gs-live", ev.target.checked ? "1" : "0"); renderDebug(); });
+$("bb-live").checked = store.get("tvtest-bb-live") === "1";
+$("bb-live").addEventListener("change", (ev) => { store.set("tvtest-bb-live", ev.target.checked ? "1" : "0"); renderDebug(); });
+
+// developer view of the black border detector: what Hyperion currently applies, in pixels and percent
+function bbLiveHtml(bb) {
+  if (!bb) return `<div>Keine Daten von Hyperion</div>`;
+  const cur = bb.currentBorder ?? {};
+  const h = bb.imageHeight ? fmt((cur.horizontalSize / bb.imageHeight) * 100) : "?";
+  const v = bb.imageWidth ? fmt((cur.verticalSize / bb.imageWidth) * 100) : "?";
+  const rows = [
+    ["Erkennung", bb.enabled ? "aktiv" : "aus"],
+    ["Modus", BB_MODE_NAMES[bb.mode] ?? bb.mode],
+    ["Bild", bb.imageWidth && bb.imageHeight ? `${bb.imageWidth} × ${bb.imageHeight} px` : "unbekannt"],
+    ["Balken oben/unten", cur.unknown ? "kein Balken übernommen" : `${cur.horizontalSize} px (${h} %)`],
+    ["Balken links/rechts", cur.unknown ? "kein Balken übernommen" : `${cur.verticalSize} px (${v} %)`],
+  ];
+  return `<div class="gs-title">Schwarzbalken-Erkennung</div>` + rows.map(([k, val]) => `<div>${k}: <b>${val}</b></div>`).join("");
+}
+
+function renderDebug() {
+  const ok = debug?.ok;
+  const bb = ok ? debug.blackborder : null;
+  const gs = ok ? debug.grayStill : null;
+  $("bb-status").textContent = ok ? blackborderText(bb) : debug ? `Keine Daten: ${debug.error}` : "Warte auf Daten von Hyperion …";
+  // the live mode wins over the stored config, it reflects what Hyperion actually runs
+  if (bb && bbConfig && bb.mode !== bbConfig.mode && document.activeElement?.dataset?.bbMode === undefined) {
+    bbConfig = { ...bbConfig, mode: bb.mode };
+    renderBbConfig();
+  }
+  $("bb-live-box").hidden = !$("bb-live").checked;
+  if ($("bb-live").checked) $("bb-live-box").innerHTML = bbLiveHtml(bb);
+  $("gs-live-box").hidden = !$("gs-live").checked;
+  if ($("gs-live").checked) $("gs-live-box").innerHTML = grayStillHtml(gs);
+
+  const o = state?.overlays ?? {};
+  if (!$("pv-panel").hidden) {
+    $("pv-bb").innerHTML = o.bbPreview ? blackborderSvg(bb) : "";
+    $("pv-bbtext").hidden = !o.bbPreview;
+    if (o.bbPreview) $("pv-bbtext").textContent = ok ? blackborderText(bb) : "Keine Daten von Hyperion";
+    $("pv-gs").hidden = !o.gsPreview;
+    if (o.gsPreview) $("pv-gs").innerHTML = grayStillCompactHtml(gs);
+  }
+}
+
+// ---------- grabber preview panel ----------
+
+// the page gets bottom padding while the panel is open, so the last content stays reachable
+function updateSpace() {
+  const open = !$("pv-panel").hidden;
+  $("main").style.paddingBottom = open ? `calc(var(--gap) + ${$("pv-panel").offsetHeight}px)` : "";
+}
+new ResizeObserver(updateSpace).observe($("pv-panel"));
+
+function setPanel(open) {
+  $("pv-panel").hidden = !open;
+  $("pv-fab").hidden = open;
+  // closing returns the panel to its standard place, bottom right
+  if (!open) resetPanelPosition();
+  store.set("tvtest-preview", open ? "1" : "0");
+  if (open && !previewSource) {
+    $("pv-empty").hidden = false;
+    previewSource = new EventSource("/api/preview");
+    previewSource.onmessage = (ev) => {
+      $("pv-img").src = ev.data;
+      $("pv-empty").hidden = true;
+    };
+  } else if (!open && previewSource) {
+    previewSource.close();
+    previewSource = null;
+    $("pv-img").removeAttribute("src");
+  }
+  updateSpace();
+  renderDebug();
+}
+
+function resetPanelPosition() {
+  const s = $("pv-panel").style;
+  s.left = s.top = s.right = s.bottom = "";
+}
+
+// drag by the header with mouse or finger; the panel stays inside the window
+let drag = null;
+$("pv-head").addEventListener("pointerdown", (ev) => {
+  if (ev.target.closest("button")) return;
+  const r = $("pv-panel").getBoundingClientRect();
+  drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top };
+  $("pv-head").setPointerCapture(ev.pointerId);
+});
+$("pv-head").addEventListener("pointermove", (ev) => {
+  if (!drag) return;
+  const panel = $("pv-panel");
+  const left = Math.min(Math.max(0, ev.clientX - drag.dx), innerWidth - panel.offsetWidth);
+  const top = Math.min(Math.max(0, ev.clientY - drag.dy), innerHeight - panel.offsetHeight);
+  panel.style.left = left + "px";
+  panel.style.top = top + "px";
+  panel.style.right = "auto";
+  panel.style.bottom = "auto";
+});
+const endDrag = () => { drag = null; };
+$("pv-head").addEventListener("pointerup", endDrag);
+$("pv-head").addEventListener("pointercancel", endDrag);
+
+$("pv-fab").addEventListener("click", () => setPanel(true));
+$("pv-close").addEventListener("click", () => setPanel(false));
+// keep the 16:9 box in the real aspect ratio of the grabber image
+$("pv-img").addEventListener("load", () => {
+  const img = $("pv-img");
+  if (img.naturalWidth && img.naturalHeight) $("preview").style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+});
+
+// ---------- backups ----------
+
+// "hyperion-2026-10-05T17-23-24-174Z.db" -> local date and time
+function backupDate(name) {
+  const m = name.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/);
+  if (!m) return name;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
+  return d.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "medium" });
+}
+
+async function loadBackups() {
+  const list = await (await fetch("/api/backups")).json();
+  const ul = $("backups");
+  ul.innerHTML = "";
+  if (!list.length) { ul.innerHTML = "<li>Noch keine Backups</li>"; return; }
+  list.forEach(b => {
+    const li = document.createElement("li");
+    const label = document.createElement("span");
+    label.innerHTML = `<b>${backupDate(b.name)}</b><br><small>${(b.size / 1024).toFixed(0)} KB</small>`;
+    label.title = b.name;
+    const actions = document.createElement("span");
+    actions.className = "actions";
+    const restore = document.createElement("button");
+    restore.className = "linkbtn";
+    restore.textContent = "Wiederherstellen";
+    restore.disabled = !hyperionConnected;
+    restore.addEventListener("click", () => restoreBackup(b.name));
+    const a = document.createElement("a");
+    a.href = "/backups/" + encodeURIComponent(b.name);
+    a.textContent = "Herunterladen";
+    actions.append(restore, a);
+    li.append(label, actions);
+    ul.appendChild(li);
+  });
+}
+
+async function checkHyperion() {
+  try {
+    const st = await (await fetch("/api/hyperion/status")).json();
+    hyperionConnected = st.connected;
+    const req = st.request ?? {};
+    if (st.connected) {
+      $("conn").textContent = "Mit Hyperion verbunden. Wiederherstellen und Einstellungen ändern ist möglich.";
+    } else if (req.status === "pending") {
+      $("conn").textContent = `Anfrage „Hyperion TV-Testseite“ (ID ${req.id}) wartet. Bitte im Hyperion-WebUI bestätigen (Fenster erscheint dort nach dem Login).`;
+    } else if (req.status === "failed") {
+      $("conn").textContent = "Verbindung fehlgeschlagen: " + req.error;
+    } else {
+      $("conn").textContent = st.error ?? "Nicht mit Hyperion verbunden. Zum Wiederherstellen und Ändern einmal verbinden.";
+    }
+    $("connect").hidden = st.connected || req.status === "pending";
+    document.querySelectorAll("#backups .linkbtn").forEach(btn => { btn.disabled = !hyperionConnected; });
+    renderBbConfig();
+    renderColorEditor();
+    return req.status;
+  } catch (e) {
+    $("conn").textContent = "Status nicht abrufbar: " + e.message;
+    return null;
+  }
+}
+
+$("connect").addEventListener("click", async () => {
+  await fetch("/api/hyperion/connect", { method: "POST" });
+  while ((await checkHyperion()) === "pending") await new Promise(r => setTimeout(r, 2000));
+});
+
+async function restoreBackup(name) {
+  const ok = confirm(
+    `Backup vom ${backupDate(name)} wiederherstellen?\n\n` +
+    "Die aktuelle Hyperion-Konfiguration wird ersetzt. Vorher wird automatisch ein Backup des jetzigen Stands angelegt. " +
+    "Hyperion startet danach neu, die LEDs gehen kurz aus."
+  );
+  if (!ok) return;
+  $("status").textContent = "Wiederherstellen läuft …";
+  try {
+    const res = await fetch("/api/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    $("status").textContent = `Wiederhergestellt: Backup vom ${backupDate(body.restored)}. Der vorherige Stand ist als Backup vom ${backupDate(body.safety)} gesichert. Hyperion startet neu.`;
+    loadBackups();
+    setTimeout(() => { loadBbConfig(); loadColorConfig(); }, 5000);
+  } catch (e) {
+    $("status").textContent = "Wiederherstellen fehlgeschlagen: " + e.message;
+  }
+}
+
+$("backup").addEventListener("click", async () => {
+  $("status").textContent = "Backup läuft …";
+  try {
+    const res = await fetch("/api/backup", { method: "POST" });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    $("status").textContent = "Backup gespeichert: " + backupDate(body.name);
+    loadBackups();
+  } catch (e) {
+    $("status").textContent = "Backup fehlgeschlagen: " + e.message;
+  }
+});
+
+// ---------- startup ----------
+
+$("tv-url").textContent = location.host + "/tv";
+
+async function init() {
+  presets = await (await fetch("/api/presets")).json();
+  state = await (await fetch("/api/state")).json();
+  buildColorEditor();
+  buildColorList();
+  await checkHyperion();
+  loadBbConfig();
+  loadColorConfig();
+  loadBackups();
+  setPanel(store.get("tvtest-preview") === "1");
+  // role=phone tells the TV to hide its QR code
+  const es = new EventSource("/api/events?role=phone");
+  es.onmessage = (ev) => {
+    if (dirty) return; // do not overwrite a slider that is being sent
+    state = JSON.parse(ev.data);
+    renderState();
+    renderDebug();
+  };
+  es.addEventListener("debug", (ev) => {
+    debug = JSON.parse(ev.data);
+    renderDebug();
+  });
+}
+init();
+</script>
+</body>
+</html>
