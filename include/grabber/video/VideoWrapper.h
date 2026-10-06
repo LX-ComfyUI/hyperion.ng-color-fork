@@ -3,6 +3,8 @@
 #include <HyperionConfig.h> // Required to determine the cmake options
 #include <hyperion/GrabberWrapper.h>
 
+#include <QTimer>
+
 #if defined(ENABLE_MF)
 	#include <grabber/video/mediafoundation/MFGrabber.h>
 #elif defined(ENABLE_V4L2)
@@ -26,10 +28,16 @@ public slots:
 private slots:
 	void newFrame(const Image<ColorRgb> & image);
 	void readError(const char* err);
+	void tryReconnect();
 
 	void action() override;
 
 private:
+	/// Retries opening the device after it vanished (e.g. USB grabber unplugged)
+	QTimer _reconnectTimer;
+	QString _devicePath;
+	QString _deviceName;
+
 	/// The Media Foundation or V4L2 grabber
 #if defined(ENABLE_MF)
 	MFGrabber _grabber;

@@ -1065,8 +1065,11 @@ int V4L2Grabber::read_frame()
 						case EIO: /* Could ignore EIO, see spec. */
 						default:
 						{
+							const int dqbufErrno = errno;
 							throw_errno_exception("VIDIOC_DQBUF");
-							stop();
+							// let the wrapper stop the grabber and wait for the device to come back
+							const QByteArray err = QString("VIDIOC_DQBUF: %1").arg(strerror(dqbufErrno)).toUtf8();
+							emit readError(err.constData());
 							enumVideoCaptureDevices();
 						}
 						return 0;
@@ -1102,8 +1105,11 @@ int V4L2Grabber::read_frame()
 						case EIO: /* Could ignore EIO, see spec. */
 						default:
 						{
+							const int dqbufErrno = errno;
 							throw_errno_exception("VIDIOC_DQBUF");
-							stop();
+							// let the wrapper stop the grabber and wait for the device to come back
+							const QByteArray err = QString("VIDIOC_DQBUF: %1").arg(strerror(dqbufErrno)).toUtf8();
+							emit readError(err.constData());
 							enumVideoCaptureDevices();
 						}
 						return 0;

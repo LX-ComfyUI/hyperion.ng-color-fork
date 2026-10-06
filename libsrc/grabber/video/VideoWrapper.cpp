@@ -3,7 +3,12 @@
 #include <grabber/video/VideoWrapper.h>
 
 // qt includes
+#include <QFileInfo>
 #include <QTimer>
+
+namespace {
+	constexpr int RECONNECT_INTERVAL_MS = 2000;
+}
 
 VideoWrapper::VideoWrapper()
 #if defined(ENABLE_V4L2)
@@ -21,7 +26,8 @@ VideoWrapper::VideoWrapper()
 	connect(&_grabber, SIGNAL(newFrame(const Image<ColorRgb>&)), this, SLOT(newFrame(const Image<ColorRgb>&)), Qt::DirectConnection);
 	connect(&_grabber, SIGNAL(readError(const char*)), this, SLOT(readError(const char*)), Qt::DirectConnection);
 
-	connect(&_grabber, SIGNAL(readError(const char*)), this, SLOT(readError(const char*)), Qt::DirectConnection);
+	_reconnectTimer.setInterval(RECONNECT_INTERVAL_MS);
+	connect(&_reconnectTimer, &QTimer::timeout, this, &VideoWrapper::tryReconnect);
 }
 
 VideoWrapper::~VideoWrapper()
@@ -36,6 +42,7 @@ bool VideoWrapper::start()
 
 void VideoWrapper::stop()
 {
+	_reconnectTimer.stop();
 	_grabber.stop();
 	GrabberWrapper::stop();
 }
@@ -59,7 +66,9 @@ void VideoWrapper::handleSettingsUpdate(settings::type type, const QJsonDocument
 
 #if defined(ENABLE_V4L2)
 			// Device path and name
-			_grabber.setDevice(obj["device"].toString("none"), obj["available_devices"].toString("none"));
+			_devicePath = obj["device"].toString("none");
+			_deviceName = obj["available_devices"].toString("none");
+			_grabber.setDevice(_devicePath, _deviceName);
 #endif
 
 			// Device input
@@ -132,6 +141,39 @@ void VideoWrapper::readError(const char* err)
 {
 	Error(_log, "Stop grabber, because reading device failed. (%s)", err);
 	stop();
+
+	// The device may come back (USB grabber re-plugged), so keep trying to reopen it
+	if (getV4lGrabberState())
+	{
+		Info(_log, "Waiting for the video device to reappear, retrying every %d s", RECONNECT_INTERVAL_MS / 1000);
+		_reconnectTimer.start();
+	}
+}
+
+void VideoWrapper::tryReconnect()
+{
+	// stop retrying when the grabber was disabled or got restarted elsewhere (e.g. settings save)
+	if (!getV4lGrabberState() || isActive())
+	{
+		_reconnectTimer.stop();
+		return;
+	}
+
+#if defined(ENABLE_V4L2)
+	if (!QFileInfo::exists(_devicePath))
+	{
+		return;
+	}
+
+	// a failed init() resets the device path to "none", so restore it before every attempt
+	_grabber.setDevice(_devicePath, _deviceName);
+#endif
+
+	if (start())
+	{
+		Info(_log, "Video device is back, grabber restarted");
+		_reconnectTimer.stop();
+	}
 }
 
 void VideoWrapper::action()
