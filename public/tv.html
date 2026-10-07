@@ -79,7 +79,7 @@ const screenEl = $("screen");
 const barEls = { top: $("bar-top"), bottom: $("bar-bottom"), left: $("bar-left"), right: $("bar-right") };
 const connectEl = $("connect");
 
-let state = { color: "#000000", bars: { top: 0, bottom: 0, left: 0, right: 0 } };
+let state = { color: "#000000", colorActive: true, bars: { top: 0, bottom: 0, left: 0, right: 0 } };
 let phones = 0;
 let manualToggle = null; // null = automatic, true/false = forced by the remote
 let clockOffset = 0;      // Pi clock minus TV clock
@@ -101,7 +101,7 @@ function renderGrayTest() {
   const g = state.grayTest;
   if (!g?.active) {
     screenEl.style.transition = "";
-    screenEl.style.background = state.color;
+    screenEl.style.background = state.colorActive === false ? "#000000" : state.color;
     return;
   }
   const gray = (v) => `rgb(${v}, ${v}, ${v})`;
@@ -166,7 +166,7 @@ function connectEvents() {
     if (msg.phones !== phones) manualToggle = null;
     phones = msg.phones ?? 0;
     if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
-    const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || msg.color !== state.color;
+    const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || msg.color !== state.color || msg.colorActive !== state.colorActive;
     state = msg;
     if (grayChanged) render();
     else { renderBars(); renderDebug(); connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle; }

@@ -99,6 +99,7 @@
   .ibtn:hover:not(:disabled) { color: var(--text); background: var(--bg); }
   .ibtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .ibtn.done { color: var(--accent); }
+  .ibtn.power.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .crow.add { border-style: dashed; }
   .crow.add .crow-main { color: var(--muted); }
   .crow.add .chip { display: flex; align-items: center; justify-content: center; background: transparent; font-size: 22px; line-height: 1; }
@@ -116,6 +117,9 @@
   .color-grid { display: grid; gap: var(--gap); grid-template-columns: 1fr; }
   @media (min-width: 760px) { :root:not([data-device="phone"]) .color-grid { grid-template-columns: minmax(300px, 380px) 1fr; } }
   .col { min-width: 0; }
+  /* the row tools stay clear of the floating preview button's corner, which floats on top of
+     whatever scrolls underneath it and would otherwise hide/steal taps from the rightmost icon */
+  #crow-presets, #crow-custom { padding-right: 60px; box-sizing: border-box; }
   .hy-col { background: var(--bg); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
   .rgbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
   .rgbrow .rgbname { font-size: 14px; min-width: 64px; }
@@ -221,7 +225,7 @@
   <!-- ===== test colors ===== -->
   <section class="card" id="card-color">
     <h2>Testfarben</h2>
-    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Mit dem Stift an einer Farbe änderst du ihren Wert, mit dem Kreis setzt du ihn auf den Standard zurück, und mit dem Kopier-Symbol übernimmst du den RGB-Wert.</p>
+    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück, und mit dem Kopier-Symbol übernimmst du den RGB-Wert.</p>
     <p class="note" id="list-note"></p>
 
     <div class="color-grid">
@@ -450,7 +454,7 @@ const GS_FIELDS = [
 ];
 // icons: feather-style strokes
 const ICON = {
-  edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  power: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>',
   reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
   copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
 };
@@ -494,7 +498,7 @@ function applyTheme(choice) {
 document.querySelectorAll("[data-theme-choice]").forEach(b => b.addEventListener("click", () => applyTheme(b.dataset.themeChoice)));
 applyTheme(document.documentElement.dataset.theme ?? "auto");
 
-const DEVICE_NAMES = { phone: "Handy", tablet: "Tablet", desktop: "Laptop oder PC", tv: "TV-Browser" };
+const DEVICE_NAMES = { phone: "Smartphone", tablet: "Tablet", desktop: "Laptop oder PC", tv: "TV-Browser" };
 $("dev-label").textContent = DEVICE_NAMES[document.documentElement.dataset.device] ?? "unbekannt";
 
 // ---------- shared state ----------
@@ -562,7 +566,8 @@ function makeTool(icon, label, onClick, extraClass = "") {
   return b;
 }
 
-// one row: the main part sets the color for the TV, the tools edit, reset and copy the value
+// one row: the main part opens the picker to edit the value, the power button shows it on the
+// TV (or turns it off again), the other tools reset and copy the value
 function makeRow({ color, name, kind, id, edited }) {
   const row = document.createElement("div");
   row.className = "crow" + (kind === "custom" ? " custom" : "");
@@ -571,7 +576,7 @@ function makeRow({ color, name, kind, id, edited }) {
   const main = document.createElement("button");
   main.type = "button";
   main.className = "crow-main";
-  main.dataset.role = "pick";
+  main.title = "Farbe bearbeiten";
   const chip = document.createElement("span");
   chip.className = "chip";
   chip.style.background = color;
@@ -583,12 +588,12 @@ function makeRow({ color, name, kind, id, edited }) {
   small.textContent = rgbText(hexToRgb(color));
   label.append(b, small);
   main.append(chip, label);
-  main.addEventListener("click", () => { if (!deleting) setColor(color); });
+  main.addEventListener("click", () => { if (!deleting) openPickerFor({ kind, id, from: color, chip }); });
   row.appendChild(main);
 
   const tools = document.createElement("span");
   tools.className = "tools";
-  tools.appendChild(makeTool("edit", "Farbe einstellen", () => openPickerFor({ kind, id, from: color, chip })));
+  tools.appendChild(makeTool("power", "Einschalten", () => toggleActive(color), "power"));
   if (kind === "preset") {
     const reset = makeTool("reset", "Auf Standard zurücksetzen", () => send({ resetPreset: id }));
     reset.disabled = !edited;
@@ -645,7 +650,15 @@ function buildColorList() {
 }
 
 function updateActiveRows() {
-  document.querySelectorAll(".crow[data-color]").forEach(r => r.classList.toggle("active", !state.grayTest?.active && r.dataset.color === state.color));
+  document.querySelectorAll(".crow[data-color]").forEach(r => {
+    const isActive = !state.grayTest?.active && state.colorActive !== false && r.dataset.color === state.color;
+    r.classList.toggle("active", isActive);
+    const power = r.querySelector(".ibtn.power");
+    if (power) {
+      power.classList.toggle("on", isActive);
+      power.title = power.ariaLabel = isActive ? "Ausschalten" : "Einschalten";
+    }
+  });
 }
 
 function renderDeleting() {
@@ -683,11 +696,24 @@ document.addEventListener("pointerdown", (ev) => {
 });
 
 function setColor(color) {
-  // picking a color ends the gray still test, the TV shows the color again
-  const patch = state.grayTest?.active ? { color, grayTest: { active: false } } : { color };
-  state = { ...state, color, grayTest: { ...state.grayTest, active: false } };
+  // picking a color ends the gray still test and switches it on, the TV shows the color again
+  const patch = state.grayTest?.active ? { color, colorActive: true, grayTest: { active: false } } : { color, colorActive: true };
+  state = { ...state, color, colorActive: true, grayTest: { ...state.grayTest, active: false } };
   renderState();
   send(patch);
+}
+
+// the power button: on for another color switches to it, on for the active one turns it off
+// (the TV shows black), off for the active one turns it back on
+function toggleActive(color) {
+  const isOn = !state.grayTest?.active && state.colorActive !== false && state.color === color;
+  if (isOn) {
+    state = { ...state, colorActive: false };
+    renderState();
+    send({ colorActive: false });
+  } else {
+    setColor(color);
+  }
 }
 
 // ---------- color picker: edits a preset or a custom color, or adds a new one ----------
@@ -1109,10 +1135,11 @@ function renderDebug() {
 
 // ---------- grabber preview panel ----------
 
-// the page gets bottom padding while the panel is open, so the last content stays reachable
+// the page always keeps the floating button's corner free, and more while the panel is open,
+// so neither ever sits on top of (and steals taps from) the last card's content
 function updateSpace() {
   const open = !$("pv-panel").hidden;
-  $("main").style.paddingBottom = open ? `calc(var(--gap) + ${$("pv-panel").offsetHeight}px)` : "";
+  $("main").style.paddingBottom = open ? `calc(var(--gap) + ${$("pv-panel").offsetHeight}px)` : "92px";
 }
 new ResizeObserver(updateSpace).observe($("pv-panel"));
 

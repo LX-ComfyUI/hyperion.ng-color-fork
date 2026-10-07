@@ -31,6 +31,8 @@ const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 const DEFAULT_STATE = {
   color: "#000000",
+  // false = the TV shows black instead of `color` (the on/off button per test color)
+  colorActive: true,
   bars: { top: 0, bottom: 0, left: 0, right: 0 },
   customColors: [],
   // edited preset colors, id -> hex (missing id = standard color from PRESETS)
@@ -81,6 +83,7 @@ function loadState() {
 function sanitize(input) {
   const out = structuredClone(DEFAULT_STATE);
   if (typeof input.color === "string" && HEX_COLOR.test(input.color)) out.color = input.color.toLowerCase();
+  if (typeof input.colorActive === "boolean") out.colorActive = input.colorActive;
   for (const edge of ["top", "bottom", "left", "right"]) {
     const v = Number(input.bars?.[edge]);
     if (Number.isFinite(v)) out.bars[edge] = Math.min(MAX_BAR, Math.max(0, Math.round(v * 10) / 10));
@@ -685,7 +688,8 @@ const server = http.createServer(async (req, res) => {
       // any change of the gray test (or an explicit restart) starts its timeline again
       if (patch.grayTest || patch.grayRestart) grayTest.startedAt = Date.now();
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
-      state = sanitize({ color: patch.color ?? state.color, bars, customColors, presetColors, grayTest, overlays });
+      const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
+      state = sanitize({ color: patch.color ?? state.color, colorActive, bars, customColors, presetColors, grayTest, overlays });
       saveState();
       broadcast();
       return sendJson(res, 200, state);
