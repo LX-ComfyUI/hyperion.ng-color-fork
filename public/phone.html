@@ -86,9 +86,15 @@
   /* test colors: one row per color, tools on the right */
   .crow { display: flex; align-items: stretch; gap: 6px; margin: 0 0 8px; border-radius: 10px; border: 1px solid var(--btn-line); background: var(--btn); box-sizing: border-box; }
   .crow.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
-  .crow-main { all: unset; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; border-radius: 10px;
+  .crow-main { all: unset; position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; border-radius: 10px;
                -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-  .crow-main:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .crow-main:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* the real color input lies invisibly over chip and name, so a tap opens the native picker
+     itself. Opening it from script does not work on iOS: WebKit's showPicker() silently does
+     nothing there (WebKit bug 261703), and iOS shows its pickers only on a real tap/focus. */
+  .crow-main input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0;
+               opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; touch-action: manipulation; }
+  .crow-main input[type="color"]:disabled { cursor: default; }
   .chip { flex: none; width: 46px; height: 34px; border-radius: 7px; border: 1px solid var(--chip-line); }
   .cname { display: flex; flex-direction: column; min-width: 0; }
   .cname b { font-weight: 600; font-size: 15px; }
@@ -110,7 +116,6 @@
   .deleting .crow.custom .chip { animation: wiggle .25s ease-in-out infinite alternate; }
   @keyframes wiggle { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
   @media (prefers-reduced-motion: reduce) { .deleting .crow.custom .chip { animation: none; } }
-  #picker { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .hintline { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
 
   /* two columns for the test colors: list left, Hyperion values right */
@@ -234,7 +239,6 @@
         <h3>Eigene Farben</h3>
         <div id="crow-custom"></div>
         <p class="hintline" id="custom-hint"></p>
-        <input type="color" id="picker" tabindex="-1" aria-hidden="true">
       </div>
 
       <div class="col">
@@ -471,7 +475,8 @@ let stopsBuiltFor = -1;        // number of gray-axis stops currently built in t
 let listKey = "";              // changes when the list of colors has to be rebuilt
 let hyperionConnected = false;
 let previewSource = null;
-let pickerTarget = null;       // what the color picker edits: { kind: "preset" | "custom", id, from }
+let openPicker = null;         // the row's color input while its picker is open, the list waits with rebuilding
+let rebuildPending = false;    // the list changed while a picker was open
 
 const $ = (id) => document.getElementById(id);
 const fmt = (v, d = 1) => Number(v).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -522,7 +527,8 @@ async function send(patch) {
 function renderState() {
   if (!state) return;
   const key = JSON.stringify([state.presetColors ?? {}, state.customColors ?? []]);
-  if (key !== listKey) buildColorList();
+  if (key !== listKey && openPicker?.isConnected) { rebuildPending = true; updateActiveRows(); }
+  else if (key !== listKey) buildColorList();
   else updateActiveRows();
   $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert." : "";
   renderBars();
@@ -573,8 +579,7 @@ function makeRow({ color, name, kind, id, edited }) {
   row.className = "crow" + (kind === "custom" ? " custom" : "");
   row.dataset.color = color;
 
-  const main = document.createElement("button");
-  main.type = "button";
+  const main = document.createElement("div");
   main.className = "crow-main";
   main.title = "Farbe bearbeiten";
   const chip = document.createElement("span");
@@ -587,15 +592,14 @@ function makeRow({ color, name, kind, id, edited }) {
   const small = document.createElement("small");
   small.textContent = rgbText(hexToRgb(color));
   label.append(b, small);
-  main.append(chip, label);
-  main.addEventListener("click", () => { if (!deleting) openPickerFor({ kind, id, from: color, chip }); });
+  main.append(chip, label, makePicker(`${name} bearbeiten`, () => color, { kind, id, from: color, chip }));
   row.appendChild(main);
 
   const tools = document.createElement("span");
   tools.className = "tools";
   tools.appendChild(makeTool("power", "Einschalten", () => toggleActive(color), "power"));
   if (kind === "preset") {
-    const reset = makeTool("reset", "Auf Standard zurücksetzen", () => send({ resetPreset: id }));
+    const reset = makeTool("reset", "Auf Standard zurücksetzen", async () => { if (await send({ resetPreset: id })) renderState(); });
     reset.disabled = !edited;
     tools.appendChild(reset);
   }
@@ -638,11 +642,10 @@ function buildColorList() {
   });
   const add = document.createElement("div");
   add.className = "crow add";
-  const addMain = document.createElement("button");
-  addMain.type = "button";
+  const addMain = document.createElement("div");
   addMain.className = "crow-main";
   addMain.innerHTML = `<span class="chip" aria-hidden="true">+</span><span class="cname"><b>Neue Farbe</b><small>Farbwähler öffnen</small></span>`;
-  addMain.addEventListener("click", openNewPicker);
+  addMain.appendChild(makePicker("Neue Farbe", () => state.color, { kind: "new" }));
   add.appendChild(addMain);
   box.appendChild(add);
   renderDeleting();
@@ -663,6 +666,7 @@ function updateActiveRows() {
 
 function renderDeleting() {
   $("crow-custom").classList.toggle("deleting", deleting);
+  $("crow-custom").querySelectorAll(".crow.custom input[type=color]").forEach(i => { i.disabled = deleting; });
   $("custom-hint").innerHTML = deleting
     ? "Auf <b>×</b> tippen zum Löschen. Woanders tippen zum Beenden."
     : "Gedrückt halten zum Löschen.";
@@ -718,40 +722,50 @@ function toggleActive(color) {
 
 // ---------- color picker: edits a preset or a custom color, or adds a new one ----------
 
-const picker = $("picker");
-
-function openPickerFor(target) {
-  setDeleting(false);
-  pickerTarget = target;
-  picker.value = target.from;
-  try { picker.showPicker ? picker.showPicker() : picker.click(); } catch { picker.click(); }
+// one native color input per row. `target` says what it edits: a preset or custom color, or a
+// new custom color ("new", which shows the color live on the TV while the picker moves)
+function makePicker(ariaLabel, startValue, target) {
+  const input = document.createElement("input");
+  input.type = "color";
+  input.value = startValue();
+  input.setAttribute("aria-label", ariaLabel);
+  // the start value is set again right before opening, a new color starts from the TV's color
+  const prepare = () => { if (openPicker !== input) input.value = startValue(); };
+  input.addEventListener("pointerdown", prepare);
+  input.addEventListener("keydown", prepare);
+  input.addEventListener("click", () => { setDeleting(false); openPicker = input; });
+  input.addEventListener("input", () => {
+    openPicker = input;
+    if (target.kind === "new") setColor(input.value);
+    else if (target.chip) target.chip.style.background = input.value;
+  });
+  input.addEventListener("change", async () => {
+    const color = input.value.toLowerCase();
+    pickerClosed(input);
+    if (target.kind === "new") {
+      input.value = state.color;
+      if (await send({ color, addCustom: color })) buildColorList();
+    } else if (target.kind === "preset") {
+      // the event stream skips the update while sending, so the row is redrawn here
+      if (await send({ setPreset: { id: target.id, color } })) renderState();
+    } else if (target.kind === "custom") {
+      if (await send({ replaceCustom: { from: target.from, to: color } })) buildColorList();
+    }
+  });
+  input.addEventListener("blur", () => {
+    // a cancelled picker leaves the chip on its last preview color otherwise
+    if (target.chip) target.chip.style.background = input.value;
+    pickerClosed(input);
+  });
+  return input;
 }
 
-function openNewPicker() {
-  setDeleting(false);
-  pickerTarget = { kind: "new" };
-  picker.value = state.color;
-  try { picker.showPicker ? picker.showPicker() : picker.click(); } catch { picker.click(); }
+// a list change that arrived while the picker was open is applied now
+function pickerClosed(input) {
+  if (openPicker !== input) return;
+  openPicker = null;
+  if (rebuildPending) { rebuildPending = false; renderState(); }
 }
-
-// live preview while the picker moves, the change is saved once it is confirmed
-picker.addEventListener("input", (ev) => {
-  if (pickerTarget?.kind === "new") return setColor(ev.target.value);
-  if (pickerTarget?.chip) pickerTarget.chip.style.background = ev.target.value;
-});
-picker.addEventListener("change", async (ev) => {
-  const color = ev.target.value.toLowerCase();
-  const t = pickerTarget;
-  pickerTarget = null;
-  if (!t) return;
-  if (t.kind === "new") {
-    if (await send({ color, addCustom: color })) buildColorList();
-  } else if (t.kind === "preset") {
-    send({ setPreset: { id: t.id, color } });
-  } else if (t.kind === "custom") {
-    if (await send({ replaceCustom: { from: t.from, to: color } })) buildColorList();
-  }
-});
 
 async function removeCustom(color) {
   if (await send({ removeCustom: color })) buildColorList();
