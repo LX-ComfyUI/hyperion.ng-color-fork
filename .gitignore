@@ -3,3 +3,4 @@ backups/
 state.json
 hyperion-token
 server.log
+state.json.tmp
