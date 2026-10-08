@@ -794,6 +794,9 @@ function buildStops(n) {
   stopsBuiltFor = n;
 }
 
+// notes that describe a state of the editor, as opposed to the result of a save
+const HY_STATUS_NOTE = /^(Lade Farbwerte|Farbwerte nicht lesbar|Zum Ändern zuerst|Kein Farbeintrag)/;
+
 function renderColorEditor() {
   const entries = colorConfig?.channelAdjustment ?? [];
   const entry = entries[colorIndex] ?? null;
@@ -831,9 +834,15 @@ function renderColorEditor() {
 
   updateSendButtons();
 
-  if (!colorConfig) $("hy-note").textContent = "Farbwerte nicht lesbar.";
-  else if (!hyperionConnected) $("hy-note").textContent = "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“.";
-  else if (!entry) $("hy-note").textContent = "Kein Farbeintrag gefunden.";
+  // a missing config only means "not loaded yet" here, loadColorConfig reports real read errors.
+  // A status note that no longer applies is cleared, save results stay until the next save.
+  const note = $("hy-note");
+  const problem = !colorConfig ? (note.textContent.startsWith("Farbwerte nicht lesbar") ? note.textContent : "Lade Farbwerte …")
+    : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
+    : !entry ? "Kein Farbeintrag gefunden."
+    : null;
+  if (problem) note.textContent = problem;
+  else if (HY_STATUS_NOTE.test(note.textContent)) note.textContent = "";
 }
 
 async function loadColorConfig() {
