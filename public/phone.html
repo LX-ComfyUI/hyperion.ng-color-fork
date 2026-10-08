@@ -140,6 +140,8 @@
   select { font: inherit; color: var(--btn-text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 8px; padding: 8px; width: 100%; box-sizing: border-box; }
 
   label.field { display: block; margin: 14px 0 2px; font-size: 14px; }
+  .field-hint { font-size: 13px; color: var(--muted); }
+  .field-hint.short { color: var(--warn); }
   .row { display: flex; align-items: center; gap: 10px; }
   .row input[type=range] { flex: 1; min-width: 0; }
   .val { min-width: 76px; text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; }
@@ -352,11 +354,10 @@
       <div id="gt-drop-settings" class="indent">
         <label class="field" for="gt-after">Abfall nach</label>
         <div class="row"><input type="range" id="gt-after" min="0" max="30" step="0.5"><span class="val" id="gt-after_v"></span></div>
-        <label class="field" for="gt-percent">Abfall um</label>
+        <label class="field" for="gt-percent">Abfall um <span class="field-hint" id="gt-drop-note"></span></label>
         <div class="row"><input type="range" id="gt-percent" min="5" max="100" step="5"><span class="val" id="gt-percent_v"></span></div>
         <label class="field" for="gt-duration">Dauer des Abfalls</label>
         <div class="row"><input type="range" id="gt-duration" min="0" max="5" step="0.1"><span class="val" id="gt-duration_v"></span></div>
-        <p class="note" id="gt-drop-note"></p>
       </div>
       <button class="wide primary" id="gt-toggle" style="margin-top:12px">Test starten</button>
       <button class="wide" id="gt-restart" style="margin-top:10px">Test neu starten</button>
@@ -993,9 +994,11 @@ function renderGrayTest() {
   $("gt-duration_v").textContent = g.dropDuration > 0 ? `${fmt(g.dropDuration)} s` : "sofort";
   const drop = g.tone - Math.round(g.tone * (1 - g.dropPercent / 100));
   const need = bbConfig?.grayStillImageDetector?.brightnessDropThreshold;
+  const short = need > 0 && drop < need;
   $("gt-drop-note").textContent = need === undefined
-    ? `Helligkeit fällt von ${g.tone} auf ${g.tone - drop} (um ${drop}).`
-    : `Helligkeit fällt um ${drop}. Hyperion braucht mindestens ${need}${need > 0 && drop < need ? ", das reicht also nicht" : ""}.`;
+    ? `(Helligkeit fällt von ${g.tone} auf ${g.tone - drop}, um ${drop})`
+    : `(Helligkeit fällt um ${drop}, Hyperion braucht mindestens ${need}${short ? ", reicht nicht" : ""})`;
+  $("gt-drop-note").classList.toggle("short", short);
 }
 
 function sendGrayTest(patch) {
