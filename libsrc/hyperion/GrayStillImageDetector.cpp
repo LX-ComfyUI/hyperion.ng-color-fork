@@ -19,6 +19,7 @@ GrayStillImageDetector::GrayStillImageDetector(const QSharedPointer<Hyperion>& h
 	, _dropWindowSeconds(1.0)
 	, _changeThreshold(6)
 	, _mode("freeze")
+	, _edgeWidthPercent(0)
 	, _hasPrevColors(false)
 	, _stillActive(false)
 	, _dropWindowStartBrightness(0.0)
@@ -67,14 +68,18 @@ void GrayStillImageDetector::handleSettingsUpdate(settings::type type, const QJs
 		_dropWindowSeconds        = obj["dropWindowSeconds"].toDouble(1.0);
 		_changeThreshold          = obj["changeThreshold"].toInt(6);
 		_mode                     = obj["mode"].toString("freeze");
+		const int edgeWidthPercent = qBound(0, obj["edgeWidthPercent"].toInt(0), 20);
 
-		if (!_enabled)
+		// the evaluated area changed: the previous frame is not comparable any more
+		if (!_enabled || edgeWidthPercent != _edgeWidthPercent)
 		{
 			reset();
 		}
+		_edgeWidthPercent = edgeWidthPercent;
 
-		Debug(_log, "Gray still-image detector is %s (still>=%ds, drop>=%d/%.1fs, changeTol=%d, mode=%s)",
-			(_enabled ? "enabled" : "disabled"), _stillTimeSeconds, _brightnessDropThreshold, _dropWindowSeconds, _changeThreshold, QSTRING_CSTR(_mode));
+		Debug(_log, "Gray still-image detector is %s (still>=%ds, drop>=%d/%.1fs, changeTol=%d, mode=%s, area=%s)",
+			(_enabled ? "enabled" : "disabled"), _stillTimeSeconds, _brightnessDropThreshold, _dropWindowSeconds, _changeThreshold, QSTRING_CSTR(_mode),
+			QSTRING_CSTR(_edgeWidthPercent > 0 ? QString("edge %1%").arg(_edgeWidthPercent) : QString("LED areas")));
 	}
 }
 
@@ -134,6 +139,12 @@ void GrayStillImageDetector::applyReaction(QVector<ColorRgb>& ledColors) const
 	}
 }
 
+int GrayStillImageDetector::edgeWidthPercent() const
+{
+	QMutexLocker locker(&_mutex);
+	return _enabled ? _edgeWidthPercent : 0;
+}
+
 QJsonObject GrayStillImageDetector::debugState() const
 {
 	QMutexLocker locker(&_mutex);
@@ -144,6 +155,7 @@ QJsonObject GrayStillImageDetector::debugState() const
 		{ "brightnessDropThreshold", _brightnessDropThreshold },
 		{ "dropWindowSeconds", _dropWindowSeconds },
 		{ "changeThreshold", _changeThreshold },
+		{ "edgeWidthPercent", _edgeWidthPercent },
 		{ "stillActive", _stillActive },
 		{ "stillElapsedMs", _stillActive ? static_cast<double>(_stillTimer.elapsed()) : 0.0 },
 		{ "dropWindowActive", _dropWindowActive },
@@ -157,7 +169,7 @@ QJsonObject GrayStillImageDetector::debugState() const
 	};
 }
 
-void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
+void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors, const QVector<ColorRgb>* edgeSamples)
 {
 	QMutexLocker locker(&_mutex);
 
@@ -167,9 +179,12 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 		return;
 	}
 
-	// Snapshot of the raw, incoming per-frame colors - used for change/brightness evaluation,
-	// independent of whatever we might overwrite ledColors with below.
-	const QVector<ColorRgb> raw = ledColors;
+	// Snapshot of the incoming LED colors, independent of whatever we might overwrite
+	// ledColors with below - this is what "freeze" holds on to.
+	const QVector<ColorRgb> leds = ledColors;
+	// What brightness and change are evaluated on: the edge frame if one is configured,
+	// otherwise the LED colors themselves.
+	const QVector<ColorRgb> raw = (edgeSamples != nullptr && !edgeSamples->isEmpty()) ? *edgeSamples : leds;
 	const double brightness = meanBrightness(raw);
 	_lastBrightness = brightness;
 
@@ -201,7 +216,7 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 		{
 			// real content resumed (composition changed) or brightness recovered - back to normal
 			reset();
-			_lastGoodColors = raw;
+			_lastGoodColors = leds;
 			return;
 		}
 
@@ -234,7 +249,7 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 			_dropWindowActive = false;
 			_dropDetected = false;
 			_dimJumpTolerated = false;
-			_lastGoodColors = raw;
+			_lastGoodColors = leds;
 			_prevColors = raw;
 			_hasPrevColors = true;
 			return;
@@ -289,7 +304,7 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 	if (!_stillTimer.hasExpired(static_cast<qint64>(_stillTimeSeconds) * 1000))
 	{
 		// not yet confirmed as a genuine still image - keep tracking as last good
-		_lastGoodColors = raw;
+		_lastGoodColors = leds;
 		return;
 	}
 
@@ -318,5 +333,5 @@ void GrayStillImageDetector::process(QVector<ColorRgb>& ledColors)
 
 	// still static, no sudden drop observed during this still episode (yet) -
 	// keep passing through, keep tracking as last good
-	_lastGoodColors = raw;
+	_lastGoodColors = leds;
 }

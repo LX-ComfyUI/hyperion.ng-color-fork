@@ -168,7 +168,7 @@ public:
 
 			// Fork extension: detect/handle a gray, dimmed still image (e.g. a paused
 			// streaming player fading out) and override colors in place if confirmed
-			_grayStillDetector->process(colors);
+			processGrayStill(image, colors);
 		}
 		else
 		{
@@ -226,7 +226,7 @@ public:
 
 			// Fork extension: detect/handle a gray, dimmed still image (e.g. a paused
 			// streaming player fading out) and override colors in place if confirmed
-			_grayStillDetector->process(ledColors);
+			processGrayStill(image, ledColors);
 		}
 		else
 		{
@@ -258,6 +258,87 @@ public:
 	}
 
 private:
+
+	///
+	/// Fork extension: runs the gray-still-image detector, either on the LED colors or - with an
+	/// edge width configured - on a sampled frame along the picture edges.
+	///
+	template <typename Pixel_T>
+	void processGrayStill(const Image<Pixel_T>& image, QVector<ColorRgb>& ledColors)
+	{
+		const int edgePercent = _grayStillDetector->edgeWidthPercent();
+		if (edgePercent <= 0)
+		{
+			_grayStillDetector->process(ledColors);
+			return;
+		}
+		const QVector<ColorRgb> samples = grayStillEdgeSamples(image, edgePercent);
+		_grayStillDetector->process(ledColors, &samples);
+	}
+
+	///
+	/// Fork extension: mean colors of cells in a frame of `percent` depth along the edges of the
+	/// picture, inside the applied black border (like the LED areas). Top and bottom strips are
+	/// split into 16 cells, the side strips between them into 9, each cell sparsely sampled.
+	///
+	template <typename Pixel_T>
+	QVector<ColorRgb> grayStillEdgeSamples(const Image<Pixel_T>& image, int percent) const
+	{
+		const int x0 = _imageToLedColors->verticalBorder();
+		const int y0 = _imageToLedColors->horizontalBorder();
+		const int w = image.width() - 2 * x0;
+		const int h = image.height() - 2 * y0;
+		QVector<ColorRgb> cells;
+		if (w <= 0 || h <= 0)
+		{
+			return cells;
+		}
+		const int depthY = qMax(1, (h * percent + 50) / 100);
+		const int depthX = qMax(1, (w * percent + 50) / 100);
+
+		auto meanOf = [&image](int left, int top, int right, int bottom) {
+			const int stepX = qMax(1, (right - left) / 16);
+			const int stepY = qMax(1, (bottom - top) / 8);
+			quint64 r = 0, g = 0, b = 0, n = 0;
+			for (int y = top; y < bottom; y += stepY)
+			{
+				for (int x = left; x < right; x += stepX)
+				{
+					const Pixel_T& p = image(x, y);
+					r += p.red; g += p.green; b += p.blue; ++n;
+				}
+			}
+			ColorRgb c;
+			if (n > 0)
+			{
+				c.red = static_cast<uint8_t>(r / n);
+				c.green = static_cast<uint8_t>(g / n);
+				c.blue = static_cast<uint8_t>(b / n);
+			}
+			return c;
+		};
+
+		constexpr int H_CELLS = 16;
+		constexpr int V_CELLS = 9;
+		cells.reserve(2 * H_CELLS + 2 * V_CELLS);
+		for (int i = 0; i < H_CELLS; ++i)
+		{
+			const int left = x0 + w * i / H_CELLS;
+			const int right = x0 + w * (i + 1) / H_CELLS;
+			cells.append(meanOf(left, y0, right, y0 + depthY));                 // top
+			cells.append(meanOf(left, y0 + h - depthY, right, y0 + h));         // bottom
+		}
+		const int sideTop = y0 + depthY;
+		const int sideHeight = h - 2 * depthY;
+		for (int i = 0; i < V_CELLS && sideHeight > 0; ++i)
+		{
+			const int top = sideTop + sideHeight * i / V_CELLS;
+			const int bottom = sideTop + sideHeight * (i + 1) / V_CELLS;
+			cells.append(meanOf(x0, top, x0 + depthX, bottom));                 // left
+			cells.append(meanOf(x0 + w - depthX, top, x0 + w, bottom));         // right
+		}
+		return cells;
+	}
 
 	void registerProcessingUnit(
 		int width,

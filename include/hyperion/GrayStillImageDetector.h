@@ -21,8 +21,10 @@ namespace hyperion
 	///
 	/// @brief Fork extension: detects a "gray still image" as produced by streaming players
 	/// (e.g. YouTube and similar) that fade a paused video to a gray, dimmed still image after
-	/// a while. Operates on the already mapped per-LED colors (cheap, mapping-mode agnostic)
-	/// instead of scanning the raw image.
+	/// a while. By default it operates on the already mapped per-LED colors (cheap,
+	/// mapping-mode agnostic). With `edgeWidthPercent` > 0 it evaluates a frame of that depth
+	/// along the picture edges instead (sampled by ImageProcessor, inside any applied black
+	/// border); the reaction still applies to the LED colors either way.
 	///
 	/// Detection happens in up to two stages:
 	///  1. The image must stay unchanged (within a noise tolerance) without interruption for
@@ -54,7 +56,16 @@ namespace hyperion
 		/// @param ledColors The freshly computed LED colors for the current frame; may be overwritten
 		///                  in place if a gray still image has been detected and confirmed.
 		///
-		void process(QVector<ColorRgb>& ledColors);
+		/// @param edgeSamples Optional colors of the edge frame to evaluate instead of the LED
+		///                    colors (see edgeWidthPercent()); nullptr = evaluate the LED colors.
+		///
+		void process(QVector<ColorRgb>& ledColors, const QVector<ColorRgb>* edgeSamples = nullptr);
+
+		///
+		/// @brief Depth of the evaluated edge frame in percent of the picture (0 = LED areas).
+		/// Returns 0 while the detector is disabled, so no samples are computed then. Thread safe.
+		///
+		int edgeWidthPercent() const;
 
 		///
 		/// @brief Fork extension: read-only snapshot of the detector state for debugging tools
@@ -96,7 +107,10 @@ namespace hyperion
 		/// reaction once confirmed: "freeze" or "off"
 		QString _mode;
 
-		/// previous frame's raw (pre-reaction) LED colors, for change detection
+		/// depth of the evaluated edge frame in percent (0 = evaluate the LED colors)
+		int _edgeWidthPercent;
+
+		/// previous frame's evaluated colors (LED colors or edge samples), for change detection
 		QVector<ColorRgb> _prevColors;
 		bool _hasPrevColors;
 

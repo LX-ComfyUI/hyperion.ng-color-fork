@@ -161,6 +161,7 @@
             "brightnessDropThreshold":40,
             "dropWindowSeconds":1.0,
             "changeThreshold":6,
+            "edgeWidthPercent":0,
             "mode":"freeze"
          }
       },
