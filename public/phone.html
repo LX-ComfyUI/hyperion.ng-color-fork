@@ -87,13 +87,15 @@
   .crow { display: flex; align-items: stretch; gap: 6px; margin: 0 0 8px; border-radius: 10px; border: 1px solid var(--btn-line); background: var(--btn); box-sizing: border-box; }
   .crow.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
   .crow-main { all: unset; position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; border-radius: 10px;
-               -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+               -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation;
+               -webkit-tap-highlight-color: transparent; }
   .crow-main:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* the real color input lies invisibly over chip and name, so a tap opens the native picker
      itself. Opening it from script does not work on iOS: WebKit's showPicker() silently does
      nothing there (WebKit bug 261703), and iOS shows its pickers only on a real tap/focus. */
   .crow-main input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0;
-               opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; touch-action: manipulation; }
+               opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; touch-action: manipulation;
+               -webkit-tap-highlight-color: transparent; /* mobile browsers flash a gray spot on tap otherwise */ }
   .crow-main input[type="color"]:disabled { cursor: default; }
   .chip { flex: none; width: 46px; height: 34px; border-radius: 7px; border: 1px solid var(--chip-line); }
   .cname { display: flex; flex-direction: column; min-width: 0; }
