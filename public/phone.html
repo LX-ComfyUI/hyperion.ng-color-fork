@@ -106,6 +106,7 @@
   .ibtn:hover:not(:disabled) { color: var(--text); background: var(--bg); }
   .ibtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .ibtn.done { color: var(--accent); }
+  .ibtn.tool-dot::after { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--muted); opacity: .6; }
   .ibtn.power.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .crow.add { border-style: dashed; }
   .crow.add .crow-main { color: var(--muted); }
@@ -596,6 +597,12 @@ function makeRow({ color, name, kind, id, edited }) {
       setTimeout(() => { btn.classList.remove("done"); btn.title = label; updateSendButtons(); }, 1200);
     }, "send");
     tools.appendChild(sendBtn);
+  } else if (kind === "preset") {
+    // gray and black have no Hyperion field: a dot keeps the three tool columns aligned
+    const dot = document.createElement("span");
+    dot.className = "ibtn tool-dot";
+    dot.setAttribute("aria-hidden", "true");
+    tools.appendChild(dot);
   }
   row.appendChild(tools);
 
