@@ -347,8 +347,9 @@
       <h3 style="margin-top:0">Live-Ablauf (Entwickler-Ansicht)</h3>
       <label class="check" style="margin-top:0"><input type="checkbox" id="gs-live"><span>Hier auf dem Handy anzeigen</span></label>
       <div class="gsbox" id="gs-live-box" hidden></div>
-      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>In der Grabber-Vorschau anzeigen</span></label>
-      <label class="check"><input type="checkbox" id="ov-gsTv"><span>Auf dem TV anzeigen<small>Kleine Box in der Bildmitte. Die LEDs werten nur die Ränder aus, sie stört die Erkennung deshalb kaum.</small></span></label>
+      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>In der Grabber-Vorschau anzeigen<small>Orange: die Randbereiche, die Hyperion auswertet (Abtastflächen der LEDs, innerhalb übernommener Schwarzbalken).</small></span></label>
+      <label class="check"><input type="checkbox" id="ov-gsTv"><span>Auf dem TV anzeigen<small>Kleine Box in der Bildmitte, sie stört die Erkennung kaum. Dazu orange die ausgewerteten Randbereiche.</small></span></label>
+      <p class="warn" id="gs-tv-warn" hidden>Der Grabber sieht die orange Markierung mit. Sie liegt genau im ausgewerteten Bereich und verfälscht Helligkeit, Abfall und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
     </div>
 
     <div style="margin-top:12px">
@@ -417,6 +418,7 @@
   <div class="preview" id="preview">
     <img id="pv-img" alt="Grabber-Bild">
     <div class="empty" id="pv-empty">Warte auf Bild vom Grabber …</div>
+    <div class="ov" id="pv-gsarea"></div>
     <div class="ov" id="pv-bb"></div>
     <div class="bbtext" id="pv-bbtext" hidden></div>
     <div class="gsc" id="pv-gs" hidden></div>
@@ -424,7 +426,7 @@
 </section>
 
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillCompactHtml, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillCompactHtml, ledAreasSvg, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 
 const EDGES = ["top", "bottom", "left", "right"];
 const BAR_PAIRS = [
@@ -475,6 +477,7 @@ let dirty = false;             // true while a local change is being sent
 let debug = null;              // latest "forkdebug" snapshot from Hyperion
 let bbConfig = null;           // Hyperion's blackborderdetector settings
 let colorConfig = null;        // Hyperion's color settings
+let ledAreas = null;           // LED sampling areas from Hyperion's layout (what the gray still detector sees)
 let colorIndex = 0;            // which channelAdjustment entry the right column edits
 let stopsBuiltFor = -1;        // number of gray-axis stops currently built in the editor
 let listKey = "";              // changes when the list of colors has to be rebuilt
@@ -973,6 +976,7 @@ const OVERLAY_KEYS = ["bbTv", "bbPreview", "gsTv", "gsPreview"];
 function renderOverlayChecks() {
   OVERLAY_KEYS.forEach(k => { $("ov-" + k).checked = !!state.overlays?.[k]; });
   $("bb-tv-warn").hidden = !state.overlays?.bbTv;
+  $("gs-tv-warn").hidden = !state.overlays?.gsTv;
 }
 
 OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", (ev) => {
@@ -1163,6 +1167,7 @@ function renderDebug() {
     if (o.bbPreview) $("pv-bbtext").textContent = ok ? blackborderText(bb) : "Keine Daten von Hyperion";
     $("pv-gs").hidden = !o.gsPreview;
     if (o.gsPreview) $("pv-gs").innerHTML = grayStillCompactHtml(gs);
+    $("pv-gsarea").innerHTML = o.gsPreview ? ledAreasSvg(ledAreas, bb) : "";
   }
 }
 
@@ -1336,6 +1341,13 @@ $("backup").addEventListener("click", async () => {
 
 $("tv-url").textContent = location.host + "/tv";
 
+async function loadLedAreas() {
+  try {
+    ledAreas = await (await fetch("/api/hyperion/leds")).json();
+    renderDebug();
+  } catch { /* the preview then shows the status line only */ }
+}
+
 async function init() {
   presets = await (await fetch("/api/presets")).json();
   state = await (await fetch("/api/state")).json();
@@ -1344,6 +1356,7 @@ async function init() {
   await checkHyperion();
   loadBbConfig();
   loadColorConfig();
+  loadLedAreas();
   loadBackups();
   setPanel(store.get("tvtest-preview") === "1");
   // role=phone tells the TV to hide its QR code

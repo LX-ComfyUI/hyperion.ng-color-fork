@@ -636,6 +636,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && p === "/api/hyperion/color") return sendJson(res, 200, readInstanceSetting("color"));
+    // LED sampling areas [hmin, hmax, vmin, vmax]: the gray still detector only sees these parts of the picture
+    if (req.method === "GET" && p === "/api/hyperion/leds") return sendJson(res, 200, readInstanceSetting("leds").map((l) => [l.hmin, l.hmax, l.vmin, l.vmax]));
     if (req.method === "POST" && p === "/api/hyperion/color") {
       const patch = await readBody(req);
       return sendJson(res, 200, await saveColor(patch));

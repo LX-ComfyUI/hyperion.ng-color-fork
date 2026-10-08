@@ -31,8 +31,8 @@
   #connect .small { font-size: 2.1vh; color: #999; margin: 0; }
 
   /* debug views (only when switched on for the TV on the phone) */
-  #bb-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
-  #bb-overlay svg { width: 100%; height: 100%; display: block; }
+  #bb-overlay, #gs-area { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+  #bb-overlay svg, #gs-area svg { width: 100%; height: 100%; display: block; }
   .dbg-box {
     position: fixed; left: 50%; transform: translateX(-50%); box-sizing: border-box; max-width: 60vw;
     padding: 1.4vh 2vh; border-radius: 1.2vh; background: rgba(10, 10, 14, .85); color: #fff;
@@ -51,6 +51,7 @@
 <div class="bar" id="bar-left"></div>
 <div class="bar" id="bar-right"></div>
 
+<div id="gs-area" hidden></div>
 <div id="bb-overlay" hidden></div>
 <div class="dbg-box" id="bb-text" hidden></div>
 <div class="dbg-box" id="gs-box" hidden></div>
@@ -68,7 +69,7 @@
 </div>
 
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, GRAY_STILL_CSS } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, ledAreasSvg, GRAY_STILL_CSS } from "/static/overlay.js";
 
 const style = document.createElement("style");
 style.textContent = GRAY_STILL_CSS;
@@ -85,6 +86,7 @@ let manualToggle = null; // null = automatic, true/false = forced by the remote
 let clockOffset = 0;      // Pi clock minus TV clock
 let grayTimer = null;
 let debug = null;
+let ledAreas = null;      // LED sampling areas from Hyperion's layout
 
 $("url").textContent = location.host + "/";
 
@@ -133,6 +135,8 @@ function renderDebug() {
   }
   $("gs-box").hidden = !o.gsTv;
   if (o.gsTv) $("gs-box").innerHTML = grayStillHtml(gs);
+  $("gs-area").hidden = !o.gsTv;
+  if (o.gsTv) $("gs-area").innerHTML = ledAreasSvg(ledAreas, bb);
 }
 
 function render() {
@@ -177,7 +181,15 @@ function connectEvents() {
   });
 }
 
+async function loadLedAreas() {
+  try {
+    ledAreas = await (await fetch("/api/hyperion/leds")).json();
+    renderDebug();
+  } catch { /* without the layout only the status box is shown */ }
+}
+
 loadQr();
+loadLedAreas();
 render();
 connectEvents();
 </script>

@@ -3,6 +3,7 @@
 
 const LINE = "#00e5ff";   // scan lines of the black-border detector
 const BORDER = "#ff2bd6"; // the border Hyperion currently applies
+const AREA = "#ffb020";   // LED sampling areas, all the gray still detector sees
 
 export const BB_MODE_NAMES = {
   default: "Standard",
@@ -61,6 +62,27 @@ export function blackborderSvg(bb, modeFallback) {
     ? `<rect x="${applied.v}" y="${applied.h}" width="${100 - 2 * applied.v}" height="${100 - 2 * applied.h}" fill="none" stroke="${BORDER}" stroke-width="3" stroke-dasharray="10 6" vector-effect="non-scaling-stroke"/>`
     : "";
   return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${lines}${rect}</svg>`;
+}
+
+// The picture areas the LEDs sample, placed like ImageToLedsMap.cpp does it: the layout fractions
+// (clamped and swapped as in LedString.cpp) lie inside the picture minus the applied black border.
+// The gray still detector works on the LED colors, so these areas are all it evaluates.
+// One path with a subpath per LED, so overlapping areas fill evenly.
+export function ledAreasSvg(leds, bb) {
+  if (!leds?.length) return "";
+  const b = borderPct(bb, bb?.currentBorder) ?? { h: 0, v: 0 };
+  const w = 100 - 2 * b.v;
+  const h = 100 - 2 * b.h;
+  const frac = (x) => Math.max(0, Math.min(1, Number(x) || 0));
+  const n = (v) => +v.toFixed(2);
+  const d = leds.map((led) => {
+    let [x1, x2, y1, y2] = led.map(frac);
+    if (x1 > x2) [x1, x2] = [x2, x1];
+    if (y1 > y2) [y1, y2] = [y2, y1];
+    if (x2 - x1 < 1e-6 || y2 - y1 < 1e-6) return ""; // LEDs without area are skipped by Hyperion too
+    return `M${n(b.v + w * x1)} ${n(b.h + h * y1)}h${n(w * (x2 - x1))}v${n(h * (y2 - y1))}h${n(-w * (x2 - x1))}z`;
+  }).join("");
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="${d}" fill="${AREA}" fill-opacity=".4"/></svg>`;
 }
 
 // One-line status of the border detection
