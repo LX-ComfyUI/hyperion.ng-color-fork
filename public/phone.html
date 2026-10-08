@@ -519,8 +519,7 @@ let stopsBuiltFor = -1;        // number of gray-axis stops currently built in t
 let listKey = "";              // changes when the list of colors has to be rebuilt
 let hyperionConnected = false;
 let previewSource = null;
-let openPicker = null;         // the row's color input while its picker is open, the list waits with rebuilding
-let rebuildPending = false;    // the list changed while a picker was open
+let openPicker = null;         // the color input whose picker is open, its row is not touched meanwhile
 
 const $ = (id) => document.getElementById(id);
 const fmt = (v, d = 1) => Number(v).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -582,8 +581,9 @@ function showError(text) {
 function renderState() {
   if (!state) return;
   const key = JSON.stringify([state.presetColors ?? {}, state.customColors ?? []]);
-  if (key !== listKey && openPicker?.isConnected) { rebuildPending = true; updateActiveRows(); }
-  else if (key !== listKey) buildColorList();
+  // rows are updated in place; a rebuild (rows removed) waits until an open picker is closed,
+  // removing its input would close the picker on iOS
+  if (key !== listKey && !syncColorList() && !openPicker?.isConnected) buildColorList();
   else updateActiveRows();
   $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert." : "";
   renderBars();
@@ -605,7 +605,8 @@ function makeTool(icon, label, onClick, extraClass = "") {
 }
 
 // one row: the main part opens the picker to edit the value, the power button shows it on the
-// TV (or turns it off again), the other tools reset the value and send it to Hyperion
+// TV (or turns it off again), the other tools reset the value and send it to Hyperion. The row's
+// current color is always read from row.dataset.color, rows are updated in place (updateRow).
 function makeRow({ color, name, kind, id, edited }) {
   const row = document.createElement("div");
   row.className = "crow" + (kind === "custom" ? " custom" : "");
@@ -624,14 +625,14 @@ function makeRow({ color, name, kind, id, edited }) {
   const small = document.createElement("small");
   small.textContent = rgbText(hexToRgb(color));
   label.append(b, small);
-  main.append(chip, label, makePicker(`${name} bearbeiten`, () => color, { kind, id, from: color, chip }));
+  main.append(chip, label, makePicker(`${name} bearbeiten`, () => row.dataset.color, { kind, id, row, chip, small }));
   row.appendChild(main);
 
   const tools = document.createElement("span");
   tools.className = "tools";
-  tools.appendChild(makeTool("power", "Einschalten", () => toggleActive(color), "power"));
+  tools.appendChild(makeTool("power", "Einschalten", () => toggleActive(row.dataset.color), "power"));
   if (kind === "preset") {
-    const reset = makeTool("reset", "Auf Standard zurücksetzen", async () => { if (await send({ resetPreset: id })) renderState(); });
+    const reset = makeTool("reset", "Auf Standard zurücksetzen", async () => { if (await send({ resetPreset: id })) renderState(); }, "reset");
     reset.disabled = !edited;
     tools.appendChild(reset);
   }
@@ -641,7 +642,7 @@ function makeRow({ color, name, kind, id, edited }) {
     const label = `${name} in Hyperion übernehmen`;
     const sendBtn = makeTool("send", label, async (btn) => {
       btn.disabled = true;
-      const ok = await saveColor(id, hexToRgb(color));
+      const ok = await saveColor(id, hexToRgb(row.dataset.color));
       btn.classList.toggle("done", ok);
       btn.title = ok ? "Übernommen" : "Nicht übernommen";
       if (ok) flashRgbRow(id);
@@ -654,10 +655,27 @@ function makeRow({ color, name, kind, id, edited }) {
   } else {
     // custom colors: power, dot, trash, in the same three columns as the presets
     tools.appendChild(makeDot());
-    tools.appendChild(makeTool("trash", `${name} löschen`, () => removeCustom(color), "trash"));
+    tools.appendChild(makeTool("trash", `${name} löschen`, () => removeCustom(row.dataset.color), "trash"));
   }
   row.appendChild(tools);
   return row;
+}
+
+// shows a new value in a row without rebuilding it. The row with an open picker is left alone, the
+// picker shows its own value there and the row is brought up to date when the picker closes.
+function updateRow(row, color, name, edited) {
+  if (openPicker && row.contains(openPicker)) return;
+  row.dataset.color = color;
+  row.querySelector(".chip").style.background = color;
+  row.querySelector(".cname b").textContent = name;
+  row.querySelector(".cname small").textContent = rgbText(hexToRgb(color));
+  const input = row.querySelector("input[type=color]");
+  input.value = color;
+  input.setAttribute("aria-label", `${name} bearbeiten`);
+  const reset = row.querySelector(".ibtn.reset");
+  if (reset) reset.disabled = !edited;
+  const trash = row.querySelector(".ibtn.trash");
+  if (trash) trash.title = trash.ariaLabel = `${name} löschen`;
 }
 
 function makeDot() {
@@ -692,6 +710,26 @@ function buildColorList() {
   box.appendChild(add);
   updateActiveRows();
   updateSendButtons();
+}
+
+// brings the list up to date in place, so the input of an open picker stays on the page. New
+// custom colors are added before "Neue Farbe". Returns false when rows would have to be removed,
+// then the list has to be rebuilt.
+function syncColorList() {
+  const presetRows = $("crow-presets").querySelectorAll(".crow");
+  const box = $("crow-custom");
+  const customRows = box.querySelectorAll(".crow.custom");
+  const colors = state.customColors ?? [];
+  if (presetRows.length !== presets.length || customRows.length > colors.length) return false;
+  presets.forEach((p, i) => updateRow(presetRows[i], presetColor(p), p.name, presetColor(p) !== p.color));
+  colors.forEach((color, i) => {
+    const name = color.toUpperCase();
+    if (i < customRows.length) updateRow(customRows[i], color, name);
+    else box.insertBefore(makeRow({ color, name, kind: "custom", id: color }), box.querySelector(".crow.add"));
+  });
+  listKey = JSON.stringify([state.presetColors ?? {}, colors]);
+  updateSendButtons();
+  return true;
 }
 
 // the arrows write into Hyperion, so they need a connection and a color entry
@@ -744,119 +782,130 @@ function toggleActive(color) {
 
 // ---------- color picker: edits a preset or a custom color, or adds a new one ----------
 
-// live preview on the TV while a picker moves: only the newest patch is sent, one request at a time.
-// Nothing on the page is redrawn meanwhile (only the row's chip): iOS Safari crashed completely
-// when the page changed under its open color picker.
-let livePatch = null;          // newest picker patch not sent yet
-let liveSending = null;        // the running send loop
-let pickerMovedAt = 0;         // last picker move, the event stream waits while the finger moves
-const PICKER_QUIET_MS = 1500;
-function sendLive(patch) {
-  pickerMovedAt = Date.now();
-  livePatch = { ...livePatch, ...patch };
-  liveSending ??= (async () => {
-    while (livePatch) {
-      const p = livePatch;
-      livePatch = null;
-      await send(p);
+// How the browsers report a native color picker:
+// - iOS (every browser there is WebKit) fires input AND change for every move of the finger
+//   (WebPage::setFocusedElementValue uses DispatchInputAndChangeEvent) and closes the picker with
+//   a blur. It also closes the picker as soon as its input leaves the page.
+// - Desktop browsers fire input while the picker moves and change once when it closes.
+// So every change is saved right away, the input of an open picker is never removed (rows are
+// updated in place), and the editing ends with blur.
+
+// newest values per picker session that are not sent yet, one request at a time
+const pickQueue = new Map();
+let pickSending = null;
+function queuePick(session, values) {
+  pickQueue.set(session, { ...pickQueue.get(session), ...values });
+  pickSending ??= (async () => {
+    while (pickQueue.size) {
+      const [s, v] = pickQueue.entries().next().value;
+      pickQueue.delete(s);
+      await sendPick(s, v);
     }
-    liveSending = null;
+    pickSending = null;
   })();
 }
-// drops a patch still waiting and lets the request on its way finish, so the final save comes last
-async function stopLive() {
-  livePatch = null;
-  pickerMovedAt = 0;
-  await liveSending;
+
+// tv: the color the TV shows now, save: the color the row keeps
+async function sendPick(s, { tv, save }) {
+  const patch = {};
+  if (tv) {
+    patch.color = tv;
+    patch.colorActive = true;
+    // a new color is always shown on the TV, which ends a running gray still test
+    if (state.grayTest?.active) patch.grayTest = { active: false };
+  }
+  if (save) {
+    if (s.kind === "preset") patch.setPreset = { id: s.id, color: save };
+    else if (s.kind === "custom") patch.replaceCustom = { from: s.from, to: save };
+    else patch.addCustom = save;
+  }
+  const body = await send(patch);
+  // a new color exists from its first save on, the following moves replace it
+  if (body && save && s.kind !== "preset") { s.kind = "custom"; s.from = save; }
+  // the answer can be one move behind the finger, the row of an open live picker stays marked
+  if (body && s.open && s.live) state = { ...state, color: s.last };
+  if (body) renderState();
 }
 
-// one native color input per row. `target` says what it edits: a preset or custom color, or a
-// new custom color ("new", which shows the color live on the TV while the picker moves). Editing
-// the color the TV shows right now also follows the picker live on the TV.
+// one native color input per row. `target` says what it edits: a preset or custom color (its row),
+// or a new custom color ("new"). The TV follows the picker live when the row is the TV's color
+// right now, and always for a new color.
 function makePicker(ariaLabel, startValue, target) {
   const input = document.createElement("input");
   input.type = "color";
   input.value = startValue();
   input.setAttribute("aria-label", ariaLabel);
-  // the start value is set again right before opening, a new color starts from the TV's color
-  const prepare = () => { if (openPicker !== input) input.value = startValue(); };
-  input.addEventListener("pointerdown", prepare);
-  input.addEventListener("keydown", prepare);
-  input.addEventListener("click", () => { openPicker = input; });
-  let live = null;             // null until the first move: was this row the TV's color then?
+  let session = null;          // one opening of the picker: { kind, id, from, live, saved, last }
+
+  const begin = () => {
+    if (session) return;
+    // the start value is set again right before opening, a new color starts from the TV's color
+    if (openPicker !== input) input.value = startValue();
+    const color = input.value.toLowerCase();
+    session = {
+      kind: target.kind,
+      id: target.id,
+      from: target.kind === "custom" ? color : null,
+      live: target.kind === "new" || !!target.row?.classList.contains("active"),
+      saved: color,            // what the TV goes back to when the picker is cancelled
+      last: color,
+      open: true,
+    };
+  };
+  // shows the picker's value in the row; the TV's color moves along locally, so the row stays marked
+  const show = (color) => {
+    session.last = color;
+    if (target.chip) target.chip.style.background = color;
+    if (target.small) target.small.textContent = rgbText(hexToRgb(color));
+    if (target.row) target.row.dataset.color = color;
+    if (session.live) state = { ...state, color, colorActive: true };
+  };
+
+  input.addEventListener("pointerdown", begin);
+  input.addEventListener("keydown", begin);
+  input.addEventListener("focus", () => { openPicker = input; begin(); });
+  input.addEventListener("click", () => { openPicker = input; begin(); });
   input.addEventListener("input", () => {
     openPicker = input;
-    if (target.kind === "new") {
-      // a new color is always shown on the TV, which also ends a running gray still test
-      sendLive(state.grayTest?.active ? { color: input.value, colorActive: true, grayTest: { active: false } }
-                                      : { color: input.value, colorActive: true });
-      return;
-    }
-    if (target.chip) target.chip.style.background = input.value;
-    if (live === null) live = !!input.closest(".crow")?.classList.contains("active");
-    if (live) sendLive({ color: input.value });
-  });
-  input.addEventListener("change", async () => {
+    begin();
     const color = input.value.toLowerCase();
-    // the saved color stays on the TV when the row was shown live
-    const tv = live ? { color } : {};
-    live = null;
-    pickerClosed(input);
-    await stopLive();
-    if (target.kind === "new") {
-      input.value = state.color;
-      if (await send({ color, addCustom: color })) renderState();
-    } else if (target.kind === "preset") {
-      // the event stream skips updates while sending (all the time during a live preview), so the
-      // answer is drawn here, including changes other devices made meanwhile
-      if (await send({ ...tv, setPreset: { id: target.id, color } })) renderState();
-    } else if (target.kind === "custom") {
-      if (await send({ ...tv, replaceCustom: { from: target.from, to: color } })) renderState();
-    }
+    show(color);
+    if (session.live) queuePick(session, { tv: color });
+  });
+  input.addEventListener("change", () => {
+    openPicker = input;
+    begin();
+    const color = input.value.toLowerCase();
+    show(color);
+    session.saved = color;
+    queuePick(session, session.live ? { tv: color, save: color } : { save: color });
   });
   input.addEventListener("blur", () => {
-    // a cancelled picker leaves the chip on its last preview color otherwise
-    if (target.chip) target.chip.style.background = input.value;
+    const s = session;
+    session = null;
+    if (s) s.open = false;
+    // cancelled without change: the row and the TV go back to the last saved color
+    if (s && s.last !== s.saved && target.kind !== "new") {
+      input.value = s.saved;
+      if (target.chip) target.chip.style.background = s.saved;
+      if (target.small) target.small.textContent = rgbText(hexToRgb(s.saved));
+      if (target.row) target.row.dataset.color = s.saved;
+      if (s.live) { state = { ...state, color: s.saved }; queuePick(s, { tv: s.saved }); }
+    } else if (s && s.last !== s.saved && s.live) {
+      queuePick(s, { tv: s.saved });
+    }
+    if (target.kind === "new") input.value = state.color;
     pickerClosed(input);
-    if (!live) { live = null; return; }
-    // closed without saving: the TV goes back to the row's color. Some browsers send change only
-    // after blur, so this waits a moment and does nothing if the save came meanwhile.
-    setTimeout(async () => {
-      if (!live || openPicker === input) return;
-      live = null;
-      await stopLive();
-      input.value = target.from;
-      if (target.chip) target.chip.style.background = target.from;
-      if (await send({ color: target.from })) renderState();
-    }, 500);
   });
   return input;
 }
 
-function applyEvent(data) {
-  state = JSON.parse(data);
-  renderState();
-  renderDebug();
-}
-
-let deferredEvent = null;
-let deferTimer = null;
-function deferEvent(data) {
-  deferredEvent = data;
-  clearTimeout(deferTimer);
-  deferTimer = setTimeout(() => {
-    if (Date.now() - pickerMovedAt < PICKER_QUIET_MS) return deferEvent(deferredEvent);
-    const d = deferredEvent;
-    deferredEvent = null;
-    if (pendingSends === 0) applyEvent(d);
-  }, PICKER_QUIET_MS);
-}
-
-// a list change that arrived while the picker was open is applied now
+// rows that were left alone while the picker was open are brought up to date now
 function pickerClosed(input) {
   if (openPicker !== input) return;
   openPicker = null;
-  if (rebuildPending) { rebuildPending = false; renderState(); }
+  listKey = "";
+  renderState();
 }
 
 async function removeCustom(color) {
@@ -1553,9 +1602,9 @@ async function init() {
   const es = new EventSource("/api/events?role=phone");
   es.onmessage = (ev) => {
     if (pendingSends > 0) return; // do not overwrite a slider that is being sent
-    // while a color picker moves the page stays as it is, the newest state follows once it rests
-    if (Date.now() - pickerMovedAt < PICKER_QUIET_MS) { deferEvent(ev.data); return; }
-    applyEvent(ev.data);
+    state = JSON.parse(ev.data);
+    renderState();
+    renderDebug();
   };
   es.addEventListener("debug", (ev) => {
     debug = JSON.parse(ev.data);
