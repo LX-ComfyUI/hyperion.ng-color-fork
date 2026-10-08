@@ -184,6 +184,9 @@
   .pv-fab { position: fixed; right: 16px; bottom: 16px; z-index: 50; width: 60px; height: 60px; border-radius: 50%; padding: 0; border: none;
             display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-text); box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
   .pv-fab svg { width: 32px; height: 32px; }
+  /* errors of the shared state show up where the user is, not in a card far below */
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); z-index: 60; max-width: calc(100vw - 32px); box-sizing: border-box;
+           padding: 10px 14px; border-radius: 10px; background: var(--danger); color: #fff; font-size: 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
   .pv-panel { position: fixed; right: 16px; bottom: 0; z-index: 50; width: min(460px, calc(100vw - 32px)); box-sizing: border-box; padding: 4px 8px 8px;
               background: var(--card); border: 1px solid var(--line); border-radius: 12px 12px 0 0; box-shadow: 0 -4px 20px rgba(0, 0, 0, .25); }
   /* header: title left, grip centered, close right; the whole header drags the panel */
@@ -430,6 +433,7 @@
     <path d="M8 22h8"/>
   </svg>
 </button>
+<div class="toast" id="toast" role="alert" hidden></div>
 <section class="pv-panel" id="pv-panel" hidden aria-label="Grabber-Vorschau">
   <div class="pv-resize l" data-edge="l" title="Breite ändern"></div>
   <div class="pv-resize r" data-edge="r" title="Breite ändern"></div>
@@ -496,7 +500,8 @@ const ICON = {
 
 let state = null;
 let presets = [];              // standard presets from the server (id, color = standard, name)
-let dirty = false;             // true while a local change is being sent
+let pendingSends = 0;          // local changes on their way to the server, the event stream waits meanwhile
+let sendSeq = 0;               // only the answer to the newest change is applied
 let debug = null;              // latest "forkdebug" snapshot from Hyperion
 let bbConfig = null;           // Hyperion's blackborderdetector settings
 let colorConfig = null;        // Hyperion's color settings
@@ -540,19 +545,30 @@ $("dev-label").textContent = DEVICE_NAMES[document.documentElement.dataset.devic
 // ---------- shared state ----------
 
 async function send(patch) {
-  dirty = true;
+  const seq = ++sendSeq;
+  pendingSends++;
   try {
     const res = await fetch("/api/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error);
-    state = body;
+    if (seq === sendSeq) state = body;
     return body;
   } catch (e) {
-    $("status").textContent = "Fehler: " + e.message;
+    // fetch itself fails with a browser-specific English text when the Pi is not reachable
+    showError("Nicht gespeichert: " + (e instanceof TypeError ? "Die Testseite auf dem Pi ist nicht erreichbar." : e.message));
     return null;
   } finally {
-    dirty = false;
+    pendingSends--;
   }
+}
+
+let toastTimer = null;
+function showError(text) {
+  const t = $("toast");
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
 }
 
 function renderState() {
@@ -1099,6 +1115,7 @@ function renderBbConfig() {
 }
 
 const BB_STATUS_NOTE = /^(Einstellungen nicht lesbar|Zum Ändern zuerst)/;
+let bbSaving = 0; // while > 0 the live mode from Hyperion may still be the old one
 
 async function loadBbConfig() {
   try {
@@ -1116,6 +1133,7 @@ async function loadBbConfig() {
 async function saveBb(patch, what) {
   const note = $(patch.grayStillImageDetector ? "gs-cfg-note" : "bb-cfg-note");
   note.textContent = "Speichere in Hyperion …";
+  bbSaving++;
   try {
     const res = await fetch("/api/hyperion/blackborder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
     const body = await res.json();
@@ -1126,6 +1144,8 @@ async function saveBb(patch, what) {
     note.textContent = "Speichern fehlgeschlagen: " + e.message;
     await loadBbConfig();
     return;
+  } finally {
+    bbSaving--;
   }
   renderBbConfig();
 }
@@ -1140,7 +1160,16 @@ $("bb-enabled").addEventListener("change", (ev) => saveBb({ enable: ev.target.ch
 $("bb-threshold").addEventListener("input", (ev) => { $("bb-threshold_v").textContent = `${ev.target.value} %`; });
 $("bb-threshold").addEventListener("change", (ev) => saveBb({ threshold: Number(ev.target.value) }, "Schwelle"));
 for (const { id, key } of BB_NUMBERS) {
-  $(id).addEventListener("change", (ev) => saveBb({ [key]: Number(ev.target.value) }, "Wert"));
+  // an emptied field would arrive as 0, so only whole numbers are saved
+  $(id).addEventListener("change", (ev) => {
+    const v = Number(ev.target.value);
+    if (ev.target.value.trim() === "" || !Number.isInteger(v) || v < 0) {
+      $("bb-cfg-note").textContent = "Bitte eine ganze Zahl ab 0 eingeben.";
+      renderBbConfig();
+      return;
+    }
+    saveBb({ [key]: v }, "Wert");
+  });
 }
 $("gs-enabled").addEventListener("change", (ev) => saveBb({ grayStillImageDetector: { enabled: ev.target.checked } }, "Erkennung " + (ev.target.checked ? "an" : "aus")));
 for (const [id, key, label] of GS_FIELDS) {
@@ -1180,7 +1209,7 @@ function renderDebug() {
   $("bb-status").textContent = ok ? blackborderText(bb) : debug ? `Keine Daten: ${debug.error}` : "Warte auf Daten von Hyperion …";
   $("gs-status").textContent = ok ? grayStillText(gs) : debug ? `Keine Daten: ${debug.error}` : "Warte auf Daten von Hyperion …";
   // the live mode wins over the stored config, it reflects what Hyperion actually runs
-  if (bb && bbConfig && bb.mode !== bbConfig.mode && document.activeElement?.dataset?.bbMode === undefined) {
+  if (bb && bbConfig && bb.mode !== bbConfig.mode && bbSaving === 0 && document.activeElement?.dataset?.bbMode === undefined) {
     bbConfig = { ...bbConfig, mode: bb.mode };
     renderBbConfig();
   }
@@ -1382,15 +1411,17 @@ async function restoreBackup(name) {
   );
   if (!ok) return;
   $("status").textContent = "Wiederherstellen läuft …";
+  document.querySelectorAll("#backups .linkbtn").forEach(btn => { btn.disabled = true; });
   try {
     const res = await fetch("/api/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error);
     $("status").textContent = `Wiederhergestellt: Backup vom ${backupDate(body.restored)}. Der vorherige Stand ist als Backup vom ${backupDate(body.safety)} gesichert. Hyperion startet neu.`;
     loadBackups();
-    setTimeout(() => { loadBbConfig(); loadColorConfig(); }, 5000);
+    setTimeout(() => { loadBbConfig(); loadColorConfig(); loadLedAreas(); }, 5000);
   } catch (e) {
     $("status").textContent = "Wiederherstellen fehlgeschlagen: " + e.message;
+    loadBackups();
   }
 }
 
@@ -1432,7 +1463,7 @@ async function init() {
   // role=phone tells the TV to hide its QR code
   const es = new EventSource("/api/events?role=phone");
   es.onmessage = (ev) => {
-    if (dirty) return; // do not overwrite a slider that is being sent
+    if (pendingSends > 0) return; // do not overwrite a slider that is being sent
     state = JSON.parse(ev.data);
     renderState();
     renderDebug();

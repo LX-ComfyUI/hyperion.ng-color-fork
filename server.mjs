@@ -114,8 +114,12 @@ function sanitize(input) {
   return out;
 }
 
+// write to a temp file and rename, so a crash mid-write never leaves a broken state.json behind
+// (loadState would then fall back to the defaults and the custom colors would be gone)
 function saveState() {
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  const tmp = STATE_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
+  fs.renameSync(tmp, STATE_FILE);
 }
 
 function phoneCount() {
@@ -453,6 +457,16 @@ function mergeBlackborder(current, patch) {
   return next;
 }
 
+// Every change to Hyperion reads a whole settings block, changes one value and writes the block
+// back. Two saves running at the same time would both start from the old block and the later one
+// would undo the earlier one, so they run one after the other.
+let hyperionQueue = Promise.resolve();
+function exclusive(task) {
+  const run = hyperionQueue.then(task, task);
+  hyperionQueue = run.catch(() => {});
+  return run;
+}
+
 // Writes one whole settings block of instance 0 and returns what Hyperion stored
 async function writeInstanceSetting(type, next) {
   const api = await openHyperion();
@@ -469,8 +483,8 @@ async function writeInstanceSetting(type, next) {
   return readInstanceSetting(type);
 }
 
-async function saveBlackborder(patch) {
-  return writeInstanceSetting("blackborderdetector", mergeBlackborder(readInstanceSetting("blackborderdetector"), patch));
+function saveBlackborder(patch) {
+  return exclusive(() => writeInstanceSetting("blackborderdetector", mergeBlackborder(readInstanceSetting("blackborderdetector"), patch)));
 }
 
 // Fields the page may change, with the ranges of schema-color.json (fork extensions included).
@@ -533,8 +547,8 @@ function mergeColor(current, patch) {
   return next;
 }
 
-async function saveColor(patch) {
-  return writeInstanceSetting("color", mergeColor(readInstanceSetting("color"), patch));
+function saveColor(patch) {
+  return exclusive(() => writeInstanceSetting("color", mergeColor(readInstanceSetting("color"), patch)));
 }
 
 // Builds the same structure as Hyperion's own export ("config getconfig") from a DB backup
@@ -691,7 +705,8 @@ const server = http.createServer(async (req, res) => {
       if (patch.grayTest || patch.grayRestart) grayTest.startedAt = Date.now();
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
-      state = sanitize({ color: patch.color ?? state.color, colorActive, bars, customColors, presetColors, grayTest, overlays });
+      const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
+      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, overlays });
       saveState();
       broadcast();
       return sendJson(res, 200, state);
@@ -713,7 +728,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && p === "/api/restore") {
       const { name } = await readBody(req);
-      const result = await restoreBackup(String(name ?? ""));
+      const result = await exclusive(() => restoreBackup(String(name ?? "")));
       return sendJson(res, 200, { ...result, backups: listBackups() });
     }
 
