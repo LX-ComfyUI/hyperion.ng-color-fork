@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iomanip>
 #include <chrono>
+#include <cmath>
 
 #include <QResource>
 #include <QStringList>
@@ -253,7 +254,28 @@ bool LedDevice::init(const QJsonObject& deviceConfig)
 
 	_strayLedSuppressor.configure(createStrayLedSuppressorSettings(deviceConfig));
 
+	// Fork extension: black threshold for the 16-bit output, in 8-bit steps in the config
+	const QJsonObject blackThreshold = deviceConfig["blackThreshold"].toObject();
+	const bool blackThresholdEnabled = blackThreshold["enabled"].toBool(true);
+	const double blackThresholdSteps = qBound(0.0, blackThreshold["threshold"].toDouble(0.5), 255.0);
+	_blackThreshold16 = blackThresholdEnabled ? static_cast<uint16_t>(std::lround(blackThresholdSteps * 257.0)) : 0;
+
 	return true;
+}
+
+void LedDevice::applyBlackThreshold(QVector<ColorRgb16>& ledValues) const
+{
+	if (_blackThreshold16 == 0)
+	{
+		return;
+	}
+	for (ColorRgb16& color : ledValues)
+	{
+		if (color.red < _blackThreshold16 && color.green < _blackThreshold16 && color.blue < _blackThreshold16)
+		{
+			color = ColorRgb16();
+		}
+	}
 }
 
 void LedDevice::startRefreshTimer()
@@ -346,6 +368,7 @@ int LedDevice::updateLedsPrecise(const QVector<ColorRgb>& ledValues, const QVect
 		if (supportsPrecise() && preciseValues.size() == ledValues.size())
 		{
 			_ledUpdateBufferPrecise = preciseValues;
+			applyBlackThreshold(_ledUpdateBufferPrecise);
 		}
 		else
 		{

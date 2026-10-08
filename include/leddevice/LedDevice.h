@@ -484,6 +484,13 @@ protected:
 	/// device -- see StrayLedSuppressor.
 	StrayLedSuppressor _strayLedSuppressor;
 
+	/// Fork extension (16-bit output): device option "blackThreshold". A LED whose 16-bit channels
+	/// all stay below this value is switched off. Many video grabbers deliver black slightly lifted
+	/// (e.g. 7 instead of 0), which 8 bit hides but 16 bit would show as a faint glow. 0 = off.
+	/// Stored in the config in 8-bit steps (0.5 = rounding to 8 bit), kept here on the 16-bit scale.
+	uint16_t _blackThreshold16 { 129 };
+	void applyBlackThreshold(QVector<ColorRgb16>& ledValues) const;
+
 	/// Timer object which makes sure that LED data is written at a minimum rate
 	/// e.g. some devices will switch off when they do not receive data at least every 15 seconds
 	QScopedPointer<QTimer> _refreshTimer;

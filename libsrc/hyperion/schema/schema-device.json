@@ -101,6 +101,21 @@
         "fadeFrames": { "type": "integer", "title": "edt_dev_general_strayLedSuppressor_fadeFrames_title", "required": true, "minimum": 1, "maximum": 60, "default": 10, "propertyOrder": 9, "options": { "infoText": "edt_dev_general_strayLedSuppressor_fadeFrames_title_info" } }
       },
       "additionalProperties": false
+    },
+    "blackThreshold": {
+      "type": "object",
+      "title": "edt_dev_general_blackThreshold_title",
+      "required": true,
+      "access": "expert",
+      "propertyOrder": 8,
+      "options": {
+        "infoText": "edt_dev_general_blackThreshold_title_info"
+      },
+      "properties": {
+        "enabled": { "type": "boolean", "title": "edt_dev_general_blackThreshold_enabled_title", "required": true, "default": true, "propertyOrder": 1, "options": { "infoText": "edt_dev_general_blackThreshold_enabled_title_info" } },
+        "threshold": { "type": "number", "title": "edt_dev_general_blackThreshold_threshold_title", "required": true, "minimum": 0.0, "maximum": 10.0, "step": 0.05, "default": 0.5, "propertyOrder": 2, "options": { "infoText": "edt_dev_general_blackThreshold_threshold_title_info" } }
+      },
+      "additionalProperties": false
     }
   },
   "dependencies": {

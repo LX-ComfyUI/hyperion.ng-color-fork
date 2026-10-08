@@ -1122,6 +1122,11 @@ $(document).ready(function () {
       Object.keys(fields).forEach(function (key) {
         attachInfoIcon(BASE + key, fields[key]);
       });
+
+      // Fork-Erweiterung: Schwarzschwelle fuer die 16-Bit-Ausgabe, gleiches Muster
+      attachInfoIcon('root.generalOptions.blackThreshold', 'edt_dev_general_blackThreshold_expl');
+      attachInfoIcon('root.generalOptions.blackThreshold.enabled', 'edt_dev_general_blackThreshold_enabled_expl');
+      attachInfoIcon('root.generalOptions.blackThreshold.threshold', 'edt_dev_general_blackThreshold_threshold_expl');
     })(conf_editor);
 
     if (isCurrentDevice) {

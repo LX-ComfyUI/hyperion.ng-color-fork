@@ -267,6 +267,10 @@
             "maxAffectedRatioPercent":15,
             "debounceFrames":15,
             "fadeFrames":10
+         },
+         "blackThreshold":{
+            "enabled":true,
+            "threshold":0.5
          }
       },
       "foregroundEffect":{

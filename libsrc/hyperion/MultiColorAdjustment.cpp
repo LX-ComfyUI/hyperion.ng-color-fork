@@ -254,13 +254,6 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 
 		adjustment->_rgbTransform.applyTemperature(color);
 		adjustment->_rgbTransform.applyBacklight(color.red, color.green, color.blue);
-
-		// A LED that is off in 8 bit stays off in 16 bit: the grabber lifts black a little (TV 0
-		// arrives as about 7), which the 8-bit cuts hide but the precise path would show as a faint glow.
-		if (precise && color.red == 0 && color.green == 0 && color.blue == 0)
-		{
-			(*preciseColors)[i] = ColorRgb16();
-		}
 	}
 
 	if (_edgeTransitionBoost.enabled)
