@@ -353,16 +353,7 @@
   <!-- ===== gray still image test ===== -->
   <section class="card" id="card-gs">
     <h2>Graues Standbild Test</h2>
-    <p class="help">Manche Player blenden ein pausiertes Video nach kurzer Zeit zu einem grauen, dunkleren Standbild ab. Hyperion erkennt das und friert die LEDs ein oder schaltet sie aus. Hier kannst du das nachstellen und beobachten.</p>
-
-    <div class="sub" style="margin-top:0;border-top:none;padding-top:0">
-      <h3 style="margin-top:0">Live-Ablauf (Entwickler-Ansicht)</h3>
-      <label class="check" style="margin-top:0"><input type="checkbox" id="gs-live"><span>Hier anzeigen</span></label>
-      <div class="gsbox" id="gs-live-box" hidden></div>
-      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>In der Grabber-Vorschau anzeigen<small>Orange: die Randbereiche, die Hyperion auswertet (Abtastflächen der LEDs, innerhalb übernommener Schwarzbalken).</small></span></label>
-      <label class="check"><input type="checkbox" id="ov-gsTv"><span>Auf dem TV anzeigen<small>Kleine Box in der Bildmitte, sie stört die Erkennung kaum. Dazu orange die ausgewerteten Randbereiche.</small></span></label>
-      <p class="warn" id="gs-tv-warn" hidden>Der Grabber sieht die orange Markierung mit. Sie liegt genau im ausgewerteten Bereich und verfälscht Helligkeit, Abfall und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
-    </div>
+    <p class="help">Manche Player blenden ein pausiertes Video nach kurzer Zeit zu einem grauen, dunkleren Standbild ab. Hier stellst du das auf dem TV nach: ein Grauton, auf Wunsch mit Helligkeitsabfall.</p>
 
     <div style="margin-top:12px">
       <label class="field" for="gt-tone">Grauton</label>
@@ -381,24 +372,41 @@
         <button type="button" id="gt-restart"></button>
       </div>
     </div>
+  </section>
+
+  <!-- ===== Hyperion gray still image detection ===== -->
+  <section class="card" id="card-gsd">
+    <h2>Graues-Standbild-Erkennung (Hyperion)</h2>
+    <p class="help">So erkennt Hyperion ein graues Standbild im Grabber-Bild und friert die LEDs ein oder schaltet sie aus. Die Werte werden direkt in Hyperion gespeichert.</p>
+    <div class="status" id="gs-status">Warte auf Daten von Hyperion …</div>
+
+    <label class="check"><input type="checkbox" id="gs-enabled"><span>Graues-Standbild-Erkennung aktiv</span></label>
+    <label class="field" for="gs-still">Standbild muss mindestens gleich bleiben für</label>
+    <div class="row"><input type="range" id="gs-still" min="1" max="60" step="1"><span class="val" id="gs-still_v"></span></div>
+    <label class="field" for="gs-drop">Nötiger Helligkeitsabfall (0 = nicht nötig)</label>
+    <div class="row"><input type="range" id="gs-drop" min="0" max="255" step="1"><span class="val" id="gs-drop_v"></span></div>
+    <label class="field" for="gs-window">… innerhalb von</label>
+    <div class="row"><input type="range" id="gs-window" min="0.2" max="5" step="0.1"><span class="val" id="gs-window_v"></span></div>
+    <label class="field" for="gs-change">Toleranz für Bildänderung</label>
+    <div class="row"><input type="range" id="gs-change" min="0" max="64" step="1"><span class="val" id="gs-change_v"></span></div>
+    <label class="field">Reaktion</label>
+    <div class="seg full" role="group" aria-label="Reaktion">
+      <button data-gs-mode="freeze">Farben einfrieren</button>
+      <button data-gs-mode="off">LEDs aus</button>
+    </div>
+    <p class="note" id="gs-cfg-note"></p>
 
     <div class="sub">
-      <h3>Einstellungen in Hyperion</h3>
-      <p class="note" id="gs-cfg-note" style="margin-top:0"></p>
-      <label class="check"><input type="checkbox" id="gs-enabled"><span>Graues-Standbild-Erkennung aktiv</span></label>
-      <label class="field" for="gs-still">Standbild muss mindestens gleich bleiben für</label>
-      <div class="row"><input type="range" id="gs-still" min="1" max="60" step="1"><span class="val" id="gs-still_v"></span></div>
-      <label class="field" for="gs-drop">Nötiger Helligkeitsabfall (0 = nicht nötig)</label>
-      <div class="row"><input type="range" id="gs-drop" min="0" max="255" step="1"><span class="val" id="gs-drop_v"></span></div>
-      <label class="field" for="gs-window">… innerhalb von</label>
-      <div class="row"><input type="range" id="gs-window" min="0.2" max="5" step="0.1"><span class="val" id="gs-window_v"></span></div>
-      <label class="field" for="gs-change">Toleranz für Bildänderung</label>
-      <div class="row"><input type="range" id="gs-change" min="0" max="64" step="1"><span class="val" id="gs-change_v"></span></div>
-      <label class="field">Reaktion</label>
-      <div class="seg full" role="group" aria-label="Reaktion">
-        <button data-gs-mode="freeze">Farben einfrieren</button>
-        <button data-gs-mode="off">LEDs aus</button>
-      </div>
+      <h3>Anzeige beim Testen</h3>
+      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>Ausgewerteten Bereich in der Grabber-Vorschau anzeigen<small>Orange: die Randbereiche, die Hyperion auswertet (Abtastflächen der LEDs, innerhalb übernommener Schwarzbalken).</small></span></label>
+      <label class="check"><input type="checkbox" id="ov-gsTv"><span>Ausgewerteten Bereich auf dem TV anzeigen<small>Orange Randbereiche, dazu eine kleine Statusbox in der Bildmitte.</small></span></label>
+      <p class="warn" id="gs-tv-warn" hidden>Der Grabber sieht die orange Markierung mit. Sie liegt genau im ausgewerteten Bereich und verfälscht Helligkeit, Abfall und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
+    </div>
+
+    <div class="sub">
+      <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
+      <label class="check" style="margin-top:0"><input type="checkbox" id="gs-live"><span>Hier anzeigen</span></label>
+      <div class="gsbox" id="gs-live-box" hidden></div>
     </div>
   </section>
 
@@ -441,7 +449,7 @@
 </section>
 
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillCompactHtml, ledAreasSvg, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, ledAreasSvg, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 
 const EDGES = ["top", "bottom", "left", "right"];
 const BAR_PAIRS = [
@@ -1080,11 +1088,17 @@ function renderBbConfig() {
     b.setAttribute("aria-pressed", String(b.dataset.gsMode === g.mode));
     b.disabled = !writable;
   });
-  const note = !bbConfig ? "Einstellungen nicht lesbar." : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“." : "";
-  $("bb-cfg-note").textContent = note;
-  $("gs-cfg-note").textContent = note;
+  // a state note is set or cleared here, a save result stays until the next save
+  const problem = !bbConfig ? "Einstellungen nicht lesbar." : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“." : null;
+  for (const id of ["bb-cfg-note", "gs-cfg-note"]) {
+    const el = $(id);
+    if (problem) { if (!el.textContent.startsWith("Einstellungen nicht lesbar")) el.textContent = problem; }
+    else if (BB_STATUS_NOTE.test(el.textContent)) el.textContent = "";
+  }
   renderGrayTest();
 }
+
+const BB_STATUS_NOTE = /^(Einstellungen nicht lesbar|Zum Ändern zuerst)/;
 
 async function loadBbConfig() {
   try {
@@ -1093,21 +1107,23 @@ async function loadBbConfig() {
     bbConfig = await res.json();
   } catch (e) {
     bbConfig = null;
-    $("bb-cfg-note").textContent = "Einstellungen nicht lesbar: " + e.message;
+    $("bb-cfg-note").textContent = $("gs-cfg-note").textContent = "Einstellungen nicht lesbar: " + e.message;
   }
   renderBbConfig();
 }
 
+// the gray still settings live in the same Hyperion section, their messages go to their own card
 async function saveBb(patch, what) {
-  $("bb-cfg-note").textContent = "Speichere in Hyperion …";
+  const note = $(patch.grayStillImageDetector ? "gs-cfg-note" : "bb-cfg-note");
+  note.textContent = "Speichere in Hyperion …";
   try {
     const res = await fetch("/api/hyperion/blackborder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error);
     bbConfig = body;
-    $("bb-cfg-note").textContent = `${what} in Hyperion gespeichert.`;
+    note.textContent = `${what} in Hyperion gespeichert.`;
   } catch (e) {
-    $("bb-cfg-note").textContent = "Speichern fehlgeschlagen: " + e.message;
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
     await loadBbConfig();
     return;
   }
@@ -1162,6 +1178,7 @@ function renderDebug() {
   const bb = ok ? debug.blackborder : null;
   const gs = ok ? debug.grayStill : null;
   $("bb-status").textContent = ok ? blackborderText(bb) : debug ? `Keine Daten: ${debug.error}` : "Warte auf Daten von Hyperion …";
+  $("gs-status").textContent = ok ? grayStillText(gs) : debug ? `Keine Daten: ${debug.error}` : "Warte auf Daten von Hyperion …";
   // the live mode wins over the stored config, it reflects what Hyperion actually runs
   if (bb && bbConfig && bb.mode !== bbConfig.mode && document.activeElement?.dataset?.bbMode === undefined) {
     bbConfig = { ...bbConfig, mode: bb.mode };

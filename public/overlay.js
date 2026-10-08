@@ -117,6 +117,16 @@ export function grayStillHtml(gs) {
     <div class="gs-meta">Helligkeit ${fmt(gs.brightness, 0)} · Änderung ${fmt(gs.changeDelta)} (Grenze ${gs.changeThreshold})</div>`;
 }
 
+// One-line status of the gray still image detector
+export function grayStillText(gs) {
+  if (!gs) return "Keine Daten von Hyperion";
+  if (!gs.enabled) return "Graues-Standbild-Erkennung ist aus";
+  if (gs.triggered) return `Greift: ${gs.mode === "off" ? "LEDs aus" : "Farben eingefroren"}`;
+  const secs = fmt(gs.stillActive ? gs.stillElapsedMs / 1000 : 0);
+  const drop = gs.brightnessDropThreshold > 0 ? ` · Abfall ${gs.dropDetected ? "erkannt" : "noch nicht erkannt"}` : "";
+  return `Standbild ${secs} von ${gs.stillTimeSeconds} s${drop}`;
+}
+
 // Styles for the status box, shared so TV and phone look the same (sizes come from the host page)
 export const GRAY_STILL_CSS = `
   .gs-title { font-weight: 700; margin-bottom: .4em; }
