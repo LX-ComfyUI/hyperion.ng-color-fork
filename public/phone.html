@@ -799,7 +799,33 @@ function buildColorEditor() {
       <span class="rgbname">${label}</span>
       <span class="inputs">${[0, 1, 2].map(ch => `<input type="number" inputmode="numeric" min="0" max="255" step="1" data-rgb="${key}" data-ch="${ch}" aria-label="${label} ${"RGB"[ch]}">`).join("")}</span>
     </div>`).join("");
-  $("hy-rgb").querySelectorAll("input").forEach(inp => inp.addEventListener("change", () => saveRgbRow(inp.dataset.rgb)));
+  $("hy-rgb").querySelectorAll("input").forEach(inp => {
+    inp.addEventListener("change", () => saveRgbRow(inp.dataset.rgb));
+    inp.addEventListener("paste", (ev) => pasteRgb(ev, inp.dataset.rgb));
+  });
+}
+
+// a whole color pasted into one field ("255, 255, 255", "255 255 255", "rgb(…)" or "#ffffff")
+// is split over the row's three fields and saved; a single number pastes as usual
+function parseRgb(text) {
+  const t = text.trim();
+  // without "#" only when a letter shows it is hex, so "123456" is not read as a color
+  const hex = t.match(/^#([0-9a-f]{6})$/i) ?? t.match(/^(?=.*[a-f])([0-9a-f]{6})$/i);
+  if (hex) return hexToRgb("#" + hex[1]);
+  const nums = t.match(/\d+/g);
+  if (!nums || nums.length !== 3 || /[^\d\s,;/()rgbRGB]/.test(t)) return null;
+  const rgb = nums.map(Number);
+  return rgb.every(c => c <= 255) ? rgb : null;
+}
+
+function pasteRgb(ev, field) {
+  const rgb = parseRgb(ev.clipboardData?.getData("text") ?? "");
+  if (!rgb) return;
+  ev.preventDefault();
+  const inputs = [...document.querySelectorAll(`#hy-rgb input[data-rgb="${field}"]`)];
+  inputs.forEach((inp, ch) => { inp.value = rgb[ch]; });
+  ev.target.blur();
+  saveRgbRow(field).then(ok => { if (ok) flashRgbRow(field); });
 }
 
 // stop rows are built for the number of stops Hyperion has
@@ -898,7 +924,7 @@ async function saveRgbRow(field) {
     $("hy-note").textContent = "RGB braucht drei ganze Zahlen von 0 bis 255.";
     return renderColorEditor();
   }
-  await saveColor(field, rgb);
+  return saveColor(field, rgb);
 }
 
 // one delegated listener for every field in the Hyperion column
