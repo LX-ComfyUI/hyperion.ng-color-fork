@@ -64,6 +64,7 @@ void LedDeviceWrapper::createLedDevice(const QJsonObject& config)
 
 	connect(_ledDeviceThread.get(), &QThread::started, _ledDevice.get(), &LedDevice::start);
 	connect(this, &LedDeviceWrapper::updateLeds, _ledDevice.get(), &LedDevice::updateLeds);
+	connect(this, &LedDeviceWrapper::updateLedsPrecise, _ledDevice.get(), &LedDevice::updateLedsPrecise);
 	connect(this, &LedDeviceWrapper::switchOn, _ledDevice.get(), &LedDevice::switchOn);
 	connect(this, &LedDeviceWrapper::switchOff, _ledDevice.get(), &LedDevice::switchOff);
 	connect(this, &LedDeviceWrapper::enable, _ledDevice.get(), &LedDevice::enable);
@@ -138,6 +139,7 @@ void LedDeviceWrapper::stopDevice()
 
 	//Disable updates to the LedDevice
 	disconnect(this, &LedDeviceWrapper::updateLeds, _ledDevice.get(), &LedDevice::updateLeds);
+	disconnect(this, &LedDeviceWrapper::updateLedsPrecise, _ledDevice.get(), &LedDevice::updateLedsPrecise);
 	disconnect(this, &LedDeviceWrapper::switchOff, _ledDevice.get(), &LedDevice::switchOff);
 	disconnect(this, &LedDeviceWrapper::disable, _ledDevice.get(), &LedDevice::disable);
 	disconnect(this, &LedDeviceWrapper::enable, _ledDevice.get(), &LedDevice::enable);

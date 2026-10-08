@@ -45,6 +45,16 @@ private:
 	///
     int write(const QVector<ColorRgb> & ledValues) override;
 
+	///
+	/// @brief Fork extension: the HD108 takes 16 bit per channel, so the precise frame from the
+	/// color adjustment is written as it is instead of the 8-bit values stretched to 16 bit.
+	///
+	bool supportsPrecise() const override { return true; }
+	int writePrecise(const QVector<ColorRgb16> & ledValues) override;
+
+	/// Builds and sends one SPI frame from 16-bit values (used by write and writePrecise)
+	int writeFrame16(const QVector<ColorRgb16> & ledValues);
+
 	/// The brighness level. Possibile values 1 .. 31.
 	int _brightnessControlMaxLevel;
 	uint16_t _global_brightness;

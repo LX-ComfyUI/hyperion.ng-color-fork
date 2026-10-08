@@ -71,3 +71,11 @@ void RgbChannelAdjustment::apply(uint8_t input, uint8_t brightness, uint8_t & re
 	green = _mapping.green[input];
 	blue  = _mapping.blue[input];
 }
+
+void RgbChannelAdjustment::applyPrecise(float input, uint8_t brightness, float & red, float & green, float & blue) const
+{
+	const float adjustedInput = static_cast<float>(brightness) * input / static_cast<float>(DOUBLE_UINT8_MAX_SQUARED);
+	red   = qBound(0.0F, _adjust.red   * adjustedInput, static_cast<float>(UINT8_MAX));
+	green = qBound(0.0F, _adjust.green * adjustedInput, static_cast<float>(UINT8_MAX));
+	blue  = qBound(0.0F, _adjust.blue  * adjustedInput, static_cast<float>(UINT8_MAX));
+}

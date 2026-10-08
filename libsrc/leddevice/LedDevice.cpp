@@ -332,12 +332,27 @@ void LedDevice::stopEnableAttemptsTimer()
 
 int LedDevice::updateLeds(const QVector<ColorRgb>& ledValues)
 {
+	return updateLedsPrecise(ledValues, {});
+}
+
+int LedDevice::updateLedsPrecise(const QVector<ColorRgb>& ledValues, const QVector<ColorRgb16>& preciseValues)
+{
 	trackDevice(leddevice_write, "Update LED values on") << (_isLedUpdatePending.load() ? ", but skipping update as an LED update is pending." : "will be executed.");
 	// Take the LED update into a shared buffer and return quickly
 	{
 		QMutexLocker locker(&_ledBufferMutex);
 		_ledUpdateBuffer = ledValues;
-		_strayLedSuppressor.apply(_ledUpdateBuffer);
+		// the 16-bit frame is only kept for devices that can show it
+		if (supportsPrecise() && preciseValues.size() == ledValues.size())
+		{
+			_ledUpdateBufferPrecise = preciseValues;
+		}
+		else
+		{
+			_ledUpdateBufferPrecise.clear();
+		}
+		// one suppressor step per frame, applied to both versions of the frame
+		_strayLedSuppressor.apply(_ledUpdateBuffer, _ledUpdateBufferPrecise.isEmpty() ? nullptr : &_ledUpdateBufferPrecise);
 	}
 
 	// If a frame processing is NOT already scheduled, schedule one.
@@ -352,17 +367,19 @@ int LedDevice::updateLeds(const QVector<ColorRgb>& ledValues)
 void LedDevice::processLedUpdate()
 {
 	QVector<ColorRgb> valuesToProcess;
+	QVector<ColorRgb16> preciseToProcess;
 	{
 		QMutexLocker locker(&_ledBufferMutex);
 		valuesToProcess = _ledUpdateBuffer;
+		preciseToProcess = _ledUpdateBufferPrecise;
 	}
 
-	writeLedUpdate(valuesToProcess);
+	writeLedUpdate(valuesToProcess, preciseToProcess);
 
 	_isLedUpdatePending.store(false);
 }
 
-int LedDevice::writeLedUpdate(const QVector<ColorRgb>& ledValues)
+int LedDevice::writeLedUpdate(const QVector<ColorRgb>& ledValues, const QVector<ColorRgb16>& preciseValues)
 {
 	if (!_isEnabled || !_isOn || !_isDeviceReady || _isDeviceInError)
 	{
@@ -392,13 +409,22 @@ int LedDevice::writeLedUpdate(const QVector<ColorRgb>& ledValues)
 		return 0;
 	}
 
-	int const result = write(ledValues);
+	// fork: devices that can show 16 bit get the precise frame when there is one
+	const bool precise = supportsPrecise() && preciseValues.size() == ledValues.size();
+	if (supportsPrecise() && precise != _lastWriteWasPrecise)
+	{
+		// logged only when it changes, not per frame
+		Info(_log, "%s", precise ? "Writing 16-bit LED values (fork extension)" : "Writing 8-bit LED values (no 16-bit frame available)");
+		_lastWriteWasPrecise = precise;
+	}
+	int const result = precise ? writePrecise(preciseValues) : write(ledValues);
 	_lastWriteTime = QDateTime::currentDateTime();
 
 	// if device requires refreshing, save Led-Values and restart the timer
 	if (_isRefreshEnabled && _isEnabled)
 	{
 		_lastLedValues = ledValues;
+		_lastLedValuesPrecise = precise ? preciseValues : QVector<ColorRgb16>();
 		this->startRefreshTimer();
 	}
 
@@ -433,7 +459,10 @@ int LedDevice::rewriteLEDs()
 	if (!_lastLedValues.empty())
 	{
 		trackDevice(leddevice_write, "Rewriting LED values");
-		success = write(_lastLedValues);
+		// a rewrite must not drop back to 8 bit, that would change the colors
+		success = (supportsPrecise() && _lastLedValuesPrecise.size() == _lastLedValues.size())
+			? writePrecise(_lastLedValuesPrecise)
+			: write(_lastLedValues);
 		_isLedUpdatePending.store(false);		
 	}
 
@@ -458,6 +487,7 @@ int LedDevice::writeColor(const ColorRgb& color, int numberOfWrites)
 			wait(_latchTime_ms);
 		}
 		_lastLedValues = QVector<ColorRgb>(_ledCount, color);
+		_lastLedValuesPrecise.clear();
 		rc = write(_lastLedValues);
 	}
 	return rc;

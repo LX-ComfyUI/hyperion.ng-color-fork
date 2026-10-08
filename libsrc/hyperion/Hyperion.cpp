@@ -146,7 +146,8 @@ void Hyperion::start()
 
 	_ledDeviceWrapper = MAKE_TRACKED_SHARED(LedDeviceWrapper, sharedFromThis());
 	connect(this, &Hyperion::compStateChangeRequest, _ledDeviceWrapper.get(), &LedDeviceWrapper::handleComponentState);
-	connect(this, &Hyperion::ledDeviceData, _ledDeviceWrapper.get(), &LedDeviceWrapper::updateLeds);
+	// fork: the device gets the 8-bit and the 16-bit values of each frame together
+	connect(this, &Hyperion::ledDeviceDataPrecise, _ledDeviceWrapper.get(), &LedDeviceWrapper::updateLedsPrecise);
 
 	_ledDeviceWrapper->createLedDevice(ledDeviceSettings);
 
@@ -264,6 +265,7 @@ void Hyperion::handleSettingsUpdate(settings::type type, const QJsonDocument& co
 
 		updateLedLayout(getSetting(settings::LEDS).array());
 		_ledBuffer.fill(ColorRgb::BLACK, _hwLedCount);
+		_ledBufferPrecise.clear();
 	}
 }
 
@@ -715,16 +717,19 @@ void Hyperion::applyBlacklist(QVector<ColorRgb>& ledColors)
 	}
 }
 
-void Hyperion::applyColorOrder(QVector<ColorRgb>& ledColors) const
+namespace {
+// the color order for 8-bit and 16-bit LED colors (fork extension: 16-bit HD108 output)
+template <typename Color>
+void applyColorOrderTo(QVector<Color>& ledColors, const QVector<ColorOrder>& ledStringColorOrder)
 {
-	assert(ledColors.size() >= _ledStringColorOrder.size());
+	assert(ledColors.size() >= ledStringColorOrder.size());
 
 	// Only apply color order for LEDs defined by layout
-	for (auto i = 0; i < _ledStringColorOrder.size(); ++i)
+	for (auto i = 0; i < ledStringColorOrder.size(); ++i)
 	{
 		auto& color = ledColors[i];
 		// correct the color byte order
-		switch (_ledStringColorOrder.at(i))
+		switch (ledStringColorOrder.at(i))
 		{
 		case ColorOrder::ORDER_RGB:
 			// leave as it is
@@ -749,6 +754,17 @@ void Hyperion::applyColorOrder(QVector<ColorRgb>& ledColors) const
 		}
 	}
 }
+} // namespace
+
+void Hyperion::applyColorOrder(QVector<ColorRgb>& ledColors) const
+{
+	applyColorOrderTo(ledColors, _ledStringColorOrder);
+}
+
+void Hyperion::applyColorOrder(QVector<ColorRgb16>& ledColors) const
+{
+	applyColorOrderTo(ledColors, _ledStringColorOrder);
+}
 
 void Hyperion::writeToLeds()
 {
@@ -758,13 +774,14 @@ void Hyperion::writeToLeds()
 		if (!_deviceSmooth->enabled())
 		{
 				emit ledDeviceData(_ledBuffer);
+				emit ledDeviceDataPrecise(_ledBuffer, _ledBufferPrecise);
 		}
 		else
 		{
 			// device is enabled, feed smoothing in pause mode to maintain a smooth transition back to smooth mode
 			if (!_deviceSmooth->pause())
 			{
-				_deviceSmooth->updateLedValues(_ledBuffer);
+				_deviceSmooth->updateLedValues(_ledBuffer, _ledBufferPrecise);
 			}
 		}
 	}
@@ -840,13 +857,26 @@ void Hyperion::processUpdate()
 	emit rawLedColors(ledColors);
 	applyBlacklist(ledColors);
 
-	// Start transformations
-	_raw2ledAdjustment->applyAdjustment(ledColors);
+	// Start transformations; the fork also computes the 16-bit values of the same frame
+	QVector<ColorRgb16> preciseColors;
+	_raw2ledAdjustment->applyAdjustment(ledColors, &preciseColors);
 
 	applyColorOrder(ledColors);
 
 	// Copy elements from ledColors to _ledBuffer up to the size of _ledBuffer
 	std::copy_n(ledColors.begin(), std::min<qsizetype>(_ledBuffer.size(), ledColors.size()), _ledBuffer.begin());
+
+	if (preciseColors.size() == ledColors.size())
+	{
+		applyColorOrder(preciseColors);
+		// LEDs behind the layout stay black, like in _ledBuffer
+		_ledBufferPrecise = QVector<ColorRgb16>(_ledBuffer.size());
+		std::copy_n(preciseColors.begin(), std::min<qsizetype>(_ledBufferPrecise.size(), preciseColors.size()), _ledBufferPrecise.begin());
+	}
+	else
+	{
+		_ledBufferPrecise.clear();
+	}
 
 	writeToLeds();
 }

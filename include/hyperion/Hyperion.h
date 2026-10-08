@@ -24,6 +24,7 @@
 // hyperion-utils includes
 #include <utils/Image.h>
 #include <utils/ColorRgb.h>
+#include <utils/ColorRgb16.h>
 #include <utils/Components.h>
 #include <utils/VideoMode.h>
 
@@ -474,6 +475,13 @@ signals:
 	void ledDeviceData(const QVector<ColorRgb>& ledValues);
 
 	///
+	/// @brief Fork extension (16-bit HD108 output): emitted together with ledDeviceData, carries the
+	/// 16-bit values of the same frame (empty = 8 bit only). The LedDeviceWrapper listens to this one,
+	/// ledDeviceData stays for the other listeners (JSON-API LED stream).
+	///
+	void ledDeviceDataPrecise(const QVector<ColorRgb>& ledValues, const QVector<ColorRgb16>& preciseValues);
+
+	///
 	/// @brief Emits whenever new untransformed ledColos data is available, reflects the current visible device
 	///
 	void rawLedColors(const QVector<ColorRgb>& ledValues);
@@ -560,6 +568,7 @@ private:
 	/// @param ledColors The vector of LED colors to modify.
 	///
 	void applyColorOrder(QVector<ColorRgb>& ledColors) const;
+	void applyColorOrder(QVector<ColorRgb16>& ledColors) const;
 
 	///
 	/// Writes the final LED colors to the LED device.
@@ -627,6 +636,8 @@ private:
 	
 	// buffer for leds (with adjustment)
 	QVector<ColorRgb> _ledBuffer;
+	// the same frame with 16 bit per channel (fork extension), empty when not available
+	QVector<ColorRgb16> _ledBufferPrecise;
 
 	/// statistics timer
 	QScopedPointer<QTimer> _statisticsTimer;

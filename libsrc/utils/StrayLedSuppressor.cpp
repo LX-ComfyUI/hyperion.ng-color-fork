@@ -51,7 +51,7 @@ void StrayLedSuppressor::configure(const StrayLedSuppressorSettings& settings)
 	_settings = settings;
 }
 
-void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors)
+void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors)
 {
 	if (!_settings.enabled || ledColors.isEmpty())
 	{
@@ -161,6 +161,15 @@ void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors)
 				static_cast<uint8_t>(c.red   * (1.0 - w)),
 				static_cast<uint8_t>(c.green * (1.0 - w)),
 				static_cast<uint8_t>(c.blue  * (1.0 - w)));
+			// the decision is made on the 8-bit frame, the 16-bit frame follows it
+			if (preciseColors != nullptr && i < preciseColors->size())
+			{
+				ColorRgb16& p = (*preciseColors)[i];
+				p = ColorRgb16(
+					static_cast<uint16_t>(std::lround(p.red   * (1.0 - w))),
+					static_cast<uint16_t>(std::lround(p.green * (1.0 - w))),
+					static_cast<uint16_t>(std::lround(p.blue  * (1.0 - w))));
+			}
 		}
 	}
 }

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <utility>
 
 // Hyperion includes
 
@@ -96,8 +97,88 @@ void MultiColorAdjustment::setBacklightEnabled(bool enable)
 	}
 }
 
-void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors)
+// Fork extension (16-bit HD108 output): the same calculation as the per-LED part of
+// applyAdjustment() from the gamma step on, in float and without the cuts to whole numbers. The
+// 8-bit path cuts several times (gamma table, corner weights, corner values, temperature), so its
+// result can be a few steps below this one. The result is converted to 16 bit only at the end.
+ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, uint8_t inRed, uint8_t inGreen, uint8_t inBlue)
 {
+	float r = 0.0F;
+	float g = 0.0F;
+	float b = 0.0F;
+	adjustment->_rgbTransform.applyGammaPrecise(inRed, inGreen, inBlue, r, g, b);
+
+	uint8_t B_RGB = 0;
+	uint8_t B_CMY = 0;
+	uint8_t B_W = 0;
+	adjustment->_rgbTransform.getBrightnessComponents(B_RGB, B_CMY, B_W);
+
+	// trilinear weights of the 8 corner colors, on the 8-bit scale (they add up to 255)
+	const float max = UINT8_MAX;
+	const float squared = static_cast<float>(DOUBLE_UINT8_MAX_SQUARED);
+	const float nr_ng = (max - r) * (max - g);
+	const float r_ng  = r * (max - g);
+	const float nr_g  = (max - r) * g;
+	const float r_g   = r * g;
+
+	const float black   = nr_ng * (max - b) / squared;
+	const float red     = r_ng  * (max - b) / squared;
+	const float green   = nr_g  * (max - b) / squared;
+	const float blue    = nr_ng * b / squared;
+	const float cyan    = nr_g  * b / squared;
+	const float magenta = r_ng  * b / squared;
+	const float yellow  = r_g   * (max - b) / squared;
+	const float white   = r_g   * b / squared;
+
+	struct Part { float r, g, b; };
+	Part parts[8];
+	adjustment->_rgbBlackAdjustment.applyPrecise  (black  , UINT8_MAX, parts[0].r, parts[0].g, parts[0].b);
+	adjustment->_rgbRedAdjustment.applyPrecise    (red    , B_RGB, parts[1].r, parts[1].g, parts[1].b);
+	adjustment->_rgbGreenAdjustment.applyPrecise  (green  , B_RGB, parts[2].r, parts[2].g, parts[2].b);
+	adjustment->_rgbBlueAdjustment.applyPrecise   (blue   , B_RGB, parts[3].r, parts[3].g, parts[3].b);
+	adjustment->_rgbCyanAdjustment.applyPrecise   (cyan   , B_CMY, parts[4].r, parts[4].g, parts[4].b);
+	adjustment->_rgbMagentaAdjustment.applyPrecise(magenta, B_CMY, parts[5].r, parts[5].g, parts[5].b);
+	adjustment->_rgbYellowAdjustment.applyPrecise (yellow , B_CMY, parts[6].r, parts[6].g, parts[6].b);
+	adjustment->_rgbWhiteAdjustment.applyPrecise  (white  , B_W  , parts[7].r, parts[7].g, parts[7].b);
+
+	float outR = 0.0F;
+	float outG = 0.0F;
+	float outB = 0.0F;
+	for (const Part& part : parts)
+	{
+		outR += part.r;
+		outG += part.g;
+		outB += part.b;
+	}
+	// the 8-bit path stores the sum in a byte; with a valid calibration it stays below 256
+	outR = qMin(outR, max);
+	outG = qMin(outG, max);
+	outB = qMin(outB, max);
+
+	adjustment->_rgbTransform.applyTemperaturePrecise(outR, outG, outB);
+	adjustment->_rgbTransform.applyBacklightPrecise(outR, outG, outB);
+
+	return ColorRgb16(ColorRgb16::fromScale255(outR), ColorRgb16::fromScale255(outG), ColorRgb16::fromScale255(outB));
+}
+
+void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors)
+{
+	// The edge boost has no precise version: the LED device then gets the 8-bit values only
+	const bool precise = preciseColors != nullptr && !_edgeTransitionBoost.enabled;
+	if (preciseColors != nullptr)
+	{
+		preciseColors->clear();
+	}
+	if (precise)
+	{
+		// LEDs without a calibration keep their input color, like in the 8-bit path
+		preciseColors->reserve(ledColors.size());
+		for (const ColorRgb& color : std::as_const(ledColors))
+		{
+			preciseColors->append(ColorRgb16(color));
+		}
+	}
+
 	const size_t itCnt = qMin(_ledAdjustments.size(), ledColors.size());
 	for (size_t i=0; i<itCnt; ++i)
 	{
@@ -124,6 +205,12 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors)
 		if (adjustment->_grayAxisTrim.enabled)
 		{
 			GrayAxisTrimTransform::apply(ored, ogreen, oblue, adjustment->_grayAxisTrim);
+		}
+
+		if (precise)
+		{
+			// the precise path starts from the same input, after the steps that only see 8-bit input
+			(*preciseColors)[i] = computePrecise(adjustment, ored, ogreen, oblue);
 		}
 
 		adjustment->_rgbTransform.applyGamma(ored,ogreen,oblue);
@@ -167,6 +254,13 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors)
 
 		adjustment->_rgbTransform.applyTemperature(color);
 		adjustment->_rgbTransform.applyBacklight(color.red, color.green, color.blue);
+
+		// A LED that is off in 8 bit stays off in 16 bit: the grabber lifts black a little (TV 0
+		// arrives as about 7), which the 8-bit cuts hide but the precise path would show as a faint glow.
+		if (precise && color.red == 0 && color.green == 0 && color.blue == 0)
+		{
+			(*preciseColors)[i] = ColorRgb16();
+		}
 	}
 
 	if (_edgeTransitionBoost.enabled)

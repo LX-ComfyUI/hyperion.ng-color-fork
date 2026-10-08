@@ -110,6 +110,14 @@ public:
 	void setTemperature(int temperature);
 	void applyTemperature(ColorRgb& color) const;
 
+	///
+	/// Fork extension (16-bit HD108 output): the same steps without rounding to 8 bit. Values stay
+	/// on the 8-bit scale (0.0..255.0) but keep their fractions.
+	///
+	void applyGammaPrecise(uint8_t red, uint8_t green, uint8_t blue, float & outRed, float & outGreen, float & outBlue) const;
+	void applyBacklightPrecise(float & red, float & green, float & blue) const;
+	void applyTemperaturePrecise(float & red, float & green, float & blue) const;
+
 private:
 	///
 	/// init
@@ -145,6 +153,11 @@ private:
 	uint8_t _mappingR[256];
 	uint8_t _mappingG[256];
 	uint8_t _mappingB[256];
+
+	/// The same mapping without rounding (fork extension, 16-bit output)
+	float _mappingPreciseR[256];
+	float _mappingPreciseG[256];
+	float _mappingPreciseB[256];
 
 	/// brightness variables
 	uint8_t _brightness;

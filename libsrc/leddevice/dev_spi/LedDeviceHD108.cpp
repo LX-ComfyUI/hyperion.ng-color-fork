@@ -83,6 +83,23 @@ bool LedDeviceHD108::init(const QJsonObject &deviceConfig)
  */
 int LedDeviceHD108::write(const QVector<ColorRgb> & ledValues)
 {
+    // Expand 8-bit color components to 16 bits each: v * 257 == (v << 8) | v, the bytes stay the same
+    QVector<ColorRgb16> ledValues16;
+    ledValues16.reserve(ledValues.size());
+    for (const ColorRgb &color : ledValues)
+    {
+        ledValues16.append(ColorRgb16(color));
+    }
+    return writeFrame16(ledValues16);
+}
+
+int LedDeviceHD108::writePrecise(const QVector<ColorRgb16> & ledValues)
+{
+    return writeFrame16(ledValues);
+}
+
+int LedDeviceHD108::writeFrame16(const QVector<ColorRgb16> & ledValues)
+{
     // Calculate how much space we need in total:
     //  - 8 bytes for the start frame
     //  - 8 bytes per LED (16 bits global brightness + 16 bits R + G + B)
@@ -100,28 +117,23 @@ int LedDeviceHD108::write(const QVector<ColorRgb> & ledValues)
     hd108Data.insert(hd108Data.end(), 8, 0x00);
 
     // 2) For each LED, insert 8 bytes: 16 bits brightness, 16 bits R, 16 bits G, 16 bits B
-    for (const ColorRgb &color : ledValues)
+    for (const ColorRgb16 &color : ledValues)
     {
-        // Expand 8-bit color components to 16 bits each
-        uint16_t red16   = (static_cast<uint16_t>(color.red)   << 8) | color.red;
-        uint16_t green16 = (static_cast<uint16_t>(color.green) << 8) | color.green;
-        uint16_t blue16  = (static_cast<uint16_t>(color.blue)  << 8) | color.blue;
-
         // Global brightness (16 bits)
         hd108Data.push_back(_global_brightness >> 8);
         hd108Data.push_back(_global_brightness & 0xFF);
 
         // Red (16 bits)
-        hd108Data.push_back(red16 >> 8);
-        hd108Data.push_back(red16 & 0xFF);
+        hd108Data.push_back(color.red >> 8);
+        hd108Data.push_back(color.red & 0xFF);
 
         // Green (16 bits)
-        hd108Data.push_back(green16 >> 8);
-        hd108Data.push_back(green16 & 0xFF);
+        hd108Data.push_back(color.green >> 8);
+        hd108Data.push_back(color.green & 0xFF);
 
         // Blue (16 bits)
-        hd108Data.push_back(blue16 >> 8);
-        hd108Data.push_back(blue16 & 0xFF);
+        hd108Data.push_back(color.blue >> 8);
+        hd108Data.push_back(color.blue & 0xFF);
     }
 
     // 3) End frame: at least (ledCount / 16 + 1) bytes of 0xFF

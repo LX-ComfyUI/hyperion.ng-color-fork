@@ -37,6 +37,12 @@ public:
 	void apply(uint8_t input, uint8_t brightness, uint8_t & red, uint8_t & green, uint8_t & blue);
 
 	///
+	/// Fork extension (16-bit HD108 output): the same as apply() without rounding. The input
+	/// (weight of this corner) and the result stay on the 8-bit scale but keep their fractions.
+	///
+	void applyPrecise(float input, uint8_t brightness, float & red, float & green, float & blue) const;
+
+	///
 	/// setAdjustment RGB
 	///
 	/// @param adjustR

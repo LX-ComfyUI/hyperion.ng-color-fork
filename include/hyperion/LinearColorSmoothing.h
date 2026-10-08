@@ -13,6 +13,7 @@
 
 // hyperion includes
 #include <leddevice/LedDevice.h>
+#include <utils/ColorRgb16.h>
 #include <utils/Components.h>
 #include <hyperion/PriorityMuxer.h>
 
@@ -93,7 +94,9 @@ public:
 	/// @param ledValues The color-value per led
 	/// @return Zero on success else negative
 	///
-	virtual int updateLedValues(const QVector<ColorRgb> &ledValues);
+	/// @param preciseValues Fork extension: the same frame with 16 bit per channel (empty = 8 bit only)
+	///
+	virtual int updateLedValues(const QVector<ColorRgb> &ledValues, const QVector<ColorRgb16> &preciseValues = {});
 
 	void setEnable(bool enable);
 	void setPause(bool pause);
@@ -172,7 +175,7 @@ private:
 	 *
 	 * @param ledColors The colors to queue
 	 */
-	void queueColors(const QVector<ColorRgb> &ledColors);
+	void queueColors(const QVector<ColorRgb> &ledColors, const QVector<ColorRgb16> &preciseColors = {});
 	void clearQueuedColors();
 
 	/// write updated values as input for the smoothing filter
@@ -180,7 +183,7 @@ private:
 	/// @param ledValues The color-value per led
 	/// @return Zero on success else negative
 	///
-	virtual int write(const QVector<ColorRgb> &ledValues);
+	virtual int write(const QVector<ColorRgb> &ledValues, const QVector<ColorRgb16> &preciseValues = {});
 
 	QString getConfig(int cfgID);
 
@@ -219,6 +222,14 @@ private:
 
 	/// The previously written led data
 	QVector<ColorRgb> _previousValues;
+
+	/// Fork extension (16-bit HD108 output): the target and the previously written frame with 16
+	/// bit per channel. Only used by the linear type without output delay, else the LED device
+	/// gets the 8-bit values. _previousValuesPrecise holds 3 floats per LED (16-bit scale).
+	QVector<ColorRgb16> _targetValuesPrecise;
+	std::vector<float> _previousValuesPrecise;
+	bool preciseActive() const;
+	QVector<ColorRgb16> previousPrecise() const;
 
 	/// The number of updates to keep in the output queue (delayed) before being output
 	unsigned _outputDelay;

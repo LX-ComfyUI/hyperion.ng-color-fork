@@ -2,6 +2,7 @@
 
 #include <QJsonObject>
 #include <QVector>
+#include <utils/ColorRgb16.h>
 
 #include <utils/ColorRgb.h>
 
@@ -80,7 +81,9 @@ public:
 	/// Intended to run as the very last step before the colors reach
 	/// LedDevice::write(), after all image processing and smoothing.
 	///
-	void apply(QVector<ColorRgb>& ledColors);
+	/// @param preciseColors Fork extension (16-bit HD108 output): the same frame with 16 bit per
+	///                      channel; it gets the same suppression as ledColors (one step per frame)
+	void apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors = nullptr);
 
 private:
 	struct LedState

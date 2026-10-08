@@ -1,5 +1,6 @@
 #include <hyperion/LinearColorSmoothing.h>
 
+#include <algorithm>
 #include <cmath>
 #include <chrono>
 #include <thread>
@@ -181,10 +182,19 @@ void LinearColorSmoothing::handlePriorityUpdate(int priority)
 	}
 }
 
-int LinearColorSmoothing::write(const QVector<ColorRgb> &ledValues)
+int LinearColorSmoothing::write(const QVector<ColorRgb> &ledValues, const QVector<ColorRgb16> &preciseValues)
 {
 	_targetTime = micros() + (MS_PER_MICRO * _settlingTime);
 	_targetValues = ledValues;
+	if (preciseValues.size() == ledValues.size())
+	{
+		_targetValuesPrecise = preciseValues;
+	}
+	else
+	{
+		_targetValuesPrecise.clear();
+		_previousValuesPrecise.clear();
+	}
 
 	rememberFrame(ledValues);
 
@@ -205,7 +215,7 @@ int LinearColorSmoothing::write(const QVector<ColorRgb> &ledValues)
 	return 0;
 }
 
-int LinearColorSmoothing::updateLedValues(const QVector<ColorRgb> &ledValues)
+int LinearColorSmoothing::updateLedValues(const QVector<ColorRgb> &ledValues, const QVector<ColorRgb16> &preciseValues)
 {
 	int retval = 0;
 	if (!_enabled)
@@ -214,9 +224,32 @@ int LinearColorSmoothing::updateLedValues(const QVector<ColorRgb> &ledValues)
 	}
 	else
 	{
-		retval = write(ledValues);
+		retval = write(ledValues, preciseValues);
 	}
 	return retval;
+}
+
+// the 16-bit frame is only carried by the linear type without output delay
+bool LinearColorSmoothing::preciseActive() const
+{
+	return _smoothingType == SmoothingType::Linear
+		&& _outputDelay == 0
+		&& !_targetValuesPrecise.isEmpty()
+		&& _targetValuesPrecise.size() == _targetValues.size();
+}
+
+QVector<ColorRgb16> LinearColorSmoothing::previousPrecise() const
+{
+	QVector<ColorRgb16> out;
+	out.reserve(static_cast<qsizetype>(_previousValuesPrecise.size() / 3));
+	for (size_t i = 0; i + 2 < _previousValuesPrecise.size(); i += 3)
+	{
+		out.append(ColorRgb16(
+			static_cast<uint16_t>(std::lround(std::clamp(_previousValuesPrecise[i],     0.0F, 65535.0F))),
+			static_cast<uint16_t>(std::lround(std::clamp(_previousValuesPrecise[i + 1], 0.0F, 65535.0F))),
+			static_cast<uint16_t>(std::lround(std::clamp(_previousValuesPrecise[i + 2], 0.0F, 65535.0F)))));
+	}
+	return out;
 }
 
 void LinearColorSmoothing::intitializeComponentVectors(const size_t ledCount)
@@ -243,7 +276,22 @@ void LinearColorSmoothing::writeDirect()
 	_previousValues = _targetValues;
 	_previousWriteTime = now;
 
-	queueColors(_previousValues);
+	if (preciseActive())
+	{
+		_previousValuesPrecise.resize(3 * static_cast<size_t>(_targetValuesPrecise.size()));
+		for (qsizetype i = 0; i < _targetValuesPrecise.size(); ++i)
+		{
+			_previousValuesPrecise[3 * i]     = _targetValuesPrecise[i].red;
+			_previousValuesPrecise[3 * i + 1] = _targetValuesPrecise[i].green;
+			_previousValuesPrecise[3 * i + 2] = _targetValuesPrecise[i].blue;
+		}
+		queueColors(_previousValues, _targetValuesPrecise);
+	}
+	else
+	{
+		_previousValuesPrecise.clear();
+		queueColors(_previousValues);
+	}
 }
 
 
@@ -468,6 +516,35 @@ void LinearColorSmoothing::performLinear(const int64_t now) {
 	const float k = 1.0F - 1.0F * deltaTime / (_targetTime - _previousWriteTime);
 	const size_t N = _previousValues.size();
 
+	// Fork extension: the 16-bit frame moves with the same factor, without whole steps. It starts
+	// from the 8-bit frame on the LEDs when it was not carried before.
+	const bool precise = preciseActive() && static_cast<size_t>(_targetValuesPrecise.size()) == N;
+	if (precise)
+	{
+		if (_previousValuesPrecise.size() != 3 * N)
+		{
+			_previousValuesPrecise.resize(3 * N);
+			for (size_t i = 0; i < N; ++i)
+			{
+				_previousValuesPrecise[3 * i]     = _previousValues[i].red * 257.0F;
+				_previousValuesPrecise[3 * i + 1] = _previousValues[i].green * 257.0F;
+				_previousValuesPrecise[3 * i + 2] = _previousValues[i].blue * 257.0F;
+			}
+		}
+		for (size_t i = 0; i < N; ++i)
+		{
+			const ColorRgb16 &target = _targetValuesPrecise[i];
+			float *prev = &_previousValuesPrecise[3 * i];
+			prev[0] += k * (target.red   - prev[0]);
+			prev[1] += k * (target.green - prev[1]);
+			prev[2] += k * (target.blue  - prev[2]);
+		}
+	}
+	else
+	{
+		_previousValuesPrecise.clear();
+	}
+
 	for (size_t i = 0; i < N; ++i)
 	{
 		const ColorRgb &target = _targetValues[i];
@@ -482,7 +559,15 @@ void LinearColorSmoothing::performLinear(const int64_t now) {
 		prev.blue  += (bluedif  < 0 ? -1:1) * std::ceil(k * std::abs(bluedif));
 	}
 
-	writeFrame();
+	if (precise)
+	{
+		_previousWriteTime = now;
+		queueColors(_previousValues, previousPrecise());
+	}
+	else
+	{
+		writeFrame();
+	}
 }
 
 void LinearColorSmoothing::updateLeds()
@@ -545,7 +630,7 @@ void LinearColorSmoothing::clearRememberedFrames()
 	tempValues.clear();
 }
 
-void LinearColorSmoothing::queueColors(const QVector<ColorRgb> &ledColors)
+void LinearColorSmoothing::queueColors(const QVector<ColorRgb> &ledColors, const QVector<ColorRgb16> &preciseColors)
 {
 	assert (!ledColors.empty());
 
@@ -558,6 +643,7 @@ void LinearColorSmoothing::queueColors(const QVector<ColorRgb> &ledColors)
 			if (hyperion)
 			{
 				emit hyperion->ledDeviceData(ledColors);
+				emit hyperion->ledDeviceDataPrecise(ledColors, preciseColors);
 			}
 		}
 	}
@@ -576,7 +662,9 @@ void LinearColorSmoothing::queueColors(const QVector<ColorRgb> &ledColors)
 					QSharedPointer<Hyperion> hyperion = _hyperionWeak.toStrongRef();
 					if (hyperion)
 					{
+						// the delay queue only keeps the 8-bit frames
 						emit hyperion->ledDeviceData(_outputQueue.front());
+						emit hyperion->ledDeviceDataPrecise(_outputQueue.front(), {});
 					}
 				}
 				_outputQueue.pop_front();
@@ -589,8 +677,10 @@ void LinearColorSmoothing::clearQueuedColors()
 {
 	_timer->stop();
 	_previousValues.clear();
+	_previousValuesPrecise.clear();
 
 	_targetValues.clear();
+	_targetValuesPrecise.clear();
 
 	clearRememberedFrames();
 }
@@ -678,6 +768,8 @@ bool LinearColorSmoothing::selectConfig(int cfgID, bool force)
 	{
 		_smoothingType = _cfgList[cfgID]._type;
 		_settlingTime = _cfgList[cfgID]._settlingTime;
+		// the 16-bit frame restarts from the 8-bit one with the new settings
+		_previousValuesPrecise.clear();
 		_outputDelay = _cfgList[cfgID]._outputDelay;
 		_pause = _cfgList[cfgID]._pause;
 		_outputIntervalMicros = int64_t(1000000.0 / _updateInterval); // 1s = 1e6 µs

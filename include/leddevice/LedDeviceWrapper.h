@@ -4,6 +4,7 @@
 // util
 #include <utils/Logger.h>
 #include <utils/ColorRgb.h>
+#include <utils/ColorRgb16.h>
 #include <utils/Components.h>
 
 #include <QScopedPointer>
@@ -107,6 +108,13 @@ signals:
 	/// @return Zero on success else negative
 	///
 	int updateLeds(const QVector<ColorRgb>& ledValues);
+
+	///
+	/// @brief Fork extension (16-bit HD108 output): the same as updateLeds with the 16-bit values of
+	/// the same frame. Devices that cannot show them use the 8-bit values. An empty preciseValues
+	/// means "8 bit only".
+	///
+	int updateLedsPrecise(const QVector<ColorRgb>& ledValues, const QVector<ColorRgb16>& preciseValues);
 
 	///
 	/// @brief Switch the LEDs on.

@@ -25,6 +25,7 @@
 #include <utils/Image.h>
 #include <utils/settings.h>
 #include "utils/ColorRgb.h"
+#include "utils/ColorRgb16.h"
 #include "utils/VideoMode.h"
 #include "utils/global_defines.h"
 #include <utils/GlobalSignals.h>
@@ -110,6 +111,8 @@ HyperionDaemon::HyperionDaemon(const QString& rootPath, QObject* parent, bool lo
 	qRegisterMetaType<VideoMode>("VideoMode");
 	qRegisterMetaType<QMap<quint8, QJsonObject>>("QMap<quint8,QJsonObject>");
 	qRegisterMetaType<QVector<ColorRgb>>("QVector<ColorRgb>");
+	// fork: 16-bit LED values travel next to the 8-bit ones to the LED device thread
+	qRegisterMetaType<QVector<ColorRgb16>>("QVector<ColorRgb16>");
 
 	// set inital log lvl if the loglvl wasn't overwritten by arg
 	if (!logLvlOverwrite)

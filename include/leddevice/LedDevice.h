@@ -22,6 +22,7 @@
 
 // Utility includes
 #include <utils/ColorRgb.h>
+#include <utils/ColorRgb16.h>
 #include <utils/ColorRgbw.h>
 #include <utils/RgbToRgbw.h>
 #include <utils/Logger.h>
@@ -230,6 +231,13 @@ public slots:
 	virtual int updateLeds(const QVector<ColorRgb>& ledValues);
 
 	///
+	/// @brief Fork extension (16-bit HD108 output): like updateLeds, with the 16-bit values of the
+	/// same frame. A device that supportsPrecise() writes those, every other device the 8-bit values.
+	/// An empty preciseValues means 8 bit only.
+	///
+	int updateLedsPrecise(const QVector<ColorRgb>& ledValues, const QVector<ColorRgb16>& preciseValues);
+
+	///
 	/// @brief Get the currently defined LatchTime.
 	///
 	/// @return Latch time in milliseconds
@@ -357,6 +365,20 @@ protected:
 	/// @return Zero on success, else negative
 	///
 	virtual int write(const QVector<ColorRgb>& ledValues) = 0;
+
+	///
+	/// @brief Fork extension (16-bit HD108 output): whether the device can show 16 bit per channel.
+	/// Only then writePrecise() is used.
+	///
+	virtual bool supportsPrecise() const { return false; }
+
+	///
+	/// @brief Fork extension: writes 16 bit per channel (only called when supportsPrecise()).
+	///
+	/// @param[in] ledValues The color per LED, 0..65535 per channel
+	/// @return Zero on success, else negative
+	///
+	virtual int writePrecise(const QVector<ColorRgb16>& ledValues) { Q_UNUSED(ledValues); return -1; }
 
 	///
 	/// @brief Writes "BLACK" to the output stream,
@@ -574,7 +596,7 @@ private:
 	/// @param[in] ledValues The color per LED
 	/// @return Zero on success else negative (i.e. device is not ready)
 	///
-	int writeLedUpdate(const QVector<ColorRgb>& ledValues);
+	int writeLedUpdate(const QVector<ColorRgb>& ledValues, const QVector<ColorRgb16>& preciseValues = {});
 
 	/// @brief Start a new refresh cycle
 	void startRefreshTimer();
@@ -618,6 +640,10 @@ private:
 
 	/// Last LED values written
 	QVector<ColorRgb> _lastLedValues;
+	/// The same frame with 16 bit per channel (fork extension), empty when it was written with 8 bit
+	QVector<ColorRgb16> _lastLedValuesPrecise;
+	/// whether the last write used 16 bit, for the log message on changes
+	bool _lastWriteWasPrecise { false };
 
 	std::atomic<bool> _isLedUpdatePending{ false };
 	std::atomic<bool> _isSwitchOffInProgress{ false };
@@ -627,6 +653,7 @@ private:
 	// The mutex now ONLY protects the data buffer.
 	QMutex _ledBufferMutex;
 	QVector<ColorRgb> _ledUpdateBuffer;
+	QVector<ColorRgb16> _ledUpdateBufferPrecise;
 };
 
 #endif // LEDEVICE_H

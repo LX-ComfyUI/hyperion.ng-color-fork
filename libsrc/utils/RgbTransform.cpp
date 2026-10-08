@@ -75,6 +75,11 @@ void RgbTransform::initializeMapping()
 		_mappingR[i] = clampedValueR;
 		_mappingG[i] = clampedValueG;
 		_mappingB[i] = clampedValueB;
+
+		// The same values without the cut to whole numbers (fork extension, 16-bit output)
+		_mappingPreciseR[i] = static_cast<float>(qBound(0.0, gammaCorrectedValueR, static_cast<double>(UINT8_MAX)));
+		_mappingPreciseG[i] = static_cast<float>(qBound(0.0, gammaCorrectedValueG, static_cast<double>(UINT8_MAX)));
+		_mappingPreciseB[i] = static_cast<float>(qBound(0.0, gammaCorrectedValueB, static_cast<double>(UINT8_MAX)));
 	}
 }
 
@@ -214,4 +219,39 @@ void RgbTransform::applyTemperature(ColorRgb& color) const
 	color.red   = color.red * _temperatureRGB.red / UINT8_MAX;
 	color.green = color.green * _temperatureRGB.green / UINT8_MAX;
 	color.blue  = color.blue * _temperatureRGB.blue / UINT8_MAX;
+}
+
+void RgbTransform::applyGammaPrecise(uint8_t red, uint8_t green, uint8_t blue, float & outRed, float & outGreen, float & outBlue) const
+{
+	outRed   = _mappingPreciseR[red];
+	outGreen = _mappingPreciseG[green];
+	outBlue  = _mappingPreciseB[blue];
+}
+
+void RgbTransform::applyBacklightPrecise(float & red, float & green, float & blue) const
+{
+	// same rule as applyBacklight, the comparison uses the 8-bit scale
+	const float brightnessLow = _brightnessLow;
+	if (_backLightEnabled && red + green + blue < brightnessLow * 3)
+	{
+		if (_backlightColored)
+		{
+			red = qMax(red, brightnessLow);
+			green = qMax(green, brightnessLow);
+			blue = qMax(blue, brightnessLow);
+		}
+		else
+		{
+			red = brightnessLow;
+			green = brightnessLow;
+			blue = brightnessLow;
+		}
+	}
+}
+
+void RgbTransform::applyTemperaturePrecise(float & red, float & green, float & blue) const
+{
+	red   = red   * _temperatureRGB.red   / UINT8_MAX;
+	green = green * _temperatureRGB.green / UINT8_MAX;
+	blue  = blue  * _temperatureRGB.blue  / UINT8_MAX;
 }
