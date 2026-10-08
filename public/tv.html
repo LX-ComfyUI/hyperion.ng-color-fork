@@ -69,7 +69,7 @@
 </div>
 
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, ledAreasSvg, GRAY_STILL_CSS } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, GRAY_STILL_CSS } from "/static/overlay.js";
 
 const style = document.createElement("style");
 style.textContent = GRAY_STILL_CSS;
@@ -136,7 +136,7 @@ function renderDebug() {
   $("gs-box").hidden = !o.gsTv;
   if (o.gsTv) $("gs-box").innerHTML = grayStillHtml(gs);
   $("gs-area").hidden = !o.gsTv;
-  if (o.gsTv) $("gs-area").innerHTML = ledAreasSvg(ledAreas, bb);
+  if (o.gsTv) $("gs-area").innerHTML = grayStillAreaSvg(gs, ledAreas, bb);
 }
 
 function render() {

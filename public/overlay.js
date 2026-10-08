@@ -85,6 +85,24 @@ export function ledAreasSvg(leds, bb) {
   return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="${d}" fill="${AREA}" fill-opacity=".4"/></svg>`;
 }
 
+// What the gray still detector evaluates: with an edge width set (fork setting
+// edgeWidthPercent) a frame of that depth along the picture edges, inside the applied black
+// border; otherwise the LED areas.
+export function grayStillAreaSvg(gs, leds, bb) {
+  const pct = Number(gs?.edgeWidthPercent) || 0;
+  if (pct <= 0) return ledAreasSvg(leds, bb);
+  const b = borderPct(bb, bb?.currentBorder) ?? { h: 0, v: 0 };
+  const w = 100 - 2 * b.v;
+  const h = 100 - 2 * b.h;
+  const dx = (w * pct) / 100;
+  const dy = (h * pct) / 100;
+  const n = (v) => +v.toFixed(2);
+  // outer rectangle minus inner rectangle (even-odd), the same frame ImageProcessor samples
+  const d = `M${n(b.v)} ${n(b.h)}h${n(w)}v${n(h)}h${n(-w)}z` +
+    `M${n(b.v + dx)} ${n(b.h + dy)}h${n(w - 2 * dx)}v${n(h - 2 * dy)}h${n(-(w - 2 * dx))}z`;
+  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="${d}" fill="${AREA}" fill-opacity=".4" fill-rule="evenodd"/></svg>`;
+}
+
 // One-line status of the border detection
 export function blackborderText(bb) {
   if (!bb) return "Keine Daten von Hyperion";

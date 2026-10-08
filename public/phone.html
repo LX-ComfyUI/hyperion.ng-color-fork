@@ -392,6 +392,14 @@
     <div class="row"><input type="range" id="gs-window" min="0.2" max="5" step="0.1"><span class="val" id="gs-window_v"></span></div>
     <label class="field" for="gs-change">Toleranz für Bildänderung</label>
     <div class="row"><input type="range" id="gs-change" min="0" max="64" step="1"><span class="val" id="gs-change_v"></span></div>
+    <label class="field">Ausgewerteter Randbereich <span class="field-hint" id="gs-edge-note"></span></label>
+    <div class="seg full" role="group" aria-label="Ausgewerteter Randbereich" id="gs-edge">
+      <button data-gs-edge="0">LED-Bereiche</button>
+      <button data-gs-edge="3">3 %</button>
+      <button data-gs-edge="6">6 %</button>
+      <button data-gs-edge="9">9 %</button>
+    </div>
+    <p class="note">LED-Bereiche: die Abtastflächen aus dem LED-Layout. Ein Prozentwert wertet stattdessen einen Rahmen dieser Tiefe an allen vier Bildrändern aus, innerhalb erkannter Schwarzbalken.</p>
     <label class="field">Reaktion</label>
     <div class="seg full" role="group" aria-label="Reaktion">
       <button data-gs-mode="freeze">Farben einfrieren</button>
@@ -401,7 +409,7 @@
 
     <div class="sub">
       <h3>Anzeige beim Testen</h3>
-      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>Ausgewerteten Bereich in der Grabber-Vorschau anzeigen<small>Orange: die Randbereiche, die Hyperion auswertet (Abtastflächen der LEDs, innerhalb übernommener Schwarzbalken).</small></span></label>
+      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>Ausgewerteten Bereich in der Grabber-Vorschau anzeigen<small>Orange: was Hyperion auswertet, je nach Einstellung oben die Abtastflächen der LEDs oder der Randbereich, innerhalb übernommener Schwarzbalken.</small></span></label>
       <label class="check"><input type="checkbox" id="ov-gsTv"><span>Ausgewerteten Bereich auf dem TV anzeigen<small>Orange Randbereiche, dazu eine kleine Statusbox in der Bildmitte.</small></span></label>
       <p class="warn" id="gs-tv-warn" hidden>Der Grabber sieht die orange Markierung mit. Sie liegt genau im ausgewerteten Bereich und verfälscht Helligkeit, Abfall und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
     </div>
@@ -453,7 +461,7 @@
 </section>
 
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, ledAreasSvg, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 
 const EDGES = ["top", "bottom", "left", "right"];
 const BAR_PAIRS = [
@@ -1104,6 +1112,15 @@ function renderBbConfig() {
     b.setAttribute("aria-pressed", String(b.dataset.gsMode === g.mode));
     b.disabled = !writable;
   });
+  // the field only exists with the fork version that evaluates edge frames
+  const edge = g.edgeWidthPercent;
+  const edgeKnown = edge !== undefined;
+  document.querySelectorAll("[data-gs-edge]").forEach(b => {
+    b.setAttribute("aria-pressed", String(edgeKnown && Number(b.dataset.gsEdge) === edge));
+    b.disabled = !writable || !edgeKnown;
+  });
+  $("gs-edge-note").textContent = !bbConfig ? "" : !edgeKnown ? "(braucht die neue Hyperion-Version)"
+    : [0, 3, 6, 9].includes(edge) ? "" : `(eingestellt: ${edge} %)`;
   // a state note is set or cleared here, a save result stays until the next save
   const problem = !bbConfig ? "Einstellungen nicht lesbar." : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“." : null;
   for (const id of ["bb-cfg-note", "gs-cfg-note"]) {
@@ -1178,6 +1195,8 @@ for (const [id, key, label] of GS_FIELDS) {
 }
 document.querySelectorAll("[data-gs-mode]").forEach(b => b.addEventListener("click", () =>
   saveBb({ grayStillImageDetector: { mode: b.dataset.gsMode } }, "Reaktion")));
+document.querySelectorAll("[data-gs-edge]").forEach(b => b.addEventListener("click", () =>
+  saveBb({ grayStillImageDetector: { edgeWidthPercent: Number(b.dataset.gsEdge) } }, "Randbereich")));
 
 // ---------- live debug data ----------
 
@@ -1225,7 +1244,7 @@ function renderDebug() {
     if (o.bbPreview) $("pv-bbtext").textContent = ok ? blackborderText(bb) : "Keine Daten von Hyperion";
     $("pv-gs").hidden = !o.gsPreview;
     if (o.gsPreview) $("pv-gs").innerHTML = grayStillCompactHtml(gs);
-    $("pv-gsarea").innerHTML = o.gsPreview ? ledAreasSvg(ledAreas, bb) : "";
+    $("pv-gsarea").innerHTML = o.gsPreview ? grayStillAreaSvg(gs, ledAreas, bb) : "";
   }
 }
 

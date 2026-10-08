@@ -448,6 +448,8 @@ function mergeBlackborder(current, patch) {
     if ("brightnessDropThreshold" in gp) g.brightnessDropThreshold = num(gp.brightnessDropThreshold, 0, 255, g.brightnessDropThreshold ?? 40);
     if ("dropWindowSeconds" in gp) g.dropWindowSeconds = num(gp.dropWindowSeconds, 0.2, 5, g.dropWindowSeconds ?? 1, 0.1);
     if ("changeThreshold" in gp) g.changeThreshold = num(gp.changeThreshold, 0, 64, g.changeThreshold ?? 6);
+    // fork: depth of the evaluated edge frame in percent, 0 = the LED areas
+    if ("edgeWidthPercent" in gp) g.edgeWidthPercent = num(gp.edgeWidthPercent, 0, 20, g.edgeWidthPercent ?? 0);
     if ("mode" in gp) {
       if (!["freeze", "off"].includes(gp.mode)) throw new Error("Unbekannte Reaktion");
       g.mode = gp.mode;
