@@ -129,6 +129,8 @@
   .hy-col { background: var(--bg); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
   .rgbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
   .rgbrow .rgbname { font-size: 14px; min-width: 64px; }
+  .rgbrow.flash { animation: rgbflash 1.2s ease-out; border-radius: 8px; }
+  @keyframes rgbflash { from { background: color-mix(in srgb, var(--accent) 30%, transparent); } to { background: transparent; } }
   .inputs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
   .inputs input { width: 62px; font: inherit; font-size: 15px; padding: 7px 4px; text-align: center; box-sizing: border-box; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; font-variant-numeric: tabular-nums; }
   .inputs input:disabled { opacity: .5; }
@@ -231,7 +233,7 @@
   <!-- ===== test colors ===== -->
   <section class="card" id="card-color">
     <h2>Testfarben</h2>
-    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück, und mit dem Kopier-Symbol übernimmst du den RGB-Wert.</p>
+    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta).</p>
     <p class="note" id="list-note"></p>
 
     <div class="color-grid">
@@ -461,7 +463,7 @@ const GS_FIELDS = [
 const ICON = {
   power: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>',
   reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
-  copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  send: '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
 };
 
 let state = null;
@@ -537,29 +539,6 @@ function renderState() {
   renderOverlayChecks();
 }
 
-// ---------- copy helper (works on plain http, where navigator.clipboard is missing) ----------
-
-function legacyCopy(text) {
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  ta.setAttribute("readonly", "");
-  ta.style.position = "fixed";
-  ta.style.opacity = "0";
-  document.body.appendChild(ta);
-  ta.select();
-  let ok = false;
-  try { ok = document.execCommand("copy"); } catch {}
-  ta.remove();
-  return ok;
-}
-
-async function copyText(text) {
-  if (window.isSecureContext && navigator.clipboard?.writeText) {
-    try { await navigator.clipboard.writeText(text); return true; } catch {}
-  }
-  return legacyCopy(text);
-}
-
 // ---------- test colors: list ----------
 
 function makeTool(icon, label, onClick, extraClass = "") {
@@ -574,7 +553,7 @@ function makeTool(icon, label, onClick, extraClass = "") {
 }
 
 // one row: the main part opens the picker to edit the value, the power button shows it on the
-// TV (or turns it off again), the other tools reset and copy the value
+// TV (or turns it off again), the other tools reset the value and send it to Hyperion
 function makeRow({ color, name, kind, id, edited }) {
   const row = document.createElement("div");
   row.className = "crow" + (kind === "custom" ? " custom" : "");
@@ -604,12 +583,20 @@ function makeRow({ color, name, kind, id, edited }) {
     reset.disabled = !edited;
     tools.appendChild(reset);
   }
-  tools.appendChild(makeTool("copy", "RGB-Wert kopieren", async (btn) => {
-    const ok = await copyText(rgbText(hexToRgb(color)));
-    btn.classList.toggle("done", ok);
-    btn.title = ok ? "Kopiert" : "Nicht kopiert";
-    setTimeout(() => { btn.classList.remove("done"); btn.title = "RGB-Wert kopieren"; }, 1200);
-  }));
+  // only presets with a field of the same name in Hyperion (white, red, … yellow) get the arrow
+  const hyField = kind === "preset" && COLOR_RGB.find(([key]) => key === id);
+  if (hyField) {
+    const label = `${name} in Hyperion übernehmen`;
+    const sendBtn = makeTool("send", label, async (btn) => {
+      btn.disabled = true;
+      const ok = await saveColor(id, hexToRgb(color));
+      btn.classList.toggle("done", ok);
+      btn.title = ok ? "Übernommen" : "Nicht übernommen";
+      if (ok) flashRgbRow(id);
+      setTimeout(() => { btn.classList.remove("done"); btn.title = label; updateSendButtons(); }, 1200);
+    }, "send");
+    tools.appendChild(sendBtn);
+  }
   row.appendChild(tools);
 
   if (kind === "custom") {
@@ -651,6 +638,22 @@ function buildColorList() {
   box.appendChild(add);
   renderDeleting();
   updateActiveRows();
+  updateSendButtons();
+}
+
+// the arrows write into Hyperion, so they need a connection and a color entry
+function updateSendButtons() {
+  const writable = hyperionConnected && !!colorConfig?.channelAdjustment?.[colorIndex];
+  document.querySelectorAll(".ibtn.send:not(.done)").forEach(b => { b.disabled = !writable; });
+}
+
+// the Hyperion row that just received a value lights up briefly
+function flashRgbRow(field) {
+  const row = document.querySelector(`#hy-rgb input[data-rgb="${field}"]`)?.closest(".rgbrow");
+  if (!row) return;
+  row.classList.remove("flash");
+  void row.offsetWidth;
+  row.classList.add("flash");
 }
 
 function updateActiveRows() {
@@ -842,6 +845,8 @@ function renderColorEditor() {
     el.disabled = !writable;
   });
 
+  updateSendButtons();
+
   if (!colorConfig) $("hy-note").textContent = "Farbwerte nicht lesbar.";
   else if (!hyperionConnected) $("hy-note").textContent = "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“.";
   else if (!entry) $("hy-note").textContent = "Kein Farbeintrag gefunden.";
@@ -872,9 +877,10 @@ async function saveColor(field, value, stop) {
   } catch (e) {
     $("hy-note").textContent = "Speichern fehlgeschlagen: " + e.message;
     await loadColorConfig();
-    return;
+    return false;
   }
   renderColorEditor();
+  return true;
 }
 
 async function saveRgbRow(field) {
