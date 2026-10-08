@@ -504,7 +504,7 @@ function applyTheme(choice) {
 document.querySelectorAll("[data-theme-choice]").forEach(b => b.addEventListener("click", () => applyTheme(b.dataset.themeChoice)));
 applyTheme(document.documentElement.dataset.theme ?? "auto");
 
-const DEVICE_NAMES = { phone: "Smartphone", tablet: "Tablet", desktop: "Laptop oder PC", tv: "TV-Browser" };
+const DEVICE_NAMES = { phone: "Smartphone", tablet: "Tablet", desktop: "PC", tv: "TV-Browser" };
 $("dev-label").textContent = DEVICE_NAMES[document.documentElement.dataset.device] ?? "unbekannt";
 
 // ---------- shared state ----------
