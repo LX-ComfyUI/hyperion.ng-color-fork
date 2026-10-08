@@ -111,14 +111,7 @@
   .crow.add { border-style: dashed; }
   .crow.add .crow-main { color: var(--muted); }
   .crow.add .chip { display: flex; align-items: center; justify-content: center; background: transparent; font-size: 22px; line-height: 1; }
-  .crow .del { position: absolute; top: -8px; right: -6px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--card);
-               background: var(--danger); color: #fff; font-size: 16px; line-height: 21px; padding: 0; display: none; }
-  .crow.custom { position: relative; }
-  .deleting .crow.custom .del { display: block; }
-  .deleting .crow.custom .chip { animation: wiggle .25s ease-in-out infinite alternate; }
-  @keyframes wiggle { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
-  @media (prefers-reduced-motion: reduce) { .deleting .crow.custom .chip { animation: none; } }
-  .hintline { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .ibtn.trash:hover { color: var(--danger); }
 
   /* two columns for the test colors: list left, Hyperion values right */
   .color-grid { display: grid; gap: var(--gap); grid-template-columns: 1fr; }
@@ -234,7 +227,7 @@
   <!-- ===== test colors ===== -->
   <section class="card" id="card-color">
     <h2>Testfarben</h2>
-    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta).</p>
+    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne.</p>
     <p class="note" id="list-note"></p>
 
     <div class="color-grid">
@@ -242,7 +235,6 @@
         <div id="crow-presets"></div>
         <h3>Eigene Farben</h3>
         <div id="crow-custom"></div>
-        <p class="hintline" id="custom-hint"></p>
       </div>
 
       <div class="col">
@@ -438,7 +430,6 @@ const BAR_SINGLE = [
   { id: "right", label: "Rechts", edges: ["right"] },
 ];
 const BAR_PRESETS = [0, 5, 10];
-const LONG_PRESS_MS = 500;
 const BB_MODE_HELP = {
   default: "Sucht an drei Stellen pro Seite. Gut für normale Filme mit Balken oben/unten oder links/rechts.",
   classic: "Sucht nur auf einer Diagonalen oben links. Alter Modus, schnell aber leicht zu täuschen.",
@@ -464,13 +455,13 @@ const GS_FIELDS = [
 const ICON = {
   power: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>',
   reset: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
   send: '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
 };
 
 let state = null;
 let presets = [];              // standard presets from the server (id, color = standard, name)
 let dirty = false;             // true while a local change is being sent
-let deleting = false;          // custom colors show their delete badges
 let debug = null;              // latest "forkdebug" snapshot from Hyperion
 let bbConfig = null;           // Hyperion's blackborderdetector settings
 let colorConfig = null;        // Hyperion's color settings
@@ -599,24 +590,21 @@ function makeRow({ color, name, kind, id, edited }) {
     tools.appendChild(sendBtn);
   } else if (kind === "preset") {
     // gray and black have no Hyperion field: a dot keeps the three tool columns aligned
-    const dot = document.createElement("span");
-    dot.className = "ibtn tool-dot";
-    dot.setAttribute("aria-hidden", "true");
-    tools.appendChild(dot);
+    tools.appendChild(makeDot());
+  } else {
+    // custom colors: power, dot, trash, in the same three columns as the presets
+    tools.appendChild(makeDot());
+    tools.appendChild(makeTool("trash", `${name} löschen`, () => removeCustom(color), "trash"));
   }
   row.appendChild(tools);
-
-  if (kind === "custom") {
-    const del = document.createElement("span");
-    del.className = "del";
-    del.setAttribute("role", "button");
-    del.setAttribute("aria-label", `${color} löschen`);
-    del.textContent = "×";
-    del.addEventListener("click", (ev) => { ev.stopPropagation(); removeCustom(color); });
-    row.appendChild(del);
-    attachLongPress(main, () => setDeleting(true));
-  }
   return row;
+}
+
+function makeDot() {
+  const dot = document.createElement("span");
+  dot.className = "ibtn tool-dot";
+  dot.setAttribute("aria-hidden", "true");
+  return dot;
 }
 
 function buildColorList() {
@@ -630,7 +618,6 @@ function buildColorList() {
 
   const box = $("crow-custom");
   const colors = state?.customColors ?? [];
-  if (!colors.length) deleting = false;
   box.innerHTML = "";
   colors.forEach(color => {
     box.appendChild(makeRow({ color, name: color.toUpperCase(), kind: "custom", id: color }));
@@ -643,7 +630,6 @@ function buildColorList() {
   addMain.appendChild(makePicker("Neue Farbe", () => state.color, { kind: "new" }));
   add.appendChild(addMain);
   box.appendChild(add);
-  renderDeleting();
   updateActiveRows();
   updateSendButtons();
 }
@@ -674,41 +660,6 @@ function updateActiveRows() {
     }
   });
 }
-
-function renderDeleting() {
-  $("crow-custom").classList.toggle("deleting", deleting);
-  $("crow-custom").querySelectorAll(".crow.custom input[type=color]").forEach(i => { i.disabled = deleting; });
-  $("custom-hint").innerHTML = deleting
-    ? "Auf <b>×</b> tippen zum Löschen. Woanders tippen zum Beenden."
-    : "Gedrückt halten zum Löschen.";
-}
-
-function attachLongPress(el, onLongPress) {
-  let timer = null, startX = 0, startY = 0, fired = false;
-  const cancel = () => { clearTimeout(timer); timer = null; };
-  el.addEventListener("pointerdown", (ev) => {
-    fired = false;
-    startX = ev.clientX; startY = ev.clientY;
-    timer = setTimeout(() => { fired = true; timer = null; navigator.vibrate?.(30); onLongPress(); }, LONG_PRESS_MS);
-  });
-  el.addEventListener("pointermove", (ev) => { if (timer && Math.hypot(ev.clientX - startX, ev.clientY - startY) > 10) cancel(); });
-  el.addEventListener("pointerup", cancel);
-  el.addEventListener("pointercancel", cancel);
-  el.addEventListener("pointerleave", cancel);
-  el.addEventListener("contextmenu", (ev) => ev.preventDefault());
-  // the click that follows a long press must not also pick the color
-  el.addEventListener("click", (ev) => { if (fired) { ev.stopImmediatePropagation(); fired = false; } }, true);
-}
-
-function setDeleting(on) {
-  if (deleting === on) return;
-  deleting = on;
-  renderDeleting();
-}
-
-document.addEventListener("pointerdown", (ev) => {
-  if (deleting && !$("crow-custom").contains(ev.target)) setDeleting(false);
-});
 
 function setColor(color) {
   // picking a color ends the gray still test and switches it on, the TV shows the color again
@@ -744,7 +695,7 @@ function makePicker(ariaLabel, startValue, target) {
   const prepare = () => { if (openPicker !== input) input.value = startValue(); };
   input.addEventListener("pointerdown", prepare);
   input.addEventListener("keydown", prepare);
-  input.addEventListener("click", () => { setDeleting(false); openPicker = input; });
+  input.addEventListener("click", () => { openPicker = input; });
   input.addEventListener("input", () => {
     openPicker = input;
     if (target.kind === "new") setColor(input.value);
