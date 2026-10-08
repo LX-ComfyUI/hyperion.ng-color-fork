@@ -711,8 +711,7 @@ function flashRgbRow(field) {
 
 function updateActiveRows() {
   document.querySelectorAll(".crow[data-color]").forEach(r => {
-    // the row being edited live stays marked, even if an older echo of the server arrives meanwhile
-    const isActive = r === liveRow || (!state.grayTest?.active && state.colorActive !== false && r.dataset.color === state.color);
+    const isActive = !state.grayTest?.active && state.colorActive !== false && r.dataset.color === state.color;
     r.classList.toggle("active", isActive);
     const power = r.querySelector(".ibtn.power");
     if (power) {
@@ -745,24 +744,29 @@ function toggleActive(color) {
 
 // ---------- color picker: edits a preset or a custom color, or adds a new one ----------
 
-// live preview on the TV while a picker moves: only the newest color is sent, one request at a time
-let liveRow = null;            // the active row whose picker is open, the TV follows it
-let liveColor = null;          // newest picker color not sent yet
+// live preview on the TV while a picker moves: only the newest patch is sent, one request at a time.
+// Nothing on the page is redrawn meanwhile (only the row's chip): iOS Safari crashed completely
+// when the page changed under its open color picker.
+let livePatch = null;          // newest picker patch not sent yet
 let liveSending = null;        // the running send loop
-function sendLiveColor(color) {
-  liveColor = color;
+let pickerMovedAt = 0;         // last picker move, the event stream waits while the finger moves
+const PICKER_QUIET_MS = 1500;
+function sendLive(patch) {
+  pickerMovedAt = Date.now();
+  livePatch = { ...livePatch, ...patch };
   liveSending ??= (async () => {
-    while (liveColor) {
-      const c = liveColor;
-      liveColor = null;
-      await send({ color: c });
+    while (livePatch) {
+      const p = livePatch;
+      livePatch = null;
+      await send(p);
     }
     liveSending = null;
   })();
 }
-// drops a color still waiting and lets the request on its way finish, so the final save comes last
-async function stopLiveColor() {
-  liveColor = null;
+// drops a patch still waiting and lets the request on its way finish, so the final save comes last
+async function stopLive() {
+  livePatch = null;
+  pickerMovedAt = 0;
   await liveSending;
 }
 
@@ -782,32 +786,32 @@ function makePicker(ariaLabel, startValue, target) {
   let live = null;             // null until the first move: was this row the TV's color then?
   input.addEventListener("input", () => {
     openPicker = input;
-    if (target.kind === "new") { setColor(input.value); return; }
+    if (target.kind === "new") {
+      // a new color is always shown on the TV, which also ends a running gray still test
+      sendLive(state.grayTest?.active ? { color: input.value, colorActive: true, grayTest: { active: false } }
+                                      : { color: input.value, colorActive: true });
+      return;
+    }
     if (target.chip) target.chip.style.background = input.value;
-    const row = input.closest(".crow");
-    if (live === null) live = !!row?.classList.contains("active");
-    if (!live) return;
-    liveRow = row;
-    row.dataset.color = input.value;
-    state = { ...state, color: input.value };
-    sendLiveColor(input.value);
+    if (live === null) live = !!input.closest(".crow")?.classList.contains("active");
+    if (live) sendLive({ color: input.value });
   });
   input.addEventListener("change", async () => {
     const color = input.value.toLowerCase();
     // the saved color stays on the TV when the row was shown live
     const tv = live ? { color } : {};
     live = null;
-    liveRow = null;
     pickerClosed(input);
-    await stopLiveColor();
+    await stopLive();
     if (target.kind === "new") {
       input.value = state.color;
-      if (await send({ color, addCustom: color })) buildColorList();
+      if (await send({ color, addCustom: color })) renderState();
     } else if (target.kind === "preset") {
-      // the event stream skips the update while sending, so the row is redrawn here
+      // the event stream skips updates while sending (all the time during a live preview), so the
+      // answer is drawn here, including changes other devices made meanwhile
       if (await send({ ...tv, setPreset: { id: target.id, color } })) renderState();
     } else if (target.kind === "custom") {
-      if (await send({ ...tv, replaceCustom: { from: target.from, to: color } })) buildColorList();
+      if (await send({ ...tv, replaceCustom: { from: target.from, to: color } })) renderState();
     }
   });
   input.addEventListener("blur", () => {
@@ -820,16 +824,32 @@ function makePicker(ariaLabel, startValue, target) {
     setTimeout(async () => {
       if (!live || openPicker === input) return;
       live = null;
-      liveRow = null;
-      await stopLiveColor();
+      await stopLive();
       input.value = target.from;
       if (target.chip) target.chip.style.background = target.from;
-      const row = input.closest(".crow");
-      if (row) row.dataset.color = target.from;
       if (await send({ color: target.from })) renderState();
     }, 500);
   });
   return input;
+}
+
+function applyEvent(data) {
+  state = JSON.parse(data);
+  renderState();
+  renderDebug();
+}
+
+let deferredEvent = null;
+let deferTimer = null;
+function deferEvent(data) {
+  deferredEvent = data;
+  clearTimeout(deferTimer);
+  deferTimer = setTimeout(() => {
+    if (Date.now() - pickerMovedAt < PICKER_QUIET_MS) return deferEvent(deferredEvent);
+    const d = deferredEvent;
+    deferredEvent = null;
+    if (pendingSends === 0) applyEvent(d);
+  }, PICKER_QUIET_MS);
 }
 
 // a list change that arrived while the picker was open is applied now
@@ -1533,9 +1553,9 @@ async function init() {
   const es = new EventSource("/api/events?role=phone");
   es.onmessage = (ev) => {
     if (pendingSends > 0) return; // do not overwrite a slider that is being sent
-    state = JSON.parse(ev.data);
-    renderState();
-    renderDebug();
+    // while a color picker moves the page stays as it is, the newest state follows once it rests
+    if (Date.now() - pickerMovedAt < PICKER_QUIET_MS) { deferEvent(ev.data); return; }
+    applyEvent(ev.data);
   };
   es.addEventListener("debug", (ev) => {
     debug = JSON.parse(ev.data);
