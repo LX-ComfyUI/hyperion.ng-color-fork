@@ -65,9 +65,11 @@
   button.wide { width: 100%; }
   button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
-  .gt-controls { display: flex; gap: 10px; margin-top: 12px; }
-  .gt-controls button { width: 56px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
-  .gt-controls svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  /* gray test: start/stop and restart as a segmented pair like "Reaktion", with icon and text */
+  .gt-controls { margin-top: 14px; }
+  .gt-controls button { display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .gt-controls button.running { background: var(--danger); color: #fff; }
+  .gt-controls svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .gt-controls svg .solid { fill: currentColor; }
 
   /* segmented buttons: theme switch, modes, bar presets */
@@ -182,12 +184,22 @@
   .pv-fab { position: fixed; right: 16px; bottom: 16px; z-index: 50; width: 60px; height: 60px; border-radius: 50%; padding: 0; border: none;
             display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-text); box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
   .pv-fab svg { width: 32px; height: 32px; }
-  .pv-panel { position: fixed; right: 16px; bottom: 0; z-index: 50; width: min(460px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 12px 12px;
+  .pv-panel { position: fixed; right: 16px; bottom: 0; z-index: 50; width: min(460px, calc(100vw - 32px)); box-sizing: border-box; padding: 4px 8px 8px;
               background: var(--card); border: 1px solid var(--line); border-radius: 12px 12px 0 0; box-shadow: 0 -4px 20px rgba(0, 0, 0, .25); }
-  .pv-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; cursor: move; touch-action: none; user-select: none; -webkit-user-select: none; }
-  .pv-head b { font-size: 15px; }
-  .pv-grip { color: var(--muted); font-size: 14px; letter-spacing: 2px; }
-  .pv-x { width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 22px; line-height: 1; cursor: pointer; }
+  /* header: title left, grip centered, close right; the whole header drags the panel */
+  .pv-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; margin-bottom: 4px;
+             cursor: move; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .pv-head b { font-size: 13px; font-weight: 600; }
+  .pv-grip { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 18px; height: 8px; color: var(--muted); pointer-events: none; }
+  .pv-x { width: 26px; height: 26px; border-radius: 50%; padding: 0; border: none; background: none; color: var(--muted);
+          display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .pv-x:hover { color: var(--text); background: var(--bg); }
+  .pv-x svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  /* width handles on both side edges, only with a mouse (the height follows the picture) */
+  .pv-resize { display: none; position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; touch-action: none; }
+  .pv-resize.l { left: -4px; }
+  .pv-resize.r { right: -4px; }
+  @media (pointer: fine) { .pv-resize { display: block; } }
   .preview { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; }
   .preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
   .preview .ov { position: absolute; inset: 0; pointer-events: none; }
@@ -364,9 +376,9 @@
         <label class="field" for="gt-duration">Dauer des Abfalls</label>
         <div class="row"><input type="range" id="gt-duration" min="0" max="5" step="0.1"><span class="val" id="gt-duration_v"></span></div>
       </div>
-      <div class="gt-controls">
-        <button type="button" class="primary" id="gt-toggle"></button>
-        <button type="button" id="gt-restart" aria-label="Test neu starten" title="Test neu starten"></button>
+      <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+        <button type="button" id="gt-toggle"></button>
+        <button type="button" id="gt-restart"></button>
       </div>
     </div>
 
@@ -411,9 +423,12 @@
   </svg>
 </button>
 <section class="pv-panel" id="pv-panel" hidden aria-label="Grabber-Vorschau">
+  <div class="pv-resize l" data-edge="l" title="Breite ändern"></div>
+  <div class="pv-resize r" data-edge="r" title="Breite ändern"></div>
   <div class="pv-head" id="pv-head" title="Zum Verschieben ziehen">
-    <span><b>Grabber-Vorschau</b> <span class="pv-grip" aria-hidden="true">⋮⋮</span></span>
-    <button class="pv-x" id="pv-close" aria-label="Vorschau schließen">×</button>
+    <b>Grabber-Vorschau</b>
+    <svg class="pv-grip" viewBox="0 0 18 8" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="2" r="1.4"/><circle cx="9" cy="2" r="1.4"/><circle cx="15" cy="2" r="1.4"/><circle cx="3" cy="6" r="1.4"/><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/></g></svg>
+    <button class="pv-x" id="pv-close" aria-label="Vorschau schließen" title="Schließen"><svg viewBox="0 0 14 14" aria-hidden="true"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
   </div>
   <div class="preview" id="preview">
     <img id="pv-img" alt="Grabber-Bild">
@@ -991,14 +1006,11 @@ OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", (ev) => {
 function renderGrayTest() {
   const g = state.grayTest;
   const toggle = $("gt-toggle");
-  const toggleLabel = g.active ? "Test stoppen" : "Test starten";
   if (toggle.dataset.active !== String(g.active)) {
-    toggle.innerHTML = ICON[g.active ? "stop" : "play"];
+    toggle.innerHTML = `${ICON[g.active ? "stop" : "play"]}<span>${g.active ? "Test stoppen" : "Test starten"}</span>`;
     toggle.dataset.active = String(g.active);
   }
-  toggle.title = toggleLabel;
-  toggle.setAttribute("aria-label", toggleLabel);
-  toggle.className = g.active ? "danger" : "primary";
+  toggle.classList.toggle("running", !!g.active);
   $("gt-drop").checked = g.dropEnabled;
   $("gt-drop-settings").hidden = !g.dropEnabled;
   if (document.activeElement !== $("gt-tone")) $("gt-tone").value = g.tone;
@@ -1032,7 +1044,7 @@ for (const [id, key] of [["gt-tone", "tone"], ["gt-after", "dropAfter"], ["gt-pe
   $(id).addEventListener("input", (ev) => { state.grayTest[key] = Number(ev.target.value); renderGrayTest(); });
   $(id).addEventListener("change", (ev) => sendGrayTest({ [key]: Number(ev.target.value) }));
 }
-$("gt-restart").innerHTML = ICON.reset;
+$("gt-restart").innerHTML = `${ICON.reset}<span>Neu starten</span>`;
 $("gt-restart").addEventListener("click", () => send({ grayRestart: true }));
 
 // ---------- Hyperion settings: black-border detector and gray still detector ----------
@@ -1229,6 +1241,47 @@ $("pv-head").addEventListener("pointermove", (ev) => {
 const endDrag = () => { drag = null; };
 $("pv-head").addEventListener("pointerup", endDrag);
 $("pv-head").addEventListener("pointercancel", endDrag);
+
+// width by dragging a side edge (mouse only, see CSS); the opposite edge stays put and the
+// height follows the picture's aspect ratio. The width is kept for the next visit.
+const PV_MIN_WIDTH = 260;
+const clampWidth = (w) => Math.round(Math.min(Math.max(PV_MIN_WIDTH, w), innerWidth - 16));
+function setPanelWidth(w) { $("pv-panel").style.width = clampWidth(w) + "px"; }
+const savedWidth = Number(store.get("tvtest-preview-width"));
+if (savedWidth > 0) setPanelWidth(savedWidth);
+
+let resize = null;
+document.querySelectorAll(".pv-resize").forEach(h => {
+  h.addEventListener("pointerdown", (ev) => {
+    const r = $("pv-panel").getBoundingClientRect();
+    resize = { edge: h.dataset.edge, x: ev.clientX, rect: r };
+    h.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+  h.addEventListener("pointermove", (ev) => {
+    if (!resize) return;
+    const panel = $("pv-panel");
+    const { edge, x, rect } = resize;
+    const dx = ev.clientX - x;
+    const width = clampWidth(edge === "l" ? rect.width - dx : rect.width + dx);
+    panel.style.width = width + "px";
+    // a moved panel is placed by left/top: keep the edge that is not being dragged in place
+    if (panel.style.left && panel.style.left !== "auto") {
+      const left = edge === "l" ? rect.right - width : rect.left;
+      panel.style.left = Math.min(Math.max(0, left), innerWidth - width) + "px";
+      panel.style.top = Math.min(Math.max(0, rect.top), innerHeight - panel.offsetHeight) + "px";
+    } else if (edge === "r") {
+      // docked panel (placed by right/bottom): move the right anchor so the left edge stays
+      panel.style.right = Math.max(0, innerWidth - rect.left - width) + "px";
+    }
+  });
+  const endResize = () => {
+    if (resize) store.set("tvtest-preview-width", String(parseInt($("pv-panel").style.width, 10)));
+    resize = null;
+  };
+  h.addEventListener("pointerup", endResize);
+  h.addEventListener("pointercancel", endResize);
+});
 
 $("pv-fab").addEventListener("click", () => setPanel(true));
 $("pv-close").addEventListener("click", () => setPanel(false));
