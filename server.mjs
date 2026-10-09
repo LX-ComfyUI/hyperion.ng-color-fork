@@ -491,7 +491,8 @@ function saveBlackborder(patch) {
 
 // Fields the page may change, with the ranges of schema-color.json (fork extensions included).
 // Paths: plain = channelAdjustment entry, "edgeTransitionBoost.*" = top level, "grayAxisTrim.stop.*" = one stop (patch.stop),
-// "grayCurve.point.*" = one point of the gray curve (patch.stop is its index)
+// "grayCurve.point.*" = one point of the gray curve (patch.stop is its index), "grayCurve.points" = all points
+// at once (the graph: one drag or a new/removed point is one save)
 const COLOR_FIELDS = {
   white: ["rgb"], red: ["rgb"], green: ["rgb"], blue: ["rgb"], cyan: ["rgb"], magenta: ["rgb"], yellow: ["rgb"],
   brightness: ["num", 0, 100, 1],
@@ -513,6 +514,7 @@ const COLOR_FIELDS = {
   "grayCurve.point.gainRed": ["num", 0, 2, 0.01],
   "grayCurve.point.gainGreen": ["num", 0, 2, 0.01],
   "grayCurve.point.gainBlue": ["num", 0, 2, 0.01],
+  "grayCurve.points": ["points"],
   "edgeTransitionBoost.enabled": ["bool"],
   "edgeTransitionBoost.ledWidth": ["num", 1, 3, 1],
   "edgeTransitionBoost.edgeSensitivity": ["num", 5, 255, 1],
@@ -558,6 +560,18 @@ function mergeColor(current, patch) {
     target[key] = rgb;
   } else if (kind === "bool") {
     target[key] = value === true;
+  } else if (kind === "points") {
+    // 1-12 points like in the graph, two points never share a brightness (Hyperion sorts them)
+    if (!Array.isArray(value) || value.length < 1 || value.length > 12) throw new Error("Die Graukurve braucht 1 bis 12 Punkte");
+    const points = value.map((p) => ({
+      level: num(p?.level, 0, 100, NaN, 1),
+      gainRed: num(p?.gainRed, 0, 2, NaN, 0.01),
+      gainGreen: num(p?.gainGreen, 0, 2, NaN, 0.01),
+      gainBlue: num(p?.gainBlue, 0, 2, NaN, 0.01),
+    }));
+    if (points.some((p) => Object.values(p).some((v) => !Number.isFinite(v)))) throw new Error("Ungültiger Graukurven-Punkt");
+    if (new Set(points.map((p) => p.level)).size !== points.length) throw new Error("Zwei Punkte mit derselben Helligkeit");
+    target[key] = points;
   } else {
     target[key] = num(value, min, max, target[key], step);
   }
@@ -669,6 +683,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/hyperion/color") return sendJson(res, 200, readInstanceSetting("color"));
     // LED sampling areas [hmin, hmax, vmin, vmax]: the gray still detector only sees these parts of the picture
     if (req.method === "GET" && p === "/api/hyperion/leds") return sendJson(res, 200, readInstanceSetting("leds").map((l) => [l.hmin, l.hmax, l.vmin, l.vmax]));
+    // black threshold of the LED device (fork extension), drawn in the gray curve graph
+    if (req.method === "GET" && p === "/api/hyperion/blackthreshold") return sendJson(res, 200, readInstanceSetting("device").blackThreshold ?? null);
     if (req.method === "POST" && p === "/api/hyperion/color") {
       const patch = await readBody(req);
       return sendJson(res, 200, await saveColor(patch));

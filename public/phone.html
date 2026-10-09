@@ -291,9 +291,10 @@
           <div id="hy-stops"></div>
 
           <h4>Graukurve (Fork-Erweiterung)</h4>
-          <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. „Am TV zeigen“ legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
+          <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. Ein Punkt im Graphen (oder „Am TV zeigen“) legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
           <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Aktiviert</span></label>
           <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
+          <div id="hy-curve-graph"></div>
           <div id="hy-curve"></div>
           <p class="note" id="hy-note"></p>
         </div>
@@ -467,6 +468,7 @@
   </div>
 </section>
 
+<script src="/static/graycurve-graph.js"></script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 
@@ -524,6 +526,7 @@ let ledAreas = null;           // LED sampling areas from Hyperion's layout (wha
 let colorIndex = 0;            // which channelAdjustment entry the right column edits
 let stopsBuiltFor = -1;        // number of gray-axis stops currently built in the editor
 let curveBuiltFor = -1;        // number of gray curve points currently built in the editor
+let deviceBlack = null;        // black threshold of the LED device, drawn in the gray curve graph
 let listKey = "";              // changes when the list of colors has to be rebuilt
 let hyperionConnected = false;
 let previewSource = null;
@@ -1001,14 +1004,38 @@ function buildCurve(n) {
   curveBuiltFor = n;
 }
 
-// "Am TV zeigen": the gray of the point's brightness becomes the TV color
-$("hy-curve").addEventListener("click", (ev) => {
-  const btn = ev.target.closest("button.showgray");
-  if (!btn) return;
-  const level = colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.points?.[Number(btn.dataset.point)]?.level;
+// the gray of a point's brightness becomes the TV color
+function showGray(level) {
   if (typeof level !== "number") return;
   const v = Math.round(Math.min(100, Math.max(0, level)) * 255 / 100);
   setColor("#" + v.toString(16).padStart(2, "0").repeat(3));
+}
+
+// "Am TV zeigen"
+$("hy-curve").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button.showgray");
+  if (!btn) return;
+  showGray(colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.points?.[Number(btn.dataset.point)]?.level);
+});
+
+// Graph of the gray curve. A drag saves live, but only one save runs at a time: the newest
+// points wait and replace older waiting ones, so the LEDs follow without piling up writes.
+let curveSaving = false;
+let curvePending = null;
+async function saveCurvePoints(points) {
+  curvePending = points;
+  if (curveSaving) return;
+  curveSaving = true;
+  while (curvePending) {
+    const next = curvePending;
+    curvePending = null;
+    await saveColor("grayCurve.points", next);
+  }
+  curveSaving = false;
+}
+const curveGraph = GrayCurveGraph.create($("hy-curve-graph"), {
+  onChange: (points) => saveCurvePoints(points),
+  onSelect: (i, point) => showGray(point.level),
 });
 
 // notes that describe a state of the editor, as opposed to the result of a save
@@ -1035,6 +1062,7 @@ function renderColorEditor() {
   if (stops !== stopsBuiltFor) buildStops(stops);
   const points = entry?.grayCurve?.points?.length ?? 0;
   if (points !== curveBuiltFor) buildCurve(points);
+  curveGraph.update({ entry, blackThreshold: deviceBlack, writable });
   document.querySelectorAll("#hy-curve button.showgray").forEach(b => { b.disabled = !writable; });
 
   document.querySelectorAll("#hy-rgb input").forEach(inp => {
@@ -1070,6 +1098,7 @@ async function loadColorConfig() {
     const res = await fetch("/api/hyperion/color");
     if (!res.ok) throw new Error((await res.json()).error);
     colorConfig = await res.json();
+    deviceBlack = await fetch("/api/hyperion/blackthreshold").then((r) => (r.ok ? r.json() : null)).catch(() => null);
   } catch (e) {
     colorConfig = null;
     $("hy-note").textContent = "Farbwerte nicht lesbar: " + e.message;
