@@ -290,6 +290,49 @@ $(document).ready(function () {
 
   })(editor_color);
 
+  // Fork-Erweiterung: Graph der Graukurve über der Punkte-Liste jedes
+  // Farbprofils (js/graycurve-graph.js). Oben steht, was die LEDs bei jedem
+  // Grau des Bildes bekommen, unten die Faktoren; Ziehen, Hinzufügen und
+  // Löschen schreiben die Punkte in den Editor, wirksam nach "Speichern".
+  // Nur im Experten-Modus, wie die Graukurve selbst.
+  (function addGrayCurveGraphs(editor) {
+    if (typeof GrayCurveGraph === 'undefined') return;
+    var text = {};
+    ['all', 'red', 'green', 'blue', 'log', 'linear', 'input', 'output', 'factor', 'point', 'remove', 'off', 'hint', 'blackThreshold', 'withoutCurve'].forEach(function (key) {
+      var i18nKey = 'edt_conf_color_grayCurve_graph_' + key;
+      var value = $.i18n(i18nKey);
+      if (value && value !== i18nKey) text[key] = value;
+    });
+    var adjustments = editor.getEditor('root.color.channelAdjustment');
+    var count = adjustments && adjustments.rows ? adjustments.rows.length : 0;
+    for (var i = 0; i < count; i++) {
+      (function (base) {
+        var entryEditor = editor.getEditor(base);
+        var pointsEditor = editor.getEditor(base + '.grayCurve.points');
+        if (!entryEditor || !pointsEditor || !pointsEditor.container) return;
+        var holder = $('<div>').css({ margin: '6px 0 14px' })[0];
+        $(pointsEditor.container).before(holder);
+        var graph = GrayCurveGraph.create(holder, {
+          text: text,
+          onChange: function (points, final) {
+            // das Array neu setzen baut die Zeilen neu auf, daher erst beim Loslassen
+            if (final) pointsEditor.setValue(points);
+          }
+        });
+        var refresh = function () {
+          var device = window.serverConfig && window.serverConfig.device;
+          graph.update({
+            entry: entryEditor.getValue(),
+            blackThreshold: device ? device.blackThreshold : null,
+            writable: !window.readOnlyMode
+          });
+        };
+        editor.on('change', refresh);
+        refresh();
+      })('root.color.channelAdjustment.' + i);
+    }
+  })(editor_color);
+
   //smoothing
   editor_smoothing = createJsonEditor('editor_container_smoothing', {
     smoothing: window.schema.smoothing
