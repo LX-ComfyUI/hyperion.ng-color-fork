@@ -143,6 +143,7 @@
   .stoprow { display: grid; grid-template-columns: 1fr; gap: 6px; background: var(--card); border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
   .stoprow .inputs { justify-content: flex-start; }
   .stoprow small { font-size: 12px; color: var(--muted); }
+  .stoprow button.showgray { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
   select { font: inherit; color: var(--btn-text); background: var(--btn); border: 1px solid var(--btn-line); border-radius: 8px; padding: 8px; width: 100%; box-sizing: border-box; }
 
   label.field { display: block; margin: 14px 0 2px; font-size: 14px; }
@@ -288,6 +289,12 @@
           <h4>Grauachsen-Korrektur (Fork-Erweiterung)</h4>
           <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayAxisTrim.enabled"><span>Aktiviert</span></label>
           <div id="hy-stops"></div>
+
+          <h4>Graukurve (Fork-Erweiterung)</h4>
+          <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. „Am TV zeigen“ legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
+          <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Aktiviert</span></label>
+          <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
+          <div id="hy-curve"></div>
           <p class="note" id="hy-note"></p>
         </div>
       </div>
@@ -516,6 +523,7 @@ let colorConfig = null;        // Hyperion's color settings
 let ledAreas = null;           // LED sampling areas from Hyperion's layout (what the gray still detector sees)
 let colorIndex = 0;            // which channelAdjustment entry the right column edits
 let stopsBuiltFor = -1;        // number of gray-axis stops currently built in the editor
+let curveBuiltFor = -1;        // number of gray curve points currently built in the editor
 let listKey = "";              // changes when the list of colors has to be rebuilt
 let hyperionConnected = false;
 let previewSource = null;
@@ -920,6 +928,8 @@ function readField(entry, field, stop) {
   if (field.startsWith("edgeTransitionBoost.")) return colorConfig?.edgeTransitionBoost?.[field.split(".")[1]];
   if (field.startsWith("grayAxisTrim.stop.")) return entry.grayAxisTrim?.stops?.[stop]?.[field.split(".")[2]];
   if (field === "grayAxisTrim.enabled") return entry.grayAxisTrim?.enabled;
+  if (field.startsWith("grayCurve.point.")) return entry.grayCurve?.points?.[stop]?.[field.split(".")[2]];
+  if (field.startsWith("grayCurve.")) return entry.grayCurve?.[field.split(".")[1]];
   return entry[field];
 }
 
@@ -973,6 +983,34 @@ function buildStops(n) {
   stopsBuiltFor = n;
 }
 
+// gray curve rows, one per point Hyperion has (the server sorts them by brightness)
+function buildCurve(n) {
+  $("hy-curve").innerHTML = Array.from({ length: n }, (_, i) => `
+    <div class="stoprow">
+      <small>Punkt ${i + 1}</small>
+      <div class="frow" style="margin:0"><label>Helligkeit (%)</label><span class="inputs">
+        <input type="number" class="wide-in" data-cfield="grayCurve.point.level" data-stop="${i}" min="0" max="100" step="1" inputmode="numeric">
+        <button type="button" class="showgray" data-point="${i}">Am TV zeigen</button>
+      </span></div>
+      <div class="frow" style="margin:0"><label>Faktor Rot / Grün / Blau</label><span class="inputs">
+        <input type="number" data-cfield="grayCurve.point.gainRed" data-stop="${i}" min="0" max="2" step="0.01" inputmode="decimal" aria-label="Faktor Rot Punkt ${i + 1}">
+        <input type="number" data-cfield="grayCurve.point.gainGreen" data-stop="${i}" min="0" max="2" step="0.01" inputmode="decimal" aria-label="Faktor Grün Punkt ${i + 1}">
+        <input type="number" data-cfield="grayCurve.point.gainBlue" data-stop="${i}" min="0" max="2" step="0.01" inputmode="decimal" aria-label="Faktor Blau Punkt ${i + 1}">
+      </span></div>
+    </div>`).join("");
+  curveBuiltFor = n;
+}
+
+// "Am TV zeigen": the gray of the point's brightness becomes the TV color
+$("hy-curve").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button.showgray");
+  if (!btn) return;
+  const level = colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.points?.[Number(btn.dataset.point)]?.level;
+  if (typeof level !== "number") return;
+  const v = Math.round(Math.min(100, Math.max(0, level)) * 255 / 100);
+  setColor("#" + v.toString(16).padStart(2, "0").repeat(3));
+});
+
 // notes that describe a state of the editor, as opposed to the result of a save
 const HY_STATUS_NOTE = /^(Lade Farbwerte|Farbwerte nicht lesbar|Zum Ändern zuerst|Kein Farbeintrag)/;
 
@@ -995,6 +1033,9 @@ function renderColorEditor() {
 
   const stops = entry?.grayAxisTrim?.stops?.length ?? 0;
   if (stops !== stopsBuiltFor) buildStops(stops);
+  const points = entry?.grayCurve?.points?.length ?? 0;
+  if (points !== curveBuiltFor) buildCurve(points);
+  document.querySelectorAll("#hy-curve button.showgray").forEach(b => { b.disabled = !writable; });
 
   document.querySelectorAll("#hy-rgb input").forEach(inp => {
     if (document.activeElement !== inp) inp.value = entry?.[inp.dataset.rgb]?.[Number(inp.dataset.ch)] ?? "";

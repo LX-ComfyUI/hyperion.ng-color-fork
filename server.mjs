@@ -490,7 +490,8 @@ function saveBlackborder(patch) {
 }
 
 // Fields the page may change, with the ranges of schema-color.json (fork extensions included).
-// Paths: plain = channelAdjustment entry, "edgeTransitionBoost.*" = top level, "grayAxisTrim.stop.*" = one stop (patch.stop)
+// Paths: plain = channelAdjustment entry, "edgeTransitionBoost.*" = top level, "grayAxisTrim.stop.*" = one stop (patch.stop),
+// "grayCurve.point.*" = one point of the gray curve (patch.stop is its index)
 const COLOR_FIELDS = {
   white: ["rgb"], red: ["rgb"], green: ["rgb"], blue: ["rgb"], cyan: ["rgb"], magenta: ["rgb"], yellow: ["rgb"],
   brightness: ["num", 0, 100, 1],
@@ -506,6 +507,12 @@ const COLOR_FIELDS = {
   "grayAxisTrim.stop.gainRed": ["num", 0, 4, 0.05],
   "grayAxisTrim.stop.gainGreen": ["num", 0, 4, 0.05],
   "grayAxisTrim.stop.gainBlue": ["num", 0, 4, 0.05],
+  "grayCurve.enabled": ["bool"],
+  "grayCurve.saturationLimit": ["num", 0.01, 1, 0.01],
+  "grayCurve.point.level": ["num", 0, 100, 1],
+  "grayCurve.point.gainRed": ["num", 0, 2, 0.01],
+  "grayCurve.point.gainGreen": ["num", 0, 2, 0.01],
+  "grayCurve.point.gainBlue": ["num", 0, 2, 0.01],
   "edgeTransitionBoost.enabled": ["bool"],
   "edgeTransitionBoost.ledWidth": ["num", 1, 3, 1],
   "edgeTransitionBoost.edgeSensitivity": ["num", 5, 255, 1],
@@ -533,6 +540,14 @@ function mergeColor(current, patch) {
   } else if (field === "grayAxisTrim.enabled") {
     target = entry.grayAxisTrim;
     key = "enabled";
+  } else if (field.startsWith("grayCurve.point.")) {
+    const point = entry.grayCurve?.points?.[Number(patch.stop)];
+    if (!point) throw new Error("Punkt nicht gefunden");
+    target = point;
+    key = field.split(".")[2];
+  } else if (field.startsWith("grayCurve.")) {
+    target = entry.grayCurve;
+    key = field.split(".")[1];
   }
   if (!target) throw new Error("Einstellung fehlt in Hyperion");
 
