@@ -93,6 +93,11 @@ public:
 	static void rgb2okhsv(uint8_t red, uint8_t green, uint8_t blue, double & hue, double & saturation, double & value);
 
 	///
+	/// Fork extension: rgb2okhsv for RGB-components on the 8-bit scale with fractions (0.0..255.0)
+	///
+	static void rgb2okhsvPrecise(double red, double green, double blue, double & hue, double & saturation, double & value);
+
+	///
 	/// Translates an Okhsv (hue, saturation, value) color to an RGB (red, green, blue) color
 	///
 	/// @param[in] hue The hue Okhsv-component

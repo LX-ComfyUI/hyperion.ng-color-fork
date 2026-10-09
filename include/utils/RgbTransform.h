@@ -115,6 +115,8 @@ public:
 	/// on the 8-bit scale (0.0..255.0) but keep their fractions.
 	///
 	void applyGammaPrecise(uint8_t red, uint8_t green, uint8_t blue, float & outRed, float & outGreen, float & outBlue) const;
+	/// the same for input values with fractions (0.0..255.0); equal to the table at whole numbers
+	void applyGammaPrecise(double red, double green, double blue, float & outRed, float & outGreen, float & outBlue) const;
 	void applyBacklightPrecise(float & red, float & green, float & blue) const;
 	void applyTemperaturePrecise(float & red, float & green, float & blue) const;
 

@@ -43,4 +43,11 @@ namespace GrayCurveTransform
 	///
 	bool gains(const GrayCurve& curve, uint8_t red, uint8_t green, uint8_t blue,
 	           float& gainRed, float& gainGreen, float& gainBlue);
+
+	///
+	/// The same for an input color with fractions on the 8-bit scale (0.0..255.0), e.g. the mean
+	/// of an LED area before it is cut to whole numbers.
+	///
+	bool gainsPrecise(const GrayCurve& curve, double red, double green, double blue,
+	                  float& gainRed, float& gainGreen, float& gainBlue);
 }

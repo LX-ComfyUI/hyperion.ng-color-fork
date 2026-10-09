@@ -14,6 +14,7 @@
 #include <utils/Image.h>
 #include <utils/Logger.h>
 #include <utils/ColorRgbScalar.h>
+#include <utils/ColorRgb16.h>
 #include <utils/ColorSys.h>
 #include <QLoggingCategory>
 
@@ -110,6 +111,29 @@ namespace hyperion
 		/// @param[in] image  The image from which to extract the LED colors
 		/// @param[out] ledColors  The vector containing the output
 		///
+		///
+		/// Fork extension: like getMeanLedColor(image), and also returns the means with their
+		/// fractions (for the 16-bit path). The 8-bit colors are the means cut to whole numbers.
+		///
+		/// @param[in] image  The image from which to extract the LED colors
+		/// @param[out] means  The mean per LED on the 8-bit scale, with fractions
+		///
+		/// @return The vector containing the output
+		///
+		template <typename Pixel_T>
+		QVector<ColorRgb> getMeanLedColor(const Image<Pixel_T> &image, QVector<ColorRgbFloat> &means) const
+		{
+			QVector<ColorRgb> colors(_colorsMap.size(), ColorRgb{0, 0, 0});
+			means = QVector<ColorRgbFloat>(_colorsMap.size());
+			auto led = colors.begin();
+			auto mean = means.begin();
+			for (auto pixels = _colorsMap.begin(); pixels != _colorsMap.end(); ++pixels, ++led, ++mean)
+			{
+				*led = calcMeanColor(image, *pixels, &*mean);
+			}
+			return colors;
+		}
+
 		template <typename Pixel_T>
 		void getMeanLedColor(const Image<Pixel_T> &image, QVector<ColorRgb> &ledColors) const
 		{
@@ -406,12 +430,16 @@ namespace hyperion
 		/// @return The mean of the given list of colors (or black when empty)
 		///
 		template <typename Pixel_T>
-		ColorRgb calcMeanColor(const Image<Pixel_T> &image, const QVector<int32_t> &pixels) const
+		ColorRgb calcMeanColor(const Image<Pixel_T> &image, const QVector<int32_t> &pixels, ColorRgbFloat *mean = nullptr) const
 		{
 			qCDebug(imageToLedsMap_calc) << "Calculate Mean Color on image sized" << image.width() << "x" << image.height() << "and #pixels" << pixels.size();
 			const auto pixelNum = pixels.size();
 			if (pixelNum == 0)
 			{
+				if (mean != nullptr)
+				{
+					*mean = ColorRgbFloat{};
+				}
 				return ColorRgb::BLACK;
 			}
 
@@ -433,6 +461,15 @@ namespace hyperion
 			const auto avgRed = uint8_t(cummRed / pixelNum);
 			const auto avgGreen = uint8_t(cummGreen / pixelNum);
 			const auto avgBlue = uint8_t(cummBlue / pixelNum);
+
+			// Fork extension: the same means with their fractions
+			if (mean != nullptr)
+			{
+				const double count = static_cast<double>(pixelNum);
+				*mean = ColorRgbFloat{ static_cast<float>(static_cast<double>(cummRed) / count),
+				                       static_cast<float>(static_cast<double>(cummGreen) / count),
+				                       static_cast<float>(static_cast<double>(cummBlue) / count) };
+			}
 
 			// Return the computed color
 			return {avgRed, avgGreen, avgBlue};

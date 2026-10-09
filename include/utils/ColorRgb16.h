@@ -51,3 +51,14 @@ struct ColorRgb16
 		return !(*this == other);
 	}
 };
+
+///
+/// Fork extension: red-green-blue color on the 8-bit scale (0.0..255.0) with fractions, e.g. the
+/// mean of many pixels before it is cut to a whole number. Feeds the 16-bit path.
+///
+struct ColorRgbFloat
+{
+	float red = 0.0F;
+	float green = 0.0F;
+	float blue = 0.0F;
+};

@@ -74,6 +74,14 @@ void ColorSys::rgb2okhsv(uint8_t red, uint8_t green, uint8_t blue, double & hue,
 	value = color.v;
 }
 
+void ColorSys::rgb2okhsvPrecise(double red, double green, double blue, double & hue, double & saturation, double & value)
+{
+	ok_color::HSV color = ok_color::srgb_to_okhsv({ red / 255.0, green / 255.0, blue / 255.0 });
+	hue = color.h;
+	saturation = color.s;
+	value = color.v;
+}
+
 void ColorSys::okhsv2rgb(double hue, double saturation, double value, uint8_t & red, uint8_t & green, uint8_t & blue)
 {
 	ok_color::RGB color = ok_color::okhsv_to_srgb({ hue, saturation, value });

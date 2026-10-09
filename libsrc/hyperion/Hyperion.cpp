@@ -844,10 +844,12 @@ void Hyperion::processUpdate()
 	}
 
 	QVector<ColorRgb> ledColors;
+	// fork: the mean per LED with its fractions, for the 16-bit path
+	QVector<ColorRgbFloat> ledMeans;
 	if (image.width() > 1 || image.height() > 1)
 	{
 		emit currentImage(image);  // Emit the image signal at the controlled rate
-		ledColors = _imageProcessor->process(image);
+		ledColors = _imageProcessor->process(image, &ledMeans);
 	}
 	else
 	{
@@ -856,10 +858,20 @@ void Hyperion::processUpdate()
 
 	emit rawLedColors(ledColors);
 	applyBlacklist(ledColors);
+	if (_ledString.hasBlackListedLeds())
+	{
+		for (const auto& id : _ledString.blacklistedLedIds())
+		{
+			if (id < ledMeans.size())
+			{
+				ledMeans[id] = ColorRgbFloat{};
+			}
+		}
+	}
 
 	// Start transformations; the fork also computes the 16-bit values of the same frame
 	QVector<ColorRgb16> preciseColors;
-	_raw2ledAdjustment->applyAdjustment(ledColors, &preciseColors);
+	_raw2ledAdjustment->applyAdjustment(ledColors, &preciseColors, &ledMeans);
 
 	applyColorOrder(ledColors);
 

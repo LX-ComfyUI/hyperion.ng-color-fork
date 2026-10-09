@@ -102,7 +102,8 @@ void MultiColorAdjustment::setBacklightEnabled(bool enable)
 // applyAdjustment() from the gamma step on, in float and without the cuts to whole numbers. The
 // 8-bit path cuts several times (gamma table, corner weights, corner values, temperature), so its
 // result can be a few steps below this one. The result is converted to 16 bit only at the end.
-ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, uint8_t inRed, uint8_t inGreen, uint8_t inBlue,
+// The input may have fractions (mean of an LED area), on the 8-bit scale.
+ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, double inRed, double inGreen, double inBlue,
                                                 float gainRed, float gainGreen, float gainBlue)
 {
 	float r = 0.0F;
@@ -167,7 +168,17 @@ ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, uin
 	return ColorRgb16(ColorRgb16::fromScale255(outR), ColorRgb16::fromScale255(outG), ColorRgb16::fromScale255(outB));
 }
 
-void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors)
+namespace {
+// the mean still belongs to the 8-bit color: steps after the LED mapping (gray-still image,
+// blacklist) change the 8-bit color, then the mean is not used
+bool meanMatches(float mean, uint8_t color)
+{
+	return mean > static_cast<float>(color) - 0.01F && mean < static_cast<float>(color) + 1.01F;
+}
+}
+
+void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors,
+                                           const QVector<ColorRgbFloat>* ledMeans)
 {
 	// The edge boost has no precise version: the LED device then gets the 8-bit values only
 	const bool precise = preciseColors != nullptr && !_edgeTransitionBoost.enabled;
@@ -185,6 +196,7 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		}
 	}
 
+	const bool useMeans = precise && ledMeans != nullptr && ledMeans->size() == ledColors.size();
 	const size_t itCnt = qMin(_ledAdjustments.size(), ledColors.size());
 	for (size_t i=0; i<itCnt; ++i)
 	{
@@ -200,11 +212,30 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		uint8_t ogreen = color.green;
 		uint8_t oblue  = color.blue;
 
+		// Fork extension: the precise path starts from the mean with its fractions when there is one
+		// and no 8-bit-only step (Okhsv, gray axis trim) changes the color before it
+		const ColorRgbFloat* mean = nullptr;
+		if (useMeans && adjustment->_okhsvTransform.isIdentity() && !adjustment->_grayAxisTrim.enabled)
+		{
+			const ColorRgbFloat& m = (*ledMeans)[i];
+			if (meanMatches(m.red, ored) && meanMatches(m.green, ogreen) && meanMatches(m.blue, oblue))
+			{
+				mean = &m;
+			}
+		}
+
 		// Fork extension: gray curve factors from the color as grabbed, before any other step
 		float gainRed = 1.0F;
 		float gainGreen = 1.0F;
 		float gainBlue = 1.0F;
 		const bool grayCurve = GrayCurveTransform::gains(adjustment->_grayCurve, ored, ogreen, oblue, gainRed, gainGreen, gainBlue);
+		float meanGainRed = gainRed;
+		float meanGainGreen = gainGreen;
+		float meanGainBlue = gainBlue;
+		if (mean != nullptr)
+		{
+			GrayCurveTransform::gainsPrecise(adjustment->_grayCurve, mean->red, mean->green, mean->blue, meanGainRed, meanGainGreen, meanGainBlue);
+		}
 		uint8_t B_RGB = 0;
 		uint8_t B_CMY = 0;
 		uint8_t B_W = 0;
@@ -222,7 +253,9 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		if (precise)
 		{
 			// the precise path starts from the same input, after the steps that only see 8-bit input
-			(*preciseColors)[i] = computePrecise(adjustment, ored, ogreen, oblue, gainRed, gainGreen, gainBlue);
+			(*preciseColors)[i] = (mean != nullptr)
+				? computePrecise(adjustment, mean->red, mean->green, mean->blue, meanGainRed, meanGainGreen, meanGainBlue)
+				: computePrecise(adjustment, ored, ogreen, oblue, gainRed, gainGreen, gainBlue);
 		}
 
 		adjustment->_rgbTransform.applyGamma(ored,ogreen,oblue);

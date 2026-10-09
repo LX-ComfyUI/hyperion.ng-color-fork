@@ -6,6 +6,12 @@
 bool GrayCurveTransform::gains(const GrayCurve& curve, uint8_t red, uint8_t green, uint8_t blue,
                                float& gainRed, float& gainGreen, float& gainBlue)
 {
+	return gainsPrecise(curve, red, green, blue, gainRed, gainGreen, gainBlue);
+}
+
+bool GrayCurveTransform::gainsPrecise(const GrayCurve& curve, double red, double green, double blue,
+                                      float& gainRed, float& gainGreen, float& gainBlue)
+{
 	gainRed = gainGreen = gainBlue = 1.0F;
 	if (!curve.enabled || curve.points.isEmpty() || curve.saturationLimit <= 0.0)
 	{
@@ -14,7 +20,7 @@ bool GrayCurveTransform::gains(const GrayCurve& curve, uint8_t red, uint8_t gree
 
 	// black stays black, and Okhsv has no saturation for it (NaN, which would turn the factors into
 	// NaN and the precise output into full white)
-	if (red == 0 && green == 0 && blue == 0)
+	if (red <= 0.0 && green <= 0.0 && blue <= 0.0)
 	{
 		return false;
 	}
@@ -23,7 +29,7 @@ bool GrayCurveTransform::gains(const GrayCurve& curve, uint8_t red, uint8_t gree
 	double hue = 0.0;
 	double saturation = 0.0;
 	double value = 0.0;
-	ColorSys::rgb2okhsv(red, green, blue, hue, saturation, value);
+	ColorSys::rgb2okhsvPrecise(red, green, blue, hue, saturation, value);
 	const double weight = 1.0 - std::clamp(saturation / curve.saturationLimit, 0.0, 1.0);
 	if (!(weight > 0.0))
 	{

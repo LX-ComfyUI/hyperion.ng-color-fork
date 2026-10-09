@@ -228,6 +228,15 @@ void RgbTransform::applyGammaPrecise(uint8_t red, uint8_t green, uint8_t blue, f
 	outBlue  = _mappingPreciseB[blue];
 }
 
+void RgbTransform::applyGammaPrecise(double red, double green, double blue, float & outRed, float & outGreen, float & outBlue) const
+{
+	// same formula as initializeMapping()
+	const double max = UINT8_MAX;
+	outRed   = static_cast<float>(qBound(0.0, qPow(qBound(0.0, red, max)   / max, _gammaR) * max, max));
+	outGreen = static_cast<float>(qBound(0.0, qPow(qBound(0.0, green, max) / max, _gammaG) * max, max));
+	outBlue  = static_cast<float>(qBound(0.0, qPow(qBound(0.0, blue, max)  / max, _gammaB) * max, max));
+}
+
 void RgbTransform::applyBacklightPrecise(float & red, float & green, float & blue) const
 {
 	// same rule as applyBacklight, the comparison uses the 8-bit scale

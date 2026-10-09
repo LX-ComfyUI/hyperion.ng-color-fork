@@ -122,13 +122,19 @@ public:
 	/// if required and call the image-to-LEDs mapping to determine the color per LED.
 	///
 	/// @param[in] image  The image to translate to LED values
+	/// @param[out] means  Fork extension, optional: the mean per LED with its fractions, for the
+	///                    16-bit path. Only filled by the mapping type "multicolor_mean", else empty.
 	///
 	/// @return The color value per LED
 	///
 	template <typename Pixel_T>
-	QVector<ColorRgb> process(const Image<Pixel_T>& image)
+	QVector<ColorRgb> process(const Image<Pixel_T>& image, QVector<ColorRgbFloat>* means = nullptr)
 	{
 		QVector<ColorRgb> colors;
+		if (means != nullptr)
+		{
+			means->clear();
+		}
 		qCDebug(image_track) << "Image [" << image.id() << "]";
 
 		if (image.width()>0 && image.height()>0)
@@ -163,7 +169,8 @@ public:
 				colors = _imageToLedColors->getDominantAdvUniLedColor(image);
 				break;
 			default:
-				colors = _imageToLedColors->getMeanLedColor(image);
+				colors = (means != nullptr) ? _imageToLedColors->getMeanLedColor(image, *means)
+				                            : _imageToLedColors->getMeanLedColor(image);
 			}
 
 			// Fork extension: detect/handle a gray, dimmed still image (e.g. a paused

@@ -58,7 +58,12 @@ public:
 	///                      same colors computed without rounding to 8 bit (ColorRgb16). It is left
 	///                      empty when a step without a precise version is active (edge boost).
 	///
-	void applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors = nullptr);
+	/// @param ledMeans Fork extension, optional: the input colors with fractions (mean per LED
+	///                 area, see ImageToLedsMap). The precise path starts from them instead of
+	///                 the 8-bit input where they still match it (mean in [c, c+1) per channel).
+	///
+	void applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors = nullptr,
+	                     const QVector<ColorRgbFloat>* ledMeans = nullptr);
 
 	/// Fork extension: settings for the whole-strip edge-transition boost
 	/// pass, applied at the end of applyAdjustment(). Not per-LED like
@@ -68,7 +73,7 @@ public:
 
 private:
 	/// precise (16-bit) version of the per-LED calculation, see applyAdjustment()
-	static ColorRgb16 computePrecise(ColorAdjustment* adjustment, uint8_t inRed, uint8_t inGreen, uint8_t inBlue,
+	static ColorRgb16 computePrecise(ColorAdjustment* adjustment, double inRed, double inGreen, double inBlue,
 	                                 float gainRed, float gainGreen, float gainBlue);
 
 	/// List with transform ids
