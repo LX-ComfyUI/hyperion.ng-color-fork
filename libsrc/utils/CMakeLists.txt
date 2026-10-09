@@ -46,6 +46,8 @@ add_library(hyperion-utils
 	${CMAKE_SOURCE_DIR}/include/utils/GrayAxisTrim.h
 	${CMAKE_SOURCE_DIR}/include/utils/GrayAxisTrimTransform.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/GrayAxisTrimTransform.cpp
+	${CMAKE_SOURCE_DIR}/include/utils/GrayCurve.h
+	${CMAKE_SOURCE_DIR}/libsrc/utils/GrayCurve.cpp
 	# Fork: edge-transition boost (see DESIGN.md)
 	${CMAKE_SOURCE_DIR}/include/utils/EdgeTransitionBoost.h
 	${CMAKE_SOURCE_DIR}/include/utils/EdgeTransitionBoostTransform.h

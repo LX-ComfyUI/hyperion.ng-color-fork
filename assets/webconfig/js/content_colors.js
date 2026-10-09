@@ -107,7 +107,8 @@ $(document).ready(function () {
       'gammaRed': 'edt_conf_color_gammaRed_expl',
       'gammaGreen': 'edt_conf_color_gammaGreen_expl',
       'gammaBlue': 'edt_conf_color_gammaBlue_expl',
-      'grayAxisTrim': 'edt_conf_color_grayAxisTrim_expl'
+      'grayAxisTrim': 'edt_conf_color_grayAxisTrim_expl',
+      'grayCurve': 'edt_conf_color_grayCurve_expl'
     };
     Object.keys(staticFields).forEach(function (key) {
       attachInfoIcon(PROFILE_BASE + key, staticFields[key]);
@@ -233,6 +234,40 @@ $(document).ready(function () {
           $('#btn_submit_color').prop('disabled', true);
         }
       });
+    }
+
+    // Graukurve (Fork-Erweiterung): feste Felder plus dynamische Punkte-Liste,
+    // gleiches Muster wie bei den Grauachsen-Stufen oben. Die Reihenfolge der
+    // Punkte ist egal, der Server sortiert sie nach Helligkeit.
+    attachInfoIcon(PROFILE_BASE + 'grayCurve.enabled', 'edt_conf_color_grayCurve_enabled_expl');
+    attachInfoIcon(PROFILE_BASE + 'grayCurve.saturationLimit', 'edt_conf_color_grayCurve_saturationLimit_expl');
+    attachInfoIcon(PROFILE_BASE + 'grayCurve.points', 'edt_conf_color_grayCurve_points_expl');
+    var grayCurvePointFields = {
+      'level': 'edt_conf_color_grayCurve_level_expl',
+      'gainRed': 'edt_conf_color_grayCurve_gainRed_expl',
+      'gainGreen': 'edt_conf_color_grayCurve_gainGreen_expl',
+      'gainBlue': 'edt_conf_color_grayCurve_gainBlue_expl'
+    };
+    var grayCurvePointsEditor;
+    try {
+      grayCurvePointsEditor = editor.getEditor(PROFILE_BASE + 'grayCurve.points');
+    } catch (e) {
+      grayCurvePointsEditor = null;
+    }
+    if (grayCurvePointsEditor && grayCurvePointsEditor.container) {
+      var attachAllGrayCurveRows = function () {
+        var rowCount = (grayCurvePointsEditor.rows || []).length;
+        for (var i = 0; i < rowCount; i++) {
+          var rowBase = PROFILE_BASE + 'grayCurve.points.' + i + '.';
+          Object.keys(grayCurvePointFields).forEach(function (key) {
+            attachInfoIcon(rowBase + key, grayCurvePointFields[key]);
+          });
+        }
+      };
+      attachAllGrayCurveRows();
+      new MutationObserver(function () {
+        attachAllGrayCurveRows();
+      }).observe(grayCurvePointsEditor.container, { childList: true, subtree: true });
     }
 
     // edgeTransitionBoost (Bereichsuebergangsverstaerkung, Fork-Erweiterung)

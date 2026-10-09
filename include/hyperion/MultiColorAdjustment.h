@@ -68,7 +68,8 @@ public:
 
 private:
 	/// precise (16-bit) version of the per-LED calculation, see applyAdjustment()
-	static ColorRgb16 computePrecise(ColorAdjustment* adjustment, uint8_t inRed, uint8_t inGreen, uint8_t inBlue);
+	static ColorRgb16 computePrecise(ColorAdjustment* adjustment, uint8_t inRed, uint8_t inGreen, uint8_t inBlue,
+	                                 float gainRed, float gainGreen, float gainBlue);
 
 	/// List with transform ids
 	QStringList _adjustmentIds;

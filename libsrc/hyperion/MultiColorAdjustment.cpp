@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <utility>
+#include <cmath>
 
 // Hyperion includes
 
@@ -101,7 +102,8 @@ void MultiColorAdjustment::setBacklightEnabled(bool enable)
 // applyAdjustment() from the gamma step on, in float and without the cuts to whole numbers. The
 // 8-bit path cuts several times (gamma table, corner weights, corner values, temperature), so its
 // result can be a few steps below this one. The result is converted to 16 bit only at the end.
-ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, uint8_t inRed, uint8_t inGreen, uint8_t inBlue)
+ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, uint8_t inRed, uint8_t inGreen, uint8_t inBlue,
+                                                float gainRed, float gainGreen, float gainBlue)
 {
 	float r = 0.0F;
 	float g = 0.0F;
@@ -156,6 +158,10 @@ ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, uin
 	outB = qMin(outB, max);
 
 	adjustment->_rgbTransform.applyTemperaturePrecise(outR, outG, outB);
+	// gray curve factors (1.0 when it is off or the color is not near-neutral)
+	outR = qMin(outR * gainRed, max);
+	outG = qMin(outG * gainGreen, max);
+	outB = qMin(outB * gainBlue, max);
 	adjustment->_rgbTransform.applyBacklightPrecise(outR, outG, outB);
 
 	return ColorRgb16(ColorRgb16::fromScale255(outR), ColorRgb16::fromScale255(outG), ColorRgb16::fromScale255(outB));
@@ -193,6 +199,12 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		uint8_t ored   = color.red;
 		uint8_t ogreen = color.green;
 		uint8_t oblue  = color.blue;
+
+		// Fork extension: gray curve factors from the color as grabbed, before any other step
+		float gainRed = 1.0F;
+		float gainGreen = 1.0F;
+		float gainBlue = 1.0F;
+		const bool grayCurve = GrayCurveTransform::gains(adjustment->_grayCurve, ored, ogreen, oblue, gainRed, gainGreen, gainBlue);
 		uint8_t B_RGB = 0;
 		uint8_t B_CMY = 0;
 		uint8_t B_W = 0;
@@ -210,7 +222,7 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		if (precise)
 		{
 			// the precise path starts from the same input, after the steps that only see 8-bit input
-			(*preciseColors)[i] = computePrecise(adjustment, ored, ogreen, oblue);
+			(*preciseColors)[i] = computePrecise(adjustment, ored, ogreen, oblue, gainRed, gainGreen, gainBlue);
 		}
 
 		adjustment->_rgbTransform.applyGamma(ored,ogreen,oblue);
@@ -253,6 +265,12 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		color.blue  = OB + RB + GB + BB + CB + MB + YB + WB;
 
 		adjustment->_rgbTransform.applyTemperature(color);
+		if (grayCurve)
+		{
+			color.red   = static_cast<uint8_t>(qMin(std::lround(color.red   * gainRed),   255L));
+			color.green = static_cast<uint8_t>(qMin(std::lround(color.green * gainGreen), 255L));
+			color.blue  = static_cast<uint8_t>(qMin(std::lround(color.blue  * gainBlue),  255L));
+		}
 		adjustment->_rgbTransform.applyBacklight(color.red, color.green, color.blue);
 	}
 

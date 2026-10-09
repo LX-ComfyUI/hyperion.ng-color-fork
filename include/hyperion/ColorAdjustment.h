@@ -11,6 +11,7 @@
 #include <utils/OkhsvTransform.h>
 #include <utils/GrayAxisTrim.h>
 #include <utils/GrayAxisTrimTransform.h>
+#include <utils/GrayCurve.h>
 
 class ColorAdjustment
 {
@@ -43,6 +44,10 @@ public:
 	/// 6-anchor mapping above, so this profile stays byte-identical to stock
 	/// Hyperion when _grayAxisTrim is disabled.
 	GrayAxisTrim _grayAxisTrim;
+
+	/// Fork extension: brightness-dependent channel factors for grays ("Graukurve"), applied to
+	/// the LED output after the temperature, see GrayCurve.
+	GrayCurve _grayCurve;
 };
 
 #endif // COLORADJUSTMENT_H

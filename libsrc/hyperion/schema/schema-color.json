@@ -327,6 +327,49 @@
 							}
 						},
 						"additionalProperties" : false
+					},
+					"grayCurve" :
+					{
+						"type" : "object",
+						"title" : "edt_conf_color_grayCurve_title",
+						"required" : true,
+						"access" : "expert",
+						"propertyOrder" : 22,
+						"properties" :
+						{
+							"enabled" : { "type" : "boolean", "title" : "edt_conf_color_grayCurve_enabled_title", "required" : true, "default" : false, "propertyOrder" : 1 },
+							"saturationLimit" : { "type" : "number", "title" : "edt_conf_color_grayCurve_saturationLimit_title", "required" : true, "minimum" : 0.01, "maximum" : 1.0, "step" : 0.01, "default" : 0.15, "propertyOrder" : 2 },
+							"points" :
+							{
+								"type" : "array",
+								"title" : "edt_conf_color_grayCurve_points_title",
+								"required" : true,
+								"propertyOrder" : 3,
+								"minItems" : 1,
+								"items" :
+								{
+									"type" : "object",
+									"title" : "edt_conf_color_grayCurve_points_itemtitle",
+									"properties" :
+									{
+										"level" : { "type" : "number", "title" : "edt_conf_color_grayCurve_level_title", "required" : true, "minimum" : 0.0, "maximum" : 100.0, "step" : 1, "default" : 50, "append" : "edt_append_percent", "propertyOrder" : 1 },
+										"gainRed" : { "type" : "number", "title" : "edt_conf_color_grayCurve_gainRed_title", "required" : true, "minimum" : 0.0, "maximum" : 2.0, "step" : 0.01, "default" : 1.0, "propertyOrder" : 2 },
+										"gainGreen" : { "type" : "number", "title" : "edt_conf_color_grayCurve_gainGreen_title", "required" : true, "minimum" : 0.0, "maximum" : 2.0, "step" : 0.01, "default" : 1.0, "propertyOrder" : 3 },
+										"gainBlue" : { "type" : "number", "title" : "edt_conf_color_grayCurve_gainBlue_title", "required" : true, "minimum" : 0.0, "maximum" : 2.0, "step" : 0.01, "default" : 1.0, "propertyOrder" : 4 }
+									},
+									"additionalProperties" : false
+								},
+								"default" :
+								[
+									{ "level" : 100, "gainRed" : 1.0, "gainGreen" : 1.0, "gainBlue" : 1.0 },
+									{ "level" : 50, "gainRed" : 1.0, "gainGreen" : 1.0, "gainBlue" : 1.0 },
+									{ "level" : 25, "gainRed" : 1.0, "gainGreen" : 1.0, "gainBlue" : 1.0 },
+									{ "level" : 14, "gainRed" : 1.0, "gainGreen" : 1.0, "gainBlue" : 1.0 },
+									{ "level" : 10, "gainRed" : 1.0, "gainGreen" : 1.0, "gainBlue" : 1.0 }
+								]
+							}
+						},
+						"additionalProperties" : false
 					}
 				},
 				"additionalProperties" : false

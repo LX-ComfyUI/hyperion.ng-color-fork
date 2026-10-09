@@ -166,6 +166,32 @@ namespace hyperion {
 		return trim;
 	}
 
+	/// Fork extension: parse the "grayCurve" object (brightness-dependent channel factors for
+	/// grays). Points are sorted by level so the transform can rely on the order.
+	static GrayCurve createGrayCurve(const QJsonObject& adjustmentConfig)
+	{
+		GrayCurve curve;
+		const QJsonObject c = adjustmentConfig["grayCurve"].toObject();
+		curve.enabled = c["enabled"].toBool(false);
+		curve.saturationLimit = c["saturationLimit"].toDouble(0.15);
+
+		const QJsonArray pointsConfig = c["points"].toArray();
+		for (const QJsonValue & v : pointsConfig)
+		{
+			const QJsonObject p = v.toObject();
+			GrayCurvePoint point;
+			point.level     = qBound(0.0, p["level"].toDouble(50.0), 100.0);
+			point.gainRed   = qBound(0.0, p["gainRed"].toDouble(1.0), 4.0);
+			point.gainGreen = qBound(0.0, p["gainGreen"].toDouble(1.0), 4.0);
+			point.gainBlue  = qBound(0.0, p["gainBlue"].toDouble(1.0), 4.0);
+			curve.points.push_back(point);
+		}
+		std::sort(curve.points.begin(), curve.points.end(), [](const GrayCurvePoint & a, const GrayCurvePoint & b) {
+			return a.level < b.level;
+		});
+		return curve;
+	}
+
 	static ColorAdjustment* createColorAdjustment(const QJsonObject & adjustmentConfig)
 	{
 		const QString id = adjustmentConfig["id"].toString("default");
@@ -183,6 +209,7 @@ namespace hyperion {
 		adjustment->_rgbTransform         = createRgbTransform(adjustmentConfig);
 		adjustment->_okhsvTransform       = createOkhsvTransform(adjustmentConfig);
 		adjustment->_grayAxisTrim         = createGrayAxisTrim(adjustmentConfig);
+		adjustment->_grayCurve            = createGrayCurve(adjustmentConfig);
 
 		return adjustment;
 	}
