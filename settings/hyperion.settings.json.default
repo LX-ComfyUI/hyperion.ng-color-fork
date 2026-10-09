@@ -172,6 +172,7 @@
       },
       "color":{
          "imageToLedMappingType":"multicolor_mean",
+         "fractionalMean":true,
          "channelAdjustment":[
             {
                "id":"default",

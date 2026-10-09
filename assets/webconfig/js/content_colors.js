@@ -282,6 +282,9 @@ $(document).ready(function () {
       'edgeSensitivity': 'edt_conf_color_edgeTransitionBoost_edgeSensitivity_expl',
       'boostStrength': 'edt_conf_color_edgeTransitionBoost_boostStrength_expl'
     };
+    // LED-Mittelwert mit Nachkommastellen (Fork-Erweiterung), Ebene "color"
+    attachInfoIcon('root.color.fractionalMean', 'edt_conf_color_fractionalMean_expl');
+
     attachInfoIcon('root.color.edgeTransitionBoost', edgeBoostFields['']);
     delete edgeBoostFields[''];
     Object.keys(edgeBoostFields).forEach(function (key) {

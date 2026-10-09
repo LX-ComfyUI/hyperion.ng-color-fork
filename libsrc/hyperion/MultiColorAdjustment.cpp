@@ -169,11 +169,11 @@ ColorRgb16 MultiColorAdjustment::computePrecise(ColorAdjustment* adjustment, dou
 }
 
 namespace {
-// the mean still belongs to the 8-bit color: steps after the LED mapping (gray-still image,
-// blacklist) change the 8-bit color, then the mean is not used
+// the mean still belongs to the 8-bit color: within one step, as the mapping types cut (mean) or
+// round (mean squared) it. LEDs a later step changed (gray-still image) come as NaN, never match.
 bool meanMatches(float mean, uint8_t color)
 {
-	return mean > static_cast<float>(color) - 0.01F && mean < static_cast<float>(color) + 1.01F;
+	return mean > static_cast<float>(color) - 1.01F && mean < static_cast<float>(color) + 1.01F;
 }
 }
 

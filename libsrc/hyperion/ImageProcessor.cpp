@@ -135,6 +135,7 @@ ImageProcessor::ImageProcessor(const LedString& ledString, const QSharedPointer<
 	, _hardMappingType(-1)
 	, _accuracyLevel(0)
 	, _reducedPixelSetFactorFactor(1)
+	, _fractionalMean(true)
 	, _hyperionWeak(hyperionInstance)
 {
 	QString subComponent{ "__" };
@@ -178,6 +179,14 @@ void ImageProcessor::handleSettingsUpdate(settings::type type, const QJsonDocume
 
 		int accuracyLevel = obj["accuracyLevel"].toInt();
 		setAccuracyLevel(accuracyLevel);
+
+		// Fork extension: LED means with fractions for the 16-bit path, on when missing
+		const bool fractionalMean = obj["fractionalMean"].toBool(true);
+		if (fractionalMean != _fractionalMean)
+		{
+			Info(_log, "LED means with fractions for the 16-bit output: %s", fractionalMean ? "on" : "off");
+		}
+		_fractionalMean = fractionalMean;
 	}
 }
 

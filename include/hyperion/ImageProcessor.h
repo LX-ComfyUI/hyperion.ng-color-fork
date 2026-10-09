@@ -123,7 +123,9 @@ public:
 	///
 	/// @param[in] image  The image to translate to LED values
 	/// @param[out] means  Fork extension, optional: the mean per LED with its fractions, for the
-	///                    16-bit path. Only filled by the mapping type "multicolor_mean", else empty.
+	///                    16-bit path. Empty when switched off (fractionalMean) or for the mapping
+	///                    types "dominant color" (their result is a pixel color, no fractions).
+	///                    LEDs the gray-still handling changed get NaN (no mean).
 	///
 	/// @return The color value per LED
 	///
@@ -134,6 +136,10 @@ public:
 		if (means != nullptr)
 		{
 			means->clear();
+			if (!_fractionalMean)
+			{
+				means = nullptr;
+			}
 		}
 		qCDebug(image_track) << "Image [" << image.id() << "]";
 
@@ -151,10 +157,12 @@ public:
 			switch (_mappingType)
 			{
 			case 1:
-				colors = _imageToLedColors->getUniLedColor(image);
+				colors = (means != nullptr) ? _imageToLedColors->getUniLedColor(image, *means)
+				                            : _imageToLedColors->getUniLedColor(image);
 				break;
 			case 2:
-				colors = _imageToLedColors->getMeanSqrtLedColor(image);
+				colors = (means != nullptr) ? _imageToLedColors->getMeanSqrtLedColor(image, *means)
+				                            : _imageToLedColors->getMeanSqrtLedColor(image);
 				break;
 			case 3:
 				colors = _imageToLedColors->getDominantLedColor(image);
@@ -163,10 +171,12 @@ public:
 				colors = _imageToLedColors->getDominantUniLedColor(image);
 				break;
 			case 5:
-				colors = _imageToLedColors->getDominantAdvLedColor(image);
+				colors = (means != nullptr) ? _imageToLedColors->getDominantAdvLedColor(image, *means)
+				                            : _imageToLedColors->getDominantAdvLedColor(image);
 				break;
 			case 6:
-				colors = _imageToLedColors->getDominantAdvUniLedColor(image);
+				colors = (means != nullptr) ? _imageToLedColors->getDominantAdvUniLedColor(image, *means)
+				                            : _imageToLedColors->getDominantAdvUniLedColor(image);
 				break;
 			default:
 				colors = (means != nullptr) ? _imageToLedColors->getMeanLedColor(image, *means)
@@ -175,7 +185,20 @@ public:
 
 			// Fork extension: detect/handle a gray, dimmed still image (e.g. a paused
 			// streaming player fading out) and override colors in place if confirmed
+			const QVector<ColorRgb> mapped = (means != nullptr && !means->isEmpty()) ? colors : QVector<ColorRgb>();
 			processGrayStill(image, colors);
+
+			// Fork extension: LEDs the gray-still handling changed keep no mean
+			if (!mapped.isEmpty() && mapped.size() == colors.size() && means->size() == colors.size())
+			{
+				for (int i = 0; i < colors.size(); ++i)
+				{
+					if (colors[i] != mapped[i])
+					{
+						(*means)[i] = ColorRgbFloat{ NAN, NAN, NAN };
+					}
+				}
+			}
 		}
 		else
 		{
@@ -420,6 +443,10 @@ private:
 
 	int _accuracyLevel;
 	int _reducedPixelSetFactorFactor;
+
+	/// Fork extension: hand the LED means with their fractions to the 16-bit path (setting
+	/// color.fractionalMean)
+	bool _fractionalMean;
 
 	/// Hyperion instance pointer
 	QWeakPointer<Hyperion> _hyperionWeak;

@@ -39,13 +39,22 @@
 			},
 		    "propertyOrder": 3
 		},
+		"fractionalMean" :
+		{
+			"type" : "boolean",
+			"title" : "edt_conf_color_fractionalMean_title",
+			"required" : true,
+			"default" : true,
+			"access" : "expert",
+			"propertyOrder" : 4
+		},
 		"channelAdjustment" :
 		{
 			"type" : "array",
 			"title" : "edt_conf_color_channelAdjustment_header_title",
 			"minItems": 1,
 			"required" : true,
-			"propertyOrder" : 4,
+			"propertyOrder" : 5,
 			"items" :
 			{
 				"type" : "object",
@@ -381,7 +390,7 @@
 			"title" : "edt_conf_color_edgeTransitionBoost_title",
 			"required" : true,
 			"access" : "expert",
-			"propertyOrder" : 5,
+			"propertyOrder" : 6,
 			"properties" :
 			{
 				"enabled" : { "type" : "boolean", "title" : "edt_conf_color_edgeTransitionBoost_enabled_title", "required" : true, "default" : false, "propertyOrder" : 1 },

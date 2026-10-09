@@ -60,7 +60,7 @@ public:
 	///
 	/// @param ledMeans Fork extension, optional: the input colors with fractions (mean per LED
 	///                 area, see ImageToLedsMap). The precise path starts from them instead of
-	///                 the 8-bit input where they still match it (mean in [c, c+1) per channel).
+	///                 the 8-bit input where they still match it (within one step per channel).
 	///
 	void applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors = nullptr,
 	                     const QVector<ColorRgbFloat>* ledMeans = nullptr);

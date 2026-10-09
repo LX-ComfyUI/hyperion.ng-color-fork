@@ -7,6 +7,7 @@
 #include <sstream>
 #include <cmath>
 #include <array>
+#include <vector>
 
 #include <QVector>
 
@@ -179,6 +180,29 @@ namespace hyperion
 		/// @param[in] image  The image from which to extract the LED colors
 		/// @param[out] ledColors  The vector containing the output
 		///
+		///
+		/// Fork extension: like getMeanSqrtLedColor(image), and also returns the values with their
+		/// fractions (for the 16-bit path).
+		///
+		/// @param[in] image  The image from which to extract the LED colors
+		/// @param[out] means  The value per LED on the 8-bit scale, with fractions
+		///
+		/// @return The vector containing the output
+		///
+		template <typename Pixel_T>
+		QVector<ColorRgb> getMeanSqrtLedColor(const Image<Pixel_T> &image, QVector<ColorRgbFloat> &means) const
+		{
+			QVector<ColorRgb> colors(_colorsMap.size(), ColorRgb{0, 0, 0});
+			means = QVector<ColorRgbFloat>(_colorsMap.size());
+			auto led = colors.begin();
+			auto mean = means.begin();
+			for (auto pixels = _colorsMap.begin(); pixels != _colorsMap.end(); ++pixels, ++led, ++mean)
+			{
+				*led = calcMeanColorSqrt(image, *pixels, &*mean);
+			}
+			return colors;
+		}
+
 		template <typename Pixel_T>
 		void getMeanSqrtLedColor(const Image<Pixel_T> &image, QVector<ColorRgb> &ledColors) const
 		{
@@ -220,6 +244,24 @@ namespace hyperion
 		/// @param[in] image  The image from which to extract the LED colors
 		/// @param[out] ledColors  The vector containing the output
 		///
+		///
+		/// Fork extension: like getUniLedColor(image), and also returns the mean with its fractions
+		/// (for the 16-bit path), the same for all LEDs.
+		///
+		/// @param[in] image  The image from which to extract the LED colors
+		/// @param[out] means  The mean per LED on the 8-bit scale, with fractions
+		///
+		/// @return The vector containing the output
+		///
+		template <typename Pixel_T>
+		QVector<ColorRgb> getUniLedColor(const Image<Pixel_T> &image, QVector<ColorRgbFloat> &means) const
+		{
+			ColorRgbFloat mean;
+			const ColorRgb color = calcMeanColor(image, &mean);
+			means = QVector<ColorRgbFloat>(_colorsMap.size(), mean);
+			return QVector<ColorRgb>(_colorsMap.size(), color);
+		}
+
 		template <typename Pixel_T>
 		void getUniLedColor(const Image<Pixel_T> &image, QVector<ColorRgb> &ledColors) const
 		{
@@ -342,6 +384,29 @@ namespace hyperion
 		/// @param[in] image  The image from which to extract the LED colors
 		/// @param[out] ledColors  The vector containing the output
 		///
+		///
+		/// Fork extension: like getDominantAdvLedColor(image), and also returns the mean of the
+		/// dominant cluster with its fractions (for the 16-bit path).
+		///
+		/// @param[in] image  The image from which to extract the LED colors
+		/// @param[out] means  The value per LED on the 8-bit scale, with fractions
+		///
+		/// @return The vector containing the output
+		///
+		template <typename Pixel_T>
+		QVector<ColorRgb> getDominantAdvLedColor(const Image<Pixel_T> &image, QVector<ColorRgbFloat> &means) const
+		{
+			QVector<ColorRgb> colors(_colorsMap.size(), ColorRgb{0, 0, 0});
+			means = QVector<ColorRgbFloat>(_colorsMap.size());
+			auto led = colors.begin();
+			auto mean = means.begin();
+			for (auto pixels = _colorsMap.begin(); pixels != _colorsMap.end(); ++pixels, ++led, ++mean)
+			{
+				*led = calculateDominantColorAdv(image, *pixels, &*mean);
+			}
+			return colors;
+		}
+
 		template <typename Pixel_T>
 		void getDominantAdvLedColor(const Image<Pixel_T> &image, QVector<ColorRgb> &ledColors) const
 		{
@@ -384,6 +449,28 @@ namespace hyperion
 		/// @param[in] image  The image from which to extract the LED colors
 		/// @param[out] ledColors  The vector containing the output
 		///
+		///
+		/// Fork extension: like getDominantAdvUniLedColor(image), and also returns the mean of the
+		/// dominant cluster with its fractions (for the 16-bit path), the same for all LEDs.
+		///
+		/// @param[in] image  The image from which to extract the LED colors
+		/// @param[out] means  The value per LED on the 8-bit scale, with fractions
+		///
+		/// @return The vector containing the output
+		///
+		template <typename Pixel_T>
+		QVector<ColorRgb> getDominantAdvUniLedColor(const Image<Pixel_T> &image, QVector<ColorRgbFloat> &means) const
+		{
+			const unsigned pixelNum = image.width() * image.height();
+			QVector<int> pixels(pixelNum);
+			std::iota(pixels.begin(), pixels.end(), 0);
+
+			ColorRgbFloat mean;
+			const ColorRgb color = calculateDominantColorAdv(image, pixels, &mean);
+			means = QVector<ColorRgbFloat>(_colorsMap.size(), mean);
+			return QVector<ColorRgb>(_colorsMap.size(), color);
+		}
+
 		template <typename Pixel_T>
 		void getDominantAdvUniLedColor(const Image<Pixel_T> &image, QVector<ColorRgb> &ledColors) const
 		{
@@ -484,7 +571,7 @@ namespace hyperion
 		/// @return The mean of the given list of colors (or black when empty)
 		///
 		template <typename Pixel_T>
-		ColorRgb calcMeanColor(const Image<Pixel_T> &image) const
+		ColorRgb calcMeanColor(const Image<Pixel_T> &image, ColorRgbFloat *mean = nullptr) const
 		{
 			qCDebug(imageToLedsMap_calc) << "Calculate Mean Color on image sized" << image.width() << "x" << image.height();
 			// Accumulate the sum of each separate color channel
@@ -508,6 +595,15 @@ namespace hyperion
 			const auto avgGreen = uint8_t(cummGreen / pixelNum);
 			const auto avgBlue = uint8_t(cummBlue / pixelNum);
 
+			// Fork extension: the same means with their fractions
+			if (mean != nullptr)
+			{
+				const double count = static_cast<double>(pixelNum);
+				*mean = ColorRgbFloat{ static_cast<float>(static_cast<double>(cummRed) / count),
+				                       static_cast<float>(static_cast<double>(cummGreen) / count),
+				                       static_cast<float>(static_cast<double>(cummBlue) / count) };
+			}
+
 			// Return the computed color
 			return {avgRed, avgGreen, avgBlue};
 		}
@@ -522,12 +618,16 @@ namespace hyperion
 		/// @return The mean of the given list of colors (or black when empty)
 		///
 		template <typename Pixel_T>
-		ColorRgb calcMeanColorSqrt(const Image<Pixel_T> &image, const QVector<int32_t> &pixels) const
+		ColorRgb calcMeanColorSqrt(const Image<Pixel_T> &image, const QVector<int32_t> &pixels, ColorRgbFloat *mean = nullptr) const
 		{
 			qCDebug(imageToLedsMap_calc) << "Calculate Mean Color Squared on image sized" << image.width() << "x" << image.height() << "and #pixels" << pixels.size();
 			const auto pixelNum = pixels.size();
 			if (pixelNum == 0)
 			{
+				if (mean != nullptr)
+				{
+					*mean = ColorRgbFloat{};
+				}
 				return ColorRgb::BLACK;
 			}
 
@@ -555,6 +655,15 @@ namespace hyperion
 			const auto avgRed = static_cast<uint8_t>(std::min(std::lround(std::sqrt(static_cast<double>(cummRed / pixelNum))), 255L));
 			const auto avgGreen = static_cast<uint8_t>(std::min(std::lround(sqrt(static_cast<double>(cummGreen / pixelNum))), 255L));
 			const auto avgBlue = static_cast<uint8_t>(std::min(std::lround(sqrt(static_cast<double>(cummBlue / pixelNum))), 255L));
+
+			// Fork extension: the same values with their fractions (no cut before the root)
+			if (mean != nullptr)
+			{
+				const double count = static_cast<double>(pixelNum);
+				*mean = ColorRgbFloat{ static_cast<float>(std::min(std::sqrt(static_cast<double>(cummRed) / count), 255.0)),
+				                       static_cast<float>(std::min(std::sqrt(static_cast<double>(cummGreen) / count), 255.0)),
+				                       static_cast<float>(std::min(std::sqrt(static_cast<double>(cummBlue) / count), 255.0)) };
+			}
 
 			// Return the computed color
 			return {avgRed, avgGreen, avgBlue};
@@ -687,7 +796,7 @@ namespace hyperion
 		/// @return The image area's dominant color or black, if no pixel indices provided
 		///
 		template <typename Pixel_T>
-		ColorRgb calculateDominantColorAdv(const Image<Pixel_T> &image, const QVector<int> &pixels) const
+		ColorRgb calculateDominantColorAdv(const Image<Pixel_T> &image, const QVector<int> &pixels, ColorRgbFloat *mean = nullptr) const
 		{
 			qCDebug(imageToLedsMap_calc) << "Calculate Dominant Color Advanced on image sized" << image.width() << "x" << image.height() << "and #pixels" << pixels.size();
 			ColorRgb dominantColor{ColorRgb::BLACK};
@@ -700,6 +809,9 @@ namespace hyperion
 				{
 					clusters.get()[k].newColor = DEFAULT_CLUSTER_COLORS[k];
 				}
+
+				// Fork extension: the cluster sums of the last round, for the mean with fractions
+				std::vector<ColorRgbScalar> clusterSums(mean != nullptr ? _clusterCount : 0);
 
 				// k-means
 				double min_rgb_euclidean{0};
@@ -741,6 +853,10 @@ namespace hyperion
 					{
 						if (clusters.get()[k].count > 0)
 						{
+							if (mean != nullptr)
+							{
+								clusterSums[k] = clusters.get()[k].newColor;
+							}
 							// new color
 							clusters.get()[k].newColor /= clusters.get()[k].count;
 							double ecli = ColorSys::rgb_euclidean(clusters.get()[k].newColor, clusters.get()[k].color);
@@ -775,6 +891,28 @@ namespace hyperion
 				dominantColor.red = static_cast<uint8_t>(clusters.get()[dominantClusterIdx].newColor.red);
 				dominantColor.green = static_cast<uint8_t>(clusters.get()[dominantClusterIdx].newColor.green);
 				dominantColor.blue = static_cast<uint8_t>(clusters.get()[dominantClusterIdx].newColor.blue);
+
+				// Fork extension: the mean of the dominant cluster with its fractions
+				if (mean != nullptr)
+				{
+					const int count = clusters.get()[dominantClusterIdx].count;
+					if (count > 0)
+					{
+						const ColorRgbScalar& sum = clusterSums[dominantClusterIdx];
+						*mean = ColorRgbFloat{ static_cast<float>(static_cast<double>(sum.red) / count),
+						                       static_cast<float>(static_cast<double>(sum.green) / count),
+						                       static_cast<float>(static_cast<double>(sum.blue) / count) };
+					}
+					else
+					{
+						*mean = ColorRgbFloat{ static_cast<float>(dominantColor.red), static_cast<float>(dominantColor.green),
+						                       static_cast<float>(dominantColor.blue) };
+					}
+				}
+			}
+			else if (mean != nullptr)
+			{
+				*mean = ColorRgbFloat{};
 			}
 
 			return dominantColor;
