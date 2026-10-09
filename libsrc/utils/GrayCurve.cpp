@@ -12,13 +12,20 @@ bool GrayCurveTransform::gains(const GrayCurve& curve, uint8_t red, uint8_t gree
 		return false;
 	}
 
+	// black stays black, and Okhsv has no saturation for it (NaN, which would turn the factors into
+	// NaN and the precise output into full white)
+	if (red == 0 && green == 0 && blue == 0)
+	{
+		return false;
+	}
+
 	// only near-neutral colors: full effect at saturation 0, none at saturationLimit
 	double hue = 0.0;
 	double saturation = 0.0;
 	double value = 0.0;
 	ColorSys::rgb2okhsv(red, green, blue, hue, saturation, value);
 	const double weight = 1.0 - std::clamp(saturation / curve.saturationLimit, 0.0, 1.0);
-	if (weight <= 0.0)
+	if (!(weight > 0.0))
 	{
 		return false;
 	}
