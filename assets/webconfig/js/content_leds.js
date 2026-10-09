@@ -1100,7 +1100,7 @@ $(document).ready(function () {
         $label.append(
           $('<i>')
             .addClass('fa fa-info-circle')
-            .attr('title', explText)
+            .attr('title', explText.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')) // Tooltips zeigen kein HTML
             .css({ 'margin-left': '6px', cursor: 'help', color: '#3a87ad' })
         );
         $label.data('forkInfoIconAdded', true);
