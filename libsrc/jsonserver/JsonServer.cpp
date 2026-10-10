@@ -1,5 +1,6 @@
 // system includes
 #include <stdexcept>
+#include <utility>
 
 // qt includes
 #include <QTcpServer>
@@ -79,9 +80,16 @@ void JsonServer::stop()
 		}
 	}
 
-	// Ensure all open connections are deleted from the owning thread
-	qDeleteAll(_openConnections);
-	_openConnections.clear();
+	// Ensure all open connections are deleted from the owning thread.
+	// Take the set first and disconnect closedConnection(): deleting a connection
+	// disconnects its socket synchronously, which would otherwise remove the entry
+	// from _openConnections while iterating it (use-after-free on shutdown).
+	const QSet<JsonClientConnection*> connections = std::exchange(_openConnections, {});
+	for (JsonClientConnection* connection : connections)
+	{
+		disconnect(connection, &JsonClientConnection::connectionClosed, this, &JsonServer::closedConnection);
+		delete connection;
+	}
 
 	Info(_log, "JSON-Server stopped");
 
