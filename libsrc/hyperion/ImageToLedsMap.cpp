@@ -93,7 +93,8 @@ ImageToLedsMap::ImageToLedsMap(
 		{
 			for (int x = minX_idx; x < maxXLedCount; x += _nextPixelCount)
 			{
-				ledColors.append( y * actualWidth + x);
+				// fork fix: image rows are _width long, also with a black border
+				ledColors.append( y * _width + x);
 			}
 		}
 
