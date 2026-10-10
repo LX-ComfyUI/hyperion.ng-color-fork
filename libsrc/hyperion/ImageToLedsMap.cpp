@@ -143,3 +143,65 @@ void ImageToLedsMap::setAccuracyLevel (int accuracyLevel)
 
 }
 
+
+QVector<Led> hyperion::applyLedAreaDepth(const QVector<Led>& leds, double topBottomPercent, double leftRightPercent)
+{
+	const double depthY = qBound(0.0, topBottomPercent, 50.0) / 100.0;
+	const double depthX = qBound(0.0, leftRightPercent, 50.0) / 100.0;
+	QVector<Led> result = leds;
+	if (depthY <= 0.0 && depthX <= 0.0)
+	{
+		return result;
+	}
+
+	constexpr double EDGE = 1e-4;
+	for (Led& led : result)
+	{
+		const double width = led.maxX_frac - led.minX_frac;
+		const double height = led.maxY_frac - led.minY_frac;
+		if (led.isBlacklisted || width < 1e-6 || height < 1e-6)
+		{
+			continue;
+		}
+
+		const bool top = led.minY_frac <= EDGE;
+		const bool bottom = led.maxY_frac >= 1.0 - EDGE;
+		const bool left = led.minX_frac <= EDGE;
+		const bool right = led.maxX_frac >= 1.0 - EDGE;
+
+		// an area reaching from one edge to the opposite one has no depth to change on that axis;
+		// along the top/bottom edge the depth is the height, along the sides the width
+		const bool onTopOrBottom = top != bottom;
+		const bool onSide = left != right;
+		const bool horizontalEdge = onTopOrBottom && (!onSide || height >= width);
+		const bool verticalEdge = onSide && !horizontalEdge;
+
+		if (horizontalEdge && depthY > 0.0)
+		{
+			if (top)
+			{
+				led.minY_frac = 0.0;
+				led.maxY_frac = depthY;
+			}
+			else
+			{
+				led.minY_frac = 1.0 - depthY;
+				led.maxY_frac = 1.0;
+			}
+		}
+		else if (verticalEdge && depthX > 0.0)
+		{
+			if (left)
+			{
+				led.minX_frac = 0.0;
+				led.maxX_frac = depthX;
+			}
+			else
+			{
+				led.minX_frac = 1.0 - depthX;
+				led.maxX_frac = 1.0;
+			}
+		}
+	}
+	return result;
+}

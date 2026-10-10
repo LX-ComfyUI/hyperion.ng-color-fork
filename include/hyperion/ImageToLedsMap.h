@@ -28,6 +28,22 @@ Q_DECLARE_LOGGING_CATEGORY(imageToLedsMap_calc);
 namespace hyperion
 {
 	///
+	/// Fork extension: the LED areas with a different depth, i.e. how far each area reaches from
+	/// the picture edge into the picture. Areas along the top/bottom edge get topBottomPercent of
+	/// the picture height, areas along the left/right edge leftRightPercent of the width; their
+	/// position and width along the edge stay as in the layout. An area touching two edges (corner)
+	/// belongs to the edge along which it is narrower. Areas not touching an edge, blacklisted LEDs
+	/// and a value of 0 keep the layout.
+	///
+	/// @param[in] leds              The LED areas of the layout
+	/// @param[in] topBottomPercent  Depth of the top/bottom areas in % of the picture height (0 = layout)
+	/// @param[in] leftRightPercent  Depth of the left/right areas in % of the picture width (0 = layout)
+	///
+	/// @return The LED areas to map
+	///
+	QVector<Led> applyLedAreaDepth(const QVector<Led>& leds, double topBottomPercent, double leftRightPercent);
+
+	///
 	/// The ImageToLedsMap holds a mapping of indices into an image to LEDs. It can be used to
 	/// calculate the average (aka mean) or dominant color per LED for a given region.
 	///

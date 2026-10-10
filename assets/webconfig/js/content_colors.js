@@ -285,6 +285,11 @@ $(document).ready(function () {
     // LED-Mittelwert mit Nachkommastellen (Fork-Erweiterung), Ebene "color"
     attachInfoIcon('root.color.fractionalMean', 'edt_conf_color_fractionalMean_expl');
 
+    // Erfassungstiefe der LED-Bereiche (Fork-Erweiterung), Ebene "color"
+    attachInfoIcon('root.color.ledAreaDepth', 'edt_conf_color_ledAreaDepth_expl');
+    attachInfoIcon('root.color.ledAreaDepth.topBottom', 'edt_conf_color_ledAreaDepth_topBottom_expl');
+    attachInfoIcon('root.color.ledAreaDepth.leftRight', 'edt_conf_color_ledAreaDepth_leftRight_expl');
+
     attachInfoIcon('root.color.edgeTransitionBoost', edgeBoostFields['']);
     delete edgeBoostFields[''];
     Object.keys(edgeBoostFields).forEach(function (key) {

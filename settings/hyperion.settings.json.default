@@ -173,6 +173,10 @@
       "color":{
          "imageToLedMappingType":"multicolor_mean",
          "fractionalMean":true,
+         "ledAreaDepth":{
+            "topBottom":0.0,
+            "leftRight":0.0
+         },
          "channelAdjustment":[
             {
                "id":"default",

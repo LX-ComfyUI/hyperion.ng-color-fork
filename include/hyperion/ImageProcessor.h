@@ -448,6 +448,15 @@ private:
 	/// color.fractionalMean)
 	bool _fractionalMean;
 
+	/// Fork extension: depth of the LED areas in % (setting color.ledAreaDepth, 0 = layout) and
+	/// the LED areas the mapping uses (layout with that depth)
+	double _depthTopBottom;
+	double _depthLeftRight;
+	QVector<Led> _areaLeds;
+
+	/// Fork extension: recompute _areaLeds from the layout and the depth
+	void updateAreaLeds();
+
 	/// Hyperion instance pointer
 	QWeakPointer<Hyperion> _hyperionWeak;
 };

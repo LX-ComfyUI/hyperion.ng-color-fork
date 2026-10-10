@@ -43,7 +43,7 @@ void ImageProcessor::registerProcessingUnit(
 								height,
 								horizontalBorder,
 								verticalBorder,
-								_ledString.leds(),
+								_areaLeds,
 								_reducedPixelSetFactorFactor,
 								_accuracyLevel
 		);
@@ -136,6 +136,9 @@ ImageProcessor::ImageProcessor(const LedString& ledString, const QSharedPointer<
 	, _accuracyLevel(0)
 	, _reducedPixelSetFactorFactor(1)
 	, _fractionalMean(true)
+	, _depthTopBottom(0.0)
+	, _depthLeftRight(0.0)
+	, _areaLeds(ledString.leds())
 	, _hyperionWeak(hyperionInstance)
 {
 	QString subComponent{ "__" };
@@ -187,6 +190,24 @@ void ImageProcessor::handleSettingsUpdate(settings::type type, const QJsonDocume
 			Info(_log, "LED means with fractions for the 16-bit output: %s", fractionalMean ? "on" : "off");
 		}
 		_fractionalMean = fractionalMean;
+
+		// Fork extension: depth of the LED areas, 0 = as in the layout
+		const QJsonObject depth = obj["ledAreaDepth"].toObject();
+		const double depthTopBottom = depth["topBottom"].toDouble(0.0);
+		const double depthLeftRight = depth["leftRight"].toDouble(0.0);
+		if (!qFuzzyCompare(1.0 + depthTopBottom, 1.0 + _depthTopBottom) || !qFuzzyCompare(1.0 + depthLeftRight, 1.0 + _depthLeftRight))
+		{
+			_depthTopBottom = depthTopBottom;
+			_depthLeftRight = depthLeftRight;
+			Info(_log, "LED area depth: top/bottom %.1f %%, left/right %.1f %% (0 = as in the layout)", _depthTopBottom, _depthLeftRight);
+			updateAreaLeds();
+			if (!_imageToLedColors.isNull())
+			{
+				// keep the current black border, the border detection only reports changes
+				registerProcessingUnit(_imageToLedColors->width(), _imageToLedColors->height(),
+				                       _imageToLedColors->horizontalBorder(), _imageToLedColors->verticalBorder());
+			}
+		}
 	}
 }
 
@@ -214,6 +235,7 @@ void ImageProcessor::setLedString(const LedString& ledString)
 	{
 		qCDebug(imageProcessor_track) << "Update LED-String in image processing unit.";
 		_ledString = ledString;
+		updateAreaLeds();
 
 		// get current width/height
 		int width = _imageToLedColors->width();
@@ -222,6 +244,11 @@ void ImageProcessor::setLedString(const LedString& ledString)
 		// Construct a new buffer and mapping
 		registerProcessingUnit(width, height, 0, 0);
 	}
+}
+
+void ImageProcessor::updateAreaLeds()
+{
+	_areaLeds = hyperion::applyLedAreaDepth(_ledString.leds(), _depthTopBottom, _depthLeftRight);
 }
 
 void ImageProcessor::setBlackbarDetectDisable(bool enable)

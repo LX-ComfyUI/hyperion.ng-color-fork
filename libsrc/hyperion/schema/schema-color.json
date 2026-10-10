@@ -48,13 +48,27 @@
 			"access" : "expert",
 			"propertyOrder" : 4
 		},
+		"ledAreaDepth" :
+		{
+			"type" : "object",
+			"title" : "edt_conf_color_ledAreaDepth_title",
+			"required" : true,
+			"access" : "expert",
+			"propertyOrder" : 5,
+			"properties" :
+			{
+				"topBottom" : { "type" : "number", "title" : "edt_conf_color_ledAreaDepth_topBottom_title", "required" : true, "minimum" : 0.0, "maximum" : 50.0, "step" : 0.5, "default" : 0.0, "append" : "edt_append_percent", "propertyOrder" : 1 },
+				"leftRight" : { "type" : "number", "title" : "edt_conf_color_ledAreaDepth_leftRight_title", "required" : true, "minimum" : 0.0, "maximum" : 50.0, "step" : 0.5, "default" : 0.0, "append" : "edt_append_percent", "propertyOrder" : 2 }
+			},
+			"additionalProperties" : false
+		},
 		"channelAdjustment" :
 		{
 			"type" : "array",
 			"title" : "edt_conf_color_channelAdjustment_header_title",
 			"minItems": 1,
 			"required" : true,
-			"propertyOrder" : 5,
+			"propertyOrder" : 6,
 			"items" :
 			{
 				"type" : "object",
@@ -390,7 +404,7 @@
 			"title" : "edt_conf_color_edgeTransitionBoost_title",
 			"required" : true,
 			"access" : "expert",
-			"propertyOrder" : 6,
+			"propertyOrder" : 7,
 			"properties" :
 			{
 				"enabled" : { "type" : "boolean", "title" : "edt_conf_color_edgeTransitionBoost_enabled_title", "required" : true, "default" : false, "propertyOrder" : 1 },
