@@ -1,5 +1,6 @@
 // STL includes
 #include<algorithm>
+#include <cmath>
 
 // QT includes
 #include <QString>
@@ -143,6 +144,7 @@ void Hyperion::start()
 
 	// initialize LED-devices
 	QJsonObject const ledDeviceSettings = getSetting(settings::DEVICE).object();
+	configureStrayLedSuppressor(ledDeviceSettings);
 
 	_ledDeviceWrapper = MAKE_TRACKED_SHARED(LedDeviceWrapper, sharedFromThis());
 	connect(this, &Hyperion::compStateChangeRequest, _ledDeviceWrapper.get(), &LedDeviceWrapper::handleComponentState);
@@ -257,6 +259,7 @@ void Hyperion::handleSettingsUpdate(settings::type type, const QJsonDocument& co
 	else if (type == settings::DEVICE)
 	{
 		QJsonObject const deviceConfig = config.object();
+		configureStrayLedSuppressor(deviceConfig);
 
 		// Recreate LED-Device with new configuration
 		_ledDeviceWrapper->createLedDevice(deviceConfig);
@@ -267,6 +270,14 @@ void Hyperion::handleSettingsUpdate(settings::type type, const QJsonDocument& co
 		_ledBuffer.fill(ColorRgb::BLACK, _hwLedCount);
 		_ledBufferPrecise.clear();
 	}
+}
+
+void Hyperion::configureStrayLedSuppressor(const QJsonObject& deviceConfig)
+{
+	// in "output" mode the LED device runs the filter on its 8-bit frame instead
+	StrayLedSuppressorSettings settings = createStrayLedSuppressorSettings(deviceConfig);
+	settings.enabled = settings.enabled && settings.judgeGrabberColors;
+	_strayLedSuppressor.configure(settings);
 }
 
 void Hyperion::updateLedColorAdjustment(int ledCount, const QJsonObject& colors)
@@ -869,9 +880,41 @@ void Hyperion::processUpdate()
 		}
 	}
 
+	// fork: the stray LED filter judges the colors as grabbed, before the calibration: the LED
+	// mean with its fractions where it belongs to the LED's color, else the plain LED color
+	// (static colors, effects, LEDs the gray still handling changed)
+	QVector<ColorRgbFloat> judgeColors;
+	const bool strayFilter = _strayLedSuppressor.isEnabled();
+	if (strayFilter)
+	{
+		const bool haveMeans = ledMeans.size() == ledColors.size();
+		const auto near = [](float mean, uint8_t color) { return std::isfinite(mean) && std::fabs(mean - float(color)) < 1.01F; };
+		judgeColors.reserve(ledColors.size());
+		for (int i = 0; i < ledColors.size(); ++i)
+		{
+			const ColorRgb& c = ledColors[i];
+			ColorRgbFloat judge{ float(c.red), float(c.green), float(c.blue) };
+			if (haveMeans)
+			{
+				const ColorRgbFloat& m = ledMeans[i];
+				if (near(m.red, c.red) && near(m.green, c.green) && near(m.blue, c.blue))
+				{
+					judge = m;
+				}
+			}
+			judgeColors.append(judge);
+		}
+	}
+
 	// Start transformations; the fork also computes the 16-bit values of the same frame
 	QVector<ColorRgb16> preciseColors;
 	_raw2ledAdjustment->applyAdjustment(ledColors, &preciseColors, &ledMeans);
+
+	// ... and dims the calibrated 8-bit and 16-bit values, before smoothing
+	if (strayFilter)
+	{
+		_strayLedSuppressor.apply(ledColors, preciseColors.size() == ledColors.size() ? &preciseColors : nullptr, &judgeColors);
+	}
 
 	applyColorOrder(ledColors);
 

@@ -17,6 +17,17 @@ struct StrayLedSuppressorSettings
 {
 	bool enabled = false;
 
+	/// Which colors the filter judges ("judgeOn" in the config):
+	/// true  ("grabber") = the LED colors as grabbed, before any color calibration (the per-LED
+	///                     mean with fractions); stray light then means the hue is in the picture,
+	///                     and neutral dark grays the calibration tints are never mistaken for it.
+	///                     The filter runs in Hyperion right after the color calibration, before
+	///                     smoothing.
+	/// false ("output")  = the 8-bit LED output, as the very last step in the LED device (the
+	///                     original behavior; blind below the output's first 8-bit step).
+	/// Either way the dimming is applied to the calibrated 8-bit and 16-bit LED values.
+	bool judgeGrabberColors = true;
+
 	/// The stray color to watch for, e.g. red.
 	ColorRgb targetColor = ColorRgb::RED;
 
@@ -83,7 +94,14 @@ public:
 	///
 	/// @param preciseColors Fork extension (16-bit HD108 output): the same frame with 16 bit per
 	///                      channel; it gets the same suppression as ledColors (one step per frame)
-	void apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors = nullptr);
+	/// @param judgeColors   Fork extension: when given (same size as ledColors), hue, saturation and
+	///                      brightness are judged on these colors (0..255 with fractions, e.g. the
+	///                      grabbed LED means) instead of on ledColors; the dimming still goes to
+	///                      ledColors and preciseColors
+	void apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors = nullptr,
+	           const QVector<ColorRgbFloat>* judgeColors = nullptr);
+
+	bool isEnabled() const { return _settings.enabled; }
 
 private:
 	struct LedState

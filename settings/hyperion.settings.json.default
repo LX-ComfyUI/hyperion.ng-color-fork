@@ -300,6 +300,7 @@
          "enableAttemptsInterval":15,
          "strayLedSuppressor":{
             "enabled":false,
+            "judgeOn":"grabber",
             "targetColor":[255,0,0],
             "brightnessThreshold":30,
             "hueToleranceDegrees":30,

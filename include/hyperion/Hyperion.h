@@ -27,6 +27,7 @@
 #include <utils/ColorRgb16.h>
 #include <utils/Components.h>
 #include <utils/VideoMode.h>
+#include <utils/StrayLedSuppressor.h>
 
 // Hyperion includes
 #include <hyperion/LedString.h>
@@ -554,6 +555,8 @@ private:
 
 	void updateLedColorAdjustment(int ledCount, const QJsonObject& colors);
 	void updateLedLayout(const QJsonArray& ledLayout);
+	/// fork: the stray LED filter in "grabber" mode runs here (see processUpdate)
+	void configureStrayLedSuppressor(const QJsonObject& deviceConfig);
 
 	///
 	/// Applies the blacklist to a vector of LED colors, setting blacklisted LEDs to black.
@@ -638,6 +641,8 @@ private:
 	QVector<ColorRgb> _ledBuffer;
 	// the same frame with 16 bit per channel (fork extension), empty when not available
 	QVector<ColorRgb16> _ledBufferPrecise;
+	// fork: stray LED filter that judges the grabbed colors (device setting strayLedSuppressor)
+	StrayLedSuppressor _strayLedSuppressor;
 
 	/// statistics timer
 	QScopedPointer<QTimer> _statisticsTimer;

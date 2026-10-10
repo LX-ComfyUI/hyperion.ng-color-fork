@@ -1110,6 +1110,7 @@ $(document).ready(function () {
       attachInfoIcon('root.generalOptions.strayLedSuppressor', 'edt_dev_general_strayLedSuppressor_expl');
       var fields = {
         'enabled': 'edt_dev_general_strayLedSuppressor_enabled_expl',
+        'judgeOn': 'edt_dev_general_strayLedSuppressor_judgeOn_expl',
         'targetColor': 'edt_dev_general_strayLedSuppressor_targetColor_expl',
         'brightnessThreshold': 'edt_dev_general_strayLedSuppressor_brightnessThreshold_expl',
         'brightnessSoftZone': 'edt_dev_general_strayLedSuppressor_brightnessSoftZone_expl',

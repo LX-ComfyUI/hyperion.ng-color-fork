@@ -28,6 +28,7 @@ StrayLedSuppressorSettings createStrayLedSuppressorSettings(const QJsonObject& d
 	const QJsonObject s = deviceConfig["strayLedSuppressor"].toObject();
 
 	settings.enabled                 = s["enabled"].toBool(false);
+	settings.judgeGrabberColors      = s["judgeOn"].toString("grabber") != "output";
 	settings.brightnessThreshold     = s["brightnessThreshold"].toInt(30);
 	settings.brightnessSoftZone      = s["brightnessSoftZone"].toInt(20);
 	settings.hueToleranceDegrees     = s["hueToleranceDegrees"].toInt(30);
@@ -51,7 +52,8 @@ void StrayLedSuppressor::configure(const StrayLedSuppressorSettings& settings)
 	_settings = settings;
 }
 
-void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors)
+void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors,
+                               const QVector<ColorRgbFloat>* judgeColors)
 {
 	if (!_settings.enabled || ledColors.isEmpty())
 	{
@@ -87,13 +89,24 @@ void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>
 	QVector<double> brightnessWeight(ledColors.size(), 0.0);
 	int candidateCount = 0;
 
+	const bool judgeSeparately = judgeColors != nullptr && judgeColors->size() == ledColors.size();
 	for (int i = 0; i < ledColors.size(); ++i)
 	{
-		const ColorRgb& c = ledColors[i];
 		double hue, saturation, value;
-		ColorSys::rgb2okhsv(c.red, c.green, c.blue, hue, saturation, value);
+		if (judgeSeparately)
+		{
+			const ColorRgbFloat& j = (*judgeColors)[i];
+			ColorSys::rgb2okhsvPrecise(j.red, j.green, j.blue, hue, saturation, value);
+		}
+		else
+		{
+			const ColorRgb& c = ledColors[i];
+			ColorSys::rgb2okhsv(c.red, c.green, c.blue, hue, saturation, value);
+		}
 
-		const bool hueSatMatch = saturation >= _settings.saturationThreshold
+		// black has no hue: Okhsv yields NaN there, which must never count as a match
+		const bool hueSatMatch = std::isfinite(hue) && std::isfinite(saturation) && std::isfinite(value)
+			&& saturation >= _settings.saturationThreshold
 			&& std::fabs(circularHueDistance(hue, targetHue)) <= toleranceTurns;
 
 		const double weight = hueSatMatch
@@ -161,7 +174,7 @@ void StrayLedSuppressor::apply(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>
 				static_cast<uint8_t>(c.red   * (1.0 - w)),
 				static_cast<uint8_t>(c.green * (1.0 - w)),
 				static_cast<uint8_t>(c.blue  * (1.0 - w)));
-			// the decision is made on the 8-bit frame, the 16-bit frame follows it
+			// the 16-bit frame gets the same dimming as the 8-bit frame
 			if (preciseColors != nullptr && i < preciseColors->size())
 			{
 				ColorRgb16& p = (*preciseColors)[i];
