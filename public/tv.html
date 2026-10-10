@@ -13,6 +13,15 @@
   #bar-left   { left: 0;   top: 0;  bottom: 0; width: 0; }
   #bar-right  { right: 0;  top: 0;  bottom: 0; width: 0; }
 
+  /* capture depth test: a band (frame) or a running line (sweep) along all four edges */
+  #depth { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+  #depth .band { position: absolute; }
+  #depth .band.t { top: 0; left: 0; right: 0; }
+  #depth .band.b { bottom: 0; left: 0; right: 0; }
+  #depth .band.l { left: 0; top: 0; bottom: 0; }
+  #depth .band.r { right: 0; top: 0; bottom: 0; }
+  #depth .sweep { position: absolute; box-sizing: border-box; border-style: solid; }
+
   /* Connect hint: kept in the middle, so the screen edges (what the LEDs sample) stay free */
   #connect {
     /* left/right 0 + auto margins: centered without halving the available width like left: 50% would */
@@ -31,8 +40,8 @@
   #connect .small { font-size: 2.1vh; color: #999; margin: 0; }
 
   /* debug views (only when switched on for the TV on the phone) */
-  #bb-overlay, #gs-area { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
-  #bb-overlay svg, #gs-area svg { width: 100%; height: 100%; display: block; }
+  #bb-overlay, #gs-area, #dp-area { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+  #bb-overlay svg, #gs-area svg, #dp-area svg { width: 100%; height: 100%; display: block; }
   .dbg-box {
     position: fixed; left: 50%; transform: translateX(-50%); box-sizing: border-box; max-width: 60vw;
     padding: 1.4vh 2vh; border-radius: 1.2vh; background: rgba(10, 10, 14, .85); color: #fff;
@@ -46,12 +55,17 @@
 </head>
 <body>
 <div id="screen"></div>
+<div id="depth" hidden>
+  <div class="band t"></div><div class="band b"></div><div class="band l"></div><div class="band r"></div>
+  <div class="sweep"></div>
+</div>
 <div class="bar" id="bar-top"></div>
 <div class="bar" id="bar-bottom"></div>
 <div class="bar" id="bar-left"></div>
 <div class="bar" id="bar-right"></div>
 
 <div id="gs-area" hidden></div>
+<div id="dp-area" hidden></div>
 <div id="bb-overlay" hidden></div>
 <div class="dbg-box" id="bb-text" hidden></div>
 <div class="dbg-box" id="gs-box" hidden></div>
@@ -69,7 +83,7 @@
 </div>
 
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, GRAY_STILL_CSS } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, GRAY_STILL_CSS } from "/static/overlay.js";
 
 const style = document.createElement("style");
 style.textContent = GRAY_STILL_CSS;
@@ -87,6 +101,8 @@ let clockOffset = 0;      // Pi clock minus TV clock
 let grayTimer = null;
 let debug = null;
 let ledAreas = null;      // LED sampling areas from Hyperion's layout
+let areaDepth = null;     // color.ledAreaDepth from Hyperion ({ topBottom, leftRight }, 0 = layout)
+let sweepFrame = null;
 
 $("url").textContent = location.host + "/";
 
@@ -123,6 +139,38 @@ function renderGrayTest() {
   }
 }
 
+// Capture depth test. frame: the edges in the outer color, topBottom % of the height and leftRight %
+// of the width deep. sweep: a line of the outer color runs from the edges inwards to sweepMax % in
+// sweepSeconds (timed against the Pi's clock like the gray test), then starts at the edge again.
+function renderDepthTest() {
+  cancelAnimationFrame(sweepFrame);
+  const d = state.depthTest;
+  const el = $("depth");
+  el.hidden = !d?.active || state.grayTest?.active;
+  if (el.hidden) return;
+  el.style.background = d.inner;
+  const frame = d.pattern !== "sweep";
+  const [t, b, l, r] = el.querySelectorAll(".band");
+  for (const band of [t, b, l, r]) { band.hidden = !frame; band.style.background = d.outer; }
+  t.style.height = b.style.height = d.topBottom + "%";
+  l.style.width = r.style.width = d.leftRight + "%";
+  const sweep = el.querySelector(".sweep");
+  sweep.hidden = frame;
+  if (frame) return;
+  // the line is lineWidth % of the screen height thick on all four sides
+  sweep.style.borderColor = d.outer;
+  sweep.style.borderWidth = d.lineWidth + "vh";
+  const step = () => {
+    const elapsed = (Date.now() + clockOffset - d.startedAt) / 1000;
+    const p = ((elapsed % d.sweepSeconds) + d.sweepSeconds) % d.sweepSeconds / d.sweepSeconds;
+    const pos = p * d.sweepMax; // percent of height (top/bottom) and of width (sides)
+    sweep.style.top = sweep.style.bottom = pos + "%";
+    sweep.style.left = sweep.style.right = pos + "%";
+    sweepFrame = requestAnimationFrame(step);
+  };
+  step();
+}
+
 function renderDebug() {
   const o = state.overlays ?? {};
   const bb = debug?.ok ? debug.blackborder : null;
@@ -136,11 +184,14 @@ function renderDebug() {
   $("gs-box").hidden = !o.gsTv;
   if (o.gsTv) $("gs-box").innerHTML = grayStillHtml(gs);
   $("gs-area").hidden = !o.gsTv;
-  if (o.gsTv) $("gs-area").innerHTML = grayStillAreaSvg(gs, ledAreas, bb);
+  if (o.gsTv) $("gs-area").innerHTML = grayStillAreaSvg(gs, ledAreas, bb, areaDepth);
+  $("dp-area").hidden = !o.dpTv;
+  if (o.dpTv) $("dp-area").innerHTML = depthAreaSvg(ledAreas, bb, areaDepth);
 }
 
 function render() {
   renderGrayTest();
+  renderDepthTest();
   renderBars();
   // automatic: show the hint while no phone is connected
   connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle;
@@ -170,7 +221,8 @@ function connectEvents() {
     if (msg.phones !== phones) manualToggle = null;
     phones = msg.phones ?? 0;
     if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
-    const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || msg.color !== state.color || msg.colorActive !== state.colorActive;
+    const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || JSON.stringify(msg.depthTest) !== JSON.stringify(state.depthTest)
+      || msg.color !== state.color || msg.colorActive !== state.colorActive;
     state = msg;
     if (grayChanged) render();
     else { renderBars(); renderDebug(); connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle; }
@@ -188,8 +240,20 @@ async function loadLedAreas() {
   } catch { /* without the layout only the status box is shown */ }
 }
 
+// the capture depth changes from the phone; it is part of Hyperion's color settings, so it is read
+// again whenever the depth overlay is on (cheap: one small DB read every few seconds)
+async function loadAreaDepth() {
+  try {
+    const color = await (await fetch("/api/hyperion/color")).json();
+    const next = color.ledAreaDepth ?? null;
+    if (JSON.stringify(next) !== JSON.stringify(areaDepth)) { areaDepth = next; renderDebug(); }
+  } catch { /* the layout areas are drawn then */ }
+}
+setInterval(() => { if (state.overlays?.dpTv || state.overlays?.gsTv) loadAreaDepth(); }, 3000);
+
 loadQr();
 loadLedAreas();
+loadAreaDepth();
 render();
 connectEvents();
 </script>

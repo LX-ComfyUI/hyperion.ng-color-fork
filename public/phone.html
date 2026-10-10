@@ -166,6 +166,14 @@
   .bar-head .right { display: flex; align-items: center; gap: 10px; }
   .bar-head .val { min-width: 0; font-size: 14px; }
 
+  /* capture depth test: two color pickers and a swap button in one row */
+  .dt-colors { display: flex; align-items: flex-end; gap: 10px; margin-top: 14px; }
+  .dt-color { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+  .dt-color .row { gap: 8px; }
+  .dt-color select { flex: 1; min-width: 0; }
+  .dt-mix { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--chip-line); vertical-align: -2px; margin-right: 4px; }
+  #dt-match { margin-top: 2px; }
+
   details.more { margin-top: 6px; border-top: 1px solid var(--line); }
   details.more summary { list-style: none; cursor: pointer; padding: 12px 0 4px; color: var(--accent); font-size: 15px; }
   details.more summary::-webkit-details-marker { display: none; }
@@ -429,6 +437,99 @@
     </div>
   </section>
 
+  <!-- ===== capture depth test ===== -->
+  <section class="card" id="card-dt">
+    <h2>Erfassungstiefe Test</h2>
+    <p class="help">Zeigt, wie tief die LEDs ins Bild schauen. <b>Rahmen:</b> Der Bildrand hat die Außenfarbe, innen liegt die Innenfarbe. Ist der Rand mindestens so tief wie die Erfassungstiefe, zeigen die LEDs die reine Außenfarbe. Ist er schmaler, mischen sie die Innenfarbe dazu. <b>Wandernde Linie:</b> Eine Linie in der Außenfarbe läuft vom Rand nach innen. Die LEDs zeigen sie nur, solange sie im erfassten Bereich liegt.</p>
+
+    <label class="field">Muster</label>
+    <div class="seg full" role="group" aria-label="Muster" id="dt-pattern">
+      <button type="button" data-dt-pattern="frame">Rahmen</button>
+      <button type="button" data-dt-pattern="sweep">Wandernde Linie</button>
+    </div>
+
+    <div class="dt-colors">
+      <label class="dt-color"><span>Außenfarbe</span><span class="row"><span class="grayswatch" id="dt-outer-swatch"></span><select id="dt-outer" aria-label="Außenfarbe"></select></span></label>
+      <label class="dt-color"><span>Innenfarbe</span><span class="row"><span class="grayswatch" id="dt-inner-swatch"></span><select id="dt-inner" aria-label="Innenfarbe"></select></span></label>
+      <button type="button" class="ibtn" id="dt-swap" title="Farben tauschen" aria-label="Farben tauschen"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+    </div>
+
+    <div id="dt-frame">
+      <div class="bar-row" style="margin-top:14px">
+        <div class="bar-head">
+          <label for="dt-tb">Rand oben + unten</label>
+          <span class="right"><span class="val" id="dt-tb_v"></span>
+            <span class="seg small" role="group" aria-label="Voreinstellungen Rand oben und unten" id="dt-tb-presets"></span></span>
+        </div>
+        <input type="range" id="dt-tb" min="0" max="50" step="0.5">
+      </div>
+      <div class="bar-row">
+        <div class="bar-head">
+          <label for="dt-lr">Rand links + rechts</label>
+          <span class="right"><span class="val" id="dt-lr_v"></span>
+            <span class="seg small" role="group" aria-label="Voreinstellungen Rand links und rechts" id="dt-lr-presets"></span></span>
+        </div>
+        <input type="range" id="dt-lr" min="0" max="50" step="0.5">
+      </div>
+      <button type="button" class="wide" id="dt-match">Rand wie Erfassungstiefe</button>
+      <div class="status" id="dt-expect"></div>
+    </div>
+
+    <div id="dt-sweep">
+      <label class="field" for="dt-max">Linie läuft bis</label>
+      <div class="row"><input type="range" id="dt-max" min="1" max="50" step="1"><span class="val" id="dt-max_v"></span></div>
+      <label class="field" for="dt-secs">Dauer eines Durchlaufs</label>
+      <div class="row"><input type="range" id="dt-secs" min="2" max="60" step="1"><span class="val" id="dt-secs_v"></span></div>
+      <label class="field" for="dt-line">Linienstärke <span class="field-hint">(% der Bildhöhe)</span></label>
+      <div class="row"><input type="range" id="dt-line" min="0.5" max="5" step="0.5"><span class="val" id="dt-line_v"></span></div>
+      <div class="status" id="dt-pos"></div>
+    </div>
+
+    <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+      <button type="button" id="dt-toggle"></button>
+      <button type="button" id="dt-restart"></button>
+    </div>
+  </section>
+
+  <!-- ===== Hyperion capture depth ===== -->
+  <section class="card" id="card-dtd">
+    <h2>LED-Erfassungstiefe (Hyperion)</h2>
+    <p class="help">Wie tief die Abtastflächen der LEDs ins Bild reichen: oben und unten in Prozent der Bildhöhe, links und rechts in Prozent der Bildbreite, jeweils innerhalb erkannter Schwarzbalken. <b>Layout</b> (0) nimmt die Tiefe aus dem LED-Layout. Die Werte werden direkt in Hyperion gespeichert und wirken sofort.</p>
+    <div class="status" id="dp-status">Warte auf Daten von Hyperion …</div>
+
+    <div class="bar-row" style="margin-top:14px">
+      <div class="bar-head">
+        <label for="dp-tb">Oben + Unten</label>
+        <span class="right"><span class="val" id="dp-tb_v"></span>
+          <span class="seg small" role="group" aria-label="Voreinstellungen oben und unten" id="dp-tb-presets"></span></span>
+      </div>
+      <input type="range" id="dp-tb" min="0" max="50" step="0.5">
+    </div>
+    <div class="bar-row">
+      <div class="bar-head">
+        <label for="dp-lr">Links + Rechts</label>
+        <span class="right"><span class="val" id="dp-lr_v"></span>
+          <span class="seg small" role="group" aria-label="Voreinstellungen links und rechts" id="dp-lr-presets"></span></span>
+      </div>
+      <input type="range" id="dp-lr" min="0" max="50" step="0.5">
+    </div>
+    <p class="warn" id="dp-skip-warn" hidden></p>
+    <p class="note" id="dp-cfg-note"></p>
+
+    <div class="sub">
+      <h3>Anzeige beim Testen</h3>
+      <label class="check"><input type="checkbox" id="ov-dpPreview"><span>Erfassten Bereich in der Grabber-Vorschau anzeigen<small>Grün: die Abtastflächen der LEDs mit der eingestellten Tiefe. Gestrichelt: die Innenkante der Tiefe an jeder Seite.</small></span></label>
+      <label class="check"><input type="checkbox" id="ov-dpTv"><span>Erfassten Bereich auf dem TV anzeigen</span></label>
+      <p class="warn" id="dp-tv-warn" hidden>Der Grabber sieht die grüne Markierung mit. Sie liegt genau im erfassten Bereich und färbt die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
+    </div>
+
+    <div class="sub">
+      <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
+      <label class="check" style="margin-top:0"><input type="checkbox" id="dp-live"><span>Hier anzeigen</span></label>
+      <div class="gsbox" id="dp-live-box" hidden></div>
+    </div>
+  </section>
+
   <!-- ===== backup ===== -->
   <section class="card" id="card-backup">
     <h2>Backup</h2>
@@ -462,6 +563,7 @@
     <img id="pv-img" alt="Grabber-Bild">
     <div class="empty" id="pv-empty">Warte auf Bild vom Grabber …</div>
     <div class="ov" id="pv-gsarea"></div>
+    <div class="ov" id="pv-dparea"></div>
     <div class="ov" id="pv-bb"></div>
     <div class="bbtext" id="pv-bbtext" hidden></div>
     <div class="gsc" id="pv-gs" hidden></div>
@@ -470,7 +572,7 @@
 
 <script src="/static/graycurve-graph.js"></script>
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 
 const EDGES = ["top", "bottom", "left", "right"];
 const BAR_PAIRS = [
@@ -596,9 +698,11 @@ function renderState() {
   // removing its input would close the picker on iOS
   if (key !== listKey && !syncColorList() && !openPicker?.isConnected) buildColorList();
   else updateActiveRows();
-  $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert." : "";
+  $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert."
+    : state.depthTest?.active ? "Gerade läuft der Erfassungstiefe-Test. Die Testfarbe ist pausiert." : "";
   renderBars();
   renderGrayTest();
+  renderDepthTest();
   renderOverlayChecks();
 }
 
@@ -760,7 +864,7 @@ function flashRgbRow(field) {
 
 function updateActiveRows() {
   document.querySelectorAll(".crow[data-color]").forEach(r => {
-    const isActive = !state.grayTest?.active && state.colorActive !== false && r.dataset.color === state.color;
+    const isActive = !state.grayTest?.active && !state.depthTest?.active && state.colorActive !== false && r.dataset.color === state.color;
     r.classList.toggle("active", isActive);
     const power = r.querySelector(".ibtn.power");
     if (power) {
@@ -772,8 +876,9 @@ function updateActiveRows() {
 
 function setColor(color) {
   // picking a color ends the gray still test and switches it on, the TV shows the color again
+  // (the server ends a running capture depth test on its own when a color arrives)
   const patch = state.grayTest?.active ? { color, colorActive: true, grayTest: { active: false } } : { color, colorActive: true };
-  state = { ...state, color, colorActive: true, grayTest: { ...state.grayTest, active: false } };
+  state = { ...state, color, colorActive: true, grayTest: { ...state.grayTest, active: false }, depthTest: { ...state.depthTest, active: false } };
   renderState();
   send(patch);
 }
@@ -781,7 +886,7 @@ function setColor(color) {
 // the power button: on for another color switches to it, on for the active one turns it off
 // (the TV shows black), off for the active one turns it back on
 function toggleActive(color) {
-  const isOn = !state.grayTest?.active && state.colorActive !== false && state.color === color;
+  const isOn = !state.grayTest?.active && !state.depthTest?.active && state.colorActive !== false && state.color === color;
   if (isOn) {
     state = { ...state, colorActive: false };
     renderState();
@@ -1081,6 +1186,7 @@ function renderColorEditor() {
   });
 
   updateSendButtons();
+  renderDepthConfig();
 
   // a missing config only means "not loaded yet" here, loadColorConfig reports real read errors.
   // A status note that no longer applies is cleared, save results stay until the next save.
@@ -1207,12 +1313,13 @@ $("more-bars").open = store.get("tvtest-more-bars") === "1";
 
 // ---------- overlay switches (shared, the TV reads them too) ----------
 
-const OVERLAY_KEYS = ["bbTv", "bbPreview", "gsTv", "gsPreview"];
+const OVERLAY_KEYS = ["bbTv", "bbPreview", "gsTv", "gsPreview", "dpTv", "dpPreview"];
 
 function renderOverlayChecks() {
   OVERLAY_KEYS.forEach(k => { $("ov-" + k).checked = !!state.overlays?.[k]; });
   $("bb-tv-warn").hidden = !state.overlays?.bbTv;
   $("gs-tv-warn").hidden = !state.overlays?.gsTv;
+  $("dp-tv-warn").hidden = !state.overlays?.dpTv;
 }
 
 OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", (ev) => {
@@ -1227,11 +1334,7 @@ OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", (ev) => {
 function renderGrayTest() {
   const g = state.grayTest;
   const toggle = $("gt-toggle");
-  if (toggle.dataset.active !== String(g.active)) {
-    toggle.innerHTML = `${ICON[g.active ? "stop" : "play"]}<span>${g.active ? "Test stoppen" : "Test starten"}</span>`;
-    toggle.dataset.active = String(g.active);
-  }
-  toggle.classList.toggle("running", !!g.active);
+  setToggle(toggle, g.active);
   $("gt-drop").checked = g.dropEnabled;
   $("gt-drop-settings").hidden = !g.dropEnabled;
   if (document.activeElement !== $("gt-tone")) $("gt-tone").value = g.tone;
@@ -1252,8 +1355,19 @@ function renderGrayTest() {
   $("gt-drop-note").classList.toggle("short", short);
 }
 
+// start/stop button of a test pattern: play icon or red stop button
+function setToggle(toggle, active) {
+  if (toggle.dataset.active !== String(!!active)) {
+    toggle.innerHTML = `${ICON[active ? "stop" : "play"]}<span>${active ? "Test stoppen" : "Test starten"}</span>`;
+    toggle.dataset.active = String(!!active);
+  }
+  toggle.classList.toggle("running", !!active);
+}
+
 function sendGrayTest(patch) {
   state = { ...state, grayTest: { ...state.grayTest, ...patch } };
+  // the server ends the capture depth test when the gray test starts
+  if (patch.active === true) state.depthTest = { ...state.depthTest, active: false };
   renderState();
   send({ grayTest: patch });
 }
@@ -1267,6 +1381,240 @@ for (const [id, key] of [["gt-tone", "tone"], ["gt-after", "dropAfter"], ["gt-pe
 }
 $("gt-restart").innerHTML = `${ICON.reset}<span>Neu starten</span>`;
 $("gt-restart").addEventListener("click", () => send({ grayRestart: true }));
+
+// ---------- capture depth test pattern ----------
+
+const DT_PRESETS = { tb: [3, 5, 8], lr: [4, 8, 12] };          // frame depth of the test pattern
+const DP_PRESETS = { tb: [0, 3, 5, 8], lr: [0, 4, 8, 12] };     // Hyperion's capture depth, 0 = layout
+let clockOffset = 0;           // Pi clock minus this device's clock (the sweep runs on the Pi's clock)
+let dtPosTimer = null;
+
+const pct = (v) => `${fmt(v, Number.isInteger(v) ? 0 : 1)} %`;
+
+function buildPresets(id, values, dataKey, zeroLabel) {
+  $(id).innerHTML = values.map(v => `<button type="button" data-${dataKey}="${v}">${v === 0 && zeroLabel ? zeroLabel : pct(v)}</button>`).join("");
+}
+buildPresets("dt-tb-presets", DT_PRESETS.tb, "dt-tb", null);
+buildPresets("dt-lr-presets", DT_PRESETS.lr, "dt-lr", null);
+buildPresets("dp-tb-presets", DP_PRESETS.tb, "dp-tb", "Layout");
+buildPresets("dp-lr-presets", DP_PRESETS.lr, "dp-lr", "Layout");
+
+// the color lists offer the test colors (with their edits) and the own colors
+function fillColorSelect(sel, value) {
+  if (document.activeElement === sel) return;
+  const options = presets.map(p => [presetColor(p), p.name]);
+  for (const c of state.customColors ?? []) options.push([c, c.toUpperCase()]);
+  if (!options.some(([c]) => c === value)) options.push([value, value.toUpperCase()]);
+  const key = JSON.stringify(options);
+  if (sel.dataset.key !== key) {
+    sel.innerHTML = options.map(([c, name]) => `<option value="${c}">${name}</option>`).join("");
+    sel.dataset.key = key;
+  }
+  sel.value = value;
+}
+
+// capture depth per edge as Hyperion applies it: the setting, or the layout's own depth for 0
+function effectiveDepths() {
+  if (!ledAreas?.length) return null;
+  const lay = layoutDepths(ledAreas);
+  const cfg = colorConfig?.ledAreaDepth ?? {};
+  const tb = Number(cfg.topBottom) || 0;
+  const lr = Number(cfg.leftRight) || 0;
+  return {
+    top: tb > 0 ? tb : lay.top, bottom: tb > 0 ? tb : lay.bottom,
+    left: lr > 0 ? lr : lay.left, right: lr > 0 ? lr : lay.right,
+    tbFromLayout: !(tb > 0), lrFromLayout: !(lr > 0),
+  };
+}
+
+// mean of two colors as Hyperion averages the pixels of an area (share = part of the outer color)
+function mixColor(outer, inner, share) {
+  const a = hexToRgb(outer), b = hexToRgb(inner);
+  return `rgb(${a.map((v, i) => Math.round(v * share + b[i] * (1 - share))).join(",")})`;
+}
+
+function mixText(frame, depth, d) {
+  if (depth == null) return "unbekannt";
+  const share = depth > 0 ? Math.min(1, frame / depth) : 1;
+  const p = Math.round(share * 100);
+  const text = p >= 100 ? "reine Außenfarbe" : p <= 0 ? "reine Innenfarbe" : `${p} % Außen-, ${100 - p} % Innenfarbe`;
+  return `<span class="dt-mix" style="background:${mixColor(d.outer, d.inner, share)}"></span>${text}`;
+}
+
+// what the edge LEDs should show with the frame pattern
+function renderDepthExpect() {
+  const d = state.depthTest;
+  const eff = effectiveDepths();
+  if (!eff) { $("dt-expect").textContent = "Erwartung: LED-Layout wird geladen …"; return; }
+  const bars = Object.values(state.bars ?? {}).some(v => v > 0);
+  $("dt-expect").innerHTML =
+    `<div>Erwartung bei Erfassungstiefe ${pct(+eff.top.toFixed(1))} / ${pct(+eff.left.toFixed(1))}:</div>` +
+    `<div>LEDs oben/unten: <b>${mixText(d.topBottom, eff.top, d)}</b></div>` +
+    `<div>LEDs links/rechts: <b>${mixText(d.leftRight, eff.left, d)}</b></div>` +
+    (bars ? `<div class="field-hint">Mit schwarzen Balken stimmt die Erwartung nicht, Hyperion misst dann ab der Balkenkante.</div>` : "");
+}
+
+// where the running line is now, and whether the LEDs still see it
+function renderSweepPos() {
+  const d = state.depthTest;
+  if (!d.active || d.pattern !== "sweep") { $("dt-pos").textContent = d.pattern === "sweep" ? "Test läuft nicht." : ""; return; }
+  const elapsed = (Date.now() + clockOffset - d.startedAt) / 1000;
+  const pos = ((elapsed % d.sweepSeconds) / d.sweepSeconds) * d.sweepMax;
+  const eff = effectiveDepths();
+  const sees = (depth) => (depth == null ? "?" : pos < depth ? "<b>sehen sie</b>" : "sehen sie nicht mehr");
+  $("dt-pos").innerHTML = `Linie jetzt bei <b>${fmt(pos)} %</b><br>` +
+    (eff ? `LEDs oben/unten (bis ${fmt(eff.top)} %): ${sees(eff.top)} · links/rechts (bis ${fmt(eff.left)} %): ${sees(eff.left)}` : "");
+}
+
+function renderDepthTest() {
+  const d = state.depthTest;
+  if (!d) return;
+  setToggle($("dt-toggle"), d.active);
+  document.querySelectorAll("[data-dt-pattern]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.dtPattern === d.pattern)));
+  $("dt-frame").hidden = d.pattern !== "frame";
+  $("dt-sweep").hidden = d.pattern !== "sweep";
+  fillColorSelect($("dt-outer"), d.outer);
+  fillColorSelect($("dt-inner"), d.inner);
+  $("dt-outer-swatch").style.background = d.outer;
+  $("dt-inner-swatch").style.background = d.inner;
+  for (const [id, key] of [["dt-tb", "topBottom"], ["dt-lr", "leftRight"]]) {
+    if (document.activeElement !== $(id)) $(id).value = d[key];
+    $(id + "_v").textContent = pct(d[key]);
+    document.querySelectorAll(`[data-${id}]`).forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset[id === "dt-tb" ? "dtTb" : "dtLr"]) === d[key])));
+  }
+  for (const [id, key, label] of [["dt-max", "sweepMax", pct], ["dt-secs", "sweepSeconds", (v) => `${v} s`], ["dt-line", "lineWidth", pct]]) {
+    if (document.activeElement !== $(id)) $(id).value = d[key];
+    $(id + "_v").textContent = label(d[key]);
+  }
+  $("dt-match").disabled = !effectiveDepths();
+  renderDepthExpect();
+  clearInterval(dtPosTimer);
+  renderSweepPos();
+  if (d.active && d.pattern === "sweep") dtPosTimer = setInterval(renderSweepPos, 200);
+}
+
+function sendDepthTest(patch) {
+  state = { ...state, depthTest: { ...state.depthTest, ...patch } };
+  if (patch.active === true) state.grayTest = { ...state.grayTest, active: false };
+  renderState();
+  send({ depthTest: patch });
+}
+
+$("dt-toggle").addEventListener("click", () => sendDepthTest({ active: !state.depthTest.active }));
+$("dt-restart").innerHTML = `${ICON.reset}<span>Neu starten</span>`;
+$("dt-restart").addEventListener("click", () => send({ depthRestart: true }));
+document.querySelectorAll("[data-dt-pattern]").forEach(b => b.addEventListener("click", () => sendDepthTest({ pattern: b.dataset.dtPattern })));
+$("dt-outer").addEventListener("change", (ev) => sendDepthTest({ outer: ev.target.value }));
+$("dt-inner").addEventListener("change", (ev) => sendDepthTest({ inner: ev.target.value }));
+$("dt-swap").addEventListener("click", () => sendDepthTest({ outer: state.depthTest.inner, inner: state.depthTest.outer }));
+for (const [id, key, label] of [["dt-tb", "topBottom", pct], ["dt-lr", "leftRight", pct], ["dt-max", "sweepMax", pct], ["dt-secs", "sweepSeconds", (v) => `${v} s`], ["dt-line", "lineWidth", pct]]) {
+  $(id).addEventListener("input", (ev) => { $(id + "_v").textContent = label(Number(ev.target.value)); });
+  $(id).addEventListener("change", (ev) => sendDepthTest({ [key]: Number(ev.target.value) }));
+}
+document.querySelectorAll("[data-dt-tb]").forEach(b => b.addEventListener("click", () => sendDepthTest({ topBottom: Number(b.dataset.dtTb) })));
+document.querySelectorAll("[data-dt-lr]").forEach(b => b.addEventListener("click", () => sendDepthTest({ leftRight: Number(b.dataset.dtLr) })));
+// the frame as deep as Hyperion looks: the edge LEDs then show the pure outer color
+$("dt-match").addEventListener("click", () => {
+  const eff = effectiveDepths();
+  if (!eff) return;
+  const half = (v) => Math.round(v * 2) / 2;
+  sendDepthTest({ topBottom: half(eff.top), leftRight: half(eff.left) });
+});
+
+// ---------- Hyperion capture depth (color.ledAreaDepth) ----------
+
+const DP_STATUS_NOTE = /^(Lade|Braucht die neue|Zum Ändern zuerst)/;
+
+function renderDepthConfig() {
+  const cfg = colorConfig?.ledAreaDepth;
+  const writable = hyperionConnected && !!cfg && !!colorConfig?.channelAdjustment?.[colorIndex];
+  const lay = ledAreas ? layoutDepths(ledAreas) : {};
+  for (const [id, key, dataKey, layoutValue] of [["dp-tb", "topBottom", "dpTb", lay.top], ["dp-lr", "leftRight", "dpLr", lay.left]]) {
+    const v = Number(cfg?.[key] ?? 0);
+    if (document.activeElement !== $(id)) $(id).value = v;
+    $(id + "_v").textContent = !cfg ? "" : v > 0 ? pct(v) : `Layout${layoutValue != null ? ` (${fmt(layoutValue)} %)` : ""}`;
+    $(id).disabled = !writable;
+    document.querySelectorAll(`[data-${id}]`).forEach(b => {
+      b.setAttribute("aria-pressed", String(!!cfg && Number(b.dataset[dataKey]) === v));
+      b.disabled = !writable;
+    });
+  }
+  const note = $("dp-cfg-note");
+  const problem = !colorConfig ? "Lade Einstellungen …"
+    : !cfg ? "Braucht die neue Hyperion-Version mit einstellbarer Erfassungstiefe."
+    : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
+    : null;
+  if (problem) note.textContent = problem;
+  else if (DP_STATUS_NOTE.test(note.textContent)) note.textContent = "";
+  renderDepthStatus();
+  if (state) renderDepthTest();
+}
+
+// status line, skip warning and developer view; the pixel counts need the grabber size from Hyperion
+let depthStatsKey = "";
+let depthStats = null;
+function renderDepthStatus() {
+  const eff = effectiveDepths();
+  const bb = debug?.ok ? debug.blackborder : null;
+  const w = bb?.imageWidth, h = bb?.imageHeight;
+  const border = bb?.currentBorder;
+  if (!eff) { $("dp-status").textContent = colorConfig ? "LED-Layout wird geladen …" : "Warte auf Daten von Hyperion …"; return; }
+  const cw = w ? w - 2 * (border && !border.unknown ? Math.max(0, border.verticalSize) : 0) : 0;
+  const ch = h ? h - 2 * (border && !border.unknown ? Math.max(0, border.horizontalSize) : 0) : 0;
+  const px = (p, size) => (size ? ` ≈ ${Math.round((p / 100) * size)} px` : "");
+  $("dp-status").textContent =
+    `Oben/unten ${fmt(eff.top)} %${eff.tbFromLayout ? " (Layout)" : ""}${px(eff.top, ch)} · ` +
+    `links/rechts ${fmt(eff.left)} %${eff.lrFromLayout ? " (Layout)" : ""}${px(eff.left, cw)}`;
+
+  const key = JSON.stringify([colorConfig?.ledAreaDepth, w, h, border, ledAreas?.length]);
+  if (key !== depthStatsKey) {
+    depthStatsKey = key;
+    depthStats = w && h ? areaPixelStats(applyLedAreaDepth(ledAreas, colorConfig?.ledAreaDepth?.topBottom, colorConfig?.ledAreaDepth?.leftRight), w, h, border) : null;
+  }
+  // with "reduced pixel processing" off, Hyperion reads only every second pixel of areas above 1600 pixels
+  const reduced = Number(colorConfig?.reducedPixelSetFactorFactor ?? 0) > 0;
+  const skip = depthStats && !reduced ? Object.values(depthStats).reduce((n, g) => n + g.skip, 0) : 0;
+  $("dp-skip-warn").hidden = !skip;
+  if (skip) $("dp-skip-warn").textContent = `${skip} LED-Bereiche haben mehr als 1600 Pixel. Hyperion liest dort nur jedes zweite Pixel jeder zweiten Zeile. Das spart Rechenzeit und ändert die Farbe kaum.`;
+
+  $("dp-live-box").hidden = !$("dp-live").checked;
+  if (!$("dp-live").checked) return;
+  const names = { top: "Oben", bottom: "Unten", left: "Links", right: "Rechts", other: "Ohne Kante" };
+  const rows = [
+    ["Bild", w && h ? `${w} × ${h} px` : "unbekannt"],
+    ["Ausgewerteter Bereich", cw && ch ? `${cw} × ${ch} px${border && !border.unknown && (border.horizontalSize > 0 || border.verticalSize > 0) ? " (ohne Schwarzbalken)" : ""}` : "unbekannt"],
+  ];
+  const groups = depthStats ? Object.entries(depthStats).map(([k, g]) =>
+    `<div>${names[k]}: <b>${g.count}</b> Bereiche · Ø <b>${Math.round(g.mean)}</b> px, max ${g.max} px${g.skip && !reduced ? ` · ${g.skip} mit Pixelsprung` : ""}</div>`).join("") : "<div>Pixel je LED: warte auf Bildgröße von Hyperion</div>";
+  $("dp-live-box").innerHTML = `<div class="gs-title">LED-Erfassungstiefe</div>` + rows.map(([k, v]) => `<div>${k}: <b>${v}</b></div>`).join("") + groups;
+}
+
+async function saveDepth(key, value) {
+  const note = $("dp-cfg-note");
+  note.textContent = "Speichere in Hyperion …";
+  try {
+    const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, field: "ledAreaDepth." + key, value }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    colorConfig = body;
+    note.textContent = "Gespeichert, wirkt sofort auf die LEDs.";
+  } catch (e) {
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
+    await loadColorConfig();
+    return;
+  }
+  renderColorEditor();
+  renderDebug();
+}
+
+for (const [id, key] of [["dp-tb", "topBottom"], ["dp-lr", "leftRight"]]) {
+  $(id).addEventListener("input", (ev) => { const v = Number(ev.target.value); $(id + "_v").textContent = v > 0 ? pct(v) : "Layout"; });
+  $(id).addEventListener("change", (ev) => saveDepth(key, Number(ev.target.value)));
+}
+document.querySelectorAll("[data-dp-tb]").forEach(b => b.addEventListener("click", () => saveDepth("topBottom", Number(b.dataset.dpTb))));
+document.querySelectorAll("[data-dp-lr]").forEach(b => b.addEventListener("click", () => saveDepth("leftRight", Number(b.dataset.dpLr))));
+$("dp-live").checked = store.get("tvtest-dp-live") === "1";
+$("dp-live").addEventListener("change", (ev) => { store.set("tvtest-dp-live", ev.target.checked ? "1" : "0"); renderDepthStatus(); });
 
 // ---------- Hyperion settings: black-border detector and gray still detector ----------
 
@@ -1433,8 +1781,10 @@ function renderDebug() {
     if (o.bbPreview) $("pv-bbtext").textContent = ok ? blackborderText(bb) : "Keine Daten von Hyperion";
     $("pv-gs").hidden = !o.gsPreview;
     if (o.gsPreview) $("pv-gs").innerHTML = grayStillCompactHtml(gs);
-    $("pv-gsarea").innerHTML = o.gsPreview ? grayStillAreaSvg(gs, ledAreas, bb) : "";
+    $("pv-gsarea").innerHTML = o.gsPreview ? grayStillAreaSvg(gs, ledAreas, bb, colorConfig?.ledAreaDepth) : "";
+    $("pv-dparea").innerHTML = o.dpPreview ? depthAreaSvg(ledAreas, bb, colorConfig?.ledAreaDepth) : "";
   }
+  renderDepthStatus();
 }
 
 // ---------- grabber preview panel ----------
@@ -1654,6 +2004,7 @@ async function loadLedAreas() {
   try {
     ledAreas = await (await fetch("/api/hyperion/leds")).json();
     renderDebug();
+    renderDepthConfig();
   } catch { /* the preview then shows the status line only */ }
 }
 
@@ -1671,8 +2022,10 @@ async function init() {
   // role=phone tells the TV to hide its QR code
   const es = new EventSource("/api/events?role=phone");
   es.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
     if (pendingSends > 0) return; // do not overwrite a slider that is being sent
-    state = JSON.parse(ev.data);
+    state = msg;
     renderState();
     renderDebug();
   };

@@ -40,8 +40,12 @@ const DEFAULT_STATE = {
   // gray still image test pattern: a still gray that optionally dims after a delay, like a paused player
   // dropDuration: seconds the fade takes (0 = instant)
   grayTest: { active: false, tone: 128, dropEnabled: true, dropAfter: 3, dropPercent: 50, dropDuration: 0.4, startedAt: 0 },
+  // capture depth test pattern. frame: a band of `outer` along the edges (topBottom % of the height,
+  // leftRight % of the width) around `inner`; sweep: a line of `outer` on `inner` that runs from the
+  // edges inwards to sweepMax % within sweepSeconds and starts again
+  depthTest: { active: false, pattern: "frame", outer: "#ff0000", inner: "#0000ff", topBottom: 5, leftRight: 8, sweepMax: 20, sweepSeconds: 8, lineWidth: 1, startedAt: 0 },
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
-  overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true },
+  overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true, dpTv: false, dpPreview: true },
 };
 
 const num = (v, min, max, fallback, step = 1) => {
@@ -97,6 +101,20 @@ function sanitize(input) {
     dropPercent: num(g.dropPercent, 1, 100, 50),
     dropDuration: num(g.dropDuration, 0, 5, 0.4, 0.1),
     startedAt: num(g.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
+  };
+  const d = { ...DEFAULT_STATE.depthTest, ...(input.depthTest ?? {}) };
+  const hex = (c, fallback) => (typeof c === "string" && HEX_COLOR.test(c) ? c.toLowerCase() : fallback);
+  out.depthTest = {
+    active: d.active === true,
+    pattern: d.pattern === "sweep" ? "sweep" : "frame",
+    outer: hex(d.outer, DEFAULT_STATE.depthTest.outer),
+    inner: hex(d.inner, DEFAULT_STATE.depthTest.inner),
+    topBottom: num(d.topBottom, 0, 50, 5, 0.5),
+    leftRight: num(d.leftRight, 0, 50, 8, 0.5),
+    sweepMax: num(d.sweepMax, 1, 50, 20, 1),
+    sweepSeconds: num(d.sweepSeconds, 2, 60, 8, 1),
+    lineWidth: num(d.lineWidth, 0.5, 5, 1, 0.5),
+    startedAt: num(d.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
   };
   const o = { ...DEFAULT_STATE.overlays, ...(input.overlays ?? {}) };
   out.overlays = Object.fromEntries(Object.keys(DEFAULT_STATE.overlays).map((k) => [k, o[k] === true]));
@@ -519,6 +537,9 @@ const COLOR_FIELDS = {
   "edgeTransitionBoost.ledWidth": ["num", 1, 3, 1],
   "edgeTransitionBoost.edgeSensitivity": ["num", 5, 255, 1],
   "edgeTransitionBoost.boostStrength": ["num", 0, 2, 0.05],
+  // fork: capture depth of the LED areas in percent, 0 = the layout
+  "ledAreaDepth.topBottom": ["num", 0, 50, 0.5],
+  "ledAreaDepth.leftRight": ["num", 0, 50, 0.5],
 };
 
 // patch = { index, field, value, stop? }: one field per save, so a half-typed value never reaches Hyperion
@@ -533,6 +554,10 @@ function mergeColor(current, patch) {
   let key = field;
   if (field.startsWith("edgeTransitionBoost.")) {
     target = next.edgeTransitionBoost;
+    key = field.split(".")[1];
+  } else if (field.startsWith("ledAreaDepth.")) {
+    if (!next.ledAreaDepth) throw new Error("Die Erfassungstiefe braucht die neue Hyperion-Version");
+    target = next.ledAreaDepth;
     key = field.split(".")[1];
   } else if (field.startsWith("grayAxisTrim.stop.")) {
     const stop = entry.grayAxisTrim?.stops?.[Number(patch.stop)];
@@ -736,10 +761,15 @@ const server = http.createServer(async (req, res) => {
       let grayTest = { ...state.grayTest, ...(patch.grayTest ?? {}) };
       // any change of the gray test (or an explicit restart) starts its timeline again
       if (patch.grayTest || patch.grayRestart) grayTest.startedAt = Date.now();
+      const depthTest = { ...state.depthTest, ...(patch.depthTest ?? {}) };
+      if (patch.depthTest || patch.depthRestart) depthTest.startedAt = Date.now();
+      // only one test pattern at a time: starting one ends the other, a new test color ends both
+      if (patch.depthTest?.active === true) grayTest.active = false;
+      if (patch.grayTest?.active === true || typeof patch.color === "string") depthTest.active = false;
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
-      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, overlays });
+      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, depthTest, overlays });
       saveState();
       broadcast();
       return sendJson(res, 200, state);
