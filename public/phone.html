@@ -530,6 +530,65 @@
     </div>
   </section>
 
+  <!-- ===== fractional LED mean test ===== -->
+  <section class="card" id="card-ft">
+    <h2>Nachkommastellen Test</h2>
+    <p class="help">Zeigt dunkle Töne <b>zwischen</b> zwei ganzen Stufen, z. B. 25,5. Der TV kann nur ganze Stufen, deshalb mischt ein feines Punktraster 25 und 26. Jede LED mittelt über ihren Bereich und sieht so die Kommazahl. <b>Mit Nachkommastellen</b> folgen die LEDs diesen Zwischenstufen. <b>Ohne</b> springen sie nur in ganzen Stufen, und im Dunkeln ist eine Stufe 7 bis 30 % der LED-Helligkeit.</p>
+
+    <label class="field">Muster</label>
+    <div class="seg full" role="group" aria-label="Muster" id="ft-pattern">
+      <button type="button" data-ft-pattern="ramp">Langsamer Verlauf</button>
+      <button type="button" data-ft-pattern="toggle">Stufenwechsel</button>
+    </div>
+    <label class="field">Farbe</label>
+    <div class="seg full" role="group" aria-label="Farbe" id="ft-tint">
+      <button type="button" data-ft-tint="gray">Grau</button>
+      <button type="button" data-ft-tint="red">Rot</button>
+      <button type="button" data-ft-tint="green">Grün</button>
+      <button type="button" data-ft-tint="blue">Blau</button>
+    </div>
+
+    <div id="ft-ramp">
+      <label class="field" for="ft-from">Von</label>
+      <div class="row"><span class="grayswatch" id="ft-from-swatch"></span><input type="range" id="ft-from" min="0" max="255" step="1"><span class="val" id="ft-from_v"></span></div>
+      <label class="field" for="ft-to">Bis</label>
+      <div class="row"><span class="grayswatch" id="ft-to-swatch"></span><input type="range" id="ft-to" min="0" max="255" step="1"><span class="val" id="ft-to_v"></span></div>
+      <label class="field" for="ft-secs">Dauer je Richtung</label>
+      <div class="row"><input type="range" id="ft-secs" min="2" max="120" step="1"><span class="val" id="ft-secs_v"></span></div>
+    </div>
+
+    <div id="ft-toggle-settings">
+      <label class="field" for="ft-base">Grundton</label>
+      <div class="row"><span class="grayswatch" id="ft-base-swatch"></span><input type="range" id="ft-base" min="0" max="254" step="1"><span class="val" id="ft-base_v"></span></div>
+      <label class="field">Wechselt zu Grundton plus</label>
+      <div class="seg full" role="group" aria-label="Unterschied" id="ft-delta">
+        <button type="button" data-ft-delta="0.25">¼ Stufe</button>
+        <button type="button" data-ft-delta="0.5">½ Stufe</button>
+        <button type="button" data-ft-delta="0.75">¾ Stufe</button>
+        <button type="button" data-ft-delta="1">1 Stufe</button>
+      </div>
+      <label class="field" for="ft-every">Wechsel alle</label>
+      <div class="row"><input type="range" id="ft-every" min="0.5" max="10" step="0.5"><span class="val" id="ft-every_v"></span></div>
+    </div>
+
+    <div class="status" id="ft-now"></div>
+    <p class="note">Der Grabber sieht die Töne nicht ganz genau (Rauschen, angehobenes Schwarz). Achte deshalb auf den Unterschied zwischen Nachkommastellen an und aus, nicht auf den genauen Wert. Am besten im abgedunkelten Raum.</p>
+
+    <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+      <button type="button" id="ft-run"></button>
+      <button type="button" id="ft-restart"></button>
+    </div>
+  </section>
+
+  <!-- ===== Hyperion fractional LED mean ===== -->
+  <section class="card" id="card-fmd">
+    <h2>LED-Mittelwert mit Nachkommastellen (Hyperion)</h2>
+    <p class="help">Jede LED bekommt den Durchschnitt der Bildpunkte ihres Bereichs. Mit Haken geht dieser Wert samt Nachkommastellen in die 16-Bit-Ausgabe der HD108. Ohne Haken wird er auf eine ganze Zahl abgeschnitten. Die Einstellung wird direkt in Hyperion gespeichert und wirkt sofort. Zum Vergleichen beim Test oben einfach an- und ausschalten.</p>
+    <div class="status" id="fm-status">Warte auf Daten von Hyperion …</div>
+    <label class="check"><input type="checkbox" id="fm-enabled"><span>Mittelwert mit Nachkommastellen</span></label>
+    <p class="note" id="fm-cfg-note"></p>
+  </section>
+
   <!-- ===== backup ===== -->
   <section class="card" id="card-backup">
     <h2>Backup</h2>
@@ -699,10 +758,12 @@ function renderState() {
   if (key !== listKey && !syncColorList() && !openPicker?.isConnected) buildColorList();
   else updateActiveRows();
   $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert."
-    : state.depthTest?.active ? "Gerade läuft der Erfassungstiefe-Test. Die Testfarbe ist pausiert." : "";
+    : state.depthTest?.active ? "Gerade läuft der Erfassungstiefe-Test. Die Testfarbe ist pausiert."
+    : state.fracTest?.active ? "Gerade läuft der Nachkommastellen-Test. Die Testfarbe ist pausiert." : "";
   renderBars();
   renderGrayTest();
   renderDepthTest();
+  renderFracTest();
   renderOverlayChecks();
 }
 
@@ -862,9 +923,12 @@ function flashRgbRow(field) {
   row.classList.add("flash");
 }
 
+// a running test pattern covers the test color on the TV
+const testPatternActive = () => !!(state.grayTest?.active || state.depthTest?.active || state.fracTest?.active);
+
 function updateActiveRows() {
   document.querySelectorAll(".crow[data-color]").forEach(r => {
-    const isActive = !state.grayTest?.active && !state.depthTest?.active && state.colorActive !== false && r.dataset.color === state.color;
+    const isActive = !testPatternActive() && state.colorActive !== false && r.dataset.color === state.color;
     r.classList.toggle("active", isActive);
     const power = r.querySelector(".ibtn.power");
     if (power) {
@@ -876,9 +940,9 @@ function updateActiveRows() {
 
 function setColor(color) {
   // picking a color ends the gray still test and switches it on, the TV shows the color again
-  // (the server ends a running capture depth test on its own when a color arrives)
+  // (the server ends a running capture depth or fraction test on its own when a color arrives)
   const patch = state.grayTest?.active ? { color, colorActive: true, grayTest: { active: false } } : { color, colorActive: true };
-  state = { ...state, color, colorActive: true, grayTest: { ...state.grayTest, active: false }, depthTest: { ...state.depthTest, active: false } };
+  state = { ...state, color, colorActive: true, grayTest: { ...state.grayTest, active: false }, depthTest: { ...state.depthTest, active: false }, fracTest: { ...state.fracTest, active: false } };
   renderState();
   send(patch);
 }
@@ -886,7 +950,7 @@ function setColor(color) {
 // the power button: on for another color switches to it, on for the active one turns it off
 // (the TV shows black), off for the active one turns it back on
 function toggleActive(color) {
-  const isOn = !state.grayTest?.active && !state.depthTest?.active && state.colorActive !== false && state.color === color;
+  const isOn = !testPatternActive() && state.colorActive !== false && state.color === color;
   if (isOn) {
     state = { ...state, colorActive: false };
     renderState();
@@ -1187,6 +1251,7 @@ function renderColorEditor() {
 
   updateSendButtons();
   renderDepthConfig();
+  renderFracConfig();
 
   // a missing config only means "not loaded yet" here, loadColorConfig reports real read errors.
   // A status note that no longer applies is cleared, save results stay until the next save.
@@ -1366,8 +1431,8 @@ function setToggle(toggle, active) {
 
 function sendGrayTest(patch) {
   state = { ...state, grayTest: { ...state.grayTest, ...patch } };
-  // the server ends the capture depth test when the gray test starts
-  if (patch.active === true) state.depthTest = { ...state.depthTest, active: false };
+  // the server ends the other test patterns when the gray test starts
+  if (patch.active === true) state = { ...state, depthTest: { ...state.depthTest, active: false }, fracTest: { ...state.fracTest, active: false } };
   renderState();
   send({ grayTest: patch });
 }
@@ -1495,7 +1560,7 @@ function renderDepthTest() {
 
 function sendDepthTest(patch) {
   state = { ...state, depthTest: { ...state.depthTest, ...patch } };
-  if (patch.active === true) state.grayTest = { ...state.grayTest, active: false };
+  if (patch.active === true) state = { ...state, grayTest: { ...state.grayTest, active: false }, fracTest: { ...state.fracTest, active: false } };
   renderState();
   send({ depthTest: patch });
 }
@@ -1615,6 +1680,142 @@ document.querySelectorAll("[data-dp-tb]").forEach(b => b.addEventListener("click
 document.querySelectorAll("[data-dp-lr]").forEach(b => b.addEventListener("click", () => saveDepth("leftRight", Number(b.dataset.dpLr))));
 $("dp-live").checked = store.get("tvtest-dp-live") === "1";
 $("dp-live").addEventListener("change", (ev) => { store.set("tvtest-dp-live", ev.target.checked ? "1" : "0"); renderDepthStatus(); });
+
+// ---------- fractional LED mean test pattern ----------
+
+const FT_TINT_NAMES = { gray: "Grau", red: "Rot", green: "Grün", blue: "Blau" };
+const FT_DELTA_NAMES = { 0.25: "¼", 0.5: "½", 0.75: "¾" };
+const FT_TINT_RGB = { gray: [1, 1, 1], red: [1, 0, 0], green: [0, 1, 0], blue: [0, 0, 1] };
+let ftNowTimer = null;
+
+const ftSwatch = (v, tint) => `rgb(${FT_TINT_RGB[tint].map(c => Math.round(v * c)).join(",")})`;
+// levels in 1/64 steps like the TV draws them, shown with up to three decimals
+const ftLevel = (v) => fmt(Math.round(v * 64) / 64, Number.isInteger(v) ? 0 : 2);
+
+// the level the TV shows now, from the same timeline as tv.html (fracLevel)
+function ftCurrentLevel(f) {
+  const elapsed = Math.max(0, (Date.now() + clockOffset - f.startedAt) / 1000);
+  if (f.pattern === "toggle") return Math.floor(elapsed / f.toggleSeconds) % 2 ? f.base + f.delta : f.base;
+  const p = (elapsed % (2 * f.rampSeconds)) / f.rampSeconds;
+  return f.from + (f.to - f.from) * (p <= 1 ? p : 2 - p);
+}
+
+function renderFracNow() {
+  const f = state.fracTest;
+  const on = colorConfig?.fractionalMean;
+  const expect = f.pattern === "toggle"
+    ? (f.delta >= 1
+      ? "Eine ganze Stufe zum Vergleich: So groß ist ein Sprung ohne Nachkommastellen."
+      : `Mit Nachkommastellen ändern sich die LEDs bei jedem Wechsel um etwa ${FT_DELTA_NAMES[f.delta] ?? fmt(f.delta, 2)} Stufe. Ohne bleiben sie meist gleich oder springen um eine ganze Stufe, je nachdem, wo der Grabber den Ton sieht.`)
+    : `Mit Nachkommastellen gleiten die LEDs gleichmäßig. Ohne springen sie ${Math.abs(f.to - f.from)}-mal je Richtung um eine ganze Stufe.`;
+  const mode = on === undefined ? "" : `<div>Hyperion: Nachkommastellen <b>${on ? "an" : "aus"}</b>${on && fracBlockers().length ? " (wirkt gerade nicht, siehe unten)" : ""}</div>`;
+  const now = f.active ? `<div>Jetzt auf dem TV: <b>${ftLevel(ftCurrentLevel(f))}</b> ${FT_TINT_NAMES[f.tint]}</div>` : "<div>Test läuft nicht.</div>";
+  $("ft-now").innerHTML = now + mode + `<div class="field-hint">${expect}</div>`;
+}
+
+function renderFracTest() {
+  const f = state.fracTest;
+  if (!f) return;
+  setToggle($("ft-run"), f.active);
+  document.querySelectorAll("[data-ft-pattern]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ftPattern === f.pattern)));
+  document.querySelectorAll("[data-ft-tint]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ftTint === f.tint)));
+  document.querySelectorAll("[data-ft-delta]").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.ftDelta) === f.delta)));
+  $("ft-ramp").hidden = f.pattern !== "ramp";
+  $("ft-toggle-settings").hidden = f.pattern !== "toggle";
+  for (const [id, key] of [["ft-from", "from"], ["ft-to", "to"], ["ft-base", "base"]]) {
+    if (document.activeElement !== $(id)) $(id).value = f[key];
+    $(id + "_v").textContent = String(f[key]);
+    $(id + "-swatch").style.background = ftSwatch(f[key], f.tint);
+  }
+  for (const [id, key] of [["ft-secs", "rampSeconds"], ["ft-every", "toggleSeconds"]]) {
+    if (document.activeElement !== $(id)) $(id).value = f[key];
+    $(id + "_v").textContent = `${fmt(f[key], Number.isInteger(f[key]) ? 0 : 1)} s`;
+  }
+  clearInterval(ftNowTimer);
+  renderFracNow();
+  if (f.active) ftNowTimer = setInterval(renderFracNow, 200);
+}
+
+function sendFracTest(patch) {
+  state = { ...state, fracTest: { ...state.fracTest, ...patch } };
+  if (patch.active === true) state = { ...state, grayTest: { ...state.grayTest, active: false }, depthTest: { ...state.depthTest, active: false } };
+  renderState();
+  send({ fracTest: patch });
+}
+
+$("ft-run").addEventListener("click", () => sendFracTest({ active: !state.fracTest.active }));
+$("ft-restart").innerHTML = `${ICON.reset}<span>Neu starten</span>`;
+$("ft-restart").addEventListener("click", () => send({ fracRestart: true }));
+document.querySelectorAll("[data-ft-pattern]").forEach(b => b.addEventListener("click", () => sendFracTest({ pattern: b.dataset.ftPattern })));
+document.querySelectorAll("[data-ft-tint]").forEach(b => b.addEventListener("click", () => sendFracTest({ tint: b.dataset.ftTint })));
+document.querySelectorAll("[data-ft-delta]").forEach(b => b.addEventListener("click", () => sendFracTest({ delta: Number(b.dataset.ftDelta) })));
+for (const [id, key, label] of [["ft-from", "from", String], ["ft-to", "to", String], ["ft-base", "base", String],
+  ["ft-secs", "rampSeconds", (v) => `${v} s`], ["ft-every", "toggleSeconds", (v) => `${fmt(v, Number.isInteger(v) ? 0 : 1)} s`]]) {
+  $(id).addEventListener("input", (ev) => {
+    const v = Number(ev.target.value);
+    $(id + "_v").textContent = label(v);
+    if ($(id + "-swatch")) $(id + "-swatch").style.background = ftSwatch(v, state.fracTest.tint);
+  });
+  $(id).addEventListener("change", (ev) => sendFracTest({ [key]: Number(ev.target.value) }));
+}
+
+// ---------- Hyperion fractional LED mean (color.fractionalMean) ----------
+
+// settings under which the fork uses the whole-number mean anyway (see MultiColorAdjustment::applyAdjustment)
+function fracBlockers() {
+  const c = colorConfig;
+  if (!c) return [];
+  const out = [];
+  if (["dominant_color", "unicolor_dominant"].includes(c.imageToLedMappingType)) out.push("Der Zuordnungstyp „Dominante Farbe“ liefert immer die Farbe eines einzelnen Bildpunkts, also eine ganze Zahl.");
+  if (c.edgeTransitionBoost?.enabled) out.push("Die Bereichsübergangsverstärkung ist an. Sie rechnet nur mit ganzen Zahlen.");
+  const entries = (c.channelAdjustment ?? []).filter(a => a.grayAxisTrim?.enabled || Number(a.saturationGain ?? 1) !== 1 || Number(a.brightnessGain ?? 1) !== 1);
+  if (entries.length) {
+    const names = entries.map(a => `„${a.id ?? "?"}“`).join(", ");
+    out.push(`Farbeintrag ${names}: Grauachsen-Korrektur oder Sättigungs-/Helligkeitsverstärkung ungleich 1 ist aktiv. Für diese LEDs gilt der ganzzahlige Wert.`);
+  }
+  return out;
+}
+
+const FM_STATUS_NOTE = /^(Lade|Braucht die neue|Zum Ändern zuerst)/;
+
+function renderFracConfig() {
+  const known = colorConfig && "fractionalMean" in colorConfig;
+  const on = !!colorConfig?.fractionalMean;
+  $("fm-enabled").checked = on;
+  $("fm-enabled").disabled = !(hyperionConnected && known && colorConfig?.channelAdjustment?.length);
+  const blockers = fracBlockers();
+  $("fm-status").innerHTML = !colorConfig ? "Warte auf Daten von Hyperion …"
+    : !known ? "Diese Hyperion-Version kennt den Mittelwert mit Nachkommastellen nicht."
+    : !on ? "<b>Aus</b>: Die LEDs bekommen den auf eine ganze Zahl abgeschnittenen Mittelwert."
+    : blockers.length ? "<b>An</b>, wirkt aber gerade nicht überall:" + blockers.map(t => `<div class="field-hint">${t}</div>`).join("")
+    : "<b>An</b> und wirksam: Der Mittelwert geht samt Nachkommastellen in die 16-Bit-Ausgabe.";
+  const note = $("fm-cfg-note");
+  const problem = !colorConfig ? "Lade Einstellungen …"
+    : !known ? "Braucht die neue Hyperion-Version (Fork)."
+    : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
+    : null;
+  if (problem) note.textContent = problem;
+  else if (FM_STATUS_NOTE.test(note.textContent)) note.textContent = "";
+  if (state?.fracTest) renderFracNow();
+}
+
+$("fm-enabled").addEventListener("change", async (ev) => {
+  const value = ev.target.checked;
+  const note = $("fm-cfg-note");
+  note.textContent = "Speichere in Hyperion …";
+  try {
+    const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, field: "fractionalMean", value }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    colorConfig = body;
+    note.textContent = `Nachkommastellen ${value ? "an" : "aus"}, wirkt sofort auf die LEDs.`;
+  } catch (e) {
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
+    await loadColorConfig();
+    return;
+  }
+  renderColorEditor();
+});
 
 // ---------- Hyperion settings: black-border detector and gray still detector ----------
 

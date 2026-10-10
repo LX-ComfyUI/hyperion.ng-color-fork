@@ -44,6 +44,10 @@ const DEFAULT_STATE = {
   // leftRight % of the width) around `inner`; sweep: a line of `outer` on `inner` that runs from the
   // edges inwards to sweepMax % within sweepSeconds and starts again
   depthTest: { active: false, pattern: "frame", outer: "#ff0000", inner: "#0000ff", topBottom: 5, leftRight: 8, sweepMax: 20, sweepSeconds: 8, lineWidth: 1, startedAt: 0 },
+  // fractional LED mean test pattern: a dark tone between two whole levels, drawn as a fine dither of
+  // both, so the mean over an LED area has fractions. ramp: from -> to and back, rampSeconds per way;
+  // toggle: base and base + delta alternately, toggleSeconds each. tint: which channels light up
+  fracTest: { active: false, pattern: "ramp", tint: "gray", from: 20, to: 30, rampSeconds: 20, base: 25, delta: 0.5, toggleSeconds: 2, startedAt: 0 },
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
   overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true, dpTv: false, dpPreview: true },
 };
@@ -115,6 +119,19 @@ function sanitize(input) {
     sweepSeconds: num(d.sweepSeconds, 2, 60, 8, 1),
     lineWidth: num(d.lineWidth, 0.5, 5, 1, 0.5),
     startedAt: num(d.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
+  };
+  const f = { ...DEFAULT_STATE.fracTest, ...(input.fracTest ?? {}) };
+  out.fracTest = {
+    active: f.active === true,
+    pattern: f.pattern === "toggle" ? "toggle" : "ramp",
+    tint: ["gray", "red", "green", "blue"].includes(f.tint) ? f.tint : "gray",
+    from: num(f.from, 0, 255, 20),
+    to: num(f.to, 0, 255, 30),
+    rampSeconds: num(f.rampSeconds, 2, 120, 20),
+    base: num(f.base, 0, 254, 25),
+    delta: num(f.delta, 0.125, 1, 0.5, 0.125),
+    toggleSeconds: num(f.toggleSeconds, 0.5, 10, 2, 0.5),
+    startedAt: num(f.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
   };
   const o = { ...DEFAULT_STATE.overlays, ...(input.overlays ?? {}) };
   out.overlays = Object.fromEntries(Object.keys(DEFAULT_STATE.overlays).map((k) => [k, o[k] === true]));
@@ -537,6 +554,8 @@ const COLOR_FIELDS = {
   "edgeTransitionBoost.ledWidth": ["num", 1, 3, 1],
   "edgeTransitionBoost.edgeSensitivity": ["num", 5, 255, 1],
   "edgeTransitionBoost.boostStrength": ["num", 0, 2, 0.05],
+  // fork: LED means with fractions for the 16-bit output (top level of the color settings)
+  fractionalMean: ["bool"],
   // fork: capture depth of the LED areas in percent, 0 = the layout
   "ledAreaDepth.topBottom": ["num", 0, 50, 0.5],
   "ledAreaDepth.leftRight": ["num", 0, 50, 0.5],
@@ -552,7 +571,10 @@ function mergeColor(current, patch) {
   const { field, value } = patch;
   let target = entry;
   let key = field;
-  if (field.startsWith("edgeTransitionBoost.")) {
+  if (field === "fractionalMean") {
+    if (!("fractionalMean" in next)) throw new Error("Der Mittelwert mit Nachkommastellen braucht die neue Hyperion-Version");
+    target = next;
+  } else if (field.startsWith("edgeTransitionBoost.")) {
     target = next.edgeTransitionBoost;
     key = field.split(".")[1];
   } else if (field.startsWith("ledAreaDepth.")) {
@@ -763,13 +785,16 @@ const server = http.createServer(async (req, res) => {
       if (patch.grayTest || patch.grayRestart) grayTest.startedAt = Date.now();
       const depthTest = { ...state.depthTest, ...(patch.depthTest ?? {}) };
       if (patch.depthTest || patch.depthRestart) depthTest.startedAt = Date.now();
-      // only one test pattern at a time: starting one ends the other, a new test color ends both
-      if (patch.depthTest?.active === true) grayTest.active = false;
-      if (patch.grayTest?.active === true || typeof patch.color === "string") depthTest.active = false;
+      const fracTest = { ...state.fracTest, ...(patch.fracTest ?? {}) };
+      if (patch.fracTest || patch.fracRestart) fracTest.startedAt = Date.now();
+      // only one test pattern at a time: starting one ends the others, a new test color ends all
+      if (patch.depthTest?.active === true || patch.fracTest?.active === true) grayTest.active = false;
+      if (patch.grayTest?.active === true || patch.fracTest?.active === true || typeof patch.color === "string") depthTest.active = false;
+      if (patch.grayTest?.active === true || patch.depthTest?.active === true || typeof patch.color === "string") fracTest.active = false;
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
-      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, depthTest, overlays });
+      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, depthTest, fracTest, overlays });
       saveState();
       broadcast();
       return sendJson(res, 200, state);

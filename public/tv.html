@@ -22,6 +22,9 @@
   #depth .band.r { right: 0; top: 0; bottom: 0; }
   #depth .sweep { position: absolute; box-sizing: border-box; border-style: solid; }
 
+  /* fractional LED mean test: canvas in device pixels, so the dither is never smoothed by scaling */
+  #frac { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
+
   /* Connect hint: kept in the middle, so the screen edges (what the LEDs sample) stay free */
   #connect {
     /* left/right 0 + auto margins: centered without halving the available width like left: 50% would */
@@ -59,6 +62,7 @@
   <div class="band t"></div><div class="band b"></div><div class="band l"></div><div class="band r"></div>
   <div class="sweep"></div>
 </div>
+<canvas id="frac" hidden></canvas>
 <div class="bar" id="bar-top"></div>
 <div class="bar" id="bar-bottom"></div>
 <div class="bar" id="bar-left"></div>
@@ -103,6 +107,8 @@ let debug = null;
 let ledAreas = null;      // LED sampling areas from Hyperion's layout
 let areaDepth = null;     // color.ledAreaDepth from Hyperion ({ topBottom, leftRight }, 0 = layout)
 let sweepFrame = null;
+let fracFrame = null;
+let fracDrawn = null;     // [level in 1/64 steps, tint, canvas size] of the picture on the canvas
 
 $("url").textContent = location.host + "/";
 
@@ -171,6 +177,68 @@ function renderDepthTest() {
   step();
 }
 
+// Fractional LED mean test. A level like 25.375 is drawn as an ordered dither (8x8 Bayer matrix) of
+// 25 and 26 with 24 of 64 pixels at 26, so every LED area averages to the level with its fractions.
+// ramp: from -> to and back, rampSeconds per way; toggle: base and base + delta, toggleSeconds each.
+const BAYER8 = (() => {
+  const m = [[0]];
+  let n = 1;
+  let out = m;
+  while (n < 8) {
+    out = Array.from({ length: n * 2 }, (_, y) => Array.from({ length: n * 2 }, (_, x) => 4 * out[y % n][x % n] + [0, 2, 3, 1][(y >= n) * 2 + (x >= n)]));
+    n *= 2;
+  }
+  return out;
+})();
+const TINTS = { gray: [1, 1, 1], red: [1, 0, 0], green: [0, 1, 0], blue: [0, 0, 1] };
+
+function fracLevel(f, now) {
+  const elapsed = Math.max(0, (now + clockOffset - f.startedAt) / 1000);
+  if (f.pattern === "toggle") return Math.floor(elapsed / f.toggleSeconds) % 2 ? f.base + f.delta : f.base;
+  const p = (elapsed % (2 * f.rampSeconds)) / f.rampSeconds; // 0..2
+  return f.from + (f.to - f.from) * (p <= 1 ? p : 2 - p);
+}
+
+function drawFrac(canvas, level, tint) {
+  const steps = Math.round(Math.min(255, Math.max(0, level)) * 64);
+  const key = [steps, tint, canvas.width, canvas.height].join();
+  if (fracDrawn === key) return;
+  fracDrawn = key;
+  const base = Math.floor(steps / 64);
+  const high = steps - base * 64; // pixels per 64 at base + 1
+  const t = TINTS[tint] ?? TINTS.gray;
+  const tile = document.createElement("canvas");
+  tile.width = tile.height = 8;
+  const tctx = tile.getContext("2d");
+  const img = tctx.createImageData(8, 8);
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+    const v = Math.min(255, base + (BAYER8[y][x] < high ? 1 : 0));
+    const i = (y * 8 + x) * 4;
+    img.data[i] = v * t[0]; img.data[i + 1] = v * t[1]; img.data[i + 2] = v * t[2]; img.data[i + 3] = 255;
+  }
+  tctx.putImageData(img, 0, 0);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = ctx.createPattern(tile, "repeat");
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function renderFracTest() {
+  cancelAnimationFrame(fracFrame);
+  const f = state.fracTest;
+  const canvas = $("frac");
+  canvas.hidden = !f?.active || state.grayTest?.active || state.depthTest?.active;
+  if (canvas.hidden) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(window.innerWidth * dpr), h = Math.round(window.innerHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const step = () => {
+    drawFrac(canvas, fracLevel(f, Date.now()), f.tint);
+    fracFrame = requestAnimationFrame(step);
+  };
+  step();
+}
+window.addEventListener("resize", () => { fracDrawn = null; if (state.fracTest?.active) renderFracTest(); });
+
 function renderDebug() {
   const o = state.overlays ?? {};
   const bb = debug?.ok ? debug.blackborder : null;
@@ -192,6 +260,7 @@ function renderDebug() {
 function render() {
   renderGrayTest();
   renderDepthTest();
+  renderFracTest();
   renderBars();
   // automatic: show the hint while no phone is connected
   connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle;
@@ -222,6 +291,7 @@ function connectEvents() {
     phones = msg.phones ?? 0;
     if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
     const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || JSON.stringify(msg.depthTest) !== JSON.stringify(state.depthTest)
+      || JSON.stringify(msg.fracTest) !== JSON.stringify(state.fracTest)
       || msg.color !== state.color || msg.colorActive !== state.colorActive;
     state = msg;
     if (grayChanged) render();
