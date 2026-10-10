@@ -184,6 +184,13 @@
   .sub { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line); }
   .status { font-size: 14px; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 10px 0 0; font-variant-numeric: tabular-nums; }
   .note { font-size: 13px; color: var(--muted); margin: 8px 0 0; min-height: 1.2em; }
+  /* LED position test */
+  .lp-steps { margin-top: 8px; }
+  .lp-jumps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .lp-jumps button { padding: 5px 9px; font-size: 12px; border-radius: 8px; }
+  .lp-jumps button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .lp-map { margin-top: 12px; }
+  .lp-map svg { display: block; width: 100%; max-width: 440px; height: auto; border-radius: 8px; background: #111; }
   .grayswatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--chip-line); flex: none; }
 
   /* live boxes (developer view), same look as the gray still status */
@@ -589,6 +596,59 @@
     <p class="note" id="fm-cfg-note"></p>
   </section>
 
+  <!-- ===== LED position test ===== -->
+  <section class="card" id="card-lp">
+    <h2>LED-Position Test</h2>
+    <p class="help">Der TV zeigt eine helle Markierung genau im Bildbereich einer LED, so wie Hyperion ihn mit der eingestellten Erfassungstiefe abtastet. Der Grabber sieht die Markierung, und Hyperion lässt genau diese LED leuchten. <b>Sitzt die leuchtende LED direkt neben der Markierung, passt die Zuordnung.</b> Leuchtet sie ein Stück daneben, ist das Layout an dieser Stelle verschoben. <b>Lauflicht:</b> Die Markierung wandert um den ganzen Rahmen.</p>
+
+    <label class="field">Muster</label>
+    <div class="seg full" role="group" aria-label="Muster" id="lp-mode">
+      <button type="button" data-lp-mode="single">Einzelne LED</button>
+      <button type="button" data-lp-mode="run">Lauflicht</button>
+    </div>
+
+    <label class="field" for="lp-index"><span id="lp-index-label">LED</span> <span class="field-hint">(Nummer wie im Hyperion-WebUI, ab 0)</span></label>
+    <div class="row"><input type="range" id="lp-index" min="0" max="643" step="1"><span class="val" id="lp-index_v"></span></div>
+    <div class="seg full lp-steps" role="group" aria-label="LED wechseln">
+      <button type="button" data-lp-step="-10">−10</button>
+      <button type="button" data-lp-step="-1">−1</button>
+      <button type="button" data-lp-step="1">+1</button>
+      <button type="button" data-lp-step="10">+10</button>
+    </div>
+    <div class="lp-jumps" id="lp-jumps" role="group" aria-label="Abschnittsanfänge"></div>
+
+    <div id="lp-run">
+      <label class="field" for="lp-speed">Geschwindigkeit <span class="field-hint" id="lp-round"></span></label>
+      <div class="row"><input type="range" id="lp-speed" min="1" max="60" step="1"><span class="val" id="lp-speed_v"></span></div>
+    </div>
+
+    <label class="field">Breite der Markierung</label>
+    <div class="seg full" role="group" aria-label="Breite der Markierung" id="lp-width">
+      <button type="button" data-lp-width="1">1 LED</button>
+      <button type="button" data-lp-width="3">3 LEDs</button>
+      <button type="button" data-lp-width="5">5 LEDs</button>
+    </div>
+
+    <div class="dt-colors">
+      <label class="dt-color"><span>Farbe</span><span class="row"><span class="grayswatch" id="lp-color-swatch"></span><select id="lp-color" aria-label="Farbe der Markierung"></select></span></label>
+    </div>
+    <label class="field">Hintergrund</label>
+    <div class="seg full" role="group" aria-label="Hintergrund" id="lp-bg">
+      <button type="button" data-lp-bg="black">Schwarz</button>
+      <button type="button" data-lp-bg="gray">Dunkelgrau</button>
+    </div>
+    <p class="note">Dunkelgrau hilft, wenn die Schwarzbalken-Erkennung das fast schwarze Bild als Balken deutet.</p>
+
+    <div class="lp-map" id="lp-map"></div>
+    <div class="status" id="lp-status"></div>
+    <p class="warn" id="lp-warn" hidden></p>
+
+    <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+      <button type="button" id="lp-toggle"></button>
+      <button type="button" id="lp-restart"></button>
+    </div>
+  </section>
+
   <!-- ===== backup ===== -->
   <section class="card" id="card-backup">
     <h2>Backup</h2>
@@ -631,7 +691,7 @@
 
 <script src="/static/graycurve-graph.js"></script>
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, ledSegments, posTestIndices, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 
 const EDGES = ["top", "bottom", "left", "right"];
 const BAR_PAIRS = [
@@ -759,11 +819,13 @@ function renderState() {
   else updateActiveRows();
   $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert."
     : state.depthTest?.active ? "Gerade läuft der Erfassungstiefe-Test. Die Testfarbe ist pausiert."
-    : state.fracTest?.active ? "Gerade läuft der Nachkommastellen-Test. Die Testfarbe ist pausiert." : "";
+    : state.fracTest?.active ? "Gerade läuft der Nachkommastellen-Test. Die Testfarbe ist pausiert."
+    : state.posTest?.active ? "Gerade läuft der LED-Position-Test. Die Testfarbe ist pausiert." : "";
   renderBars();
   renderGrayTest();
   renderDepthTest();
   renderFracTest();
+  renderPosTest();
   renderOverlayChecks();
 }
 
@@ -924,7 +986,12 @@ function flashRgbRow(field) {
 }
 
 // a running test pattern covers the test color on the TV
-const testPatternActive = () => !!(state.grayTest?.active || state.depthTest?.active || state.fracTest?.active);
+const TEST_PATTERNS = ["grayTest", "depthTest", "fracTest", "posTest"];
+const testPatternActive = () => TEST_PATTERNS.some((t) => state[t]?.active);
+// the server ends the other test patterns when one starts; the page mirrors that right away
+function endOtherTests(name) {
+  for (const t of TEST_PATTERNS) if (t !== name && state[t]) state = { ...state, [t]: { ...state[t], active: false } };
+}
 
 function updateActiveRows() {
   document.querySelectorAll(".crow[data-color]").forEach(r => {
@@ -942,7 +1009,8 @@ function setColor(color) {
   // picking a color ends the gray still test and switches it on, the TV shows the color again
   // (the server ends a running capture depth or fraction test on its own when a color arrives)
   const patch = state.grayTest?.active ? { color, colorActive: true, grayTest: { active: false } } : { color, colorActive: true };
-  state = { ...state, color, colorActive: true, grayTest: { ...state.grayTest, active: false }, depthTest: { ...state.depthTest, active: false }, fracTest: { ...state.fracTest, active: false } };
+  state = { ...state, color, colorActive: true };
+  endOtherTests(null);
   renderState();
   send(patch);
 }
@@ -1432,7 +1500,7 @@ function setToggle(toggle, active) {
 function sendGrayTest(patch) {
   state = { ...state, grayTest: { ...state.grayTest, ...patch } };
   // the server ends the other test patterns when the gray test starts
-  if (patch.active === true) state = { ...state, depthTest: { ...state.depthTest, active: false }, fracTest: { ...state.fracTest, active: false } };
+  if (patch.active === true) endOtherTests("grayTest");
   renderState();
   send({ grayTest: patch });
 }
@@ -1560,7 +1628,7 @@ function renderDepthTest() {
 
 function sendDepthTest(patch) {
   state = { ...state, depthTest: { ...state.depthTest, ...patch } };
-  if (patch.active === true) state = { ...state, grayTest: { ...state.grayTest, active: false }, fracTest: { ...state.fracTest, active: false } };
+  if (patch.active === true) endOtherTests("depthTest");
   renderState();
   send({ depthTest: patch });
 }
@@ -1612,7 +1680,7 @@ function renderDepthConfig() {
   if (problem) note.textContent = problem;
   else if (DP_STATUS_NOTE.test(note.textContent)) note.textContent = "";
   renderDepthStatus();
-  if (state) renderDepthTest();
+  if (state) { renderDepthTest(); renderPosTest(); }
 }
 
 // status line, skip warning and developer view; the pixel counts need the grabber size from Hyperion
@@ -1738,7 +1806,7 @@ function renderFracTest() {
 
 function sendFracTest(patch) {
   state = { ...state, fracTest: { ...state.fracTest, ...patch } };
-  if (patch.active === true) state = { ...state, grayTest: { ...state.grayTest, active: false }, depthTest: { ...state.depthTest, active: false } };
+  if (patch.active === true) endOtherTests("fracTest");
   renderState();
   send({ fracTest: patch });
 }
@@ -1758,6 +1826,123 @@ for (const [id, key, label] of [["ft-from", "from", String], ["ft-to", "to", Str
   });
   $(id).addEventListener("change", (ev) => sendFracTest({ [key]: Number(ev.target.value) }));
 }
+
+// ---------- LED position test pattern ----------
+
+const EDGE_NAMES = { top: "oben", bottom: "unten", left: "links", right: "rechts", other: "ohne Kante" };
+let lpTimer = null;
+
+// the areas as Hyperion samples them now: layout with the capture depth
+function lpAreas() {
+  return ledAreas?.length ? applyLedAreaDepth(ledAreas, colorConfig?.ledAreaDepth?.topBottom, colorConfig?.ledAreaDepth?.leftRight) : null;
+}
+
+function segmentDirection(areas, seg) {
+  const c = (i) => [(areas[i][0] + areas[i][1]) / 2, (areas[i][2] + areas[i][3]) / 2];
+  const [a, b] = [c(seg.start), c(seg.end)];
+  if (seg.edge === "top" || seg.edge === "bottom") return b[0] < a[0] ? "von rechts nach links" : "von links nach rechts";
+  return b[1] < a[1] ? "von unten nach oben" : "von oben nach unten";
+}
+
+// small picture of the frame: all LED areas, the marked ones bright, a ring around the middle one
+function lpMapSvg(areas, ids, color) {
+  const W = 160, H = 90, P = 7; // picture size and margin, so the ring at an edge stays visible
+  const x = (v) => (P + v * W).toFixed(2), y = (v) => (P + v * H).toFixed(2);
+  const rect = (a, fill) => `<rect x="${x(a[0])}" y="${y(a[2])}" width="${Math.max(0.4, (a[1] - a[0]) * W).toFixed(2)}" height="${Math.max(0.4, (a[3] - a[2]) * H).toFixed(2)}" fill="${fill}"/>`;
+  const all = areas.map((a) => rect(a, "#5c5c66")).join("");
+  const marked = ids.map((i) => rect(areas[i], color)).join("");
+  const mid = areas[ids[Math.floor(ids.length / 2)]];
+  const ring = mid ? `<circle cx="${x((mid[0] + mid[1]) / 2)}" cy="${y((mid[2] + mid[3]) / 2)}" r="5" fill="none" stroke="${color}" stroke-width="1.5"/>` : "";
+  return `<svg viewBox="0 0 ${W + 2 * P} ${H + 2 * P}" role="img" aria-label="Lage der markierten LED im Bild"><rect x="${P}" y="${P}" width="${W}" height="${H}" fill="#000" stroke="#555" stroke-width="0.6"/>${all}${marked}${ring}</svg>`;
+}
+
+function renderPosLive() {
+  const p = state.posTest;
+  const areas = lpAreas();
+  if (!areas) { $("lp-status").textContent = "LED-Layout wird geladen …"; $("lp-map").innerHTML = ""; return; }
+  const n = areas.length;
+  const ids = posTestIndices(p, n, Date.now() + clockOffset);
+  const i = ids[Math.floor(ids.length / 2)];
+  const seg = ledSegments(areas).find((s) => i >= s.start && i <= s.end);
+  const a = areas[i];
+  const pc = (v) => fmt(v * 100, 1);
+  const bb = debug?.ok ? debug.blackborder : null;
+  const w = bb?.imageWidth, h = bb?.imageHeight;
+  const px = w && h ? ` ≈ ${Math.max(1, Math.round((a[1] - a[0]) * w))} × ${Math.max(1, Math.round((a[3] - a[2]) * h))} px` : "";
+  $("lp-status").innerHTML =
+    `<div>${p.mode === "run" && p.active ? "Lauflicht jetzt bei" : "Markiert"}: <b>LED ${i}</b> von 0–${n - 1}${ids.length > 1 ? ` (mit ${ids.length - 1} Nachbarn)` : ""}</div>` +
+    (seg ? `<div>Abschnitt <b>${EDGE_NAMES[seg.edge]}</b> (LED ${seg.start}–${seg.end}, ${segmentDirection(areas, seg)}), dort Nr. <b>${i - seg.start + 1}</b> von ${seg.end - seg.start + 1}</div>` : "") +
+    `<div class="field-hint">Bildbereich: x ${pc(a[0])}–${pc(a[1])} %, y ${pc(a[2])}–${pc(a[3])} %${px}</div>` +
+    (p.active ? "" : "<div>Test läuft nicht.</div>");
+  $("lp-map").innerHTML = lpMapSvg(areas, ids, p.color);
+
+  const warn = [];
+  if (Object.values(state.bars ?? {}).some((v) => v > 0)) warn.push("Die schwarzen Balken sind an. Hyperion misst dann ab der Balkenkante, die Markierung sitzt nicht mehr im richtigen Bereich. Für diesen Test die Balken auf 0 % stellen.");
+  const border = bb?.currentBorder;
+  if (p.active && border && !border.unknown && (border.horizontalSize > 0 || border.verticalSize > 0))
+    warn.push(`Hyperion zieht gerade einen Schwarzbalken ab (oben/unten ${border.horizontalSize} px, links/rechts ${border.verticalSize} px). Dann verschieben sich die Bereiche. Hintergrund „Dunkelgrau“ wählen oder die Schwarzbalken-Erkennung kurz ausschalten.`);
+  $("lp-warn").hidden = !warn.length;
+  $("lp-warn").textContent = warn.join(" ");
+}
+
+function renderPosTest() {
+  const p = state.posTest;
+  if (!p) return;
+  const areas = lpAreas();
+  const n = areas?.length ?? 0;
+  setToggle($("lp-toggle"), p.active);
+  document.querySelectorAll("[data-lp-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lpMode === p.mode)));
+  document.querySelectorAll("[data-lp-width]").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.lpWidth) === p.width)));
+  document.querySelectorAll("[data-lp-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lpBg === p.background)));
+  $("lp-run").hidden = p.mode !== "run";
+  $("lp-index-label").textContent = p.mode === "run" ? "Startet bei LED" : "LED";
+  const index = n ? Math.min(n - 1, p.index) : p.index;
+  if (n) $("lp-index").max = n - 1;
+  if (document.activeElement !== $("lp-index")) $("lp-index").value = index;
+  $("lp-index_v").textContent = String(index);
+  if (document.activeElement !== $("lp-speed")) $("lp-speed").value = p.speed;
+  $("lp-speed_v").textContent = `${p.speed} LEDs/s`;
+  $("lp-round").textContent = n ? `(eine Runde ${fmt(n / p.speed, n / p.speed < 100 ? 1 : 0)} s)` : "";
+  fillColorSelect($("lp-color"), p.color);
+  $("lp-color-swatch").style.background = p.color;
+  // jump buttons: the first LED of each edge run, and the last LED of the strip
+  const jumps = n ? [...ledSegments(areas).map((s) => [s.start, EDGE_NAMES[s.edge]]), [n - 1, "Ende"]] : [];
+  const key = JSON.stringify(jumps);
+  if ($("lp-jumps").dataset.key !== key) {
+    $("lp-jumps").dataset.key = key;
+    $("lp-jumps").innerHTML = jumps.map(([i, name]) => `<button type="button" data-lp-jump="${i}"><b>${i}</b> ${name}</button>`).join("");
+    $("lp-jumps").querySelectorAll("[data-lp-jump]").forEach(b => b.addEventListener("click", () => sendPosTest({ index: Number(b.dataset.lpJump) })));
+  }
+  $("lp-jumps").querySelectorAll("[data-lp-jump]").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.lpJump) === index)));
+  clearInterval(lpTimer);
+  renderPosLive();
+  if (p.active && p.mode === "run") lpTimer = setInterval(renderPosLive, 200);
+}
+
+function sendPosTest(patch) {
+  state = { ...state, posTest: { ...state.posTest, ...patch } };
+  if (patch.active === true) endOtherTests("posTest");
+  renderState();
+  send({ posTest: patch });
+}
+
+$("lp-toggle").addEventListener("click", () => sendPosTest({ active: !state.posTest.active }));
+$("lp-restart").innerHTML = `${ICON.reset}<span>Neu starten</span>`;
+$("lp-restart").addEventListener("click", () => send({ posRestart: true }));
+document.querySelectorAll("[data-lp-mode]").forEach(b => b.addEventListener("click", () => sendPosTest({ mode: b.dataset.lpMode })));
+document.querySelectorAll("[data-lp-width]").forEach(b => b.addEventListener("click", () => sendPosTest({ width: Number(b.dataset.lpWidth) })));
+document.querySelectorAll("[data-lp-bg]").forEach(b => b.addEventListener("click", () => sendPosTest({ background: b.dataset.lpBg })));
+// steps wrap around like the strip, which is a loop
+document.querySelectorAll("[data-lp-step]").forEach(b => b.addEventListener("click", () => {
+  const n = lpAreas()?.length;
+  if (!n) return;
+  sendPosTest({ index: ((Math.min(n - 1, state.posTest.index) + Number(b.dataset.lpStep)) % n + n) % n });
+}));
+$("lp-index").addEventListener("input", (ev) => { $("lp-index_v").textContent = ev.target.value; state.posTest.index = Number(ev.target.value); renderPosLive(); });
+$("lp-index").addEventListener("change", (ev) => sendPosTest({ index: Number(ev.target.value) }));
+$("lp-speed").addEventListener("input", (ev) => { $("lp-speed_v").textContent = `${ev.target.value} LEDs/s`; });
+$("lp-speed").addEventListener("change", (ev) => sendPosTest({ speed: Number(ev.target.value) }));
+$("lp-color").addEventListener("change", (ev) => sendPosTest({ color: ev.target.value }));
 
 // ---------- Hyperion fractional LED mean (color.fractionalMean) ----------
 
@@ -2233,6 +2418,8 @@ async function init() {
   es.addEventListener("debug", (ev) => {
     debug = JSON.parse(ev.data);
     renderDebug();
+    // the black border warning of the position test follows Hyperion live
+    if (state?.posTest?.active && state.posTest.mode !== "run") renderPosLive();
   });
 }
 init();

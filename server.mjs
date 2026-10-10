@@ -48,6 +48,9 @@ const DEFAULT_STATE = {
   // both, so the mean over an LED area has fractions. ramp: from -> to and back, rampSeconds per way;
   // toggle: base and base + delta alternately, toggleSeconds each. tint: which channels light up
   fracTest: { active: false, pattern: "ramp", tint: "gray", from: 20, to: 30, rampSeconds: 20, base: 25, delta: 0.5, toggleSeconds: 2, startedAt: 0 },
+  // LED position test pattern: a marker exactly in the sampling area of LED `index` (width LEDs
+  // around it) on `background`. run: the marker moves on by speed LEDs per second from index
+  posTest: { active: false, mode: "single", index: 0, width: 1, speed: 10, color: "#ffffff", background: "black", startedAt: 0 },
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
   overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true, dpTv: false, dpPreview: true },
 };
@@ -132,6 +135,17 @@ function sanitize(input) {
     delta: num(f.delta, 0.125, 1, 0.5, 0.125),
     toggleSeconds: num(f.toggleSeconds, 0.5, 10, 2, 0.5),
     startedAt: num(f.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
+  };
+  const lp = { ...DEFAULT_STATE.posTest, ...(input.posTest ?? {}) };
+  out.posTest = {
+    active: lp.active === true,
+    mode: lp.mode === "run" ? "run" : "single",
+    index: num(lp.index, 0, 9999, 0),
+    width: [1, 3, 5].includes(Number(lp.width)) ? Number(lp.width) : 1,
+    speed: num(lp.speed, 1, 60, 10),
+    color: hex(lp.color, DEFAULT_STATE.posTest.color),
+    background: lp.background === "gray" ? "gray" : "black",
+    startedAt: num(lp.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
   };
   const o = { ...DEFAULT_STATE.overlays, ...(input.overlays ?? {}) };
   out.overlays = Object.fromEntries(Object.keys(DEFAULT_STATE.overlays).map((k) => [k, o[k] === true]));
@@ -787,14 +801,19 @@ const server = http.createServer(async (req, res) => {
       if (patch.depthTest || patch.depthRestart) depthTest.startedAt = Date.now();
       const fracTest = { ...state.fracTest, ...(patch.fracTest ?? {}) };
       if (patch.fracTest || patch.fracRestart) fracTest.startedAt = Date.now();
+      const posTest = { ...state.posTest, ...(patch.posTest ?? {}) };
+      // the running light starts again from its LED on every change
+      if (patch.posTest || patch.posRestart) posTest.startedAt = Date.now();
       // only one test pattern at a time: starting one ends the others, a new test color ends all
-      if (patch.depthTest?.active === true || patch.fracTest?.active === true) grayTest.active = false;
-      if (patch.grayTest?.active === true || patch.fracTest?.active === true || typeof patch.color === "string") depthTest.active = false;
-      if (patch.grayTest?.active === true || patch.depthTest?.active === true || typeof patch.color === "string") fracTest.active = false;
+      const tests = { grayTest, depthTest, fracTest, posTest };
+      for (const [name, test] of Object.entries(tests)) {
+        const started = Object.keys(tests).some((other) => other !== name && patch[other]?.active === true);
+        if (started || typeof patch.color === "string") test.active = false;
+      }
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
-      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, depthTest, fracTest, overlays });
+      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, depthTest, fracTest, posTest, overlays });
       saveState();
       broadcast();
       return sendJson(res, 200, state);

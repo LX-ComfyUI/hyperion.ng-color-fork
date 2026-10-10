@@ -271,3 +271,29 @@ export function grayStillCompactHtml(gs) {
   return `<div class="gs-bar"><span style="width:${progress}%"></span></div>
     <div class="gsc-line">Standbild ${secs}/${gs.stillTimeSeconds} s${drop}${hit}</div>`;
 }
+
+// LED position test: the layout split into runs of consecutive LEDs on the same edge
+// (areas normalized, e.g. from applyLedAreaDepth). Returns [{ edge, start, end }].
+export function ledSegments(areas) {
+  const out = [];
+  (areas ?? []).forEach((a, i) => {
+    const edge = areaEdge(a) ?? "other";
+    const last = out[out.length - 1];
+    if (last && last.edge === edge) last.end = i;
+    else out.push({ edge, start: i, end: i });
+  });
+  return out;
+}
+
+// Which LEDs the position test marks: `width` LEDs around the chosen one, or around the running
+// one (index + speed LEDs per second since startedAt, on the Pi's clock). The strip is a loop, the
+// indices wrap around.
+export function posTestIndices(p, n, piNow) {
+  if (!n) return [];
+  let center = Math.min(n - 1, Math.max(0, Math.round(p.index)));
+  if (p.mode === "run") center = (center + Math.floor(Math.max(0, piNow - p.startedAt) / 1000 * p.speed)) % n;
+  const half = Math.floor((p.width - 1) / 2);
+  const out = [];
+  for (let k = -half; k <= half; k++) out.push(((center + k) % n + n) % n);
+  return out;
+}

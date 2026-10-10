@@ -23,6 +23,10 @@
   #depth .sweep { position: absolute; box-sizing: border-box; border-style: solid; }
 
   /* fractional LED mean test: canvas in device pixels, so the dither is never smoothed by scaling */
+  /* LED position test: markers in the sampling areas of the chosen LEDs */
+  #pos { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+  #pos .mark { position: absolute; }
+
   #frac { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
 
   /* Connect hint: kept in the middle, so the screen edges (what the LEDs sample) stay free */
@@ -63,6 +67,7 @@
   <div class="sweep"></div>
 </div>
 <canvas id="frac" hidden></canvas>
+<div id="pos" hidden></div>
 <div class="bar" id="bar-top"></div>
 <div class="bar" id="bar-bottom"></div>
 <div class="bar" id="bar-left"></div>
@@ -87,7 +92,7 @@
 </div>
 
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, GRAY_STILL_CSS } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, posTestIndices, GRAY_STILL_CSS } from "/static/overlay.js";
 
 const style = document.createElement("style");
 style.textContent = GRAY_STILL_CSS;
@@ -108,6 +113,8 @@ let ledAreas = null;      // LED sampling areas from Hyperion's layout
 let areaDepth = null;     // color.ledAreaDepth from Hyperion ({ topBottom, leftRight }, 0 = layout)
 let sweepFrame = null;
 let fracFrame = null;
+let posFrame = null;
+let posDrawn = "";
 let fracDrawn = null;     // [level in 1/64 steps, tint, canvas size] of the picture on the canvas
 
 $("url").textContent = location.host + "/";
@@ -239,6 +246,32 @@ function renderFracTest() {
 }
 window.addEventListener("resize", () => { fracDrawn = null; if (state.fracTest?.active) renderFracTest(); });
 
+// LED position test: the marker covers exactly the sampling area of the chosen LEDs (layout with
+// Hyperion's capture depth), the grabber sees it there and lights exactly those LEDs
+const POS_BACKGROUND = { black: "#000000", gray: "rgb(20, 20, 20)" };
+function renderPosTest() {
+  cancelAnimationFrame(posFrame);
+  const p = state.posTest;
+  const el = $("pos");
+  el.hidden = !p?.active || state.grayTest?.active || state.depthTest?.active || state.fracTest?.active;
+  if (el.hidden) { posDrawn = ""; return; }
+  el.style.background = POS_BACKGROUND[p.background] ?? "#000000";
+  const areas = applyLedAreaDepth(ledAreas ?? [], areaDepth?.topBottom, areaDepth?.leftRight);
+  const step = () => {
+    const ids = posTestIndices(p, areas.length, Date.now() + clockOffset);
+    const key = ids.join() + p.color + areas.length + JSON.stringify(areaDepth);
+    if (key !== posDrawn) {
+      posDrawn = key;
+      el.innerHTML = ids.map((i) => {
+        const [x1, x2, y1, y2] = areas[i];
+        return `<div class="mark" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;background:${p.color}"></div>`;
+      }).join("");
+    }
+    if (p.mode === "run") posFrame = requestAnimationFrame(step);
+  };
+  step();
+}
+
 function renderDebug() {
   const o = state.overlays ?? {};
   const bb = debug?.ok ? debug.blackborder : null;
@@ -261,6 +294,7 @@ function render() {
   renderGrayTest();
   renderDepthTest();
   renderFracTest();
+  renderPosTest();
   renderBars();
   // automatic: show the hint while no phone is connected
   connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle;
@@ -292,6 +326,7 @@ function connectEvents() {
     if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
     const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || JSON.stringify(msg.depthTest) !== JSON.stringify(state.depthTest)
       || JSON.stringify(msg.fracTest) !== JSON.stringify(state.fracTest)
+      || JSON.stringify(msg.posTest) !== JSON.stringify(state.posTest)
       || msg.color !== state.color || msg.colorActive !== state.colorActive;
     state = msg;
     if (grayChanged) render();
@@ -305,8 +340,11 @@ function connectEvents() {
 
 async function loadLedAreas() {
   try {
-    ledAreas = await (await fetch("/api/hyperion/leds")).json();
+    const next = await (await fetch("/api/hyperion/leds")).json();
+    if (JSON.stringify(next) === JSON.stringify(ledAreas)) return;
+    ledAreas = next;
     renderDebug();
+    renderPosTest();
   } catch { /* without the layout only the status box is shown */ }
 }
 
@@ -316,10 +354,12 @@ async function loadAreaDepth() {
   try {
     const color = await (await fetch("/api/hyperion/color")).json();
     const next = color.ledAreaDepth ?? null;
-    if (JSON.stringify(next) !== JSON.stringify(areaDepth)) { areaDepth = next; renderDebug(); }
+    if (JSON.stringify(next) !== JSON.stringify(areaDepth)) { areaDepth = next; renderDebug(); renderPosTest(); }
   } catch { /* the layout areas are drawn then */ }
 }
-setInterval(() => { if (state.overlays?.dpTv || state.overlays?.gsTv) loadAreaDepth(); }, 3000);
+setInterval(() => { if (state.overlays?.dpTv || state.overlays?.gsTv || state.posTest?.active) loadAreaDepth(); }, 3000);
+// the layout can change while the position test runs (e.g. a new LED count), so it is read again
+setInterval(() => { if (state.posTest?.active) loadLedAreas(); }, 10000);
 
 loadQr();
 loadLedAreas();
