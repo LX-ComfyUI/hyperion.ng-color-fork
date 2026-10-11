@@ -103,3 +103,8 @@ QString Process::skipBootSequenceMarkerPath()
 {
 	return QDir::tempPath() + "/hyperion-skip-bootsequence";
 }
+
+QString Process::usbResetMarkerPath()
+{
+	return QDir::tempPath() + "/hyperion-usbreset-pending";
+}

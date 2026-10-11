@@ -15,6 +15,9 @@
 #include <QByteArray>
 #include <QMap>
 #include <QMetaType>
+#include <QDir>
+#include <QFileInfo>
+#include <QElapsedTimer>
 
 #include "utils/Logger.h"
 #include "db/SettingsTable.h"
@@ -30,6 +33,7 @@
 #include "utils/global_defines.h"
 #include <utils/GlobalSignals.h>
 #include <utils/ThreadUtils.h>
+#include <utils/Process.h>
 
 #include <HyperionConfig.h> // Required to determine the cmake options
 
@@ -88,6 +92,106 @@
 namespace {
 	// The following line ensures that the GlobalSignals singleton is created when the library is loaded
 	[[maybe_unused]] const auto ensureGlobalSignalsInitialized = GlobalSignals::getInstance();
+
+	QString readSysfsValue(const QString& path)
+	{
+		QFile file(path);
+		if (!file.open(QIODevice::ReadOnly))
+		{
+			return {};
+		}
+		return QString::fromLatin1(file.readAll()).trimmed();
+	}
+
+	// Walks from a /sys/class/video4linux/videoN entry up to its USB device
+	// (the directory carrying idVendor/busnum). Empty if it is not on USB.
+	QString usbDeviceDirForVideoNode(const QString& videoNodeName)
+	{
+		QDir dir(QFileInfo("/sys/class/video4linux/" + videoNodeName + "/device").canonicalFilePath());
+		if (dir.path().isEmpty() || dir.path() == ".")
+		{
+			return {};
+		}
+		do
+		{
+			if (QFile::exists(dir.filePath("idVendor")) && QFile::exists(dir.filePath("busnum")))
+			{
+				return dir.path();
+			}
+		} while (dir.cdUp() && dir.path() != "/sys/devices");
+		return {};
+	}
+
+	// USB device directory behind the configured V4L2 device path; for "auto" or a
+	// path that does not exist, the first USB video device.
+	QString usbDeviceDirForVideoDevice(const QString& devicePath)
+	{
+		const QString nodePath = QFileInfo(devicePath).canonicalFilePath();
+		if (nodePath.startsWith("/dev/video"))
+		{
+			const QString usbDir = usbDeviceDirForVideoNode(QFileInfo(nodePath).fileName());
+			if (!usbDir.isEmpty())
+			{
+				return usbDir;
+			}
+		}
+
+		const QStringList nodes = QDir("/sys/class/video4linux").entryList({ "video*" }, QDir::Dirs | QDir::System, QDir::Name);
+		for (const QString& node : nodes)
+		{
+			const QString usbDir = usbDeviceDirForVideoNode(node);
+			if (!usbDir.isEmpty())
+			{
+				return usbDir;
+			}
+		}
+		return {};
+	}
+
+	// Consumes the marker of the "USB reset + restart" event and resets the capture
+	// card's USB device. Runs before the video grabber opens the device, so no
+	// process holds the node and the kernel re-creates it under the same name.
+	void resetVideoCaptureUsbDeviceIfRequested(const QSharedPointer<Logger>& log, const QString& devicePath)
+	{
+		if (!QFile::remove(Process::usbResetMarkerPath()))
+		{
+			return;
+		}
+
+		const QString usbDir = usbDeviceDirForVideoDevice(devicePath);
+		if (usbDir.isEmpty())
+		{
+			Warning(log, "No USB capture device found for '%s' - skipping USB reset", QSTRING_CSTR(devicePath));
+			return;
+		}
+
+		const QString busDev = QString("%1/%2")
+			.arg(readSysfsValue(usbDir + "/busnum").toInt(), 3, 10, QChar('0'))
+			.arg(readSysfsValue(usbDir + "/devnum").toInt(), 3, 10, QChar('0'));
+		Info(log, "Resetting USB capture device %s:%s (%s, bus/dev %s)",
+			QSTRING_CSTR(readSysfsValue(usbDir + "/idVendor")),
+			QSTRING_CSTR(readSysfsValue(usbDir + "/idProduct")),
+			QSTRING_CSTR(readSysfsValue(usbDir + "/product")),
+			QSTRING_CSTR(busDev));
+		// The device node is root:root, hence sudo (alexo has NOPASSWD:ALL)
+		Process::command_exec("sudo -n usbreset " + busDev);
+
+		// The UVC driver re-probes and udev re-creates the node shortly after the reset
+		QElapsedTimer timer;
+		timer.start();
+		while (timer.elapsed() < 5000)
+		{
+			const QString nodePath = QFileInfo(devicePath).canonicalFilePath();
+			if (nodePath.startsWith("/dev/video") && QFileInfo(nodePath).isReadable()
+				&& usbDeviceDirForVideoNode(QFileInfo(nodePath).fileName()) == usbDir)
+			{
+				Info(log, "Capture device '%s' is back after %lld ms", QSTRING_CSTR(devicePath), timer.elapsed());
+				return;
+			}
+			QThread::msleep(100);
+		}
+		Warning(log, "Capture device '%s' did not come back within 5 s after the USB reset", QSTRING_CSTR(devicePath));
+	}
 }
 
 HyperionDaemon* HyperionDaemon::daemon = nullptr;
@@ -639,6 +743,7 @@ void HyperionDaemon::startGrabberServices()
 	handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
 
 	// start video capture (v4l2 && media foundation)
+	resetVideoCaptureUsbDeviceIfRequested(_log, getSetting(settings::V4L2).object().value("device").toString());
 	handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
 
 	// start audio capture

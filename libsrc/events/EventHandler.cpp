@@ -2,6 +2,7 @@
 
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QFile>
 
 #include <utils/Logger.h>
 #include <utils/Process.h>
@@ -206,11 +207,13 @@ void EventHandler::handleEvent(Event event)
 
 	case Event::UsbResetAndRestart:
 		emit signalEvent(Event::UsbResetAndRestart);
-		// USB3.0 Capture (MacroSilicon 534d:2109) can wedge and start delivering a
-		// flat no-signal frame; a USB reset clears it without a physical replug.
-		// The device node is root:root, hence sudo (alexo has NOPASSWD:ALL).
-		Info(_log, "Resetting USB capture device 534d:2109 before restart");
-		Process::command_exec("sudo -n usbreset 534d:2109");
+		// A USB capture card can wedge and start delivering a flat no-signal
+		// frame; a USB reset clears it without a physical replug. The reset itself
+		// runs in the restarted process (see HyperionDaemon::startGrabberServices):
+		// resetting while this process still holds the video node makes the kernel
+		// re-create it under a new number (/dev/video0 -> /dev/video1).
+		Info(_log, "USB reset of the capture device requested - runs after restart");
+		QFile(Process::usbResetMarkerPath()).open(QIODevice::WriteOnly);
 		Process::restartHyperion(12);
 		break;
 

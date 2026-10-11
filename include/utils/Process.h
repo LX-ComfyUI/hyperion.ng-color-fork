@@ -14,4 +14,9 @@ namespace Process
 	// checks this on startup to tell a restart apart from a real cold boot,
 	// e.g. to skip the foreground boot effect only on restarts.
 	QString skipBootSequenceMarkerPath();
+
+	// Marker file the "USB reset + restart" event touches before restarting. The
+	// restarted process consumes it and resets the capture card's USB device
+	// before opening the video grabber.
+	QString usbResetMarkerPath();
 }
