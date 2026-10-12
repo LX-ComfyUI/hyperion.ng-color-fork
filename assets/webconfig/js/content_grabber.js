@@ -887,7 +887,10 @@ $(document).ready(function () {
       createHint("intro", $.i18n('conf_grabber_fg_intro'), "editor_container_screengrabber");
     }
     if (videoGrabberAvailable) {
-      createHint("intro", $.i18n('conf_grabber_v4l_intro'), "editor_container_videograbber");
+      // Fork-Erweiterung: Hinweis auf den Grabber-Test der TV-Testseite (Port 8093)
+      const testPageBase = "http://" + globalThis.location.hostname + ":8093";
+      const testPageLink = (path) => '<a href="' + testPageBase + path + '" target="_blank" rel="noopener">' + testPageBase + path + '</a>';
+      createHint("intro", $.i18n('conf_grabber_v4l_intro') + '<br><br>' + $.i18n('conf_grabber_v4l_testpage', testPageLink('/tv'), testPageLink('/')), "editor_container_videograbber");
     }
     if (audioGrabberAvailable) {
       createHint("intro", $.i18n('conf_grabber_audio_intro'), "editor_container_audiograbber");
