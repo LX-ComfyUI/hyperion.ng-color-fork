@@ -27,6 +27,7 @@
   "conf_cec_events_intro": "Einstellungen für verschiedene CEC-Protokoll-Ereignisse (Consumer Electronics Control), die Hyperion verarbeiten kann",
   "conf_colors_blackborder_intro": "Ignoriere schwarze Balken, jeder Modus nutzt einen anderen Algorithmus, um diese zu erkennen. Erhöhe die Schwelle, sollte es nicht funktionieren.",
   "conf_colors_color_intro": "Erstelle Kalibrierungsprofile die einzelnen Komponenten zugewiesen werden können. Passe dabei Farben, Gamma, Helligkeit, Kompensation und mehr an.",
+  "conf_colors_color_testpage": "Zum Einstellen gibt es die TV-Testseite: Öffne auf dem TV-Gerät (z. B. im Browser der Shield) $1. Dort erscheinen Testfarben, Graustufen und Testbilder, die Hyperion über den Video-Grabber liest. Gesteuert wird sie vom Smartphone oder PC über $2. Dort wählst du Testfarben und Tests aus, überträgst Farben nach Hyperion und sicherst die Konfiguration als Backup.",
   "conf_colors_smoothing_intro": "Glätte den Farbverlauf und Helligkeitsänderungen um nicht von schnellen Übergängen abgelenkt zu werden.",
   "conf_effect_bgeff_intro": "Definiere einen Hintergrund Effekt/Farbe. Dieser wird aktiv, wenn Hyperion sich im Leerlauf befindet. Wird immer mit Priorität 255 gestartet.",
   "conf_effect_fgeff_intro": "Definiere einen Start Effekt/Farbe, dieser wird angezeigt, wenn Hyperion startet für die angegebene Dauer.",
