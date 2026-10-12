@@ -181,6 +181,20 @@
   details.more[open] summary::before { content: "▾ "; }
   .collapse { margin-top: 14px; width: 100%; }
 
+  /* cards fold open and closed: the title is the switch, a button at the bottom closes it again */
+  .card > h2 { margin: 0; }
+  .card-toggle { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer;
+                 font-size: 16px; font-weight: 700; -webkit-tap-highlight-color: transparent; }
+  .card-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+  .card-toggle .ttl { flex: 1; min-width: 0; }
+  .card-toggle .badge { flex: none; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-text); }
+  .card-toggle svg { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+  .card.closed .card-toggle svg { transform: rotate(-90deg); }
+  .card-body { margin-top: 10px; }
+  .card.closed .card-body { display: none; }
+  .card-close { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 16px; padding: 9px; font-size: 14px; color: var(--muted); }
+  .card-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
   .sub { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line); }
   .status { font-size: 14px; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 10px 0 0; font-variant-numeric: tabular-nums; }
   .note { font-size: 13px; color: var(--muted); margin: 8px 0 0; min-height: 1.2em; }
@@ -261,7 +275,7 @@
     </div>
   </header>
 
-  <section class="card">
+  <section class="card" id="card-intro">
     <h2>So funktioniert's</h2>
     <p class="help" style="margin:0">Auf dem TV-Gerät (TV-Stick, Browser am Fernseher) öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Backup</b></a> (ganz unten) sicherst du die komplette Hyperion-Konfiguration auf dem Pi. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf das Wort <b>Backup</b> springt dorthin.</p>
@@ -356,7 +370,7 @@
     <details class="more" id="more-bars">
       <summary>Einzeln einstellen (oben, unten, links, rechts)</summary>
       <div id="bars-single" style="margin-top:12px"></div>
-      <button class="collapse" id="collapse-bars">▴ Einklappen</button>
+      <button class="collapse" id="collapse-bars">▴ Zuklappen</button>
     </details>
     <button class="wide" id="reset" style="margin-top:12px">Alle Balken auf 0 %</button>
   </section>
@@ -690,6 +704,55 @@
   </section>
 </main>
 
+<script>
+// Every card folds open and closed. On opening the page only "So funktioniert's" is open. The title
+// switches the card, the button at its bottom closes it without scrolling back up. The nodes are
+// only moved into a wrapper, so their ids and listeners stay as they are.
+(function () {
+  const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+  const UP = '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>';
+  window.setCardOpen = (card, open) => {
+    card.classList.toggle("closed", !open);
+    card.querySelector(".card-toggle")?.setAttribute("aria-expanded", String(open));
+  };
+  document.querySelectorAll("main > section.card").forEach((card) => {
+    const h2 = card.querySelector(":scope > h2");
+    if (!h2) return;
+    const body = document.createElement("div");
+    body.className = "card-body";
+    body.id = card.id + "-body";
+    while (h2.nextSibling) body.appendChild(h2.nextSibling);
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "card-toggle";
+    toggle.setAttribute("aria-controls", body.id);
+    toggle.innerHTML = `<span class="ttl"></span><span class="badge" hidden></span>${CHEVRON}`;
+    toggle.querySelector(".ttl").textContent = h2.textContent;
+    h2.textContent = "";
+    h2.appendChild(toggle);
+    toggle.addEventListener("click", () => setCardOpen(card, card.classList.contains("closed")));
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "card-close";
+    close.innerHTML = `${UP}<span>Zuklappen</span>`;
+    close.addEventListener("click", () => {
+      setCardOpen(card, false);
+      // the closed card's title comes back into view when it is above the screen now
+      if (card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    body.appendChild(close);
+    card.appendChild(body);
+    setCardOpen(card, card.id === "card-intro");
+  });
+  // links to a card (like "Backup") open it first
+  document.addEventListener("click", (ev) => {
+    const a = ev.target.closest('a[href^="#card-"]');
+    const card = a && document.querySelector(a.getAttribute("href"));
+    if (card) setCardOpen(card, true);
+  });
+})();
+</script>
+
 <!-- grabber preview: closed = button, open = movable panel (docks to the bottom edge by default) -->
 <button class="pv-fab" id="pv-fab" aria-label="Grabber-Vorschau öffnen" title="Grabber-Vorschau">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -859,6 +922,26 @@ function renderState() {
   renderOverlayChecks();
   renderGrabberRun();
   renderGrabberColors();
+  renderCardBadges();
+}
+
+// a closed card still shows when its test is on the TV right now
+function renderCardBadges() {
+  const bars = state.bars ?? {};
+  const badges = {
+    "card-gx": state.grabberRun?.running && "läuft",
+    "card-bars": EDGES.some((e) => bars[e] > 0) && "aktiv",
+    "card-gs": state.grayTest?.active && "läuft",
+    "card-dt": state.depthTest?.active && "läuft",
+    "card-ft": state.fracTest?.active && "läuft",
+    "card-lp": state.posTest?.active && "läuft",
+  };
+  for (const [id, text] of Object.entries(badges)) {
+    const badge = document.querySelector(`#${id} .card-toggle .badge`);
+    if (!badge) continue;
+    badge.hidden = !text;
+    badge.textContent = text || "";
+  }
 }
 
 // ---------- test colors: list ----------
@@ -2474,6 +2557,7 @@ async function grabberTestAction(kind) {
     if (!res.ok) throw new Error(out.error);
     state = { ...state, grabberRun: out };
     renderGrabberRun();
+    renderCardBadges();
   } catch (e) {
     showError(e instanceof TypeError ? "Die Testseite auf dem Pi ist nicht erreichbar." : e.message);
   }
@@ -2590,6 +2674,7 @@ async function init() {
   loadBackups();
   renderGrabberRun();
   renderGrabberColors();
+  renderCardBadges();
   loadGrabberReport();
   setPanel(store.get("tvtest-preview") === "1");
   // role=phone tells the TV to hide its QR code
