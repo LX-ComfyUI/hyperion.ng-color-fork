@@ -29,7 +29,7 @@
   "about_version": "Version",
   "conf_colors_blackborder_intro": "Skip black bars wherever they are. Each mode use another detection algorithm which is tuned for special situations. Higher the threshold if it doesn't work for you.",
   "conf_colors_color_intro": "Create one or more calibration profiles, adjust each color, brightness, linearization and more.",
-  "conf_colors_color_testpage": "For tuning there is the TV test page: open $1 on the TV device (e.g. in the Shield's browser). It shows test colors, gray levels and test patterns that Hyperion reads through the video grabber. Control it from your smartphone or PC at $2. There you pick test colors and tests, send colors to Hyperion and back up the configuration.",
+  "conf_colors_color_testpage": "For tuning there is the TV test page: open $1 in the browser of the device that feeds the TV (e.g. a TV stick or streaming box). It shows test colors, gray levels and test patterns that Hyperion reads through the video grabber. Control it from your smartphone or PC at $2. There you pick test colors and tests, send colors to Hyperion and back up the configuration.",
   "conf_colors_smoothing_intro": "Smoothing flattens color/brightness changes to reduce annoying distraction.",
   "conf_effect_bgeff_intro": "Define a background effect/color, which is shown during Hyperion \"idle\". Starts always with priority channel 255.",
   "conf_effect_fgeff_intro": "Define a boot-effect or color, which is shown during Hyperion startup for the defined duration.",
