@@ -877,7 +877,7 @@
   const side = document.createElement("nav");
   side.id = "side";
   side.setAttribute("aria-label", "Navigation");
-  side.innerHTML = '<div class="side-head"></div><div class="side-tools"></div><ul class="side-list"></ul><div class="side-foot"></div>';
+  side.innerHTML = '<div class="side-head"></div><div class="side-tools"></div><ul class="side-list"></ul>';
   document.body.appendChild(side);
 
   const cards = [...document.querySelectorAll("main > section.card")];
@@ -919,8 +919,7 @@
     document.documentElement.classList.toggle("has-side", on);
     if (on) {
       side.querySelector(".side-head").append(titles);
-      side.querySelector(".side-tools").append(lang, theme, preview);
-      side.querySelector(".side-foot").append(foldAll);
+      side.querySelector(".side-tools").append(lang, theme, foldAll, preview);
     } else {
       header.prepend(titles);
       tools.append(lang, foldAll, theme);
