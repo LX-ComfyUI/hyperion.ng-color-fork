@@ -286,8 +286,8 @@
 
   <section class="card" id="card-intro">
     <h2>So funktioniert's</h2>
-    <p class="help" style="margin:0">Auf dem TV-Gerät (TV-Stick, Browser am Fernseher) öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
-    <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Backup</b></a> (ganz unten) sicherst du die komplette Hyperion-Konfiguration auf dem Pi. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf das Wort <b>Backup</b> springt dorthin.</p>
+    <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
+    <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Backup</b></a> (ganz unten) sicherst du die komplette Hyperion-Konfiguration auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf das Wort <b>Backup</b> springt dorthin.</p>
   </section>
 
   <!-- ===== test colors ===== -->
@@ -351,7 +351,7 @@
   <section class="card" id="card-gx">
     <h2>Grabber-Test</h2>
     <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
-    <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2 Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Pi weiter.</p>
+    <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2 Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
     <div class="status" id="gx-progress" hidden></div>
     <p class="warn" id="gx-error" hidden></p>
     <p class="note" id="gx-note"></p>
@@ -642,7 +642,7 @@
   <!-- ===== Hyperion fractional LED mean ===== -->
   <section class="card" id="card-fmd">
     <h2>LED-Mittelwert mit Nachkommastellen (Hyperion)</h2>
-    <p class="help">Jede LED bekommt den Durchschnitt der Bildpunkte ihres Bereichs. Mit Haken geht dieser Wert samt Nachkommastellen in die 16-Bit-Ausgabe der HD108. Ohne Haken wird er auf eine ganze Zahl abgeschnitten. Die Einstellung wird direkt in Hyperion gespeichert und wirkt sofort. Zum Vergleichen beim Test oben einfach an- und ausschalten.</p>
+    <p class="help">Jede LED bekommt den Durchschnitt der Bildpunkte ihres Bereichs. Mit Haken geht dieser Wert samt Nachkommastellen in die 16-Bit-Ausgabe (nur bei LEDs mit 16 Bit pro Farbe, z. B. HD108). Ohne Haken wird er auf eine ganze Zahl abgeschnitten. Die Einstellung wird direkt in Hyperion gespeichert und wirkt sofort. Zum Vergleichen beim Test oben einfach an- und ausschalten.</p>
     <div class="status" id="fm-status">Warte auf Daten von Hyperion …</div>
     <label class="check"><input type="checkbox" id="fm-enabled"><span>Mittelwert mit Nachkommastellen</span></label>
     <p class="note" id="fm-cfg-note"></p>
@@ -704,7 +704,7 @@
   <!-- ===== backup ===== -->
   <section class="card" id="card-backup">
     <h2>Backup</h2>
-    <p class="help">Sichert die komplette Hyperion-Konfiguration (LEDs, Farben, Grabber) auf dem Pi. Mit <b>Wiederherstellen</b> kehrst du zu einem gesicherten Stand zurück. Dabei wird vorher automatisch der aktuelle Stand gesichert, und Hyperion startet neu.</p>
+    <p class="help">Sichert die komplette Hyperion-Konfiguration (LEDs, Farben, Grabber) auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du zu einem gesicherten Stand zurück. Dabei wird vorher automatisch der aktuelle Stand gesichert, und Hyperion startet neu.</p>
     <div id="conn">Verbindung zu Hyperion wird geprüft …</div>
     <button class="wide" id="connect" hidden>Mit Hyperion verbinden</button>
     <button class="wide primary" id="backup">Backup erstellen</button>
@@ -938,7 +938,7 @@ async function send(patch) {
     return body;
   } catch (e) {
     // fetch itself fails with a browser-specific English text when the Pi is not reachable
-    showError("Nicht gespeichert: " + (e instanceof TypeError ? "Die Testseite auf dem Pi ist nicht erreichbar." : e.message));
+    showError("Nicht gespeichert: " + (e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message));
     return null;
   } finally {
     pendingSends--;
@@ -2619,7 +2619,7 @@ async function grabberTestAction(kind) {
     renderGrabberRun();
     renderCardBadges();
   } catch (e) {
-    showError(e instanceof TypeError ? "Die Testseite auf dem Pi ist nicht erreichbar." : e.message);
+    showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
   }
 }
 $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
