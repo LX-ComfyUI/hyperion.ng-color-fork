@@ -181,7 +181,6 @@
   details.more summary::-webkit-details-marker { display: none; }
   details.more summary::before { content: "▸ "; }
   details.more[open] summary::before { content: "▾ "; }
-  .collapse { margin-top: 14px; width: 100%; }
 
   /* cards fold open and closed: the title is the switch, a button at the bottom closes it again */
   .card > h2 { margin: 0; }
@@ -194,8 +193,10 @@
   .card.closed .card-toggle svg { transform: rotate(-90deg); }
   .card-body { margin-top: 10px; }
   .card.closed .card-body { display: none; }
-  .card-close { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 16px; padding: 9px; font-size: 14px; color: var(--muted); }
-  .card-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  /* only the arrow, no frame and no text (the label is in title/aria-label) */
+  .card-close { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 8px; padding: 2px 0; border: none; background: none; color: var(--muted); }
+  .card-close:hover { color: var(--text); }
+  .card-close svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
   .sub { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line); }
   .status { font-size: 14px; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 10px 0 0; font-variant-numeric: tabular-nums; }
@@ -379,7 +380,7 @@
     <details class="more" id="more-bars">
       <summary>Einzeln einstellen (oben, unten, links, rechts)</summary>
       <div id="bars-single" style="margin-top:12px"></div>
-      <button class="collapse" id="collapse-bars">▴ Zuklappen</button>
+      <button type="button" class="card-close" id="collapse-bars" title="Zuklappen" aria-label="Zuklappen"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg></button>
     </details>
     <button class="wide" id="reset" style="margin-top:12px">Alle Balken auf 0 %</button>
   </section>
@@ -764,7 +765,9 @@
     const close = document.createElement("button");
     close.type = "button";
     close.className = "card-close";
-    close.innerHTML = `${UP}<span>Zuklappen</span>`;
+    close.innerHTML = UP;
+    close.title = "Zuklappen";
+    close.setAttribute("aria-label", "Zuklappen");
     close.addEventListener("click", () => {
       setCardOpen(card, false);
       // the closed card's title comes back into view when it is above the screen now
