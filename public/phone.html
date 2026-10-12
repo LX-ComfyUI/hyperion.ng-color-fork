@@ -125,7 +125,7 @@
   .col { min-width: 0; }
   /* the row tools stay clear of the floating preview button's corner, which floats on top of
      whatever scrolls underneath it and would otherwise hide/steal taps from the rightmost icon */
-  #crow-presets, #crow-custom { padding-right: 60px; box-sizing: border-box; }
+  #crow-presets, #crow-custom, #gx-colors { padding-right: 60px; box-sizing: border-box; }
   .hy-col { background: var(--bg); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
   .rgbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
   .rgbrow .rgbname { font-size: 14px; min-width: 64px; }
@@ -239,6 +239,12 @@
   #conn { font-size: 14px; margin-bottom: 12px; }
   #connect { margin-bottom: 12px; }
   #status { min-height: 1.4em; font-size: 14px; margin-top: 8px; color: var(--muted); }
+
+  /* grabber test: progress of the running test */
+  .gx-bar { height: 6px; border-radius: 3px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .gx-bar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+  #gx-colors { margin-top: 4px; }
+  #gx-report { margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -318,6 +324,29 @@
   </section>
 
   <!-- ===== black bars test ===== -->
+  <!-- ===== grabber test ===== -->
+  <section class="card" id="card-gx">
+    <h2>Grabber-Test</h2>
+    <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
+    <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 1,5 Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Pi weiter.</p>
+    <div class="status" id="gx-progress" hidden></div>
+    <p class="warn" id="gx-error" hidden></p>
+    <p class="note" id="gx-note"></p>
+    <div class="seg full gt-controls" role="group" aria-label="Grundtest">
+      <button type="button" id="gx-basic"></button>
+    </div>
+
+    <h3>Eigene Farben</h3>
+    <p class="help">Lege Farben an, die du zusätzlich messen willst, zum Beispiel typische Farben aus Filmen. Sie werden nacheinander gemessen und getrennt vom Grundtest gespeichert.</p>
+    <div id="gx-colors"></div>
+    <div class="seg full gt-controls" role="group" aria-label="Eigene Farben messen">
+      <button type="button" id="gx-custom"></button>
+    </div>
+
+    <h3>Ergebnis</h3>
+    <div id="gx-report">Lade Ergebnis …</div>
+  </section>
+
   <section class="card" id="card-bars">
     <h2>Schwarze Balken Test</h2>
     <p class="help">Simuliert Balken wie bei Kinofilmen. Damit testest du die Schwarzbalken-Erkennung von Hyperion: Die LEDs am Rand sollten den Balken ignorieren und weiter die Bildfarbe zeigen. Werte in Prozent der Bildhöhe bzw.&nbsp;‑breite.</p>
@@ -690,6 +719,7 @@
 </section>
 
 <script src="/static/graycurve-graph.js"></script>
+<script src="/static/grabbertest-report.js"></script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, ledSegments, posTestIndices, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 
@@ -827,6 +857,8 @@ function renderState() {
   renderFracTest();
   renderPosTest();
   renderOverlayChecks();
+  renderGrabberRun();
+  renderGrabberColors();
 }
 
 // ---------- test colors: list ----------
@@ -2382,6 +2414,158 @@ $("backup").addEventListener("click", async () => {
   }
 });
 
+// ---------- grabber test ----------
+
+let gxOpenPicker = null;   // the color input of an open picker in the own colors, its row stays
+let gxListKey = "";
+let gxFinishedAt = null;   // a finished run loads the stored result again
+
+const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+function renderGrabberRun() {
+  const run = state?.grabberRun ?? {};
+  const running = !!run.running;
+  const button = (el, kind, idle) => {
+    const mine = running && run.kind === kind;
+    el.innerHTML = mine ? `${ICON.stop}<span>Abbrechen</span>` : `${ICON.play}<span>${idle}</span>`;
+    el.classList.toggle("running", mine);
+    return mine;
+  };
+  button($("gx-basic"), "basic", "Grundtest starten");
+  button($("gx-custom"), "custom", "Eigene Farben messen");
+  $("gx-basic").disabled = running && run.kind !== "basic";
+  $("gx-custom").disabled = running ? run.kind !== "custom" : !(state.grabberColors ?? []).length;
+
+  const progress = $("gx-progress");
+  progress.hidden = !running;
+  if (running) {
+    const pct = run.total ? Math.round((100 * run.index) / run.total) : 0;
+    progress.innerHTML = `<div class="row"><span class="grayswatch" style="background:${run.color ?? "#000000"}"></span>`
+      + `<span>${run.color ? `Schritt ${run.index + 1} von ${run.total}${run.label ? " · " + escHtml(run.label) : ""}` : "Test startet …"}</span></div>`
+      + `<div class="gx-bar"><span style="width:${pct}%"></span></div>`;
+  }
+  $("gx-error").hidden = running || !run.error;
+  $("gx-error").textContent = run.error ? "Test abgebrochen: " + run.error : "";
+  $("gx-note").textContent = !running && run.aborted ? "Test abgebrochen, nichts gespeichert." : "";
+  if (run.finishedAt && run.finishedAt !== gxFinishedAt) {
+    const first = gxFinishedAt === null;
+    gxFinishedAt = run.finishedAt;
+    if (!first) loadGrabberReport();
+  }
+}
+
+async function loadGrabberReport() {
+  try {
+    const res = await fetch("/api/grabbertest");
+    const r = await res.json();
+    if (!res.ok) throw new Error(r.error);
+    GrabberTestReport.render($("gx-report"), { basic: r.basic, custom: r.custom, current: r.current, lang: "de" });
+  } catch (e) {
+    $("gx-report").textContent = "Ergebnis nicht lesbar: " + e.message;
+  }
+}
+
+async function grabberTestAction(kind) {
+  const run = state?.grabberRun ?? {};
+  const body = run.running ? { action: "stop" } : { action: "start", kind };
+  try {
+    const res = await fetch("/api/grabbertest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error);
+    state = { ...state, grabberRun: out };
+    renderGrabberRun();
+  } catch (e) {
+    showError(e instanceof TypeError ? "Die Testseite auf dem Pi ist nicht erreichbar." : e.message);
+  }
+}
+$("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
+$("gx-custom").addEventListener("click", () => grabberTestAction("custom"));
+
+// a picker for an own color (row) or a new one (no row). Like the test colors, every change is
+// saved right away (iOS fires change for every move) and the list is not rebuilt while it is open.
+function gxPicker(ariaLabel, row, chip, small) {
+  const input = document.createElement("input");
+  input.type = "color";
+  input.value = row ? row.dataset.color : "#808080";
+  input.setAttribute("aria-label", ariaLabel);
+  let from = row ? row.dataset.color : null;  // the list entry this picker edits, null = not added yet
+  let pending = null;
+  let queue = Promise.resolve();
+  const show = (color) => {
+    if (chip) chip.style.background = color;
+    if (small) small.textContent = rgbText(hexToRgb(color));
+  };
+  const save = (color) => {
+    pending = color;
+    queue = queue.then(async () => {
+      if (pending === null) return;
+      const to = pending;
+      pending = null;
+      if (to === from) return;
+      const body = await send(from ? { replaceGrabberColor: { from, to } } : { addGrabberColor: to });
+      if (body) from = to;
+    });
+  };
+  const open = () => { gxOpenPicker = input; };
+  input.addEventListener("pointerdown", open);
+  input.addEventListener("focus", open);
+  input.addEventListener("click", open);
+  input.addEventListener("input", () => { open(); show(input.value.toLowerCase()); });
+  input.addEventListener("change", () => { open(); show(input.value.toLowerCase()); save(input.value.toLowerCase()); });
+  input.addEventListener("blur", () => {
+    if (gxOpenPicker === input) gxOpenPicker = null;
+    queue.then(() => { gxListKey = ""; renderGrabberColors(); });
+  });
+  return input;
+}
+
+function gxRow(color) {
+  const row = document.createElement("div");
+  row.className = color ? "crow custom" : "crow add";
+  if (color) row.dataset.color = color;
+  const main = document.createElement("div");
+  main.className = "crow-main";
+  main.title = color ? "Farbe bearbeiten" : "Neue Farbe";
+  const chip = document.createElement("span");
+  chip.className = "chip";
+  const label = document.createElement("span");
+  label.className = "cname";
+  const b = document.createElement("b");
+  const small = document.createElement("small");
+  if (color) {
+    chip.style.background = color;
+    b.textContent = color.toUpperCase();
+    small.textContent = rgbText(hexToRgb(color));
+  } else {
+    chip.textContent = "+";
+    chip.setAttribute("aria-hidden", "true");
+    b.textContent = "Neue Farbe";
+    small.textContent = "Farbwähler öffnen";
+  }
+  label.append(b, small);
+  main.append(chip, label, gxPicker(color ? `${color.toUpperCase()} bearbeiten` : "Neue Farbe", color ? row : null, chip, small));
+  row.appendChild(main);
+  if (color) {
+    const tools = document.createElement("span");
+    tools.className = "tools";
+    tools.appendChild(makeTool("trash", `${color.toUpperCase()} löschen`, async () => { if (await send({ removeGrabberColor: row.dataset.color })) renderGrabberColors(); }, "trash"));
+    row.appendChild(tools);
+  }
+  return row;
+}
+
+function renderGrabberColors() {
+  const colors = state?.grabberColors ?? [];
+  const key = JSON.stringify(colors);
+  // never remove the input of an open picker, iOS would close it
+  if (key === gxListKey || gxOpenPicker?.isConnected) return;
+  gxListKey = key;
+  const box = $("gx-colors");
+  box.innerHTML = "";
+  colors.forEach((c) => box.appendChild(gxRow(c)));
+  box.appendChild(gxRow(null));
+}
+
 // ---------- startup ----------
 
 $("tv-url").textContent = location.host + "/tv";
@@ -2404,6 +2588,9 @@ async function init() {
   loadColorConfig();
   loadLedAreas();
   loadBackups();
+  renderGrabberRun();
+  renderGrabberColors();
+  loadGrabberReport();
   setPanel(store.get("tvtest-preview") === "1");
   // role=phone tells the TV to hide its QR code
   const es = new EventSource("/api/events?role=phone");

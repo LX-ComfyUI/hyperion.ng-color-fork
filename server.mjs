@@ -9,7 +9,8 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { createRequire } from "node:module";
 
-const qrcode = createRequire(import.meta.url)("qrcode-generator");
+const require = createRequire(import.meta.url);
+const qrcode = require("qrcode-generator");
 
 const PORT = Number(process.env.TVTEST_PORT ?? 8093);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -51,6 +52,8 @@ const DEFAULT_STATE = {
   // LED position test pattern: a marker exactly in the sampling area of LED `index` (width LEDs
   // around it) on `background`. run: the marker moves on by speed LEDs per second from index
   posTest: { active: false, mode: "single", index: 0, width: 1, speed: 10, color: "#ffffff", background: "black", startedAt: 0 },
+  // own colors of the grabber test, measured one after the other
+  grabberColors: [],
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
   overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true, dpTv: false, dpPreview: true },
 };
@@ -156,6 +159,10 @@ function sanitize(input) {
         .map(([id, c]) => [id, c.toLowerCase()]),
     );
   }
+  if (Array.isArray(input.grabberColors)) {
+    const colors = input.grabberColors.filter((c) => typeof c === "string" && HEX_COLOR.test(c)).map((c) => c.toLowerCase());
+    out.grabberColors = [...new Set(colors)].slice(0, MAX_CUSTOM_COLORS);
+  }
   if (Array.isArray(input.customColors)) {
     const colors = input.customColors.filter((c) => typeof c === "string" && HEX_COLOR.test(c)).map((c) => c.toLowerCase());
     out.customColors = [...new Set(colors)].slice(0, MAX_CUSTOM_COLORS);
@@ -180,7 +187,7 @@ function phoneCount() {
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
 function broadcast() {
   // serverNow lets the TV time the gray test against the Pi's clock, not its own
-  const payload = `data: ${JSON.stringify({ ...state, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
+  const payload = `data: ${JSON.stringify({ ...state, grabberRun, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
   for (const res of clients.keys()) res.write(payload);
 }
 
@@ -460,6 +467,154 @@ setInterval(() => {
 
 connectMonitor();
 
+// --- Grabber test: the TV shows known colors full screen, Hyperion measures the decoded grabber
+// frames (fork command "grabbertest", before any calibration), the result goes to Hyperion's global
+// setting "grabberTest" and is shown in the WebUI (Aufnahme Hardware). The server runs the test, so
+// it goes on when the phone's screen turns off.
+
+require("./public/grabbertest-report.js");
+const Report = globalThis.GrabberTestReport;
+
+const GT_POLL_MS = 100;
+const GT_MIN_WAIT_MS = 600;     // TV page, HDMI and grabber need a moment for the new color
+const GT_STABLE_POLLS = 4;      // frame means that agree in a row
+const GT_STABLE_DELTA = 0.4;
+const GT_MAX_SETTLE_MS = 6000;  // measured anyway after this, marked as unstable
+const GT_MEASURE_MS = 1000;     // averaged over this long
+const GT_MAX_AGE_MS = 1000;     // newest grabber frame must be younger
+
+// transient, not in state.json: what the TV shows and how far the test is
+let grabberRun = { running: false, kind: null, index: 0, total: 0, color: null, label: null, error: null, finishedAt: 0, aborted: false };
+let grabberAbort = false;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const toHex = (rgb) => "#" + rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+const hexRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+async function probeGrabber(reset = false) {
+  if (!monitor) throw new Error("Keine Verbindung zu Hyperion");
+  const reply = await monitor.call({ command: "grabbertest", reset });
+  if (!reply.success) {
+    throw new Error(/unknown|not found|schema/i.test(reply.error ?? "") ? "Diese Hyperion-Version kann den Grabber nicht messen (Fork-Befehl „grabbertest“ fehlt)" : `Hyperion: ${reply.error ?? "Messung fehlgeschlagen"}`);
+  }
+  return reply.info;
+}
+
+function readGlobalSetting(type) {
+  const db = new DatabaseSync(HYPERION_DB, { readOnly: true });
+  try {
+    const row = db.prepare("SELECT config FROM settings WHERE type = ? AND hyperion_inst IS NULL").get(type);
+    return row ? JSON.parse(row.config) : null;
+  } finally {
+    db.close();
+  }
+}
+
+async function writeGlobalSetting(type, next) {
+  const api = await openHyperion();
+  try {
+    await loginHyperion(api);
+    const reply = await api.call({ command: "config", subcommand: "setconfig", config: { global: { settings: { [type]: next } } } });
+    if (!reply.success) {
+      const details = Array.isArray(reply.errorData) ? reply.errorData.map((e) => e.description ?? e).join("; ") : "";
+      throw new Error(`Hyperion: ${reply.error ?? "Speichern fehlgeschlagen"}${details ? ` (${details})` : ""}`);
+    }
+  } finally {
+    api.close();
+  }
+}
+
+// the grabber settings at test time; the WebUI flags the result when they change later
+function grabberSnapshot() {
+  const v = readGlobalSetting("grabberV4L2") ?? {};
+  const out = { name: String(v.available_devices ?? "").split(":")[0].trim() || null };
+  for (const k of [...Report.GRABBER_KEYS, "standard"]) if (k in v) out[k] = v[k];
+  return out;
+}
+
+function stepLabel(step) {
+  const t = Report.TEXT.de;
+  if (step.group === "custom") return step.name.toUpperCase();
+  if (step.group === "mix") return t[step.name] ?? step.name;
+  if (step.group === "black") return t.black;
+  const level = Math.max(...step.sent);
+  return `${t[step.group] ?? step.group} ${level}`;
+}
+
+function setRun(patch) {
+  grabberRun = { ...grabberRun, ...patch };
+  broadcast();
+}
+
+async function waitStable(shownAt) {
+  await sleep(GT_MIN_WAIT_MS);
+  let prev = null;
+  let stable = 0;
+  for (;;) {
+    const s = await probeGrabber(false);
+    if (s.ageMs < 0 || s.ageMs > GT_MAX_AGE_MS) throw new Error("Der Grabber liefert keine Bilder mehr");
+    const m = s.last.mean;
+    if (prev) stable = Math.max(...m.map((v, i) => Math.abs(v - prev[i]))) < GT_STABLE_DELTA ? stable + 1 : 0;
+    prev = m;
+    if (stable >= GT_STABLE_POLLS) return true;
+    if (Date.now() - shownAt > GT_MAX_SETTLE_MS) return false;
+    await sleep(GT_POLL_MS);
+  }
+}
+
+async function runGrabberTest(kind) {
+  const steps = kind === "basic"
+    ? Report.basicSteps()
+    : state.grabberColors.map((c) => ({ group: "custom", name: c, sent: hexRgb(c) }));
+  const results = [];
+  let frame = null;
+  try {
+    for (let i = 0; i < steps.length; i++) {
+      if (grabberAbort) break;
+      if (![...clients.values()].includes("tv")) throw new Error("Die TV-Seite wurde geschlossen, der Test ist abgebrochen");
+      const step = steps[i];
+      setRun({ index: i, color: toHex(step.sent), label: stepLabel(step) });
+      const settled = await waitStable(Date.now());
+      if (grabberAbort) break;
+      await probeGrabber(true);
+      await sleep(GT_MEASURE_MS);
+      const s = await probeGrabber(false);
+      if (!s.avg?.n) throw new Error("Der Grabber liefert keine Bilder mehr");
+      frame = { width: s.width, height: s.height };
+      results.push({ ...step, got: s.avg.mean, noise: s.avg.noise, spread: s.avg.spread, n: s.avg.n, ...(settled ? {} : { unstable: true }) });
+    }
+    if (grabberAbort) {
+      setRun({ running: false, color: null, aborted: true, finishedAt: Date.now() });
+      return;
+    }
+    const result = { version: 1, date: new Date().toISOString(), grabber: grabberSnapshot(), frame, steps: results };
+    // basic and own colors are kept apart, a new test replaces only its own part
+    await exclusive(async () => {
+      const current = readGlobalSetting("grabberTest") ?? { basic: {}, custom: {} };
+      await writeGlobalSetting("grabberTest", { basic: current.basic ?? {}, custom: current.custom ?? {}, [kind]: result });
+    });
+    setRun({ running: false, color: null, finishedAt: Date.now() });
+  } catch (err) {
+    setRun({ running: false, color: null, error: err.message, finishedAt: Date.now() });
+  }
+}
+
+async function startGrabberTest(kind) {
+  if (grabberRun.running) throw new Error("Der Grabber-Test läuft schon");
+  if (kind !== "basic" && kind !== "custom") throw new Error("Unbekannter Test");
+  if (kind === "custom" && !state.grabberColors.length) throw new Error("Zuerst eigene Farben anlegen");
+  if (![...clients.values()].includes("tv")) throw new Error("Die TV-Seite ist nicht geöffnet. Öffne sie zuerst auf dem Gerät, das dem TV das Bild liefert.");
+  if (!readToken()) throw new Error("Nicht mit Hyperion verbunden. Zuerst unter „Backup“ mit Hyperion verbinden.");
+  await probeGrabber(true);
+  await sleep(400);
+  const first = await probeGrabber(false);
+  if (first.ageMs < 0 || first.ageMs > GT_MAX_AGE_MS) throw new Error("Der Grabber liefert keine Bilder. Ist die USB-Aufnahme in Hyperion eingeschaltet?");
+  const total = kind === "basic" ? Report.basicSteps().length : state.grabberColors.length;
+  grabberAbort = false;
+  setRun({ running: true, kind, index: 0, total, color: null, label: null, error: null, aborted: false, startedAt: Date.now() });
+  runGrabberTest(kind);
+}
+
 // --- Hyperion settings for black-border and gray-still-image detection (instance 0) ---
 
 const BB_MODES = ["default", "classic", "osd", "letterbox"];
@@ -704,7 +859,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/tv") return serveStatic(res, "tv.html");
     if (req.method === "GET" && p.startsWith("/static/")) return serveStatic(res, p.slice("/static/".length));
 
-    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, state);
+    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun });
     if (req.method === "GET" && p === "/api/presets") return sendJson(res, 200, PRESETS);
 
     if (req.method === "GET" && p === "/api/events") {
@@ -794,6 +949,21 @@ const server = http.createServer(async (req, res) => {
           ? [...new Set(customColors.map((c) => (c === from ? to : c)))]
           : customColors;
       }
+      // own colors of the grabber test, with the same add/remove/replace operations
+      let grabberColors = state.grabberColors;
+      if (typeof patch.addGrabberColor === "string" && HEX_COLOR.test(patch.addGrabberColor)) {
+        const c = patch.addGrabberColor.toLowerCase();
+        grabberColors = [...grabberColors.filter((x) => x !== c), c];
+        if (grabberColors.length > MAX_CUSTOM_COLORS) throw new Error(`Maximal ${MAX_CUSTOM_COLORS} eigene Farben`);
+      }
+      if (typeof patch.removeGrabberColor === "string") {
+        grabberColors = grabberColors.filter((x) => x !== patch.removeGrabberColor.toLowerCase());
+      }
+      if (patch.replaceGrabberColor && HEX_COLOR.test(patch.replaceGrabberColor.to ?? "")) {
+        const from = String(patch.replaceGrabberColor.from ?? "").toLowerCase();
+        const to = patch.replaceGrabberColor.to.toLowerCase();
+        grabberColors = grabberColors.includes(from) ? [...new Set(grabberColors.map((c) => (c === from ? to : c)))] : grabberColors;
+      }
       let grayTest = { ...state.grayTest, ...(patch.grayTest ?? {}) };
       // any change of the gray test (or an explicit restart) starts its timeline again
       if (patch.grayTest || patch.grayRestart) grayTest.startedAt = Date.now();
@@ -813,10 +983,24 @@ const server = http.createServer(async (req, res) => {
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
-      state = sanitize({ color, colorActive, bars, customColors, presetColors, grayTest, depthTest, fracTest, posTest, overlays });
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, overlays });
       saveState();
       broadcast();
-      return sendJson(res, 200, state);
+      return sendJson(res, 200, { ...state, grabberRun });
+    }
+
+    // grabber test: the stored results (Hyperion's global setting), start and stop
+    if (req.method === "GET" && p === "/api/grabbertest") {
+      return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2") });
+    }
+    if (req.method === "POST" && p === "/api/grabbertest") {
+      const { action, kind } = await readBody(req);
+      if (action === "stop") {
+        grabberAbort = true;
+        return sendJson(res, 200, grabberRun);
+      }
+      await startGrabberTest(kind);
+      return sendJson(res, 200, grabberRun);
     }
 
     if (req.method === "POST" && p === "/api/backup") {

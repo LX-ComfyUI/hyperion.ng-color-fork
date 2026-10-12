@@ -57,6 +57,8 @@
   /* above 2/3 of the height, so the bottom-up center scan line stays visible */
   #bb-text { top: 29vh; }
   #gs-box { top: 36vh; width: 56vh; }
+  /* grabber test: the measured color covers everything, also the connect hint */
+  #gtest { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -78,6 +80,8 @@
 <div id="bb-overlay" hidden></div>
 <div class="dbg-box" id="bb-text" hidden></div>
 <div class="dbg-box" id="gs-box" hidden></div>
+
+<div id="gtest" hidden></div>
 
 <div id="connect">
   <div id="qr" role="img" aria-label="QR-Code zur Steuerung"></div>
@@ -290,14 +294,24 @@ function renderDebug() {
   if (o.dpTv) $("dp-area").innerHTML = depthAreaSvg(ledAreas, bb, areaDepth);
 }
 
+// grabber test (run by the server): full screen test color, nothing else may be in the picture
+const grabberTestRunning = () => !!(state.grabberRun?.running && state.grabberRun.color);
+function renderGrabberTest() {
+  const el = $("gtest");
+  el.hidden = !grabberTestRunning();
+  if (!el.hidden) el.style.background = state.grabberRun.color;
+}
+const connectHidden = () => grabberTestRunning() || (manualToggle === null ? phones > 0 : !manualToggle);
+
 function render() {
+  renderGrabberTest();
   renderGrayTest();
   renderDepthTest();
   renderFracTest();
   renderPosTest();
   renderBars();
   // automatic: show the hint while no phone is connected
-  connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle;
+  connectEl.hidden = connectHidden();
   renderDebug();
 }
 
@@ -330,7 +344,7 @@ function connectEvents() {
       || msg.color !== state.color || msg.colorActive !== state.colorActive;
     state = msg;
     if (grayChanged) render();
-    else { renderBars(); renderDebug(); connectEl.hidden = manualToggle === null ? phones > 0 : !manualToggle; }
+    else { renderBars(); renderDebug(); renderGrabberTest(); connectEl.hidden = connectHidden(); }
   };
   es.addEventListener("debug", (ev) => {
     debug = JSON.parse(ev.data);
