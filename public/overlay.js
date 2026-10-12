@@ -49,7 +49,9 @@ function borderPct(bb, border) {
   };
 }
 
-const fmt = (v, digits = 1) => Number(v).toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+// texts go through the page's translator (i18n.js) when it is there
+const tr = (text, params) => (globalThis.I18N ? globalThis.I18N.tr(text, params) : text.replace(/\{(\w+)\}/g, (m, k) => (params && k in params ? params[k] : m)));
+const fmt = (v, digits = 1) => Number(v).toLocaleString(globalThis.I18N?.locale ?? "de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 // SVG with the scan lines and the applied border, to lay over a picture of any aspect ratio
 export function blackborderSvg(bb, modeFallback) {
@@ -209,44 +211,44 @@ export function grayStillAreaSvg(gs, leds, bb, depth) {
 
 // One-line status of the border detection
 export function blackborderText(bb) {
-  if (!bb) return "Keine Daten von Hyperion";
-  if (!bb.enabled) return "Schwarzbalken-Erkennung ist aus";
+  if (!bb) return tr("Keine Daten von Hyperion");
+  if (!bb.enabled) return tr("Schwarzbalken-Erkennung ist aus");
   const cur = bb.currentBorder ?? {};
-  const name = BB_MODE_NAMES[bb.mode] ?? bb.mode;
-  if (cur.unknown) return `${name}: kein Balken übernommen`;
+  const name = tr(BB_MODE_NAMES[bb.mode] ?? bb.mode);
+  if (cur.unknown) return tr("{a}: kein Balken übernommen", { a: name });
   const h = bb.imageHeight ? fmt((cur.horizontalSize / bb.imageHeight) * 100) : "?";
   const v = bb.imageWidth ? fmt((cur.verticalSize / bb.imageWidth) * 100) : "?";
-  return `${name}: oben/unten ${cur.horizontalSize} px (${h} %), links/rechts ${cur.verticalSize} px (${v} %)`;
+  return tr("{a}: oben/unten {b} px ({c} %), links/rechts {d} px ({e} %)", { a: name, b: cur.horizontalSize, c: h, d: cur.verticalSize, e: v });
 }
 
 // HTML status box of the gray still image detector (stages as in GrayStillImageDetector.cpp)
 export function grayStillHtml(gs) {
-  if (!gs) return `<div class="gs-title">Graues Standbild</div><div>Keine Daten von Hyperion</div>`;
-  if (!gs.enabled) return `<div class="gs-title">Graues Standbild</div><div>Erkennung ist in Hyperion aus</div>`;
+  if (!gs) return `<div class="gs-title">${tr("Graues Standbild")}</div><div>${tr("Keine Daten von Hyperion")}</div>`;
+  if (!gs.enabled) return `<div class="gs-title">${tr("Graues Standbild")}</div><div>${tr("Erkennung ist in Hyperion aus")}</div>`;
   const stillMs = gs.stillTimeSeconds * 1000;
   const progress = gs.triggered ? 100 : Math.min(100, (gs.stillElapsedMs / stillMs) * 100);
   const dropOn = gs.brightnessDropThreshold > 0;
   const dropNow = gs.dropWindowActive ? Math.max(0, gs.dropWindowStartBrightness - gs.brightness) : 0;
-  const reaction = gs.mode === "off" ? "LEDs aus" : "Farben einfrieren";
+  const reaction = gs.mode === "off" ? tr("LEDs aus") : tr("Farben einfrieren");
   const step = (ok, text) => `<div class="gs-step ${ok ? "ok" : ""}">${ok ? "✔" : "○"} ${text}</div>`;
   return `
-    <div class="gs-title">Graues Standbild${gs.triggered ? ` <span class="gs-hit">greift: ${reaction}</span>` : ""}</div>
+    <div class="gs-title">${tr("Graues Standbild")}${gs.triggered ? ` <span class="gs-hit">${tr("greift: {a}", { a: reaction })}</span>` : ""}</div>
     <div class="gs-bar"><span style="width:${progress}%"></span></div>
-    ${step(gs.stillActive && progress >= 100, `Standbild ${fmt(gs.stillActive ? gs.stillElapsedMs / 1000 : 0)} / ${gs.stillTimeSeconds} s`)}
+    ${step(gs.stillActive && progress >= 100, tr("Standbild {a} / {b} s", { a: fmt(gs.stillActive ? gs.stillElapsedMs / 1000 : 0), b: gs.stillTimeSeconds }))}
     ${dropOn
-      ? step(gs.dropDetected, `Helligkeitsabfall ≥ ${gs.brightnessDropThreshold} in ${fmt(gs.dropWindowSeconds)} s (jetzt ${fmt(dropNow, 0)})`)
-      : step(true, "Helligkeitsabfall nicht gefordert")}
-    <div class="gs-meta">Helligkeit ${fmt(gs.brightness, 0)} · Änderung ${fmt(gs.changeDelta)} (Grenze ${gs.changeThreshold})</div>`;
+      ? step(gs.dropDetected, tr("Helligkeitsabfall ≥ {a} in {b} s (jetzt {c})", { a: gs.brightnessDropThreshold, b: fmt(gs.dropWindowSeconds), c: fmt(dropNow, 0) }))
+      : step(true, tr("Helligkeitsabfall nicht gefordert"))}
+    <div class="gs-meta">${tr("Helligkeit {a} · Änderung {b} (Grenze {c})", { a: fmt(gs.brightness, 0), b: fmt(gs.changeDelta), c: gs.changeThreshold })}</div>`;
 }
 
 // One-line status of the gray still image detector
 export function grayStillText(gs) {
-  if (!gs) return "Keine Daten von Hyperion";
-  if (!gs.enabled) return "Graues-Standbild-Erkennung ist aus";
-  if (gs.triggered) return `Greift: ${gs.mode === "off" ? "LEDs aus" : "Farben eingefroren"}`;
+  if (!gs) return tr("Keine Daten von Hyperion");
+  if (!gs.enabled) return tr("Graues-Standbild-Erkennung ist aus");
+  if (gs.triggered) return gs.mode === "off" ? tr("Greift: LEDs aus") : tr("Greift: Farben eingefroren");
   const secs = fmt(gs.stillActive ? gs.stillElapsedMs / 1000 : 0);
-  const drop = gs.brightnessDropThreshold > 0 ? ` · Abfall ${gs.dropDetected ? "erkannt" : "noch nicht erkannt"}` : "";
-  return `Standbild ${secs} von ${gs.stillTimeSeconds} s${drop}`;
+  const drop = gs.brightnessDropThreshold > 0 ? " · " + (gs.dropDetected ? tr("Abfall erkannt") : tr("Abfall noch nicht erkannt")) : "";
+  return tr("Standbild {a} von {b} s", { a: secs, b: gs.stillTimeSeconds }) + drop;
 }
 
 // Styles for the status box, shared so TV and phone look the same (sizes come from the host page)
@@ -262,14 +264,14 @@ export const GRAY_STILL_CSS = `
 
 // Compact one-line variant for small previews: progress bar plus the stage flags
 export function grayStillCompactHtml(gs) {
-  if (!gs) return `<div class="gsc-line">Graues Standbild: keine Daten</div>`;
-  if (!gs.enabled) return `<div class="gsc-line">Graues Standbild: Erkennung aus</div>`;
+  if (!gs) return `<div class="gsc-line">${tr("Graues Standbild: keine Daten")}</div>`;
+  if (!gs.enabled) return `<div class="gsc-line">${tr("Graues Standbild: Erkennung aus")}</div>`;
   const progress = gs.triggered ? 100 : Math.min(100, (gs.stillElapsedMs / (gs.stillTimeSeconds * 1000)) * 100);
   const secs = fmt(gs.stillActive ? gs.stillElapsedMs / 1000 : 0);
-  const drop = gs.brightnessDropThreshold > 0 ? ` · Abfall ${gs.dropDetected ? "✔" : "○"}` : "";
-  const hit = gs.triggered ? ` · <b>greift</b>` : "";
+  const drop = gs.brightnessDropThreshold > 0 ? ` · ${tr("Abfall")} ${gs.dropDetected ? "✔" : "○"}` : "";
+  const hit = gs.triggered ? ` · <b>${tr("greift")}</b>` : "";
   return `<div class="gs-bar"><span style="width:${progress}%"></span></div>
-    <div class="gsc-line">Standbild ${secs}/${gs.stillTimeSeconds} s${drop}${hit}</div>`;
+    <div class="gsc-line">${tr("Standbild {a}/{b} s", { a: secs, b: gs.stillTimeSeconds })}${drop}${hit}</div>`;
 }
 
 // LED position test: the layout split into runs of consecutive LEDs on the same edge

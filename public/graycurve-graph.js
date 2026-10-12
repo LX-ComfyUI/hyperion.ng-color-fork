@@ -184,7 +184,7 @@
 
   // ---------------------------------------------------------------- helpers
 
-  const fmt = (v, digits) => Number(v).toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const fmt = (v, digits) => Number(v).toLocaleString(globalThis.I18N?.locale ?? "de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const fmtPercent = (v) => (v === 0 ? "0" : v >= 10 ? fmt(v, 0) : v >= 1 ? fmt(v, 1) : v >= 0.01 ? fmt(v, 2) : fmt(v, 3));
   const roundGain = (g) => Math.min(GAIN_MAX, Math.max(GAIN_MIN, Math.round(g * 100) / 100));
   const clonePoints = (points) => points.map((p) => ({ level: num(p.level, 50), gainRed: num(p.gainRed, 1), gainGreen: num(p.gainGreen, 1), gainBlue: num(p.gainBlue, 1) }));

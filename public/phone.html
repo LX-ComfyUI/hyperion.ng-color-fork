@@ -46,6 +46,8 @@
   @media (min-width: 760px) { :root:not([data-device="phone"]) main { max-width: 1120px; } }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 var(--gap); flex-wrap: wrap; }
   header .titles { min-width: 0; }
+  .hdr-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .hdr-btn { padding: 6px 10px; font-size: 13px; border-radius: 9px; }
   h1 { font-size: 20px; margin: 0; }
   .devicelabel { font-size: 12px; color: var(--muted); }
   .card { background: var(--card); border-radius: 12px; padding: var(--gap); margin-bottom: var(--gap); box-shadow: var(--shadow); box-sizing: border-box; scroll-margin-top: var(--gap); }
@@ -268,10 +270,17 @@
       <h1>Hyperion TV-Testseite</h1>
       <div class="devicelabel">Dieses Gerät: <span id="dev-label"></span></div>
     </div>
-    <div class="seg" role="group" aria-label="Darstellung">
-      <button data-theme-choice="auto">Auto</button>
-      <button data-theme-choice="light">Hell</button>
-      <button data-theme-choice="dark">Dunkel</button>
+    <div class="hdr-tools">
+      <div class="seg" role="group" aria-label="Sprache" id="lang-switch">
+        <button data-lang-choice="de" lang="de">DE</button>
+        <button data-lang-choice="en" lang="en">EN</button>
+      </div>
+      <button type="button" class="hdr-btn" id="fold-all">Alles aufklappen</button>
+      <div class="seg" role="group" aria-label="Darstellung">
+        <button data-theme-choice="auto">Auto</button>
+        <button data-theme-choice="light">Hell</button>
+        <button data-theme-choice="dark">Dunkel</button>
+      </div>
     </div>
   </header>
 
@@ -342,7 +351,7 @@
   <section class="card" id="card-gx">
     <h2>Grabber-Test</h2>
     <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
-    <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 1,5 Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Pi weiter.</p>
+    <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2 Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Pi weiter.</p>
     <div class="status" id="gx-progress" hidden></div>
     <p class="warn" id="gx-error" hidden></p>
     <p class="note" id="gx-note"></p>
@@ -704,16 +713,37 @@
   </section>
 </main>
 
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
 <script>
-// Every card folds open and closed. On opening the page only "So funktioniert's" is open. The title
-// switches the card, the button at its bottom closes it without scrolling back up. The nodes are
-// only moved into a wrapper, so their ids and listeners stay as they are.
+// Every card folds open and closed. The title switches the card, the button at its bottom closes it
+// without scrolling back up. Which cards are open is kept per kind of device (phone, tablet, PC, TV
+// browser), so the phone and the PC each keep their own view; without a saved view only
+// "So funktioniert's" is open. The nodes are only moved into a wrapper, so their ids and listeners
+// stay as they are.
 (function () {
   const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
   const UP = '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>';
-  window.setCardOpen = (card, open) => {
+  const KEY = "tvtest-cards-" + (document.documentElement.dataset.device || "desktop");
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { saved = {}; }
+  const cards = () => [...document.querySelectorAll("main > section.card")];
+  const save = () => {
+    const open = {};
+    cards().forEach((c) => { open[c.id] = !c.classList.contains("closed"); });
+    try { localStorage.setItem(KEY, JSON.stringify(open)); } catch {}
+  };
+  const updateFoldAll = () => {
+    const btn = document.getElementById("fold-all");
+    if (!btn) return;
+    const allOpen = cards().every((c) => !c.classList.contains("closed"));
+    btn.textContent = allOpen ? "Alles zuklappen" : "Alles aufklappen";
+    btn.dataset.allOpen = String(allOpen);
+  };
+  window.setCardOpen = (card, open, keep = true) => {
     card.classList.toggle("closed", !open);
     card.querySelector(".card-toggle")?.setAttribute("aria-expanded", String(open));
+    if (keep) { save(); updateFoldAll(); }
   };
   document.querySelectorAll("main > section.card").forEach((card) => {
     const h2 = card.querySelector(":scope > h2");
@@ -742,8 +772,28 @@
     });
     body.appendChild(close);
     card.appendChild(body);
-    setCardOpen(card, card.id === "card-intro");
+    setCardOpen(card, card.id in saved ? saved[card.id] === true : card.id === "card-intro", false);
   });
+  updateFoldAll();
+  document.getElementById("fold-all").addEventListener("click", (ev) => {
+    const open = ev.currentTarget.dataset.allOpen !== "true";
+    cards().forEach((c) => setCardOpen(c, open, false));
+    save();
+    updateFoldAll();
+  });
+})();
+
+// language: per device, switching reloads the page in the other language
+(function () {
+  document.querySelectorAll("[data-lang-choice]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.langChoice === I18N.lang));
+    b.addEventListener("click", () => {
+      // the TV page follows the language chosen last; keepalive lets the request outlive the reload
+      fetch("/api/state", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: b.dataset.langChoice }) }).catch(() => {});
+      I18N.setLang(b.dataset.langChoice);
+    });
+  });
+  I18N.start();
   // links to a card (like "Backup") open it first
   document.addEventListener("click", (ev) => {
     const a = ev.target.closest('a[href^="#card-"]');
@@ -847,7 +897,8 @@ let previewSource = null;
 let openPicker = null;         // the color input whose picker is open, its row is not touched meanwhile
 
 const $ = (id) => document.getElementById(id);
-const fmt = (v, d = 1) => Number(v).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (v, d = 1) => Number(v).toLocaleString(I18N.locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+const tr = I18N.tr;
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -1386,12 +1437,19 @@ async function saveCurvePoints(points) {
   curveSaving = false;
 }
 const curveGraph = GrayCurveGraph.create($("hy-curve-graph"), {
+  text: I18N.lang === "en" ? {
+    all: "All", red: "Red", green: "Green", blue: "Blue", log: "Log", linear: "Linear", input: "Gray in picture", output: "LED", factor: "Factor",
+    point: "Point", remove: "Delete point", off: "The gray curve is off. The graph shows what it would do with these factors.",
+    hint: "Tap a point and drag it up/down (1 pixel = 0.01), sideways moves the brightness. Tapping a free spot adds a point.",
+    blackThreshold: "Black threshold", withoutCurve: "dashed = without gray curve",
+  } : undefined,
   onChange: (points) => saveCurvePoints(points),
   onSelect: (i, point) => showGray(point.level),
 });
 
 // notes that describe a state of the editor, as opposed to the result of a save
-const HY_STATUS_NOTE = /^(Lade Farbwerte|Farbwerte nicht lesbar|Zum Ändern zuerst|Kein Farbeintrag)/;
+// status notes are recognized by their start, in German and in English (the page may be translated)
+const HY_STATUS_NOTE = /^(Lade Farbwerte|Farbwerte nicht lesbar|Zum Ändern zuerst|Kein Farbeintrag|Loading color values|Color values not readable|To change values|No color entry)/;
 
 function renderColorEditor() {
   const entries = colorConfig?.channelAdjustment ?? [];
@@ -1439,7 +1497,7 @@ function renderColorEditor() {
   // a missing config only means "not loaded yet" here, loadColorConfig reports real read errors.
   // A status note that no longer applies is cleared, save results stay until the next save.
   const note = $("hy-note");
-  const problem = !colorConfig ? (note.textContent.startsWith("Farbwerte nicht lesbar") ? note.textContent : "Lade Farbwerte …")
+  const problem = !colorConfig ? (/^(Farbwerte nicht lesbar|Color values not readable)/.test(note.textContent) ? note.textContent : "Lade Farbwerte …")
     : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
     : !entry ? "Kein Farbeintrag gefunden."
     : null;
@@ -1598,8 +1656,9 @@ function renderGrayTest() {
   const need = bbConfig?.grayStillImageDetector?.brightnessDropThreshold;
   const short = need > 0 && drop < need;
   $("gt-drop-note").textContent = need === undefined
-    ? `(Helligkeit fällt von ${g.tone} auf ${g.tone - drop}, um ${drop})`
-    : `(Helligkeit fällt um ${drop}, Hyperion braucht mindestens ${need}${short ? ", reicht nicht" : ""})`;
+    ? tr("(Helligkeit fällt von {a} auf {b}, um {c})", { a: g.tone, b: g.tone - drop, c: drop })
+    : short ? tr("(Helligkeit fällt um {a}, Hyperion braucht mindestens {b}, reicht nicht)", { a: drop, b: need })
+    : tr("(Helligkeit fällt um {a}, Hyperion braucht mindestens {b})", { a: drop, b: need });
   $("gt-drop-note").classList.toggle("short", short);
 }
 
@@ -1685,7 +1744,7 @@ function mixText(frame, depth, d) {
   if (depth == null) return "unbekannt";
   const share = depth > 0 ? Math.min(1, frame / depth) : 1;
   const p = Math.round(share * 100);
-  const text = p >= 100 ? "reine Außenfarbe" : p <= 0 ? "reine Innenfarbe" : `${p} % Außen-, ${100 - p} % Innenfarbe`;
+  const text = p >= 100 ? tr("reine Außenfarbe") : p <= 0 ? tr("reine Innenfarbe") : tr("{a} % Außen-, {b} % Innenfarbe", { a: p, b: 100 - p });
   return `<span class="dt-mix" style="background:${mixColor(d.outer, d.inner, share)}"></span>${text}`;
 }
 
@@ -1696,9 +1755,9 @@ function renderDepthExpect() {
   if (!eff) { $("dt-expect").textContent = "Erwartung: LED-Layout wird geladen …"; return; }
   const bars = Object.values(state.bars ?? {}).some(v => v > 0);
   $("dt-expect").innerHTML =
-    `<div>Erwartung bei Erfassungstiefe ${pct(+eff.top.toFixed(1))} / ${pct(+eff.left.toFixed(1))}:</div>` +
-    `<div>LEDs oben/unten: <b>${mixText(d.topBottom, eff.top, d)}</b></div>` +
-    `<div>LEDs links/rechts: <b>${mixText(d.leftRight, eff.left, d)}</b></div>` +
+    `<div>${tr("Erwartung bei Erfassungstiefe {a} / {b}:", { a: pct(+eff.top.toFixed(1)), b: pct(+eff.left.toFixed(1)) })}</div>` +
+    `<div>${tr("LEDs oben/unten:")} <b>${mixText(d.topBottom, eff.top, d)}</b></div>` +
+    `<div>${tr("LEDs links/rechts:")} <b>${mixText(d.leftRight, eff.left, d)}</b></div>` +
     (bars ? `<div class="field-hint">Mit schwarzen Balken stimmt die Erwartung nicht, Hyperion misst dann ab der Balkenkante.</div>` : "");
 }
 
@@ -1709,9 +1768,9 @@ function renderSweepPos() {
   const elapsed = (Date.now() + clockOffset - d.startedAt) / 1000;
   const pos = ((elapsed % d.sweepSeconds) / d.sweepSeconds) * d.sweepMax;
   const eff = effectiveDepths();
-  const sees = (depth) => (depth == null ? "?" : pos < depth ? "<b>sehen sie</b>" : "sehen sie nicht mehr");
-  $("dt-pos").innerHTML = `Linie jetzt bei <b>${fmt(pos)} %</b><br>` +
-    (eff ? `LEDs oben/unten (bis ${fmt(eff.top)} %): ${sees(eff.top)} · links/rechts (bis ${fmt(eff.left)} %): ${sees(eff.left)}` : "");
+  const sees = (depth) => (depth == null ? "?" : pos < depth ? `<b>${tr("sehen sie")}</b>` : tr("sehen sie nicht mehr"));
+  $("dt-pos").innerHTML = tr("Linie jetzt bei <b>{a} %</b>", { a: fmt(pos) }) + "<br>" +
+    (eff ? tr("LEDs oben/unten (bis {a} %): {b} · links/rechts (bis {c} %): {d}", { a: fmt(eff.top), b: sees(eff.top), c: fmt(eff.left), d: sees(eff.left) }) : "");
 }
 
 function renderDepthTest() {
@@ -1771,7 +1830,7 @@ $("dt-match").addEventListener("click", () => {
 
 // ---------- Hyperion capture depth (color.ledAreaDepth) ----------
 
-const DP_STATUS_NOTE = /^(Lade|Braucht die neue|Zum Ändern zuerst)/;
+const DP_STATUS_NOTE = /^(Lade|Braucht die neue|Zum Ändern zuerst|Loading|Needs the new|To change values)/;
 
 function renderDepthConfig() {
   const cfg = colorConfig?.ledAreaDepth;
@@ -1780,7 +1839,7 @@ function renderDepthConfig() {
   for (const [id, key, dataKey, layoutValue] of [["dp-tb", "topBottom", "dpTb", lay.top], ["dp-lr", "leftRight", "dpLr", lay.left]]) {
     const v = Number(cfg?.[key] ?? 0);
     if (document.activeElement !== $(id)) $(id).value = v;
-    $(id + "_v").textContent = !cfg ? "" : v > 0 ? pct(v) : `Layout${layoutValue != null ? ` (${fmt(layoutValue)} %)` : ""}`;
+    $(id + "_v").textContent = !cfg ? "" : v > 0 ? pct(v) : tr("Layout") + (layoutValue != null ? ` (${fmt(layoutValue)} %)` : "");
     $(id).disabled = !writable;
     document.querySelectorAll(`[data-${id}]`).forEach(b => {
       b.setAttribute("aria-pressed", String(!!cfg && Number(b.dataset[dataKey]) === v));
@@ -1810,9 +1869,10 @@ function renderDepthStatus() {
   const cw = w ? w - 2 * (border && !border.unknown ? Math.max(0, border.verticalSize) : 0) : 0;
   const ch = h ? h - 2 * (border && !border.unknown ? Math.max(0, border.horizontalSize) : 0) : 0;
   const px = (p, size) => (size ? ` ≈ ${Math.round((p / 100) * size)} px` : "");
+  const fromLayout = ` (${tr("Layout")})`;
   $("dp-status").textContent =
-    `Oben/unten ${fmt(eff.top)} %${eff.tbFromLayout ? " (Layout)" : ""}${px(eff.top, ch)} · ` +
-    `links/rechts ${fmt(eff.left)} %${eff.lrFromLayout ? " (Layout)" : ""}${px(eff.left, cw)}`;
+    tr("Oben/unten {a} %", { a: fmt(eff.top) }) + (eff.tbFromLayout ? fromLayout : "") + px(eff.top, ch) + " · " +
+    tr("links/rechts {a} %", { a: fmt(eff.left) }) + (eff.lrFromLayout ? fromLayout : "") + px(eff.left, cw);
 
   const key = JSON.stringify([colorConfig?.ledAreaDepth, w, h, border, ledAreas?.length]);
   if (key !== depthStatsKey) {
@@ -1823,18 +1883,18 @@ function renderDepthStatus() {
   const reduced = Number(colorConfig?.reducedPixelSetFactorFactor ?? 0) > 0;
   const skip = depthStats && !reduced ? Object.values(depthStats).reduce((n, g) => n + g.skip, 0) : 0;
   $("dp-skip-warn").hidden = !skip;
-  if (skip) $("dp-skip-warn").textContent = `${skip} LED-Bereiche haben mehr als 1600 Pixel. Hyperion liest dort nur jedes zweite Pixel jeder zweiten Zeile. Das spart Rechenzeit und ändert die Farbe kaum.`;
+  if (skip) $("dp-skip-warn").textContent = tr("{a} LED-Bereiche haben mehr als 1600 Pixel. Hyperion liest dort nur jedes zweite Pixel jeder zweiten Zeile. Das spart Rechenzeit und ändert die Farbe kaum.", { a: skip });
 
   $("dp-live-box").hidden = !$("dp-live").checked;
   if (!$("dp-live").checked) return;
-  const names = { top: "Oben", bottom: "Unten", left: "Links", right: "Rechts", other: "Ohne Kante" };
+  const names = { top: tr("Oben"), bottom: tr("Unten"), left: tr("Links"), right: tr("Rechts"), other: tr("Ohne Kante") };
   const rows = [
-    ["Bild", w && h ? `${w} × ${h} px` : "unbekannt"],
-    ["Ausgewerteter Bereich", cw && ch ? `${cw} × ${ch} px${border && !border.unknown && (border.horizontalSize > 0 || border.verticalSize > 0) ? " (ohne Schwarzbalken)" : ""}` : "unbekannt"],
+    [tr("Bild"), w && h ? `${w} × ${h} px` : tr("unbekannt")],
+    [tr("Ausgewerteter Bereich"), cw && ch ? `${cw} × ${ch} px${border && !border.unknown && (border.horizontalSize > 0 || border.verticalSize > 0) ? " " + tr("(ohne Schwarzbalken)") : ""}` : tr("unbekannt")],
   ];
   const groups = depthStats ? Object.entries(depthStats).map(([k, g]) =>
-    `<div>${names[k]}: <b>${g.count}</b> Bereiche · Ø <b>${Math.round(g.mean)}</b> px, max ${g.max} px${g.skip && !reduced ? ` · ${g.skip} mit Pixelsprung` : ""}</div>`).join("") : "<div>Pixel je LED: warte auf Bildgröße von Hyperion</div>";
-  $("dp-live-box").innerHTML = `<div class="gs-title">LED-Erfassungstiefe</div>` + rows.map(([k, v]) => `<div>${k}: <b>${v}</b></div>`).join("") + groups;
+    `<div>${tr("{a}: <b>{b}</b> Bereiche · Ø <b>{c}</b> px, max {d} px", { a: names[k], b: g.count, c: Math.round(g.mean), d: g.max })}${g.skip && !reduced ? " · " + tr("{a} mit Pixelsprung", { a: g.skip }) : ""}</div>`).join("") : `<div>${tr("Pixel je LED: warte auf Bildgröße von Hyperion")}</div>`;
+  $("dp-live-box").innerHTML = `<div class="gs-title">${tr("LED-Erfassungstiefe")}</div>` + rows.map(([k, v]) => `<div>${k}: <b>${v}</b></div>`).join("") + groups;
 }
 
 async function saveDepth(key, value) {
@@ -1888,11 +1948,11 @@ function renderFracNow() {
   const on = colorConfig?.fractionalMean;
   const expect = f.pattern === "toggle"
     ? (f.delta >= 1
-      ? "Eine ganze Stufe zum Vergleich: So groß ist ein Sprung ohne Nachkommastellen."
-      : `Mit Nachkommastellen ändern sich die LEDs bei jedem Wechsel um etwa ${FT_DELTA_NAMES[f.delta] ?? fmt(f.delta, 2)} Stufe. Ohne bleiben sie meist gleich oder springen um eine ganze Stufe, je nachdem, wo der Grabber den Ton sieht.`)
-    : `Mit Nachkommastellen gleiten die LEDs gleichmäßig. Ohne springen sie ${Math.abs(f.to - f.from)}-mal je Richtung um eine ganze Stufe.`;
-  const mode = on === undefined ? "" : `<div>Hyperion: Nachkommastellen <b>${on ? "an" : "aus"}</b>${on && fracBlockers().length ? " (wirkt gerade nicht, siehe unten)" : ""}</div>`;
-  const now = f.active ? `<div>Jetzt auf dem TV: <b>${ftLevel(ftCurrentLevel(f))}</b> ${FT_TINT_NAMES[f.tint]}</div>` : "<div>Test läuft nicht.</div>";
+      ? tr("Eine ganze Stufe zum Vergleich: So groß ist ein Sprung ohne Nachkommastellen.")
+      : tr("Mit Nachkommastellen ändern sich die LEDs bei jedem Wechsel um etwa {a} Stufe. Ohne bleiben sie meist gleich oder springen um eine ganze Stufe, je nachdem, wo der Grabber den Ton sieht.", { a: FT_DELTA_NAMES[f.delta] ?? fmt(f.delta, 2) }))
+    : tr("Mit Nachkommastellen gleiten die LEDs gleichmäßig. Ohne springen sie {a}-mal je Richtung um eine ganze Stufe.", { a: Math.abs(f.to - f.from) });
+  const mode = on === undefined ? "" : `<div>${on ? tr("Hyperion: Nachkommastellen <b>an</b>") : tr("Hyperion: Nachkommastellen <b>aus</b>")}${on && fracBlockers().length ? " " + tr("(wirkt gerade nicht, siehe unten)") : ""}</div>`;
+  const now = f.active ? `<div>${tr("Jetzt auf dem TV: <b>{a}</b> {b}", { a: ftLevel(ftCurrentLevel(f)), b: tr(FT_TINT_NAMES[f.tint]) })}</div>` : `<div>${tr("Test läuft nicht.")}</div>`;
   $("ft-now").innerHTML = now + mode + `<div class="field-hint">${expect}</div>`;
 }
 
@@ -1955,8 +2015,8 @@ function lpAreas() {
 function segmentDirection(areas, seg) {
   const c = (i) => [(areas[i][0] + areas[i][1]) / 2, (areas[i][2] + areas[i][3]) / 2];
   const [a, b] = [c(seg.start), c(seg.end)];
-  if (seg.edge === "top" || seg.edge === "bottom") return b[0] < a[0] ? "von rechts nach links" : "von links nach rechts";
-  return b[1] < a[1] ? "von unten nach oben" : "von oben nach unten";
+  if (seg.edge === "top" || seg.edge === "bottom") return b[0] < a[0] ? tr("von rechts nach links") : tr("von links nach rechts");
+  return b[1] < a[1] ? tr("von unten nach oben") : tr("von oben nach unten");
 }
 
 // small picture of the frame: all LED areas, the marked ones bright, a ring around the middle one
@@ -1968,7 +2028,7 @@ function lpMapSvg(areas, ids, color) {
   const marked = ids.map((i) => rect(areas[i], color)).join("");
   const mid = areas[ids[Math.floor(ids.length / 2)]];
   const ring = mid ? `<circle cx="${x((mid[0] + mid[1]) / 2)}" cy="${y((mid[2] + mid[3]) / 2)}" r="5" fill="none" stroke="${color}" stroke-width="1.5"/>` : "";
-  return `<svg viewBox="0 0 ${W + 2 * P} ${H + 2 * P}" role="img" aria-label="Lage der markierten LED im Bild"><rect x="${P}" y="${P}" width="${W}" height="${H}" fill="#000" stroke="#555" stroke-width="0.6"/>${all}${marked}${ring}</svg>`;
+  return `<svg viewBox="0 0 ${W + 2 * P} ${H + 2 * P}" role="img" aria-label="${tr("Lage der markierten LED im Bild")}"><rect x="${P}" y="${P}" width="${W}" height="${H}" fill="#000" stroke="#555" stroke-width="0.6"/>${all}${marked}${ring}</svg>`;
 }
 
 function renderPosLive() {
@@ -1984,18 +2044,19 @@ function renderPosLive() {
   const bb = debug?.ok ? debug.blackborder : null;
   const w = bb?.imageWidth, h = bb?.imageHeight;
   const px = w && h ? ` ≈ ${Math.max(1, Math.round((a[1] - a[0]) * w))} × ${Math.max(1, Math.round((a[3] - a[2]) * h))} px` : "";
+  const marked = { i, n: n - 1 };
   $("lp-status").innerHTML =
-    `<div>${p.mode === "run" && p.active ? "Lauflicht jetzt bei" : "Markiert"}: <b>LED ${i}</b> von 0–${n - 1}${ids.length > 1 ? ` (mit ${ids.length - 1} Nachbarn)` : ""}</div>` +
-    (seg ? `<div>Abschnitt <b>${EDGE_NAMES[seg.edge]}</b> (LED ${seg.start}–${seg.end}, ${segmentDirection(areas, seg)}), dort Nr. <b>${i - seg.start + 1}</b> von ${seg.end - seg.start + 1}</div>` : "") +
-    `<div class="field-hint">Bildbereich: x ${pc(a[0])}–${pc(a[1])} %, y ${pc(a[2])}–${pc(a[3])} %${px}</div>` +
-    (p.active ? "" : "<div>Test läuft nicht.</div>");
+    `<div>${p.mode === "run" && p.active ? tr("Lauflicht jetzt bei: <b>LED {i}</b> von 0–{n}", marked) : tr("Markiert: <b>LED {i}</b> von 0–{n}", marked)}${ids.length > 1 ? " " + tr("(mit {a} Nachbarn)", { a: ids.length - 1 }) : ""}</div>` +
+    (seg ? `<div>${tr("Abschnitt <b>{a}</b> (LED {b}–{c}, {d}), dort Nr. <b>{e}</b> von {f}", { a: tr(EDGE_NAMES[seg.edge]), b: seg.start, c: seg.end, d: segmentDirection(areas, seg), e: i - seg.start + 1, f: seg.end - seg.start + 1 })}</div>` : "") +
+    `<div class="field-hint">${tr("Bildbereich: x {a}–{b} %, y {c}–{d} %", { a: pc(a[0]), b: pc(a[1]), c: pc(a[2]), d: pc(a[3]) })}${px}</div>` +
+    (p.active ? "" : `<div>${tr("Test läuft nicht.")}</div>`);
   $("lp-map").innerHTML = lpMapSvg(areas, ids, p.color);
 
   const warn = [];
-  if (Object.values(state.bars ?? {}).some((v) => v > 0)) warn.push("Die schwarzen Balken sind an. Hyperion misst dann ab der Balkenkante, die Markierung sitzt nicht mehr im richtigen Bereich. Für diesen Test die Balken auf 0 % stellen.");
+  if (Object.values(state.bars ?? {}).some((v) => v > 0)) warn.push(tr("Die schwarzen Balken sind an. Hyperion misst dann ab der Balkenkante, die Markierung sitzt nicht mehr im richtigen Bereich. Für diesen Test die Balken auf 0 % stellen."));
   const border = bb?.currentBorder;
   if (p.active && border && !border.unknown && (border.horizontalSize > 0 || border.verticalSize > 0))
-    warn.push(`Hyperion zieht gerade einen Schwarzbalken ab (oben/unten ${border.horizontalSize} px, links/rechts ${border.verticalSize} px). Dann verschieben sich die Bereiche. Hintergrund „Dunkelgrau“ wählen oder die Schwarzbalken-Erkennung kurz ausschalten.`);
+    warn.push(tr("Hyperion zieht gerade einen Schwarzbalken ab (oben/unten {a} px, links/rechts {b} px). Dann verschieben sich die Bereiche. Hintergrund „Dunkelgrau“ wählen oder die Schwarzbalken-Erkennung kurz ausschalten.", { a: border.horizontalSize, b: border.verticalSize }));
   $("lp-warn").hidden = !warn.length;
   $("lp-warn").textContent = warn.join(" ");
 }
@@ -2010,18 +2071,18 @@ function renderPosTest() {
   document.querySelectorAll("[data-lp-width]").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.lpWidth) === p.width)));
   document.querySelectorAll("[data-lp-bg]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lpBg === p.background)));
   $("lp-run").hidden = p.mode !== "run";
-  $("lp-index-label").textContent = p.mode === "run" ? "Startet bei LED" : "LED";
+  $("lp-index-label").textContent = p.mode === "run" ? tr("Startet bei LED") : "LED";
   const index = n ? Math.min(n - 1, p.index) : p.index;
   if (n) $("lp-index").max = n - 1;
   if (document.activeElement !== $("lp-index")) $("lp-index").value = index;
   $("lp-index_v").textContent = String(index);
   if (document.activeElement !== $("lp-speed")) $("lp-speed").value = p.speed;
   $("lp-speed_v").textContent = `${p.speed} LEDs/s`;
-  $("lp-round").textContent = n ? `(eine Runde ${fmt(n / p.speed, n / p.speed < 100 ? 1 : 0)} s)` : "";
+  $("lp-round").textContent = n ? tr("(eine Runde {a} s)", { a: fmt(n / p.speed, n / p.speed < 100 ? 1 : 0) }) : "";
   fillColorSelect($("lp-color"), p.color);
   $("lp-color-swatch").style.background = p.color;
   // jump buttons: the first LED of each edge run, and the last LED of the strip
-  const jumps = n ? [...ledSegments(areas).map((s) => [s.start, EDGE_NAMES[s.edge]]), [n - 1, "Ende"]] : [];
+  const jumps = n ? [...ledSegments(areas).map((s) => [s.start, tr(EDGE_NAMES[s.edge])]), [n - 1, tr("Ende")]] : [];
   const key = JSON.stringify(jumps);
   if ($("lp-jumps").dataset.key !== key) {
     $("lp-jumps").dataset.key = key;
@@ -2071,12 +2132,12 @@ function fracBlockers() {
   const entries = (c.channelAdjustment ?? []).filter(a => a.grayAxisTrim?.enabled || Number(a.saturationGain ?? 1) !== 1 || Number(a.brightnessGain ?? 1) !== 1);
   if (entries.length) {
     const names = entries.map(a => `„${a.id ?? "?"}“`).join(", ");
-    out.push(`Farbeintrag ${names}: Grauachsen-Korrektur oder Sättigungs-/Helligkeitsverstärkung ungleich 1 ist aktiv. Für diese LEDs gilt der ganzzahlige Wert.`);
+    out.push(tr("Farbeintrag {a}: Grauachsen-Korrektur oder Sättigungs-/Helligkeitsverstärkung ungleich 1 ist aktiv. Für diese LEDs gilt der ganzzahlige Wert.", { a: names }));
   }
   return out;
 }
 
-const FM_STATUS_NOTE = /^(Lade|Braucht die neue|Zum Ändern zuerst)/;
+const FM_STATUS_NOTE = /^(Lade|Braucht die neue|Zum Ändern zuerst|Loading|Needs the new|To change values)/;
 
 function renderFracConfig() {
   const known = colorConfig && "fractionalMean" in colorConfig;
@@ -2163,13 +2224,13 @@ function renderBbConfig() {
   const problem = !bbConfig ? "Einstellungen nicht lesbar." : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“." : null;
   for (const id of ["bb-cfg-note", "gs-cfg-note"]) {
     const el = $(id);
-    if (problem) { if (!el.textContent.startsWith("Einstellungen nicht lesbar")) el.textContent = problem; }
+    if (problem) { if (!/^(Einstellungen nicht lesbar|Settings not readable)/.test(el.textContent)) el.textContent = problem; }
     else if (BB_STATUS_NOTE.test(el.textContent)) el.textContent = "";
   }
   renderGrayTest();
 }
 
-const BB_STATUS_NOTE = /^(Einstellungen nicht lesbar|Zum Ändern zuerst)/;
+const BB_STATUS_NOTE = /^(Einstellungen nicht lesbar|Zum Ändern zuerst|Settings not readable|To change values)/;
 let bbSaving = 0; // while > 0 the live mode from Hyperion may still be the old one
 
 async function loadBbConfig() {
@@ -2403,7 +2464,7 @@ function backupDate(name) {
   const m = name.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/);
   if (!m) return name;
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
-  return d.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "medium" });
+  return d.toLocaleString(I18N.locale, { dateStyle: "medium", timeStyle: "medium" });
 }
 
 async function loadBackups() {
@@ -2440,7 +2501,7 @@ async function checkHyperion() {
     if (st.connected) {
       $("conn").textContent = "Mit Hyperion verbunden. Wiederherstellen und Einstellungen ändern ist möglich.";
     } else if (req.status === "pending") {
-      $("conn").textContent = `Anfrage „Hyperion TV-Testseite“ (ID ${req.id}) wartet. Bitte im Hyperion-WebUI bestätigen (Fenster erscheint dort nach dem Login).`;
+      $("conn").textContent = tr("Anfrage „Hyperion TV-Testseite“ (ID {a}) wartet. Bitte im Hyperion-WebUI bestätigen (Fenster erscheint dort nach dem Login).", { a: req.id });
     } else if (req.status === "failed") {
       $("conn").textContent = "Verbindung fehlgeschlagen: " + req.error;
     } else {
@@ -2464,9 +2525,8 @@ $("connect").addEventListener("click", async () => {
 
 async function restoreBackup(name) {
   const ok = confirm(
-    `Backup vom ${backupDate(name)} wiederherstellen?\n\n` +
-    "Die aktuelle Hyperion-Konfiguration wird ersetzt. Vorher wird automatisch ein Backup des jetzigen Stands angelegt. " +
-    "Hyperion startet danach neu, die LEDs gehen kurz aus."
+    tr("Backup vom {a} wiederherstellen?", { a: backupDate(name) }) + "\n\n" +
+    tr("Die aktuelle Hyperion-Konfiguration wird ersetzt. Vorher wird automatisch ein Backup des jetzigen Stands angelegt. Hyperion startet danach neu, die LEDs gehen kurz aus.")
   );
   if (!ok) return;
   $("status").textContent = "Wiederherstellen läuft …";
@@ -2475,7 +2535,7 @@ async function restoreBackup(name) {
     const res = await fetch("/api/restore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error);
-    $("status").textContent = `Wiederhergestellt: Backup vom ${backupDate(body.restored)}. Der vorherige Stand ist als Backup vom ${backupDate(body.safety)} gesichert. Hyperion startet neu.`;
+    $("status").textContent = tr("Wiederhergestellt: Backup vom {a}. Der vorherige Stand ist als Backup vom {b} gesichert. Hyperion startet neu.", { a: backupDate(body.restored), b: backupDate(body.safety) });
     loadBackups();
     setTimeout(() => { loadBbConfig(); loadColorConfig(); loadLedAreas(); }, 5000);
   } catch (e) {
@@ -2524,7 +2584,7 @@ function renderGrabberRun() {
   if (running) {
     const pct = run.total ? Math.round((100 * run.index) / run.total) : 0;
     progress.innerHTML = `<div class="row"><span class="grayswatch" style="background:${run.color ?? "#000000"}"></span>`
-      + `<span>${run.color ? `Schritt ${run.index + 1} von ${run.total}${run.label ? " · " + escHtml(run.label) : ""}` : "Test startet …"}</span></div>`
+      + `<span>${run.color ? tr("Schritt {a} von {b}", { a: run.index + 1, b: run.total }) + (run.label ? " · " + escHtml(I18N.t(run.label)) : "") : tr("Test startet …")}</span></div>`
       + `<div class="gx-bar"><span style="width:${pct}%"></span></div>`;
   }
   $("gx-error").hidden = running || !run.error;
@@ -2542,7 +2602,7 @@ async function loadGrabberReport() {
     const res = await fetch("/api/grabbertest");
     const r = await res.json();
     if (!res.ok) throw new Error(r.error);
-    GrabberTestReport.render($("gx-report"), { basic: r.basic, custom: r.custom, current: r.current, lang: "de" });
+    GrabberTestReport.render($("gx-report"), { basic: r.basic, custom: r.custom, current: r.current, lang: I18N.lang });
   } catch (e) {
     $("gx-report").textContent = "Ergebnis nicht lesbar: " + e.message;
   }

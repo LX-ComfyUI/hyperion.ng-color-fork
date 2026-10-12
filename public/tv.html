@@ -95,6 +95,9 @@
   </div>
 </div>
 
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
+<script>I18N.start();</script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, posTestIndices, GRAY_STILL_CSS } from "/static/overlay.js";
 
@@ -284,7 +287,7 @@ function renderDebug() {
   $("bb-text").hidden = !o.bbTv;
   if (o.bbTv) {
     $("bb-overlay").innerHTML = blackborderSvg(bb);
-    $("bb-text").textContent = debug?.ok ? blackborderText(bb) : "Keine Daten von Hyperion" + (debug?.error ? ` (${debug.error})` : "");
+    $("bb-text").textContent = debug?.ok ? blackborderText(bb) : I18N.tr("Keine Daten von Hyperion") + (debug?.error ? ` (${debug.error})` : "");
   }
   $("gs-box").hidden = !o.gsTv;
   if (o.gsTv) $("gs-box").innerHTML = grayStillHtml(gs);
@@ -334,6 +337,10 @@ function connectEvents() {
   const es = new EventSource("/api/events?role=tv");
   es.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
+    // the TV page shows the language chosen last on a control page
+    if ((msg.lang === "de" || msg.lang === "en") && msg.lang !== I18N.lang) {
+      try { localStorage.setItem("tvtest-lang", msg.lang); location.reload(); return; } catch {}
+    }
     // a phone joining or leaving resets a manual toggle back to automatic
     if (msg.phones !== phones) manualToggle = null;
     phones = msg.phones ?? 0;

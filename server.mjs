@@ -54,6 +54,8 @@ const DEFAULT_STATE = {
   posTest: { active: false, mode: "single", index: 0, width: 1, speed: 10, color: "#ffffff", background: "black", startedAt: 0 },
   // own colors of the grabber test, measured one after the other
   grabberColors: [],
+  // language chosen last on a control page; the TV page follows it
+  lang: "de",
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
   overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true, dpTv: false, dpPreview: true },
 };
@@ -159,6 +161,7 @@ function sanitize(input) {
         .map(([id, c]) => [id, c.toLowerCase()]),
     );
   }
+  if (input.lang === "en" || input.lang === "de") out.lang = input.lang;
   if (Array.isArray(input.grabberColors)) {
     const colors = input.grabberColors.filter((c) => typeof c === "string" && HEX_COLOR.test(c)).map((c) => c.toLowerCase());
     out.grabberColors = [...new Set(colors)].slice(0, MAX_CUSTOM_COLORS);
@@ -983,7 +986,8 @@ const server = http.createServer(async (req, res) => {
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, overlays });
+      const lang = patch.lang === "en" || patch.lang === "de" ? patch.lang : state.lang;
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, overlays, lang });
       saveState();
       broadcast();
       return sendJson(res, 200, { ...state, grabberRun });
