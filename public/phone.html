@@ -194,9 +194,10 @@
   .card-body { margin-top: 10px; }
   .card.closed .card-body { display: none; }
   /* only the arrow, no frame and no text (the label is in title/aria-label) */
-  .card-close { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 8px; padding: 2px 0; border: none; background: none; color: var(--muted); }
+  /* no own spacing: the content above brings its margin, the card's bottom padding is half used */
+  .card-close { display: flex; align-items: center; justify-content: center; width: 100%; margin: 0 0 -8px; padding: 0; border: none; background: none; color: var(--muted); }
   .card-close:hover { color: var(--text); }
-  .card-close svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .card-close svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
   .sub { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line); }
   .status { font-size: 14px; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin: 10px 0 0; font-variant-numeric: tabular-nums; }
