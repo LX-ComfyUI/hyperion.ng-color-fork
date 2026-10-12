@@ -197,6 +197,21 @@
   /* no own spacing: the content above brings its margin, the card's bottom padding is half used */
   .card-close { display: flex; align-items: center; justify-content: center; width: 100%; margin: 0 0 -8px; padding: 0; border: none; background: none; color: var(--muted); }
   .card-close:hover { color: var(--text); }
+
+  /* PC: fixed menu on the left (title, language, appearance, jump list); the header moves into it */
+  #side { display: none; }
+  :root.has-side #side { display: flex; flex-direction: column; gap: 14px; position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; width: 230px;
+                         box-sizing: border-box; padding: 20px 14px; overflow-y: auto; background: var(--card); border-right: 1px solid var(--line); }
+  :root.has-side body { padding-left: 230px; }
+  :root.has-side main > header { display: none; }
+  #side h1 { font-size: 17px; }
+  .side-tools { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  #side .side-list { list-style: none; margin: 0; padding: 0; }
+  #side .side-list li { display: block; padding: 0; border: none; }
+  .side-list a { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.3; }
+  .side-list a:hover { background: var(--bg); }
+  .side-list a.current { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 600; }
+  .side-list .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: auto; }
   .card-close svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
   .sub { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line); }
@@ -804,6 +819,76 @@
     const card = a && document.querySelector(a.getAttribute("href"));
     if (card) setCardOpen(card, true);
   });
+})();
+</script>
+<script>
+// PC: a fixed menu on the left with the page title, language, appearance and a jump list of the
+// cards. The header's own elements are moved there (and back when the window gets narrow), so
+// their listeners stay. A dot marks a card whose test is running.
+(function () {
+  const isPc = document.documentElement.dataset.device === "desktop";
+  const wide = matchMedia("(min-width: 1000px)");
+  const header = document.querySelector("main > header");
+  const tools = header.querySelector(".hdr-tools");
+  const titles = header.querySelector(".titles");
+  const lang = document.getElementById("lang-switch");
+  const foldAll = document.getElementById("fold-all");
+  const theme = document.querySelector("[data-theme-choice]").parentElement;
+  const side = document.createElement("nav");
+  side.id = "side";
+  side.setAttribute("aria-label", "Navigation");
+  side.innerHTML = '<div class="side-head"></div><div class="side-tools"></div><ul class="side-list"></ul><div class="side-foot"></div>';
+  document.body.appendChild(side);
+
+  const cards = [...document.querySelectorAll("main > section.card")];
+  const links = cards.map((card) => {
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.href = "#" + card.id;
+    a.textContent = card.querySelector(".card-toggle .ttl").textContent;
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    a.appendChild(dot);
+    a.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      setCardOpen(card, true);
+      card.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    li.appendChild(a);
+    side.querySelector(".side-list").appendChild(li);
+    // the dot follows the card's "running" badge
+    const badge = card.querySelector(".card-toggle .badge");
+    const sync = () => { dot.hidden = !badge || badge.hidden; };
+    if (badge) new MutationObserver(sync).observe(badge, { attributes: true, attributeFilter: ["hidden"] });
+    sync();
+    return a;
+  });
+
+  // the card at the top of the window is marked in the list
+  let frame = 0;
+  const spy = () => {
+    frame = 0;
+    let current = cards[0];
+    for (const c of cards) if (c.getBoundingClientRect().top <= 80) current = c;
+    links.forEach((a, i) => a.classList.toggle("current", cards[i] === current));
+  };
+  addEventListener("scroll", () => { frame ||= requestAnimationFrame(spy); }, { passive: true });
+
+  const place = () => {
+    const on = isPc && wide.matches;
+    document.documentElement.classList.toggle("has-side", on);
+    if (on) {
+      side.querySelector(".side-head").append(titles);
+      side.querySelector(".side-tools").append(lang, theme);
+      side.querySelector(".side-foot").append(foldAll);
+    } else {
+      header.prepend(titles);
+      tools.append(lang, foldAll, theme);
+    }
+    spy();
+  };
+  wide.addEventListener("change", place);
+  place();
 })();
 </script>
 
