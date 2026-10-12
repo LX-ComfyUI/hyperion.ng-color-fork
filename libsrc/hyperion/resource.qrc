@@ -24,6 +24,7 @@
 		<file alias="schema-osEvents.json">schema/schema-osEvents.json</file>
 		<file alias="schema-protoServer.json">schema/schema-protoServer.json</file>
 		<file alias="schema-schedEvents.json">schema/schema-schedEvents.json</file>
+		<file alias="schema-grabberTest.json">schema/schema-grabberTest.json</file>
 		<file alias="schema-smoothing.json">schema/schema-smoothing.json</file>
 		<file alias="schema-webConfig.json">schema/schema-webConfig.json</file>
 		

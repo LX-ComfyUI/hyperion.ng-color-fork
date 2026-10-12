@@ -34,6 +34,7 @@
 #include <utils/KelvinToRgb.h>
 #include <utils/Process.h>
 #include <utils/JsonUtils.h>
+#include <utils/VideoProbe.h>
 #include <effectengine/EffectFileHandler.h>
 
 // ledmapping int <> string transform methods
@@ -481,6 +482,9 @@ void JsonAPI::handleCommand(const JsonApiCommand& cmd, const QJsonObject &messag
 	case Command::ForkDebug:
 		handleForkDebugCommand(message, cmd);
 	break;
+	case Command::GrabberTest:
+		handleGrabberTestCommand(message, cmd);
+	break;
 	case Command::ServerInfo:
 		handleServerInfoCommand(message, cmd);
 	break;
@@ -782,6 +786,11 @@ void JsonAPI::handleForkDebugCommand(const QJsonObject & /*unused*/, const JsonA
 	QJsonObject info = hyperion->getImageProcessor()->getDebugState();
 	info["instance"] = static_cast<int>(_currInstanceIndex);
 	sendSuccessDataReply(info, cmd);
+}
+
+void JsonAPI::handleGrabberTestCommand(const QJsonObject &message, const JsonApiCommand& cmd)
+{
+	sendSuccessDataReply(VideoProbe::sample(message["reset"].toBool(false)), cmd);
 }
 
 void JsonAPI::handleSysInfoCommand(const QJsonObject & /*unused*/, const JsonApiCommand& cmd)

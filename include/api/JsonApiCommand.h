@@ -21,6 +21,7 @@ public:
 		DeleteEffect,
 		Effect,
 		ForkDebug,
+		GrabberTest,
 		Image,
 		InputSource,
 		Instance,
@@ -53,6 +54,7 @@ public:
 		case DeleteEffect: return "delete-effect";
 		case Effect: return "effect";
 		case ForkDebug: return "forkdebug";
+		case GrabberTest: return "grabbertest";
 		case Image: return "image";
 		case InputSource: return "inputsource";
 		case Instance: return "instance";
@@ -354,6 +356,7 @@ public:
 			{ {"service", "discover"},                   { Command::Service,        SubCommand::Discover,                Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"sourceselect", ""},                      { Command::SourceSelect,   SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::Multi,        InstanceCmd::MustRun_Yes,    NoListenerCmd::Yes } },
 			{ {"forkdebug", ""},                         { Command::ForkDebug,      SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::Single,       InstanceCmd::MustRun_Yes,    NoListenerCmd::Yes } },
+			{ {"grabbertest", ""},                       { Command::GrabberTest,    SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"sysinfo", ""},                           { Command::SysInfo,        SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "restart"},                     { Command::System,         SubCommand::Restart,                 Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "usbResetRestart"},             { Command::System,         SubCommand::UsbResetRestart,         Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },

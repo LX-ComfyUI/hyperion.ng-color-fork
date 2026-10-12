@@ -37,6 +37,42 @@ $(document).ready(function () {
     if (globalThis.showOptHelp) {
       $('#conf_cont_video').append(createHelpTable(globalThis.schema.grabberV4L2.properties, $.i18n("edt_conf_v4l2_heading_title"), "videograbberHelpPanelId"));
     }
+
+    // Fork-Erweiterung: Grabber-Test. Die TV-Testseite misst, wie der Grabber feste und eigene
+    // Testfarben sieht, und speichert das Ergebnis in der globalen Einstellung "grabberTest";
+    // hier wird es nur angezeigt (js/grabbertest-report.js wertet aus).
+    if (typeof GrabberTestReport !== 'undefined') {
+      $('#conf_cont').append(createRow('conf_cont_grabbertest'));
+      const testPanel = createPanel('<i class="fa fa-eyedropper fa-fw"></i>' + $.i18n('edt_conf_grabbertest_heading_title'), '', null, 'grabbertest_container', 'panel-system', 'grabbertestPanelId');
+      testPanel.className = 'col-lg-12';
+      $('#conf_cont_grabbertest').append(testPanel);
+      // TV-Testseite (tvtest-Dienst auf demselben Host, Port 8093): /tv auf dem TV, / ist die Steuerseite
+      const testPageBase = "http://" + globalThis.location.hostname + ":8093";
+      const testPageLink = (path) => '<a href="' + testPageBase + path + '" target="_blank" rel="noopener">' + testPageBase + path + '</a>';
+      $('#grabbertest_container').append(
+        '<div class="bs-callout bs-callout-primary" style="margin-top:0px"><h4>' + $.i18n('conf_helptable_expl') + '</h4>'
+        + $.i18n('conf_grabber_test_intro', testPageLink('/tv'), testPageLink('/')) + '</div>'
+        + '<div id="grabbertest_report"></div>');
+      const renderGrabberTest = function () {
+        const result = globalThis.serverConfig.grabberTest || {};
+        GrabberTestReport.render(document.getElementById('grabbertest_report'), {
+          basic: result.basic,
+          custom: result.custom,
+          current: globalThis.serverConfig.grabberV4L2,
+          lang: storedLang === 'de' ? 'de' : 'en'
+        });
+      };
+      renderGrabberTest();
+      // ein neuer Test von der Testseite (oder geänderte Grabber-Einstellungen) zeigt sich sofort
+      $(globalThis.hyperion).on("cmd-settings-update", function (event) {
+        const data = event.response && event.response.data;
+        if (data && (data.grabberTest || data.grabberV4L2)) {
+          if (data.grabberTest) globalThis.serverConfig.grabberTest = data.grabberTest;
+          if (data.grabberV4L2) globalThis.serverConfig.grabberV4L2 = data.grabberV4L2;
+          renderGrabberTest();
+        }
+      });
+    }
   }
 
   // Audio-Grabber

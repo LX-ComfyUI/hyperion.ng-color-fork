@@ -127,6 +127,10 @@
       "schedEvents":{
          "enable":false
       },
+      "grabberTest":{
+         "basic":{},
+         "custom":{}
+      },
       "webConfig":{
          "document_root":"",
          "port":8090,

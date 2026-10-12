@@ -27,6 +27,7 @@
 
 #include "grabber/video/v4l2/V4L2Grabber.h"
 #include "grabber/video/v4l2/V4L2GrabberDebug.h"
+#include <utils/VideoProbe.h>
 
 using namespace V4L2GrabberDebug;
 
@@ -1181,6 +1182,9 @@ void V4L2Grabber::newThreadFrame(const Image<ColorRgb>& image)
 {
 	if (_standbyActivated)
 		return;
+
+	// fork: grabber test, sees the frame as decoded, also while the signal detection drops it
+	VideoProbe::offer(image, _currentDeviceName);
 
 	if (_signalDetectionEnabled)
 	{

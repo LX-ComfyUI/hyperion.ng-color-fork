@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "title": "edt_conf_grabbertest_heading_title",
+  "properties": {
+    "basic": {
+      "type": "object",
+      "title": "edt_conf_grabbertest_basic_title",
+      "required": true,
+      "default": {},
+      "propertyOrder": 1
+    },
+    "custom": {
+      "type": "object",
+      "title": "edt_conf_grabbertest_custom_title",
+      "required": true,
+      "default": {},
+      "propertyOrder": 2
+    }
+  },
+  "additionalProperties": true
+}

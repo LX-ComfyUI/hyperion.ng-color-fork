@@ -36,6 +36,9 @@ add_library(hyperion-utils
 	# Image resampler
 	${CMAKE_SOURCE_DIR}/include/utils/ImageResampler.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/ImageResampler.cpp
+	# fork: grabber test, measures the raw video grabber frames
+	${CMAKE_SOURCE_DIR}/include/utils/VideoProbe.h
+	${CMAKE_SOURCE_DIR}/libsrc/utils/VideoProbe.cpp
 	# Color transformation (saturation/luminance) of RGB colors
 	${CMAKE_SOURCE_DIR}/include/utils/ColorSys.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/ColorSys.cpp

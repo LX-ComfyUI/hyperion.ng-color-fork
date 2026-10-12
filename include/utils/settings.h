@@ -33,6 +33,7 @@ namespace settings {
 		OSEVENTS,
 		CECEVENTS,
 		SCHEDEVENTS,
+		GRABBERTEST,
 		INVALID
 	};
 
@@ -70,6 +71,7 @@ namespace settings {
 		case OSEVENTS:      return "osEvents";
 		case CECEVENTS:     return "cecEvents";
 		case SCHEDEVENTS:   return "schedEvents";
+		case GRABBERTEST:   return "grabberTest";
 		default:            return "invalid";
 		}
 	}
@@ -106,6 +108,7 @@ namespace settings {
 		if (type == "osEvents")             return OSEVENTS;
 		if (type == "cecEvents")            return CECEVENTS;
 		if (type == "schedEvents")          return SCHEDEVENTS;
+		if (type == "grabberTest")          return GRABBERTEST;
 		return INVALID;
 	}
 }

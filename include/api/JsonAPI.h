@@ -177,6 +177,13 @@ private:
 	void handleForkDebugCommand(const QJsonObject &message, const JsonApiCommand& cmd);
 
 	///
+	/// fork: Measure the raw frames of the video grabber for the grabber test
+	///
+	/// @param message the incoming message ("reset" starts a new average)
+	///
+	void handleGrabberTestCommand(const QJsonObject &message, const JsonApiCommand& cmd);
+
+	///
 	/// Handle an incoming JSON Server info message
 	///
 	/// @param message the incoming message

@@ -57,6 +57,10 @@
          "required":false,
          "$ref":"schema-schedEvents.json"
       },
+      "grabberTest":{
+         "required":false,
+         "$ref":"schema-grabberTest.json"
+      },
       "webConfig":{
          "required":false,
          "$ref":"schema-webConfig.json"
