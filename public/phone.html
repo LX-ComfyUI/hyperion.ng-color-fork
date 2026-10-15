@@ -2678,7 +2678,7 @@ $("backup").addEventListener("click", async () => {
 
 let gxOpenPicker = null;   // the color input of an open picker in the own colors, its row stays
 let gxListKey = "";
-let gxFinishedAt = null;   // a finished run loads the stored result again
+let gxFinishedAt = null;   // end of the last run already shown, null until the first state; a newer end loads the stored result
 
 const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -2707,10 +2707,12 @@ function renderGrabberRun() {
   $("gx-error").hidden = running || !run.error;
   $("gx-error").textContent = run.error ? "Test abgebrochen: " + run.error : "";
   $("gx-note").textContent = !running && run.aborted ? "Test abgebrochen, nichts gespeichert." : "";
-  if (run.finishedAt && run.finishedAt !== gxFinishedAt) {
-    const first = gxFinishedAt === null;
-    gxFinishedAt = run.finishedAt;
-    if (!first) loadGrabberReport();
+  // finishedAt is 0 as long as no run ended since the server start, so the first end counts too
+  const finishedAt = run.finishedAt ?? 0;
+  if (gxFinishedAt === null) gxFinishedAt = finishedAt;
+  else if (finishedAt !== gxFinishedAt) {
+    gxFinishedAt = finishedAt;
+    if (finishedAt) loadGrabberReport();
   }
 }
 
