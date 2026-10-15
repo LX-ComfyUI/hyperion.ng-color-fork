@@ -135,23 +135,29 @@
       <!-- /.navbar-header -->
 
       <ul class="nav navbar-top-links navbar-right" id="top-navbar">
+        <!-- Fork-Erweiterung: alle Erklärungstabellen der Seite auf-/zuklappen (helpFold in ui_utils.js) -->
+        <li class="dropdown" id="btn_help_fold_all" style="display:none">
+          <a data-tip-key="general_btn_help_fold_all">
+            <i class="mdi mdi-arrow-collapse-vertical"></i>
+          </a>
+        </li>
         <!-- Browser built in capture stream - streamer.js -->
         <li class="dropdown" id="btn_streamer" style="display:none">
           <!-- Hidden helpers -->
           <canvas style="display:none" id="streamcanvas"></canvas>
           <video style="display:none" id="streamvideo" autoplay></video>
-          <a>
+          <a data-tip-key="general_tip_streamer">
             <i id="btn_streamer_icon" class="fa fa-video-camera fa-fw"></i>
           </a>
         </li>
         <li class="dropdown" id="btn_open_ledsim">
-          <a>
+          <a data-tip-key="main_ledsim_title">
             <i class="fa fa-television fa-fw"></i>
           </a>
         </li>
         <!-- /.dropdown -->
         <li class="dropdown" id="NavMenuWizards">
-          <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+          <a class="dropdown-toggle" data-toggle="dropdown" href="#" data-tip-key="general_tip_wizards">
             <i class="fa fa-magic fa-fw"></i>  <i class="fa fa-caret-down"></i>
           </a>
           <ul class="dropdown-menu dropdown-alerts">
@@ -176,7 +182,7 @@
         </li>
         <!-- /.dropdown -->
         <li class="dropdown">
-          <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+          <a class="dropdown-toggle" data-toggle="dropdown" href="#" data-tip-key="general_tip_settings">
             <i class="fa fa-wrench fa-fw"></i>  <i class="fa fa-caret-down"></i>
           </a>
           <ul class="dropdown-menu dropdown-alerts">
@@ -210,13 +216,13 @@
           </ul>
         </li>
         <li class="dropdown" id="btn_darkmode">
-          <a>
+          <a data-tip-key="general_tip_darkmode">
             <i id="btn_darkmode_icon" class="fa fa-moon-o"></i>
           </a>
         </li>
         <!-- /.dropdown -->
         <li class="dropdown">
-          <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+          <a class="dropdown-toggle" data-toggle="dropdown" href="#" data-tip-key="general_tip_power">
             <i class="fa fa-power-off fa-fw"></i>  <i class="fa fa-caret-down"></i>
           </a>
           <ul class="dropdown-menu dropdown-alerts">
@@ -257,7 +263,7 @@
         </li>
         <!-- /.lock-ui -->
         <li class="dropdown" id="btn_lock_ui" style="display:none">
-          <a>
+          <a data-tip-key="general_tip_lock">
             <i class="fa fa-lock fa-fw"></i>
           </a>
         </li>

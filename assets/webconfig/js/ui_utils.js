@@ -1396,32 +1396,20 @@ const helpFold = (function () {
     apply(panel);
   }
 
-  // der Knopf im Seitenkopf, nur auf Seiten mit Erklärungstabellen
+  // das Symbol in der Kopfzeile, nur auf Seiten mit Erklärungstabellen; es zeigt, was ein Klick tut
   function updatePageButton() {
     scheduled = false;
     const all = panels();
-    const header = document.querySelector('#page-content h3.page-header');
-    let button = document.getElementById('btn_help_fold_all');
-    if (!all.length || !header) {
-      button?.remove();
-      return;
-    }
-    if (!button || button.parentElement !== header) {
-      button?.remove();
-      button = document.createElement('button');
-      button.type = 'button';
-      button.id = 'btn_help_fold_all';
-      button.className = 'btn btn-default btn-sm help-fold-all';
-      button.addEventListener('click', function () {
-        const open = !panels().some((p) => !p.classList.contains('help-folded'));
-        panels().forEach((p) => set(p, open));
-        updatePageButton();
-      });
-      header.appendChild(button);
-    }
+    const item = document.getElementById('btn_help_fold_all');
+    if (!item) return;
+    item.style.display = all.length ? '' : 'none';
+    if (!all.length) return;
     const anyOpen = all.some((p) => !p.classList.contains('help-folded'));
-    button.innerHTML = '<i class="fa fa-fw ' + (anyOpen ? 'fa-angle-double-up' : 'fa-angle-double-down') + '"></i>'
-      + $.i18n(anyOpen ? 'general_btn_help_fold_all' : 'general_btn_help_unfold_all');
+    const link = item.querySelector('a');
+    link.dataset.tipKey = anyOpen ? 'general_btn_help_fold_all' : 'general_btn_help_unfold_all';
+    link.dataset.tip = $.i18n(link.dataset.tipKey);
+    link.setAttribute('aria-label', link.dataset.tip);
+    item.querySelector('i').className = 'mdi ' + (anyOpen ? 'mdi-arrow-collapse-vertical' : 'mdi-arrow-expand-vertical');
   }
 
   function schedule() {
@@ -1456,14 +1444,29 @@ const helpFold = (function () {
     updatePageButton();
   });
 
-  // Seitenwechsel ersetzen #page-content; Knopf danach neu bewerten
+  // Seitenwechsel ersetzen #page-content; das Symbol danach neu bewerten
   $(function () {
     const content = document.getElementById('page-content');
     if (content) new MutationObserver(schedule).observe(content, { childList: true, subtree: true });
+    $('#btn_help_fold_all > a').on('click', function () {
+      const open = !panels().some((p) => !p.classList.contains('help-folded'));
+      panels().forEach((p) => set(p, open));
+      updatePageButton();
+    });
   });
 
   return { attach };
 })();
+
+// Fork-Erweiterung: kurzer Name beim Darüberfahren mit der Maus über die Symbole der Kopfzeile
+// (data-tip-key in index.html, angezeigt per CSS aus data-tip; übersetzt erst beim Darüberfahren,
+// weil die Sprachdatei beim Laden der Seite noch nicht da ist)
+$(function () {
+  $('#top-navbar').on('mouseenter focusin', 'li > a[data-tip-key]', function () {
+    this.dataset.tip = $.i18n(this.dataset.tipKey);
+    this.setAttribute('aria-label', this.dataset.tip);
+  });
+});
 
 function createPanel(head, body, footer, bodyid, css, panelId, type = 'panel-default') {
   const cont = document.createElement('div');
