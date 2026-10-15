@@ -190,7 +190,7 @@ function phoneCount() {
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
 function broadcast() {
   // serverNow lets the TV time the gray test against the Pi's clock, not its own
-  const payload = `data: ${JSON.stringify({ ...state, grabberRun, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
+  const payload = `data: ${JSON.stringify({ ...state, grabberRun, grabberCorrection, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
   for (const res of clients.keys()) res.write(payload);
 }
 
@@ -544,6 +544,54 @@ function stepLabel(step) {
   return `${t[step.group] ?? step.group} ${level}`;
 }
 
+// --- grabber color correction (global setting grabberTest.correction, computed by the report) ---
+// state for the switches on the control page; the WebUI can change it too, so it is read again
+// every few seconds and broadcast when it changed
+let grabberCorrection = { available: false, enable: false, basedOn: null };
+
+function readGrabberCorrection() {
+  try {
+    const c = readGlobalSetting("grabberTest")?.correction ?? {};
+    const available = Array.isArray(c.matrix) && c.matrix.length === 9;
+    return { available, enable: available && c.enable === true, basedOn: c.basedOn ?? null };
+  } catch {
+    return grabberCorrection;
+  }
+}
+
+function refreshGrabberCorrection() {
+  const next = readGrabberCorrection();
+  if (JSON.stringify(next) === JSON.stringify(grabberCorrection)) return;
+  grabberCorrection = next;
+  broadcast();
+}
+grabberCorrection = readGrabberCorrection();
+setInterval(refreshGrabberCorrection, 4000);
+
+// same limits as Hyperion (GrabberColorCorrection::configure): 9 numbers, row absolute sum <= 2
+function validMatrix(m) {
+  if (!Array.isArray(m) || m.length !== 9 || !m.every((v) => typeof v === "number" && Number.isFinite(v))) return false;
+  for (let r = 0; r < 3; r++) if (Math.abs(m[3 * r]) + Math.abs(m[3 * r + 1]) + Math.abs(m[3 * r + 2]) > 2) return false;
+  return true;
+}
+
+// enable: true/false switches the stored matrix; a full correction object (from the report) replaces it
+async function setGrabberCorrection({ enable, correction }) {
+  await exclusive(async () => {
+    const current = readGlobalSetting("grabberTest") ?? { basic: {}, custom: {} };
+    let next;
+    if (correction && typeof correction === "object") {
+      if (correction.enable && !validMatrix(correction.matrix)) throw new Error("Ungültige Korrekturmatrix");
+      next = { ...correction, enable: correction.enable === true };
+    } else {
+      if (enable && !validMatrix(current.correction?.matrix)) throw new Error("Noch keine Korrektur berechnet. Zuerst einen Grundtest machen und die Korrektur im Grabber-Test einschalten.");
+      next = { ...(current.correction ?? {}), enable: enable === true };
+    }
+    await writeGlobalSetting("grabberTest", { ...current, basic: current.basic ?? {}, custom: current.custom ?? {}, correction: next });
+  });
+  refreshGrabberCorrection();
+}
+
 function setRun(patch) {
   grabberRun = { ...grabberRun, ...patch };
   broadcast();
@@ -865,7 +913,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/tv") return serveStatic(res, "tv.html");
     if (req.method === "GET" && p.startsWith("/static/")) return serveStatic(res, p.slice("/static/".length));
 
-    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun });
+    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun, grabberCorrection });
     if (req.method === "GET" && p === "/api/presets") return sendJson(res, 200, PRESETS);
 
     if (req.method === "GET" && p === "/api/events") {
@@ -993,7 +1041,7 @@ const server = http.createServer(async (req, res) => {
       state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, overlays, lang });
       saveState();
       broadcast();
-      return sendJson(res, 200, { ...state, grabberRun });
+      return sendJson(res, 200, { ...state, grabberRun, grabberCorrection });
     }
 
     // grabber test: the stored results (Hyperion's global setting), start and stop
@@ -1001,7 +1049,11 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2") });
     }
     if (req.method === "POST" && p === "/api/grabbertest") {
-      const { action, kind } = await readBody(req);
+      const { action, kind, enable, correction } = await readBody(req);
+      if (action === "correction") {
+        await setGrabberCorrection({ enable, correction });
+        return sendJson(res, 200, { grabberCorrection });
+      }
       if (action === "stop") {
         grabberAbort = true;
         return sendJson(res, 200, grabberRun);

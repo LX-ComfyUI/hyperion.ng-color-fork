@@ -79,6 +79,9 @@
   .seg button { border: none; border-radius: 0; padding: 6px 10px; font-size: 13px; background: var(--btn); }
   .seg button + button { border-left: 1px solid var(--btn-line); }
   .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+  .gc-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 4px 0 12px; }
+  .gc-label { font-weight: 600; font-size: 14px; }
+  .gc-note { color: var(--muted); font-size: 12px; flex-basis: 100%; }
   .seg.full { display: flex; }
   .seg.full button { flex: 1; padding: 9px 4px; font-size: 14px; }
   .seg.small button { padding: 4px 9px; font-size: 12px; }
@@ -323,10 +326,43 @@
     <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Backup</b></a> (ganz unten) sicherst du die komplette Hyperion-Konfiguration auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf das Wort <b>Backup</b> springt dorthin.</p>
   </section>
 
+  <!-- ===== grabber test ===== -->
+  <section class="card" id="card-gx">
+    <h2>Grabber-Test</h2>
+    <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
+    <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
+    <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.</p>
+    <p class="help"><b>Nach dem Test:</b> Unten erscheint das Ergebnis. Zeigt es einen Farbfehler, schalte mit dem Haken bei der Matrix die Grabber-Farbkorrektur ein. Prüfe danach unter <a class="jump" href="#card-color"><b>Testfarben</b></a> Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV? Mit dem Schalter <b>Grabber-Farbkorrektur</b> in den Testfarben schaltest du die Korrektur bei laufender Farbe ein und aus und siehst den Unterschied sofort.</p>
+    <div class="status" id="gx-progress" hidden></div>
+    <p class="warn" id="gx-error" hidden></p>
+    <p class="note" id="gx-note"></p>
+    <div class="seg full gt-controls" role="group" aria-label="Grundtest">
+      <button type="button" id="gx-basic"></button>
+    </div>
+
+    <h3>Eigene Farben</h3>
+    <p class="help">Lege Farben an, die du zusätzlich messen willst, zum Beispiel typische Farben aus Filmen. Sie werden nacheinander gemessen und getrennt vom Grundtest gespeichert.</p>
+    <div id="gx-colors"></div>
+    <div class="seg full gt-controls" role="group" aria-label="Eigene Farben messen">
+      <button type="button" id="gx-custom"></button>
+    </div>
+
+    <h3>Ergebnis</h3>
+    <div id="gx-report">Lade Ergebnis …</div>
+  </section>
+
   <!-- ===== test colors ===== -->
   <section class="card" id="card-color">
     <h2>Testfarben</h2>
     <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne.</p>
+    <div class="gc-row">
+      <span class="gc-label">Grabber-Farbkorrektur</span>
+      <div class="seg" role="group" aria-label="Grabber-Farbkorrektur">
+        <button type="button" data-gc="on">An</button>
+        <button type="button" data-gc="off">Aus</button>
+      </div>
+      <small class="gc-note" id="gc-note"></small>
+    </div>
     <p class="note" id="list-note"></p>
 
     <div class="color-grid">
@@ -380,29 +416,6 @@
   </section>
 
   <!-- ===== black bars test ===== -->
-  <!-- ===== grabber test ===== -->
-  <section class="card" id="card-gx">
-    <h2>Grabber-Test</h2>
-    <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
-    <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
-    <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.</p>
-    <div class="status" id="gx-progress" hidden></div>
-    <p class="warn" id="gx-error" hidden></p>
-    <p class="note" id="gx-note"></p>
-    <div class="seg full gt-controls" role="group" aria-label="Grundtest">
-      <button type="button" id="gx-basic"></button>
-    </div>
-
-    <h3>Eigene Farben</h3>
-    <p class="help">Lege Farben an, die du zusätzlich messen willst, zum Beispiel typische Farben aus Filmen. Sie werden nacheinander gemessen und getrennt vom Grundtest gespeichert.</p>
-    <div id="gx-colors"></div>
-    <div class="seg full gt-controls" role="group" aria-label="Eigene Farben messen">
-      <button type="button" id="gx-custom"></button>
-    </div>
-
-    <h3>Ergebnis</h3>
-    <div id="gx-report">Lade Ergebnis …</div>
-  </section>
 
   <section class="card" id="card-bars">
     <h2>Schwarze Balken Test</h2>
@@ -1082,6 +1095,7 @@ function renderState() {
   renderPosTest();
   renderOverlayChecks();
   renderGrabberRun();
+  renderGrabberCorrection();
   renderGrabberColors();
   renderCardBadges();
 }
@@ -2717,12 +2731,49 @@ function renderGrabberRun() {
   }
 }
 
+// switches the grabber color correction (stored in Hyperion); correction = full object from the report
+async function setGrabberCorrection(body) {
+  try {
+    const res = await fetch("/api/grabbertest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "correction", ...body }) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error);
+    state = { ...state, grabberCorrection: out.grabberCorrection };
+    renderGrabberCorrection();
+  } catch (e) {
+    showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
+    renderGrabberCorrection();
+  }
+}
+
+let gcShown = null; // correction state the report was last drawn with
+function renderGrabberCorrection() {
+  const c = state?.grabberCorrection ?? { available: false, enable: false };
+  document.querySelectorAll("[data-gc]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(c.available && (b.dataset.gc === "on") === c.enable));
+    b.disabled = !c.available;
+  });
+  $("gc-note").textContent = c.available
+    ? "Gleicht den Farbfehler von Grabber oder Splitter aus (berechnet im Grabber-Test). Wirkt sofort auf die LEDs."
+    : "Noch keine Korrektur berechnet. Zuerst einen Grundtest machen und die Korrektur im Grabber-Test einschalten.";
+  const key = JSON.stringify(c);
+  if (gcShown !== null && key !== gcShown) loadGrabberReport();
+  gcShown = key;
+}
+document.querySelectorAll("[data-gc]").forEach((b) => b.addEventListener("click", () => {
+  const c = state?.grabberCorrection;
+  if (!c?.available || (b.dataset.gc === "on") === c.enable) return;
+  setGrabberCorrection({ enable: b.dataset.gc === "on" });
+}));
+
 async function loadGrabberReport() {
   try {
     const res = await fetch("/api/grabbertest");
     const r = await res.json();
     if (!res.ok) throw new Error(r.error);
-    GrabberTestReport.render($("gx-report"), { basic: r.basic, custom: r.custom, current: r.current, correction: r.correction, lang: I18N.lang });
+    GrabberTestReport.render($("gx-report"), {
+      basic: r.basic, custom: r.custom, current: r.current, correction: r.correction, lang: I18N.lang,
+      onAction: (action, correction) => setGrabberCorrection({ correction }),
+    });
   } catch (e) {
     $("gx-report").textContent = "Ergebnis nicht lesbar: " + e.message;
   }
@@ -2855,6 +2906,7 @@ async function init() {
   loadLedAreas();
   loadBackups();
   renderGrabberRun();
+  renderGrabberCorrection();
   renderGrabberColors();
   renderCardBadges();
   loadGrabberReport();
