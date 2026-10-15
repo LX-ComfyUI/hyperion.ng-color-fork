@@ -17,26 +17,31 @@
   })();
 </script>
 <style>
+  /* colors of the Hyperion WebUI: gray bar and menu, white page, panels with a gray head;
+     dark like its dark mode (css/darkMode.css): #212121 bar, #333 page, #424242 panels */
   :root {
     color-scheme: light;
-    --bg: #f2f2f5; --card: #ffffff; --text: #111114; --muted: #5d5d66; --line: #d9d9e0;
-    --btn: #ffffff; --btn-text: #111114; --btn-line: #c9c9d2; --accent: #0a74e8; --accent-text: #ffffff;
-    --chip-line: rgba(0, 0, 0, .18); --danger: #d93025; --warn: #9a5b00; --shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    --bg: #f8f8f8; --page: #ffffff; --card: #ffffff; --card-head: #f5f5f5; --inset: #f5f5f5;
+    --text: #333333; --muted: #6b6b6b; --line: #dddddd; --bar-line: #e7e7e7;
+    --btn: #ffffff; --btn-text: #333333; --btn-line: #cccccc; --accent: #0e83e7; --accent-text: #ffffff;
+    --chip-line: rgba(0, 0, 0, .18); --danger: #d93025; --warn: #9a5b00; --shadow: 0 1px 1px rgba(0, 0, 0, .05);
     --gap: 16px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --bg: #121215; --card: #1f1f25; --text: #ececf1; --muted: #a3a3ad; --line: #34343d;
-      --btn: #2a2a32; --btn-text: #ececf1; --btn-line: #44444f; --accent: #3d95ff; --accent-text: #ffffff;
-      --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: none;
+      --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
+      --text: #dddddd; --muted: #aaaaaa; --line: #212121; --bar-line: #212121;
+      --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
+      --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #121215; --card: #1f1f25; --text: #ececf1; --muted: #a3a3ad; --line: #34343d;
-    --btn: #2a2a32; --btn-text: #ececf1; --btn-line: #44444f; --accent: #3d95ff; --accent-text: #ffffff;
-    --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: none;
+    --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
+    --text: #dddddd; --muted: #aaaaaa; --line: #212121; --bar-line: #212121;
+    --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
+    --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
   }
 
   html { scroll-behavior: smooth; }
@@ -130,8 +135,8 @@
   .col { min-width: 0; }
   /* the row tools stay clear of the floating preview button's corner, which floats on top of
      whatever scrolls underneath it and would otherwise hide/steal taps from the rightmost icon */
-  #crow-presets, #crow-custom, #gx-colors { padding-right: 60px; box-sizing: border-box; }
-  .hy-col { background: var(--bg); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
+  #crow-presets, #crow-custom, #gx-colors { box-sizing: border-box; }
+  .hy-col { background: var(--inset); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
   .rgbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
   .rgbrow .rgbname { font-size: 14px; min-width: 64px; }
   .rgbrow.flash { animation: rgbflash 1.2s ease-out; border-radius: 8px; }
@@ -297,9 +302,86 @@
   .gx-bar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
   #gx-colors { margin-top: 4px; }
   #gx-report { margin-top: 4px; }
+
+  /* ===== layout like the Hyperion WebUI =====
+     fixed bar on top (menu button and logo left, icons right), menu on the left under it: on wide
+     windows next to the page (the menu button hides it), on narrow ones a drawer from the left */
+  :root { --side-w: 250px; --bar-h: 56px; }
+  @media (min-width: 768px) { :root { --bar-h: 64px; } }
+  body { background: var(--bg); padding-top: var(--bar-h); }
+  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 45; height: var(--bar-h); box-sizing: border-box;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px;
+            background: var(--bg); border-bottom: 1px solid var(--bar-line); }
+  .tb-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  @media (min-width: 768px) { .tb-left { width: calc(var(--side-w) - 8px); justify-content: center; } }
+  .tb-menu { width: 44px; height: 36px; padding: 0; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+             border-radius: 4px; border: 1px solid transparent; background: color-mix(in srgb, var(--text) 10%, transparent); }
+  .tb-menu span { display: block; width: 20px; height: 2px; border-radius: 1px; background: var(--text); }
+  .tb-logo { display: block; height: auto; width: 170px; min-width: 96px; flex: 0 1 auto; }
+  @media (max-width: 767px) { .tb-logo { width: 120px; } }
+  .logo-dark { display: none; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
+  :root[data-theme="dark"] .logo-dark { display: block; }
+  :root[data-theme="dark"] .logo-light { display: none; }
+  .tb-icons { display: flex; align-items: center; gap: 2px; flex: none; }
+  .tb-icon { position: relative; width: 40px; height: 40px; padding: 0; border: none; border-radius: 4px; background: none; color: var(--text);
+             display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+  .tb-icon:hover { background: color-mix(in srgb, var(--text) 10%, transparent); }
+  .tb-icon[aria-pressed="true"] { color: var(--accent); }
+  .tb-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  /* name of an icon on mouse hover, right aligned below it like in the WebUI */
+  @media (hover: hover) {
+    .tb-icon[data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 2px); right: 0; padding: 4px 8px; border-radius: 4px;
+      background: rgba(30, 30, 34, .92); color: #fff; font-size: 12px; font-weight: normal; white-space: nowrap; pointer-events: none; z-index: 60; }
+  }
+
+  #side { display: flex; flex-direction: column; position: fixed; top: var(--bar-h); bottom: 0; left: 0; z-index: 44; width: var(--side-w);
+          box-sizing: border-box; overflow-y: auto; background: var(--bg); padding: 0; gap: 0; }
+  #side .side-list { list-style: none; margin: 0; padding: 0; }
+  #side .side-list li { display: block; padding: 0; border-bottom: 1px solid var(--bar-line); }
+  .side-list a { display: flex; align-items: center; gap: 6px; padding: 10px 15px; border-left: 4px solid transparent; border-radius: 0;
+                 color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.3; }
+  .side-list a:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .side-list a.current { border-left-color: var(--accent); background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-weight: 600; }
+  .side-foot { margin-top: auto; padding: 10px 15px; font-size: 12px; color: var(--muted); }
+  main { max-width: none; margin: 0; padding: var(--gap); background: var(--page); min-height: calc(100vh - var(--bar-h)); }
+  @media (min-width: 768px) {
+    main { margin-left: var(--side-w); border-left: 1px solid var(--bar-line); padding: 12px 24px 24px; }
+    :root.side-collapsed #side { display: none; }
+    :root.side-collapsed main { margin-left: 0; border-left: none; }
+  }
+  @media (max-width: 767px) {
+    #side { transform: translateX(-100%); transition: transform .25s; width: 240px; box-shadow: 0 3px 9px rgba(0, 0, 0, .5); border-right: 1px solid var(--bar-line); }
+    :root.side-open #side { transform: none; }
+    main { padding: 12px; }
+  }
+  /* page title like the WebUI's page header; the old header tools are driven by the bar icons */
+  main > header { display: block; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  main > header .hdr-tools { display: none; }
+  main > header h1 { font-size: 24px; font-weight: 500; }
+  .pv-fab, #pv-fab { display: none !important; }
+
+  /* cards look like the WebUI's panels: border, gray head, body */
+  .card { border: 1px solid var(--line); border-radius: 4px; padding: 0; box-shadow: var(--shadow); margin-bottom: 20px; scroll-margin-top: calc(var(--bar-h) + 8px); }
+  .card > h2 { margin: 0; padding: 10px 15px; background: var(--card-head); border-bottom: 1px solid var(--line); border-radius: 4px 4px 0 0; font-weight: 500; }
+  .card.closed > h2 { border-bottom: none; border-radius: 4px; }
+  .card > .card-body { padding: 15px; }
 </style>
 </head>
 <body>
+<nav id="topbar" aria-label="Kopfzeile">
+  <div class="tb-left">
+    <button type="button" class="tb-menu" id="tb-menu" aria-label="Menü"><span></span><span></span><span></span></button>
+    <img class="tb-logo logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion">
+    <img class="tb-logo logo-dark" src="/static/hyperion-logo.png" alt="Hyperion">
+  </div>
+  <div class="tb-icons">
+    <button type="button" class="tb-icon" id="tb-fold"></button>
+    <button type="button" class="tb-icon" id="tb-preview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
+    <button type="button" class="tb-icon" id="tb-lang"></button>
+    <button type="button" class="tb-icon" id="tb-theme"></button>
+  </div>
+</nav>
 <main id="main">
   <header>
     <div class="titles">
@@ -882,26 +964,20 @@
 </section>
 
 <script>
-// PC: a fixed menu on the left with the page title, language, appearance and a jump list of the
-// cards. The header's own elements are moved there (and back when the window gets narrow), so
-// their listeners stay. A dot marks a card whose test is running.
+// Layout like the Hyperion WebUI: a fixed bar with the menu button and the logo left and icons right,
+// a menu on the left with a jump list of the cards (a dot marks a running test). Wide windows show
+// the menu next to the page and the menu button hides it (remembered); narrow ones open it as a
+// drawer from the left. The bar icons drive the existing controls (language, theme, fold all,
+// preview), so their logic and listeners stay where they are.
 (function () {
-  const isPc = document.documentElement.dataset.device === "desktop";
-  const wide = matchMedia("(min-width: 1000px)");
-  const header = document.querySelector("main > header");
-  const tools = header.querySelector(".hdr-tools");
-  const titles = header.querySelector(".titles");
-  const lang = document.getElementById("lang-switch");
-  const foldAll = document.getElementById("fold-all");
-  const theme = document.querySelector("[data-theme-choice]").parentElement;
-  const preview = document.getElementById("pv-fab");
-  const previewHome = preview.parentNode;
-  const previewNext = preview.nextSibling;
+  const root = document.documentElement;
+  const wide = matchMedia("(min-width: 768px)");
   const side = document.createElement("nav");
   side.id = "side";
   side.setAttribute("aria-label", "Navigation");
-  side.innerHTML = '<div class="side-head"></div><div class="side-tools"></div><ul class="side-list"></ul>';
+  side.innerHTML = '<ul class="side-list"></ul><div class="side-foot"></div>';
   document.body.appendChild(side);
+  side.querySelector(".side-foot").append(document.querySelector("main > header .devicelabel"));
 
   const cards = [...document.querySelectorAll("main > section.card")];
   const links = cards.map((card) => {
@@ -915,6 +991,7 @@
     a.addEventListener("click", (ev) => {
       ev.preventDefault();
       setCardOpen(card, true);
+      if (!wide.matches) setDrawer(false);
       card.scrollIntoView({ block: "start", behavior: "smooth" });
     });
     li.appendChild(a);
@@ -931,27 +1008,87 @@
   let frame = 0;
   const spy = () => {
     frame = 0;
+    const top = parseFloat(getComputedStyle(root).getPropertyValue("--bar-h")) + 24;
     let current = cards[0];
-    for (const c of cards) if (c.getBoundingClientRect().top <= 80) current = c;
+    for (const c of cards) if (c.getBoundingClientRect().top <= top) current = c;
     links.forEach((a, i) => a.classList.toggle("current", cards[i] === current));
   };
   addEventListener("scroll", () => { frame ||= requestAnimationFrame(spy); }, { passive: true });
+  spy();
 
-  const place = () => {
-    const on = isPc && wide.matches;
-    document.documentElement.classList.toggle("has-side", on);
-    if (on) {
-      side.querySelector(".side-head").append(titles);
-      side.querySelector(".side-tools").append(lang, theme, preview, foldAll);
+  // menu button: hide/show the menu on wide windows, open/close the drawer on narrow ones
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  root.classList.toggle("side-collapsed", store.get("tvtest-side-collapsed") === "1");
+  const setDrawer = (open) => root.classList.toggle("side-open", open);
+  document.getElementById("tb-menu").addEventListener("click", () => {
+    if (wide.matches) {
+      const collapsed = !root.classList.contains("side-collapsed");
+      root.classList.toggle("side-collapsed", collapsed);
+      store.set("tvtest-side-collapsed", collapsed ? "1" : "0");
     } else {
-      header.prepend(titles);
-      tools.append(lang, foldAll, theme);
-      previewHome.insertBefore(preview, previewNext);
+      setDrawer(!root.classList.contains("side-open"));
     }
-    spy();
+  });
+  document.addEventListener("click", (ev) => {
+    if (root.classList.contains("side-open") && !side.contains(ev.target) && !ev.target.closest("#tb-menu")) setDrawer(false);
+  });
+  wide.addEventListener("change", () => setDrawer(false));
+
+  // bar icons
+  const SVG = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
+  const ICONS = {
+    collapse: SVG('<polyline points="7 4 12 9 17 4"/><polyline points="7 20 12 15 17 20"/><line x1="4" y1="12" x2="20" y2="12"/>'),
+    expand: SVG('<polyline points="7 9 12 4 17 9"/><polyline points="7 15 12 20 17 15"/><line x1="12" y1="4" x2="12" y2="20"/>'),
+    auto: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/>'),
+    light: SVG('<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/>'),
+    dark: SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
   };
-  wide.addEventListener("change", place);
-  place();
+  const tip = (btn, text) => {
+    btn.dataset.tip = I18N.t(text);
+    btn.setAttribute("aria-label", btn.dataset.tip);
+  };
+  const menuBtn = document.getElementById("tb-menu");
+  tip(menuBtn, "Menü");
+
+  const fold = document.getElementById("fold-all");
+  const tbFold = document.getElementById("tb-fold");
+  const syncFold = () => {
+    const allOpen = fold.dataset.allOpen === "true";
+    tbFold.innerHTML = allOpen ? ICONS.collapse : ICONS.expand;
+    tip(tbFold, allOpen ? "Alles zuklappen" : "Alles aufklappen");
+  };
+  new MutationObserver(syncFold).observe(fold, { attributes: true, attributeFilter: ["data-all-open"] });
+  tbFold.addEventListener("click", () => fold.click());
+  syncFold();
+
+  const panel = document.getElementById("pv-panel");
+  const tbPreview = document.getElementById("tb-preview");
+  const syncPreview = () => tbPreview.setAttribute("aria-pressed", String(!panel.hidden));
+  new MutationObserver(syncPreview).observe(panel, { attributes: true, attributeFilter: ["hidden"] });
+  tbPreview.addEventListener("click", () => document.getElementById("pv-fab").click());
+  tip(tbPreview, "Grabber-Vorschau");
+  syncPreview();
+
+  const tbLang = document.getElementById("tb-lang");
+  tbLang.textContent = I18N.lang === "en" ? "EN" : "DE";
+  tbLang.dataset.tip = "Deutsch / English";
+  tbLang.setAttribute("aria-label", "Deutsch / English");
+  tbLang.addEventListener("click", () => document.querySelector(`[data-lang-choice="${I18N.lang === "en" ? "de" : "en"}"]`).click());
+
+  const THEMES = ["auto", "light", "dark"];
+  const THEME_NAMES = { auto: "Darstellung: Auto", light: "Darstellung: Hell", dark: "Darstellung: Dunkel" };
+  const tbTheme = document.getElementById("tb-theme");
+  const syncTheme = () => {
+    const t = root.dataset.theme ?? "auto";
+    tbTheme.innerHTML = ICONS[t];
+    tip(tbTheme, THEME_NAMES[t]);
+  };
+  new MutationObserver(syncTheme).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  tbTheme.addEventListener("click", () => {
+    const next = THEMES[(THEMES.indexOf(root.dataset.theme ?? "auto") + 1) % THEMES.length];
+    document.querySelector(`[data-theme-choice="${next}"]`).click();
+  });
+  syncTheme();
 })();
 </script>
 <script src="/static/graycurve-graph.js"></script>
