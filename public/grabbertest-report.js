@@ -78,7 +78,9 @@
       f_darkHueGood: "Auch dunkle Farben behalten ihren Farbton.",
       f_crosstalk: "Farben sind nicht rein: {list}. Das deutet auf eine abweichende Farbmatrix (BT.601/BT.709) oder eine Farbsättigungs-Einstellung hin.",
       f_strengthGood: "Alle Farben kommen ungefähr gleich stark an wie Grau (Abweichung höchstens {v} %).",
-      f_strength: "Farben kommen unterschiedlich stark an: {list} (bei Stufe 128, Grau 128 = 100 %). Zu schwache Farben leuchten an den LEDs schwächer, als sie im Bild sind.",
+      f_strength: "Farben kommen unterschiedlich stark an: {list} (bei Stufe 128, Grau 128 = 100 %).{effect}",
+      strengthWeak: " Zu schwache Farben leuchten an den LEDs schwächer, als sie im Bild sind.",
+      strengthStrong: " Zu starke Farben leuchten an den LEDs kräftiger, als sie im Bild sind.",
       f_strengthClip: "Verstärkte Farben erreichen den Höchstwert schon vor 255: {list}. Hellere Töne dieser Farben lassen sich nicht mehr unterscheiden.",
       f_matrix: "Fremdanteile und ungleiche Stärke zusammen sind das typische Bild einer abweichenden Farbmatrix: Der Grabber (oder ein Gerät davor, etwa ein HDMI-Splitter) rechnet die Farben mit einer anderen Norm um, als das Zuspielgerät sendet. Der Fernseher ist daran nicht beteiligt, weil der Grabber das Signal vor ihm abgreift. Graustufen sind davon nicht betroffen.",
       f_unstable: "{n} Schritte wurden nicht ganz ruhig gemessen. Wiederhole den Test, wenn Werte seltsam aussehen.",
@@ -152,7 +154,9 @@
       f_darkHueGood: "Dark colors keep their hue too.",
       f_crosstalk: "Colors are not pure: {list}. This points to a different color matrix (BT.601/BT.709) or a saturation setting.",
       f_strengthGood: "All colors arrive about as strong as gray (at most {v} % off).",
-      f_strength: "Colors arrive with different strength: {list} (at level 128, gray 128 = 100 %). Colors that arrive too weak light up weaker on the LEDs than they are in the picture.",
+      f_strength: "Colors arrive with different strength: {list} (at level 128, gray 128 = 100 %).{effect}",
+      strengthWeak: " Colors that arrive too weak light up weaker on the LEDs than they are in the picture.",
+      strengthStrong: " Colors that arrive too strong light up stronger on the LEDs than they are in the picture.",
       f_strengthClip: "Boosted colors reach the maximum before 255: {list}. Brighter shades of these colors can no longer be told apart.",
       f_matrix: "Foreign shares and uneven strength together are the typical sign of a different color matrix: the grabber (or a device in front of it, such as an HDMI splitter) converts the colors with a different standard than the source device sends. The TV is not involved, the grabber taps the signal before it. Gray levels are not affected.",
       f_unstable: "{n} steps were not measured quite steadily. Repeat the test if values look odd.",
@@ -507,7 +511,10 @@
         case "f_strengthGood":
           return fill(t[f.key], { v: num(p.v, 0) });
         case "f_strength":
-          return fill(t[f.key], { list: p.ladders.map((l) => fill(t.strengthItem, { c: t[l.name], v: num(l.strength, 0) })).join(", ") });
+          return fill(t[f.key], {
+            list: p.ladders.map((l) => fill(t.strengthItem, { c: t[l.name], v: num(l.strength, 0) })).join(", "),
+            effect: (p.ladders.some((l) => l.strength < 100) ? t.strengthWeak : "") + (p.ladders.some((l) => l.strength > 100) ? t.strengthStrong : ""),
+          });
         case "f_strengthClip":
           return fill(t[f.key], { list: p.ladders.map((l) => fill(t.clipItem, { c: t[l.name], v: l.clipFrom })).join(", ") });
         default:
@@ -633,6 +640,7 @@
   // onAction(action, correction) makes the correction switchable (WebUI): "enable" passes the
   // correction computed from the basic test, "disable" the current one switched off
   function render(element, { basic, custom, current, correction, lang = "de", onAction = null } = {}) {
+    if (!element) return;
     ensureStyle(element.ownerDocument);
     const r = make(lang);
     element.innerHTML = `<div class="gtr">${basic && validSteps(basic).length ? r.basicHtml(basic, current, correction, !!onAction) : `<p>${r.t.none}</p>`}${custom ? r.customHtml(custom) : ""}</div>`;
