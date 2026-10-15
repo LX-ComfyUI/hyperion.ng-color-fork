@@ -99,7 +99,17 @@ var navDrawer = function (open) {
 	$('#main-nav').stop().animate({ left: open ? "0px" : "-235px" }, 300);
 	$(".navbar-toggle").toggleClass("closed", !open);
 };
+// Fork-Erweiterung: im breiten Fenster blendet der Menüknopf die Seitenleiste aus und ein (gespeichert)
+var setSideCollapsed = function (collapsed) {
+	document.documentElement.classList.toggle("side-collapsed", collapsed);
+	try { localStorage.setItem("sideCollapsed", collapsed ? "1" : "0"); } catch (e) { }
+};
+try { document.documentElement.classList.toggle("side-collapsed", localStorage.getItem("sideCollapsed") === "1"); } catch (e) { }
 $('.navbar-toggle').on('click', function(){
+	if (window.innerWidth >= 768) {
+		setSideCollapsed(!document.documentElement.classList.contains("side-collapsed"));
+		return;
+	}
 	navDrawer($(".navbar-toggle").hasClass("closed"));
 });
 $(document).on('click', '.mnava', function(){

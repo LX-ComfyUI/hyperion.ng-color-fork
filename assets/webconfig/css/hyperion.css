@@ -1126,26 +1126,55 @@ input[type="radio"] .styled:checked + label::after {
     z-index: 1000;
     min-height: 72px !important;
   }
-  /* Logo mittig über der Seitenleiste (250 px breit, Kopfzeile und Leiste beginnen am selben Rand) */
+  /* Menüknopf und Logo gemeinsam mittig über der Seitenleiste (250 px breit, Kopfzeile und Leiste
+     beginnen am selben Rand); der Knopf blendet die Seitenleiste aus und ein (sb-admin-2.js) */
   nav.navbar-static-top .navbar-header {
     margin: 0;
+    width: 250px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  nav.navbar-static-top .navbar-toggle {
+    display: block;
+    position: static;
+    float: none;
+    flex: none;
+    margin: 0;
+  }
+  nav.navbar-static-top .navbar-toggle .icon-bar {
+    transform: none !important;
+    opacity: 1 !important;
   }
   nav.navbar-static-top .navbar-brand {
     height: 72px;
-    width: 250px;
     left: 0;
     margin: 0;
     padding: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
   }
   #navbar_brand_logo {
-    width: 220px;
+    width: 180px;
     height: auto;
   }
   .navbar-top-links li a {
     min-height: 72px;
+  }
+  .navbar-top-links li a > .fa {
+    font-size: 19px;
+  }
+  #btn_help_fold_all .mdi {
+    font-size: 21px;
+  }
+  html.side-collapsed #main-nav {
+    display: none !important;
+  }
+  html.side-collapsed #page-wrapper {
+    margin-left: 0;
+    border-left: none;
   }
   #main-nav {
     position: fixed !important;
@@ -1187,8 +1216,8 @@ input[type="radio"] .styled:checked + label::after {
   }
   nav.navbar-static-top .navbar-brand {
     float: none;
-    flex: 0 1 96px;
-    min-width: 40px;
+    flex: 0 1 112px;
+    min-width: 92px;
     height: 56px;
     padding: 0 0 0 6px;
     left: 0;
@@ -1212,15 +1241,15 @@ input[type="radio"] .styled:checked + label::after {
   }
   #top-navbar > li > a {
     min-height: 56px;
-    padding: 0 5px;
+    padding: 0 4px;
   }
   #top-navbar > li > a > .fa,
   #top-navbar > li > a > .mdi {
-    font-size: 20px;
+    font-size: 18px;
     margin-right: 0;
   }
   #btn_help_fold_all .mdi {
-    font-size: 22px;
+    font-size: 20px;
   }
   #top-navbar .fa-caret-down {
     display: none;
