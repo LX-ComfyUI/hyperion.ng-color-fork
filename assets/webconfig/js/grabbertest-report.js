@@ -16,8 +16,8 @@
   "use strict";
 
   const GRAYS = [2, 4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 128, 160, 192, 224, 235, 245, 255];
-  const PRIMARY_LEVELS = [4, 8, 16, 32, 50, 128, 255];
-  const SECONDARY_LEVELS = [16, 50, 128, 255];
+  const PRIMARY_LEVELS = [4, 8, 16, 32, 50, 128, 192, 224, 240, 255];
+  const SECONDARY_LEVELS = [16, 50, 128, 192, 224, 240, 255];
   const LADDERS = [
     ["red", [1, 0, 0], PRIMARY_LEVELS],
     ["green", [0, 1, 0], PRIMARY_LEVELS],
@@ -88,6 +88,26 @@
       crosstalkItem: "{c} {v} %",
       strengthItem: "{c} {v} %",
       clipItem: "{c} bei etwa {v}",
+      corrTitle: "Grabber-Farbkorrektur",
+      corrOn: "Die Grabber-Farbkorrektur ist eingeschaltet (berechnet aus dem Grundtest vom {date}).",
+      corrOff: "Die Grabber-Farbkorrektur ist ausgeschaltet.",
+      corrRaw: "Gemessen wird immer das unkorrigierte Grabber-Bild. Die Befunde oben beschreiben also den Grabber selbst, auch wenn die Korrektur eingeschaltet ist.",
+      corrMeasured: "Mit der Korrektur gemessen: Abweichung im Mittel {mean}, höchstens {max} Stufen (ohne Korrektur {bmean} / {bmax}).",
+      corrFitGood: "Die Farben weichen kaum ab (im Mittel {mean}, höchstens {max} Stufen). Eine Korrektur ist nicht nötig.",
+      corrFit: "Eine aus diesem Grundtest berechnete Korrektur senkt die Abweichung von im Mittel {bmean} / höchstens {bmax} auf {mean} / {max} Stufen.",
+      corrFitNone: "Aus diesem Grundtest lässt sich keine Korrektur berechnen ({why}).",
+      corrWhyData: "zu wenige brauchbare Messwerte",
+      corrWhyRange: "die nötige Korrektur wäre zu stark",
+      corrStale: "Dieser Grundtest ist neuer als die eingeschaltete Korrektur. Mit ihr bliebe hier eine Abweichung von im Mittel {mean}, höchstens {max} Stufen.",
+      corrStaleBad: "Die eingeschaltete Korrektur passt nicht mehr zu diesem Grundtest. Berechne sie neu.",
+      corrLost: "Nicht korrigierbar, weil der Grabber diese Werte schon abschneidet: {list}. Sie werden so gut wie möglich angenähert.",
+      corrHow: "Die Korrektur ist eine 3×3-Farbmatrix, die Hyperion direkt auf das Grabber-Bild anwendet, vor allen anderen Einstellungen. Grau bleibt dabei unverändert, Gamma, Weißpunkt und Graukurve bleiben also gültig. Prüfe nach dem Einschalten aber die Farbkalibrierung (Rot, Grün, Blau, Cyan, Magenta, Gelb).",
+      corrWhere: "Ein- und ausschalten lässt sich die Korrektur im Hyperion-WebUI unter Konfiguration → Aufnahme Hardware → Grabber-Test (Expertenmodus).",
+      corrMatrix: "Matrix",
+      corrEnable: "Korrektur aus diesem Grundtest einschalten",
+      corrRecompute: "Korrektur aus diesem Grundtest neu berechnen",
+      corrDisable: "Korrektur ausschalten",
+      colCorr: "mit Korrektur",
       keys: { device: "Gerät", input: "Eingang", width: "Breite", height: "Höhe", fps: "Bildrate", encoding: "Format", hardware_brightness: "Helligkeit", hardware_contrast: "Kontrast", hardware_saturation: "Sättigung", hardware_hue: "Farbton" },
     },
     en: {
@@ -142,6 +162,26 @@
       crosstalkItem: "{c} {v} %",
       strengthItem: "{c} {v} %",
       clipItem: "{c} at about {v}",
+      corrTitle: "Grabber color correction",
+      corrOn: "The grabber color correction is on (computed from the basic test of {date}).",
+      corrOff: "The grabber color correction is off.",
+      corrRaw: "The test always measures the uncorrected grabber picture. The findings above describe the grabber itself, even while the correction is on.",
+      corrMeasured: "Measured with the correction: deviation {mean} on average, at most {max} levels (without correction {bmean} / {bmax}).",
+      corrFitGood: "The colors barely deviate ({mean} on average, at most {max} levels). No correction needed.",
+      corrFit: "A correction computed from this basic test lowers the deviation from {bmean} on average / at most {bmax} to {mean} / {max} levels.",
+      corrFitNone: "No correction can be computed from this basic test ({why}).",
+      corrWhyData: "too few usable values",
+      corrWhyRange: "the correction needed would be too strong",
+      corrStale: "This basic test is newer than the active correction. With it, a deviation of {mean} on average, at most {max} levels would remain here.",
+      corrStaleBad: "The active correction no longer fits this basic test. Compute it again.",
+      corrLost: "Cannot be corrected because the grabber already clips these values: {list}. They are approximated as well as possible.",
+      corrHow: "The correction is a 3×3 color matrix that Hyperion applies directly to the grabber picture, before all other settings. Gray stays unchanged, so gamma, white point and gray curve stay valid. After switching it on, check the color calibration though (red, green, blue, cyan, magenta, yellow).",
+      corrWhere: "The correction is switched on and off in the Hyperion WebUI under Configuration → Capturing Hardware → Grabber test (expert mode).",
+      corrMatrix: "Matrix",
+      corrEnable: "Switch on correction from this basic test",
+      corrRecompute: "Recompute correction from this basic test",
+      corrDisable: "Switch off correction",
+      colCorr: "with correction",
       keys: { device: "device", input: "input", width: "width", height: "height", fps: "frame rate", encoding: "format", hardware_brightness: "brightness", hardware_contrast: "contrast", hardware_saturation: "saturation", hardware_hue: "hue" },
     },
   };
@@ -229,13 +269,26 @@
       const ref = rows.find((s) => Math.max(...s.sent) === 128);
       const refGray = grays.find((s) => s.sent[0] === 128);
       let strength = null;
+      let parts = null;
       if (ref && refGray) {
-        const parts = main.map((i) => (refGray.got[i] - black[i] > 8 ? (ref.got[i] - black[i]) / (refGray.got[i] - black[i]) : null));
+        parts = main.map((i) => (refGray.got[i] - black[i] > 8 ? (ref.got[i] - black[i]) / (refGray.got[i] - black[i]) : null));
         if (parts.every((v) => v !== null)) strength = (100 * parts.reduce((a, b) => a + b, 0)) / parts.length;
+        else parts = null;
       }
-      // boosted and stuck at the top at 255: from about this level on the color clips
-      const clipFrom = strength !== null && strength > 105 && top && Math.max(...main.map((i) => top.got[i])) >= 254
-        ? Math.round(25500 / strength) : null;
+      // a boosted channel that is stuck at the top at 255 clips from about 255 / gain on; the measured
+      // levels between 128 and 255 (if the test had them) narrow the estimate down
+      let clipFrom = null;
+      if (parts && top) {
+        for (const [k, i] of main.entries()) {
+          if (parts[k] <= 1.05 || top.got[i] < 254) continue;
+          let from = 255 / parts[k];
+          const below = graded.filter((g) => g.level < 255 && g.got[i] < 254).map((g) => g.level);
+          const above = graded.filter((g) => g.got[i] >= 254).map((g) => g.level);
+          if (below.length) from = Math.max(from, Math.max(...below));
+          if (above.length) from = Math.min(from, Math.min(...above));
+          clipFrom = Math.round(clipFrom === null ? from : Math.min(clipFrom, from));
+        }
+      }
       return { name, mask, rows: graded, visibleFrom, pureFrom, crosstalk, strength, clipFrom };
     });
 
@@ -278,6 +331,72 @@
     return { black, white, gain, drift, darkLostTo, lightLostFrom, tint, noise, ladders, findings, limited };
   }
 
+  // --- grabber color correction ---
+
+  // what Hyperion does with a pixel: matrix, rounded and clamped to 0..255
+  const applyMatrix = (m, v) => [0, 1, 2].map((o) => Math.min(255, Math.max(0, Math.round(m[3 * o] * v[0] + m[3 * o + 1] * v[1] + m[3 * o + 2] * v[2]))));
+  // largest absolute row sum Hyperion accepts (keeps its fast integer path exact)
+  const MAX_ROW_ABS_SUM = 2;
+
+  // deviation of the steps from what was sent: mean over all channels and the largest one
+  function deviation(steps, pick) {
+    let sum = 0;
+    let n = 0;
+    let max = 0;
+    for (const s of steps) {
+      const v = pick(s);
+      if (!v) continue;
+      for (let i = 0; i < 3; i++) {
+        const d = Math.abs(v[i] - s.sent[i]);
+        sum += d;
+        n++;
+        max = Math.max(max, d);
+      }
+    }
+    return n ? { mean: sum / n, max } : null;
+  }
+
+  // The correction is fitted directly: for each output channel the least squares solution of
+  // matrix * got = sent over all test colors from level 16 up, with the row summing up to 1 so
+  // grays stay as they are. Fitting the inverse of a grabber model instead would be exact for
+  // unclipped colors only: a grabber that clips negative values to 0 (e.g. green in pure red)
+  // loses them, and the exact inverse then mixes that channel into saturated colors.
+  function fitCorrection(result) {
+    const steps = validSteps(result).filter((s) => s.group !== "custom" && Math.max(...s.sent) >= 16);
+    if (steps.length < 12) return { error: "data" };
+    const matrix = [];
+    for (let o = 0; o < 3; o++) {
+      let a11 = 0, a12 = 0, a22 = 0, b1 = 0, b2 = 0;
+      for (const s of steps) {
+        // with c2 = 1 - c0 - c1: sent - got_b = c0 (got_r - got_b) + c1 (got_g - got_b)
+        const x1 = s.got[0] - s.got[2];
+        const x2 = s.got[1] - s.got[2];
+        const y = s.sent[o] - s.got[2];
+        a11 += x1 * x1; a12 += x1 * x2; a22 += x2 * x2; b1 += x1 * y; b2 += x2 * y;
+      }
+      const d = a11 * a22 - a12 * a12;
+      if (Math.abs(d) < 1e-6) return { error: "data" };
+      const c0 = (b1 * a22 - b2 * a12) / d;
+      const c1 = (a11 * b2 - a12 * b1) / d;
+      matrix.push(c0, c1, 1 - c0 - c1);
+    }
+    const rounded = matrix.map((v) => Math.round(v * 10000) / 10000);
+    for (let o = 0; o < 3; o++) {
+      if (Math.abs(rounded[3 * o]) + Math.abs(rounded[3 * o + 1]) + Math.abs(rounded[3 * o + 2]) > MAX_ROW_ABS_SUM) return { error: "range" };
+    }
+    return { matrix: rounded, ...evaluateCorrection(result, rounded) };
+  }
+
+  // how a correction matrix would do on the raw values of a test; lost = steps it cannot fix
+  // because the grabber clipped them already
+  function evaluateCorrection(result, matrix) {
+    const steps = validSteps(result).filter((s) => s.group !== "custom");
+    const before = deviation(steps, (s) => s.got);
+    const after = deviation(steps, (s) => applyMatrix(matrix, s.got));
+    const lost = steps.filter((s) => s.got.some((v) => v >= 254) && applyMatrix(matrix, s.got).some((v, i) => Math.abs(v - s.sent[i]) > 3));
+    return { before, after, lost };
+  }
+
   // grabber settings that differ between the test and now
   function changedKeys(result, current) {
     if (!result?.grabber || !current) return [];
@@ -299,6 +418,10 @@
     .gtr-findings .gtr-ok .ico { background: #2fa36b; }
     .gtr-findings .gtr-warn .ico { background: #d08a00; }
     .gtr-findings .gtr-bad .ico { background: #d93025; }
+    .gtr-findings .gtr-info .ico { background: #6b7280; }
+    .gtr-table.gtr-matrix { width: auto; }
+    .gtr-table.gtr-matrix td { text-align: right; padding-left: 14px; }
+    .gtr-actions { margin: 8px 0 0; display: flex; gap: 8px; flex-wrap: wrap; }
     .gtr h4 { font-size: 14px; font-weight: 600; margin: 16px 0 4px; text-transform: none; letter-spacing: 0; opacity: 1; color: inherit; }
     .gtr-hint { font-size: 12px; opacity: .7; margin: 0 0 6px; }
     .gtr svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -403,23 +526,77 @@
     }
 
     function valuesTable(steps) {
-      let out = `<div class="gtr-scroll"><table class="gtr-table"><thead><tr><th>${t.colColor}</th><th>${t.colSent}</th><th>${t.colGot}</th><th>${t.colDiff}</th><th>${t.colNoise}</th></tr></thead><tbody>`;
+      const withCorr = steps.some((s) => isRgb(s.corr));
+      let out = `<div class="gtr-scroll"><table class="gtr-table"><thead><tr><th>${t.colColor}</th><th>${t.colSent}</th><th>${t.colGot}</th><th>${t.colDiff}</th>${withCorr ? `<th>${t.colCorr}</th>` : ""}<th>${t.colNoise}</th></tr></thead><tbody>`;
       for (const s of steps) {
         const diff = s.got.map((v, i) => v - s.sent[i]);
         const diffText = diff.map((d) => (d > 0 ? "+" : "") + num(d)).join(" / ");
         out += `<tr><td><span class="gtr-sw" style="background:${hex(s.sent)}"></span> <span class="gtr-sw" style="background:${hex(s.got)}"></span> ${esc(stepName(s))}</td>`
-          + `<td>${s.sent.join(" / ")}</td><td>${rgbText(s.got)}</td><td>${diffText}</td><td>${isRgb(s.noise) ? "±" + num(avg(s.noise)) : "–"}</td></tr>`;
+          + `<td>${s.sent.join(" / ")}</td><td>${rgbText(s.got)}</td><td>${diffText}</td>${withCorr ? `<td>${isRgb(s.corr) ? rgbText(s.corr) : "–"}</td>` : ""}<td>${isRgb(s.noise) ? "±" + num(avg(s.noise)) : "–"}</td></tr>`;
       }
       return out + "</tbody></table></div>";
     }
 
-    function basicHtml(basic, current) {
+    const stepLevelName = (s) => (s.group === "mix" || s.group === "custom" ? stepName(s) : `${stepName(s)} ${Math.max(...s.sent)}`);
+    const matrixOn = (c) => !!(c && c.enable && Array.isArray(c.matrix) && c.matrix.length === 9 && c.matrix.every((v) => Number.isFinite(v)));
+
+    function matrixTable(m) {
+      const fmt = (v) => (v >= 0 ? "\u2007" : "") + num(v, 3);
+      let out = `<table class="gtr-table gtr-matrix"><tbody>`;
+      for (let o = 0; o < 3; o++) {
+        out += `<tr><th>${[t.red, t.green, t.blue][o]}</th>${[0, 1, 2].map((i) => `<td>${fmt(m[3 * o + i])}</td>`).join("")}</tr>`;
+      }
+      return out + "</tbody></table>";
+    }
+
+    // the correction block; actions = buttons for the WebUI, null on the test page
+    function correctionHtml(basic, correction, controls) {
+      const steps = validSteps(basic).filter((s) => s.group !== "custom");
+      const on = matrixOn(correction);
+      const fit = fitCorrection(basic);
+      const useful = !fit.error && fit.before && fit.before.max > 4;
+      const sameTest = on && correction.basedOn === basic.date;
+      const items = [];
+      const line = (level, text) => items.push(`<li class="gtr-${level}"><span class="ico">${level === "ok" ? "✓" : level === "warn" ? "!" : "i"}</span><span>${text}</span></li>`);
+      const dev = (d) => ({ mean: num(d.mean), max: num(d.max, 0) });
+
+      line(on ? "ok" : "info", on ? fill(t.corrOn, { date: dateText(correction.basedOn) }) : t.corrOff);
+      const measured = deviation(steps, (s) => (isRgb(s.corr) ? s.corr : null));
+      if (measured) {
+        const raw = deviation(steps, (s) => (isRgb(s.corr) ? s.got : null));
+        line(measured.max <= 4 ? "ok" : "warn", fill(t.corrMeasured, { ...dev(measured), bmean: num(raw.mean), bmax: num(raw.max, 0) }));
+      }
+      if (on && !sameTest) {
+        const e = evaluateCorrection(basic, correction.matrix);
+        line("info", fill(t.corrStale, dev(e.after)));
+        if (useful && e.after.mean > fit.after.mean + 1) line("warn", t.corrStaleBad);
+      }
+      if (fit.error) line("warn", fill(t.corrFitNone, { why: fit.error === "range" ? t.corrWhyRange : t.corrWhyData }));
+      else if (!useful) line("ok", fill(t.corrFitGood, dev(fit.before)));
+      else line("info", fill(t.corrFit, { ...dev(fit.after), bmean: num(fit.before.mean), bmax: num(fit.before.max, 0) }));
+      if (useful && fit.lost.length) line("warn", fill(t.corrLost, { list: fit.lost.map(stepLevelName).join(", ") }));
+
+      let out = `<h4>${t.corrTitle}</h4><ul class="gtr-findings">${items.join("")}</ul>`;
+      const shown = on ? correction.matrix : useful ? fit.matrix : null;
+      if (shown) out += `<p class="gtr-hint">${t.corrMatrix}</p>${matrixTable(shown)}`;
+      out += `<p class="gtr-hint">${t.corrHow}${on ? " " + t.corrRaw : ""}${controls ? "" : " " + t.corrWhere}</p>`;
+      if (controls) {
+        const buttons = [];
+        if (useful && !sameTest) buttons.push(`<button type="button" class="btn btn-primary btn-sm" data-gtr-action="enable">${on ? t.corrRecompute : t.corrEnable}</button>`);
+        if (on) buttons.push(`<button type="button" class="btn btn-default btn-sm" data-gtr-action="disable">${t.corrDisable}</button>`);
+        if (buttons.length) out += `<p class="gtr-actions">${buttons.join(" ")}</p>`;
+      }
+      return out;
+    }
+
+    function basicHtml(basic, current, correction, controls) {
       const a = analyze(basic);
       if (!a) return `<p>${t.none}</p>`;
       let out = `<p class="gtr-meta">${metaLine(basic)}</p>`;
       const changed = changedKeys(basic, current);
       if (changed.length) out += `<p class="gtr-stale">${fill(t.stale, { keys: changed.map((k) => t.keys[k] ?? k).join(", ") })}</p>`;
       out += `<ul class="gtr-findings">${a.findings.map((f) => `<li class="gtr-${f.level}"><span class="ico">${f.level === "ok" ? "✓" : f.level === "warn" ? "!" : "✕"}</span><span>${findingText(f)}</span></li>`).join("")}</ul>`;
+      out += correctionHtml(basic, correction, controls);
 
       const steps = validSteps(basic);
       const grays = [{ level: 0, got: a.black }, ...steps.filter((s) => s.group === "gray").map((s) => ({ level: s.sent[0], got: s.got }))].sort((p, q) => p.level - q.level);
@@ -450,14 +627,29 @@
       return `<h4>${t.customTitle}</h4><p class="gtr-meta">${fill(t.customMeasured, { date: dateText(custom.date) })}</p>${valuesTable(steps)}`;
     }
 
-    return { t, basicHtml, customHtml, valuesTable, findingText };
+    return { t, basicHtml, customHtml, valuesTable, findingText, correctionHtml };
   }
 
-  function render(element, { basic, custom, current, lang = "de" } = {}) {
+  // onAction(action, correction) makes the correction switchable (WebUI): "enable" passes the
+  // correction computed from the basic test, "disable" the current one switched off
+  function render(element, { basic, custom, current, correction, lang = "de", onAction = null } = {}) {
     ensureStyle(element.ownerDocument);
     const r = make(lang);
-    element.innerHTML = `<div class="gtr">${basic && validSteps(basic).length ? r.basicHtml(basic, current) : `<p>${r.t.none}</p>`}${custom ? r.customHtml(custom) : ""}</div>`;
+    element.innerHTML = `<div class="gtr">${basic && validSteps(basic).length ? r.basicHtml(basic, current, correction, !!onAction) : `<p>${r.t.none}</p>`}${custom ? r.customHtml(custom) : ""}</div>`;
+    if (!onAction) return;
+    for (const button of element.querySelectorAll("[data-gtr-action]")) {
+      button.addEventListener("click", () => {
+        const action = button.dataset.gtrAction;
+        if (action === "enable") {
+          const fit = fitCorrection(basic);
+          if (fit.error) return;
+          onAction("enable", { enable: true, matrix: fit.matrix, basedOn: basic.date, before: fit.before, after: fit.after });
+        } else {
+          onAction("disable", { ...(correction ?? {}), enable: false });
+        }
+      });
+    }
   }
 
-  global.GrabberTestReport = { basicSteps, analyze, changedKeys, render, make, GRABBER_KEYS, TEXT };
+  global.GrabberTestReport = { basicSteps, analyze, changedKeys, fitCorrection, evaluateCorrection, render, make, GRABBER_KEYS, TEXT };
 })(typeof window !== "undefined" ? window : globalThis);

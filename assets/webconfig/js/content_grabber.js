@@ -53,13 +53,20 @@ $(document).ready(function () {
         '<div class="bs-callout bs-callout-primary" style="margin-top:0px"><h4>' + $.i18n('conf_helptable_expl') + '</h4>'
         + $.i18n('conf_grabber_test_intro', testPageLink('/tv'), testPageLink('/')) + '</div>'
         + '<div id="grabbertest_report"></div>');
+      // Grabber-Farbkorrektur: im Expertenmodus aus dem Grundtest berechnen, ein- und ausschalten
+      const switchCorrection = function (action, correction) {
+        const current = globalThis.serverConfig.grabberTest || {};
+        requestWriteConfig({ grabberTest: { ...current, basic: current.basic || {}, custom: current.custom || {}, correction } });
+      };
       const renderGrabberTest = function () {
         const result = globalThis.serverConfig.grabberTest || {};
         GrabberTestReport.render(document.getElementById('grabbertest_report'), {
           basic: result.basic,
           custom: result.custom,
           current: globalThis.serverConfig.grabberV4L2,
-          lang: storedLang === 'de' ? 'de' : 'en'
+          correction: result.correction,
+          lang: storedLang === 'de' ? 'de' : 'en',
+          onAction: storedAccess === 'expert' ? switchCorrection : null
         });
       };
       renderGrabberTest();

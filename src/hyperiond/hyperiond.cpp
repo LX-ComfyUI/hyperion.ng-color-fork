@@ -76,6 +76,8 @@
 #endif
 // NetOrigin singleton
 #include <utils/NetOrigin.h>
+// fork: grabber color correction (grabber test)
+#include <utils/VideoProbe.h>
 
 // InstanceManager Hyperion
 #include <hyperion/HyperionIManager.h>
@@ -742,6 +744,9 @@ void HyperionDaemon::startGrabberServices()
 	// start screen capture
 	handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
 
+	// fork: grabber color correction, before the video capture delivers its first frame
+	handleSettingsUpdate(settings::GRABBERTEST, getSetting(settings::GRABBERTEST));
+
 	// start video capture (v4l2 && media foundation)
 	resetVideoCaptureUsbDeviceIfRequested(_log, getSetting(settings::V4L2).object().value("device").toString());
 	handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
@@ -828,6 +833,11 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 	{
 		const QJsonObject& grabberConfig = config.object();
 		updateAudioGrabbers(grabberConfig);
+	}
+	else if (settingsType == settings::GRABBERTEST)
+	{
+		// fork: grabber color correction computed by the grabber test
+		GrabberColorCorrection::configure(config.object().value("correction").toObject());
 	}
 }
 

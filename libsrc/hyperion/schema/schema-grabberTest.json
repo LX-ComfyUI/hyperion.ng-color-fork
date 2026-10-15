@@ -15,6 +15,12 @@
       "required": true,
       "default": {},
       "propertyOrder": 2
+    },
+    "correction": {
+      "type": "object",
+      "title": "edt_conf_grabbertest_correction_title",
+      "default": {},
+      "propertyOrder": 3
     }
   },
   "additionalProperties": true

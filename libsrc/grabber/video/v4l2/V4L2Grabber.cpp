@@ -1178,13 +1178,17 @@ bool V4L2Grabber::process_image(const void *p, int size)
 	return result;
 }
 
-void V4L2Grabber::newThreadFrame(const Image<ColorRgb>& image)
+void V4L2Grabber::newThreadFrame(const Image<ColorRgb>& rawImage)
 {
 	if (_standbyActivated)
 		return;
 
-	// fork: grabber test, sees the frame as decoded, also while the signal detection drops it
-	VideoProbe::offer(image, _currentDeviceName);
+	// fork: grabber color correction from the grabber test; the probe sees the frame as decoded
+	// and after the correction, also while the signal detection drops it
+	Image<ColorRgb> corrected;
+	const bool isCorrected = GrabberColorCorrection::apply(rawImage, corrected);
+	VideoProbe::offer(rawImage, _currentDeviceName, isCorrected ? &corrected : nullptr);
+	const Image<ColorRgb>& image = isCorrected ? corrected : rawImage;
 
 	if (_signalDetectionEnabled)
 	{
