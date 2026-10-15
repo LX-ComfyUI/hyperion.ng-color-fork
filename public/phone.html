@@ -385,6 +385,7 @@
     <h2>Grabber-Test</h2>
     <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
     <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
+    <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.</p>
     <div class="status" id="gx-progress" hidden></div>
     <p class="warn" id="gx-error" hidden></p>
     <p class="note" id="gx-note"></p>
@@ -2735,6 +2736,8 @@ async function grabberTestAction(kind) {
     const out = await res.json();
     if (!res.ok) throw new Error(out.error);
     state = { ...state, grabberRun: out };
+    // at the start the preview shows whether the grabber sees the TV picture at all
+    if (body.action === "start" && $("pv-panel").hidden) setPanel(true);
     renderGrabberRun();
     renderCardBadges();
   } catch (e) {
