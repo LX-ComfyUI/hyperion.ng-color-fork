@@ -31,6 +31,12 @@
     ["skin", [225, 170, 140]],
   ];
   const CHANNEL_COLORS = ["#e5484d", "#2fa36b", "#3b82f6"];
+  // colors of the before/after table of the correction
+  const COMPARE = [
+    ["red", [255, 0, 0]], ["green", [0, 255, 0]], ["green", [0, 128, 0]], ["blue", [0, 0, 255]],
+    ["cyan", [0, 255, 255]], ["magenta", [255, 0, 255]], ["yellow", [255, 255, 0]],
+    ["mix", [255, 128, 0]], ["mix", [225, 170, 140]], ["gray", [128, 128, 128]],
+  ];
 
   // grabber settings that change what the grabber delivers; a result taken with other values is outdated
   const GRABBER_KEYS = ["device", "input", "width", "height", "fps", "encoding", "hardware_brightness", "hardware_contrast", "hardware_saturation", "hardware_hue"];
@@ -104,8 +110,14 @@
       corrStaleBad: "Die eingeschaltete Korrektur passt nicht mehr zu diesem Grundtest. Berechne sie neu.",
       corrLost: "Nicht korrigierbar, weil der Grabber diese Werte schon abschneidet: {list}. Sie werden so gut wie möglich angenähert.",
       corrHow: "Die Korrektur ist eine 3×3-Farbmatrix, die Hyperion direkt auf das Grabber-Bild anwendet, vor allen anderen Einstellungen. Grau bleibt dabei unverändert, Gamma, Weißpunkt und Graukurve bleiben also gültig. Prüfe nach dem Einschalten aber die Farbkalibrierung (Rot, Grün, Blau, Cyan, Magenta, Gelb).",
-      corrWhere: "Ein- und ausschalten lässt sich die Korrektur im Hyperion-WebUI unter Konfiguration → Aufnahme Hardware → Grabber-Test (Expertenmodus).",
-      corrMatrix: "Matrix",
+      corrWhere: "Ein- und ausschalten lässt sich die Korrektur auf der TV-Testseite oder im Hyperion-WebUI unter Konfiguration → Aufnahme Hardware → Grabber-Test (Expertenmodus).",
+      corrMatrix: "Matrix aus dem Grundtest vom {date}",
+      corrSwitch: "Grabber-Farbkorrektur aktiv",
+      cmpTitle: "Ohne und mit Korrektur",
+      cmpMeasured: "Ausgewählte Testfarben, mit Korrektur über Hyperion gemessen.",
+      cmpCalc: "Ausgewählte Testfarben, mit Korrektur berechnet. Ein Grundtest bei eingeschalteter Korrektur misst die Werte.",
+      colWithout: "ohne Korrektur",
+      colWith: "mit Korrektur",
       corrEnable: "Korrektur aus diesem Grundtest einschalten",
       corrRecompute: "Korrektur aus diesem Grundtest neu berechnen",
       corrDisable: "Korrektur ausschalten",
@@ -180,8 +192,14 @@
       corrStaleBad: "The active correction no longer fits this basic test. Compute it again.",
       corrLost: "Cannot be corrected because the grabber already clips these values: {list}. They are approximated as well as possible.",
       corrHow: "The correction is a 3×3 color matrix that Hyperion applies directly to the grabber picture, before all other settings. Gray stays unchanged, so gamma, white point and gray curve stay valid. After switching it on, check the color calibration though (red, green, blue, cyan, magenta, yellow).",
-      corrWhere: "The correction is switched on and off in the Hyperion WebUI under Configuration → Capturing Hardware → Grabber test (expert mode).",
-      corrMatrix: "Matrix",
+      corrWhere: "The correction is switched on and off on the TV test page or in the Hyperion WebUI under Configuration → Capturing Hardware → Grabber test (expert mode).",
+      corrMatrix: "Matrix from the basic test of {date}",
+      corrSwitch: "Grabber color correction active",
+      cmpTitle: "Without and with correction",
+      cmpMeasured: "Selected test colors, measured with the correction through Hyperion.",
+      cmpCalc: "Selected test colors, computed with the correction. A basic test with the correction switched on measures the values.",
+      colWithout: "without correction",
+      colWith: "with correction",
       corrEnable: "Switch on correction from this basic test",
       corrRecompute: "Recompute correction from this basic test",
       corrDisable: "Switch off correction",
@@ -425,7 +443,10 @@
     .gtr-findings .gtr-info .ico { background: #6b7280; }
     .gtr-table.gtr-matrix { width: auto; }
     .gtr-table.gtr-matrix td { text-align: right; padding-left: 14px; }
-    .gtr-actions { margin: 8px 0 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    .gtr-actions { margin: 8px 0 0; display: flex; gap: 10px 16px; flex-wrap: wrap; align-items: center; }
+    .gtr-matrix-row { display: flex; gap: 8px 28px; flex-wrap: wrap; align-items: flex-end; margin: 6px 0; }
+    .gtr-switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; margin: 0; }
+    .gtr-switch input { width: 18px; height: 18px; margin: 0; }
     .gtr h4 { font-size: 14px; font-weight: 600; margin: 16px 0 4px; text-transform: none; letter-spacing: 0; opacity: 1; color: inherit; }
     .gtr-hint { font-size: 12px; opacity: .7; margin: 0 0 6px; }
     .gtr svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -562,7 +583,9 @@
       const on = matrixOn(correction);
       const fit = fitCorrection(basic);
       const useful = !fit.error && fit.before && fit.before.max > 4;
-      const sameTest = on && correction.basedOn === basic.date;
+      // the correction is up to date when it comes from this test or the test was measured with it
+      const measuredWith = on && basic.correction?.basedOn === correction.basedOn;
+      const sameTest = on && (correction.basedOn === basic.date || measuredWith);
       const items = [];
       const line = (level, text) => items.push(`<li class="gtr-${level}"><span class="ico">${level === "ok" ? "✓" : level === "warn" ? "!" : "i"}</span><span>${text}</span></li>`);
       const dev = (d) => ({ mean: num(d.mean), max: num(d.max, 0) });
@@ -571,7 +594,7 @@
       const measured = deviation(steps, (s) => (isRgb(s.corr) ? s.corr : null));
       if (measured) {
         const raw = deviation(steps, (s) => (isRgb(s.corr) ? s.got : null));
-        line(measured.max <= 4 ? "ok" : "warn", fill(t.corrMeasured, { ...dev(measured), bmean: num(raw.mean), bmax: num(raw.max, 0) }));
+        line(measured.max <= 4 ? "ok" : "info", fill(t.corrMeasured, { ...dev(measured), bmean: num(raw.mean), bmax: num(raw.max, 0) }));
       }
       if (on && !sameTest) {
         const e = evaluateCorrection(basic, correction.matrix);
@@ -580,19 +603,39 @@
       }
       if (fit.error) line("warn", fill(t.corrFitNone, { why: fit.error === "range" ? t.corrWhyRange : t.corrWhyData }));
       else if (!useful) line("ok", fill(t.corrFitGood, dev(fit.before)));
-      else line("info", fill(t.corrFit, { ...dev(fit.after), bmean: num(fit.before.mean), bmax: num(fit.before.max, 0) }));
+      else if (!measuredWith) line("info", fill(t.corrFit, { ...dev(fit.after), bmean: num(fit.before.mean), bmax: num(fit.before.max, 0) }));
       if (useful && fit.lost.length) line("warn", fill(t.corrLost, { list: fit.lost.map(stepLevelName).join(", ") }));
 
       let out = `<h4>${t.corrTitle}</h4><ul class="gtr-findings">${items.join("")}</ul>`;
-      const shown = on ? correction.matrix : useful ? fit.matrix : null;
-      if (shown) out += `<p class="gtr-hint">${t.corrMatrix}</p>${matrixTable(shown)}`;
-      out += `<p class="gtr-hint">${t.corrHow}${on ? " " + t.corrRaw : ""}${controls ? "" : " " + t.corrWhere}</p>`;
-      if (controls) {
-        const buttons = [];
-        if (useful && !sameTest) buttons.push(`<button type="button" class="btn btn-primary btn-sm" data-gtr-action="enable">${on ? t.corrRecompute : t.corrEnable}</button>`);
-        if (on) buttons.push(`<button type="button" class="btn btn-default btn-sm" data-gtr-action="disable">${t.corrDisable}</button>`);
-        if (buttons.length) out += `<p class="gtr-actions">${buttons.join(" ")}</p>`;
+
+      // the matrix the switch uses: the stored one, otherwise the one from this test
+      const stored = matrixOn({ ...correction, enable: true }) ? correction : null;
+      const shownMatrix = stored ? stored.matrix : useful ? fit.matrix : null;
+      const shownDate = stored ? stored.basedOn : basic.date;
+
+      // selected colors without and with the correction: measured through Hyperion when the test
+      // ran with the correction on, otherwise computed with the matrix above
+      const pick = COMPARE.map(([group, sent]) => steps.find((s) => s.group === group && s.sent.every((v, i) => v === sent[i]))).filter(Boolean);
+      const measuredAll = pick.length && pick.every((s) => isRgb(s.corr));
+      if (pick.length && (measuredAll || shownMatrix)) {
+        const withValue = (s) => (measuredAll ? s.corr : applyMatrix(shownMatrix, s.got));
+        const cell = (v) => `<span class="gtr-sw" style="background:${hex(v)}"></span> ${v.map((x) => Math.round(x)).join(" / ")}`;
+        out += `<p class="gtr-hint" style="margin-top:10px"><b>${t.cmpTitle}</b> · ${measuredAll ? t.cmpMeasured : t.cmpCalc}</p>`
+          + `<div class="gtr-scroll"><table class="gtr-table"><thead><tr><th>${t.colSent}</th><th>${t.colWithout}</th><th>${t.colWith}</th></tr></thead><tbody>`
+          + pick.map((s) => `<tr><td>${cell(s.sent)} · ${esc(stepLevelName(s))}</td><td>${cell(s.got)}</td><td>${cell(withValue(s))}</td></tr>`).join("")
+          + "</tbody></table></div>";
       }
+
+      if (shownMatrix) {
+        out += `<div class="gtr-matrix-row"><div><p class="gtr-hint">${fill(t.corrMatrix, { date: dateText(shownDate) })}</p>${matrixTable(shownMatrix)}</div>`;
+        if (controls) {
+          out += `<div class="gtr-actions"><label class="gtr-switch"><input type="checkbox" data-gtr-toggle${on ? " checked" : ""}> ${t.corrSwitch}</label>`;
+          if (useful && stored && !sameTest) out += `<button type="button" class="btn btn-primary btn-sm" data-gtr-action="recompute">${t.corrRecompute}</button>`;
+          out += "</div>";
+        }
+        out += "</div>";
+      }
+      out += `<p class="gtr-hint">${t.corrHow}${on ? " " + t.corrRaw : ""}${controls ? "" : " " + t.corrWhere}</p>`;
       return out;
     }
 
@@ -645,18 +688,23 @@
     const r = make(lang);
     element.innerHTML = `<div class="gtr">${basic && validSteps(basic).length ? r.basicHtml(basic, current, correction, !!onAction) : `<p>${r.t.none}</p>`}${custom ? r.customHtml(custom) : ""}</div>`;
     if (!onAction) return;
-    for (const button of element.querySelectorAll("[data-gtr-action]")) {
-      button.addEventListener("click", () => {
-        const action = button.dataset.gtrAction;
-        if (action === "enable") {
-          const fit = fitCorrection(basic);
-          if (fit.error) return;
-          onAction("enable", { enable: true, matrix: fit.matrix, basedOn: basic.date, before: fit.before, after: fit.after });
-        } else {
-          onAction("disable", { ...(correction ?? {}), enable: false });
-        }
-      });
-    }
+    const fresh = () => {
+      const fit = fitCorrection(basic);
+      return fit.error ? null : { enable: true, matrix: fit.matrix, basedOn: basic.date, before: fit.before, after: fit.after };
+    };
+    // the switch keeps the stored matrix, so on and off compare the same correction
+    element.querySelector("[data-gtr-toggle]")?.addEventListener("change", (ev) => {
+      if (!ev.target.checked) {
+        onAction("disable", { ...(correction ?? {}), enable: false });
+        return;
+      }
+      const stored = Array.isArray(correction?.matrix) && correction.matrix.length === 9 ? { ...correction, enable: true } : fresh();
+      if (stored) onAction("enable", stored);
+    });
+    element.querySelector("[data-gtr-action=recompute]")?.addEventListener("click", () => {
+      const next = fresh();
+      if (next) onAction("enable", next);
+    });
   }
 
   global.GrabberTestReport = { basicSteps, analyze, changedKeys, fitCorrection, evaluateCorrection, render, make, GRABBER_KEYS, TEXT };
