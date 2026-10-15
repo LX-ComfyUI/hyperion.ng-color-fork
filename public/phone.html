@@ -2721,7 +2721,7 @@ async function loadGrabberReport() {
     const res = await fetch("/api/grabbertest");
     const r = await res.json();
     if (!res.ok) throw new Error(r.error);
-    GrabberTestReport.render($("gx-report"), { basic: r.basic, custom: r.custom, current: r.current, lang: I18N.lang });
+    GrabberTestReport.render($("gx-report"), { basic: r.basic, custom: r.custom, current: r.current, correction: r.correction, lang: I18N.lang });
   } catch (e) {
     $("gx-report").textContent = "Ergebnis nicht lesbar: " + e.message;
   }

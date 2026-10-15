@@ -584,17 +584,20 @@ async function runGrabberTest(kind) {
       const s = await probeGrabber(false);
       if (!s.avg?.n) throw new Error("Der Grabber liefert keine Bilder mehr");
       frame = { width: s.width, height: s.height };
-      results.push({ ...step, got: s.avg.mean, noise: s.avg.noise, spread: s.avg.spread, n: s.avg.n, ...(settled ? {} : { unstable: true }) });
+      // got is always the uncorrected frame, corr the same frames after the grabber color correction (if on)
+      results.push({ ...step, got: s.avg.mean, ...(s.avg.corrected ? { corr: s.avg.corrected } : {}), noise: s.avg.noise, spread: s.avg.spread, n: s.avg.n, ...(settled ? {} : { unstable: true }) });
     }
     if (grabberAbort) {
       setRun({ running: false, color: null, aborted: true, finishedAt: Date.now() });
       return;
     }
-    const result = { version: 1, date: new Date().toISOString(), grabber: grabberSnapshot(), frame, steps: results };
-    // basic and own colors are kept apart, a new test replaces only its own part
+    // basic and own colors are kept apart, a new test replaces only its own part; the color
+    // correction (switched in the WebUI) stays as it is, the result notes whether it was on
     await exclusive(async () => {
       const current = readGlobalSetting("grabberTest") ?? { basic: {}, custom: {} };
-      await writeGlobalSetting("grabberTest", { basic: current.basic ?? {}, custom: current.custom ?? {}, [kind]: result });
+      const correction = current.correction?.enable ? { correction: current.correction } : {};
+      const result = { version: 1, date: new Date().toISOString(), grabber: grabberSnapshot(), frame, ...correction, steps: results };
+      await writeGlobalSetting("grabberTest", { ...current, basic: current.basic ?? {}, custom: current.custom ?? {}, [kind]: result });
     });
     setRun({ running: false, color: null, finishedAt: Date.now() });
   } catch (err) {
