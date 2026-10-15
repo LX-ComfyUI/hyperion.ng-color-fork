@@ -79,16 +79,10 @@ $(document).ready(function () {
     leds = window.serverConfig.leds;
     grabberConfig = window.serverConfig.grabberV4L2;
 
-    if (window.showOptHelp) {
-      createHint('intro', $.i18n('main_ledsim_text'), 'ledsim_text');
-      $('#ledsim_text').css({ 'margin': '10px 15px 0px 15px' });
-      $('#ledsim_text .bs-callout').css("margin", "0px")
-    }
-
-    if (getStorage('ledsim_width') != null) {
-      ledsim_width = getStorage('ledsim_width');
-      ledsim_height = getStorage('ledsim_height');
-    }
+    // Fork-Erweiterung: ohne Erklärkasten; das Fenster startet wie die Grabber-Vorschau der TV-Testseite
+    // klein unten links (siehe "opened")
+    ledsim_width = 350;
+    ledsim_height = 400;
 
     dialog = $("#ledsim_dialog").dialog({
       uiLibrary: 'bootstrap',
@@ -106,8 +100,10 @@ $(document).ready(function () {
       },
       opened: function (e) {
 
-        const titleText = $.i18n('main_ledsim_title') + " - " + getCurrentInstanceName();
-        $(this).get(0).querySelector(".modal-title").textContent = titleText;
+        // Fork-Erweiterung: kein Titeltext, Start klein unten links
+        $(this).get(0).querySelector(".modal-title").textContent = "";
+        $("#ledsim_dialog").css({ width: ledsim_width + "px", height: ledsim_height + "px", left: "10px", top: (globalThis.innerHeight - ledsim_height - 10) + "px", right: "auto", bottom: "auto" });
+        lC = false;
 
         if (!lC) {
           updateLedLayout();
@@ -128,8 +124,7 @@ $(document).ready(function () {
         lC = false;
       },
       resizeStop: function (e) {
-        setStorage("ledsim_width", $("#ledsim_dialog").outerWidth());
-        setStorage("ledsim_height", $("#ledsim_dialog").outerHeight());
+        updateLedLayout();
       }
     });
     // apply new configuration

@@ -1323,3 +1323,24 @@ input[type="radio"] .styled:checked + label::after {
   display: none;
 }
 
+/* Fork-Erweiterung: Menüknopf ohne Rahmen (darkMode.css färbt ihn sonst dauerhaft blau) */
+nav.navbar-static-top .navbar-toggle {
+  border-color: transparent !important;
+}
+/* Fork-Erweiterung: Darstellungs-Symbol (Auto/Hell/Dunkel) als SVG wie auf der TV-Testseite */
+#btn_darkmode > a svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (max-width: 767px) {
+  #btn_darkmode > a svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+

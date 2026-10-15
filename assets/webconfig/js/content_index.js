@@ -254,19 +254,7 @@ async function initializeApp() {
 }
 
 function setupDarkMode() {
-  const darkModeOverwrite = getStorage("darkModeOverwrite");
-
-  if (darkModeOverwrite == "false" || darkModeOverwrite == null) {
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      handleDarkMode();
-    }
-    if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-      setStorage("darkMode", "off");
-    }
-  }
-  if (getStorage("darkMode") == "on") {
-    handleDarkMode();
-  }
+  applyTheme(themeMode());
 }
 
 function setMediaStreamingSupport() {
@@ -463,16 +451,10 @@ function bindUiHandlers() {
     $(this).addClass('active');
   });
 
-  // Dark mode toggle button
+  // Fork-Erweiterung: Darstellung wechselt reihum Auto -> Hell -> Dunkel
   $("#btn_darkmode").off().on("click", function () {
-    const darkOn = getStorage("darkMode") === "on";
-    setStorage("darkModeOverwrite", true);
-    if (darkOn) {
-      setStorage("darkMode", "off");
-      location.reload();
-    } else {
-      handleDarkMode();
-    }
+    const order = ["auto", "light", "dark"];
+    applyTheme(order[(order.indexOf(themeMode()) + 1) % order.length]);
   });
 
   // Main navigation click handling
