@@ -1,7 +1,38 @@
 
 $(function() {
 
-    $('#side-menu').metisMenu();
+    // Fork-Erweiterung: toggle: false, damit das Aufklappen einer Gruppe die andere nicht zuklappt
+    $('#side-menu').metisMenu({ toggle: false });
+
+    // Fork-Erweiterung: "LED Instanzen" klappt nur per Klick auf den eigenen Titel auf und zu und
+    // merkt sich den Zustand. Navigation und SwitchToMenuItem klappen die Gruppe sonst ungefragt
+    // zu; solche Änderungen werden auf den gespeicherten Zustand zurückgesetzt.
+    var link = document.getElementById('MenuItemLedInstances');
+    var list = link && link.nextElementSibling;
+    if (list) {
+        var KEY = 'ledInstancesMenuOpen';
+        var userUntil = 0;
+        var stored = function () {
+            try { return localStorage.getItem(KEY) !== 'closed'; } catch (e) { return true; }
+        };
+        var show = function (open) {
+            list.classList.toggle('mm-show', open);
+            link.parentElement.classList.toggle('mm-active', open);
+            list.style.height = '';
+        };
+        show(stored());
+        // Capture-Phase: läuft vor dem Klick-Handler von metisMenu
+        link.addEventListener('click', function () { userUntil = Date.now() + 1500; }, true);
+        new MutationObserver(function () {
+            if (list.classList.contains('mm-collapsing')) return;
+            var shown = list.classList.contains('mm-show');
+            if (Date.now() < userUntil) {
+                try { localStorage.setItem(KEY, shown ? 'open' : 'closed'); } catch (e) { }
+            } else if (shown !== stored()) {
+                show(stored());
+            }
+        }).observe(list, { attributes: true, attributeFilter: ['class'] });
+    }
 
 });
 

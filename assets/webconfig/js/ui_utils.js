@@ -1199,6 +1199,8 @@ function createHelpTable(list, phead, panelId) {
   const thead = document.createElement('thead');
   const tbody = document.createElement('tbody');
 
+  // Fork-Erweiterung: Schlüssel für den gespeicherten Klappzustand (manche Aufrufe haben keine panelId)
+  const foldKey = panelId || (prevTag + ':' + Object.keys(list)[0]);
   list = sortProperties(list);
 
   // Update the heading with an icon and the translation
@@ -1246,8 +1248,110 @@ function createHelpTable(list, phead, panelId) {
   table.appendChild(thead);
   table.appendChild(tbody);
 
-  return createPanel(phead, table, undefined, undefined, undefined, panelId, undefined);
+  const cont = createPanel(phead, table, undefined, undefined, undefined, panelId, undefined);
+  helpFold.attach(cont.querySelector('.panel'), foldKey);
+  return cont;
 }
+
+// Fork-Erweiterung: Die Erklärungstabellen neben den Einstellungen lassen sich einzeln (Pfeil in der
+// Titelzeile) und je Seite gesamt (Knopf im Seitenkopf) auf- und zuklappen; der Zustand wird je
+// Tabelle gespeichert. Ist das Fenster so schmal, dass die Erklärung unter die Einstellungen rutscht
+// (Umbruch von col-lg), sind alle zugeklappt. Klappen gilt dann nur bis zur nächsten breiten Ansicht,
+// danach gilt wieder der gespeicherte Zustand.
+const helpFold = (function () {
+  const wide = globalThis.matchMedia('(min-width: 1200px)');
+  const narrowOpen = new Set(); // im schmalen Fenster aufgeklappte Tabellen, nicht gespeichert
+  const storageKey = (key) => 'helpFold_' + key;
+  const isOpen = (key) => (wide.matches ? getStorage(storageKey(key)) !== 'closed' : narrowOpen.has(key));
+  const panels = () => [...document.querySelectorAll('#page-content .help-fold')];
+  let scheduled = false;
+
+  function apply(panel) {
+    const open = isOpen(panel.dataset.helpFold);
+    panel.classList.toggle('help-folded', !open);
+    panel.querySelector('.help-fold-toggle')?.setAttribute('aria-expanded', String(open));
+  }
+
+  function set(panel, open) {
+    const key = panel.dataset.helpFold;
+    if (wide.matches) {
+      setStorage(storageKey(key), open ? 'open' : 'closed');
+    } else if (open) {
+      narrowOpen.add(key);
+    } else {
+      narrowOpen.delete(key);
+    }
+    apply(panel);
+  }
+
+  // der Knopf im Seitenkopf, nur auf Seiten mit Erklärungstabellen
+  function updatePageButton() {
+    scheduled = false;
+    const all = panels();
+    const header = document.querySelector('#page-content h3.page-header');
+    let button = document.getElementById('btn_help_fold_all');
+    if (!all.length || !header) {
+      button?.remove();
+      return;
+    }
+    if (!button || button.parentElement !== header) {
+      button?.remove();
+      button = document.createElement('button');
+      button.type = 'button';
+      button.id = 'btn_help_fold_all';
+      button.className = 'btn btn-default btn-sm help-fold-all';
+      button.addEventListener('click', function () {
+        const open = !panels().some((p) => !p.classList.contains('help-folded'));
+        panels().forEach((p) => set(p, open));
+        updatePageButton();
+      });
+      header.appendChild(button);
+    }
+    const anyOpen = all.some((p) => !p.classList.contains('help-folded'));
+    button.innerHTML = '<i class="fa fa-fw ' + (anyOpen ? 'fa-angle-double-up' : 'fa-angle-double-down') + '"></i>'
+      + $.i18n(anyOpen ? 'general_btn_help_fold_all' : 'general_btn_help_unfold_all');
+  }
+
+  function schedule() {
+    if (!scheduled) {
+      scheduled = true;
+      requestAnimationFrame(updatePageButton);
+    }
+  }
+
+  function attach(panel, key) {
+    if (!panel) return;
+    panel.classList.add('help-fold');
+    panel.dataset.helpFold = key;
+    const heading = panel.querySelector('.panel-heading');
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'help-fold-toggle';
+    toggle.setAttribute('aria-label', $.i18n('general_help_fold_toggle'));
+    toggle.innerHTML = '<i class="fa fa-chevron-down"></i>';
+    heading.appendChild(toggle);
+    heading.addEventListener('click', function () {
+      set(panel, panel.classList.contains('help-folded'));
+      updatePageButton();
+    });
+    apply(panel);
+    schedule();
+  }
+
+  wide.addEventListener('change', function () {
+    if (!wide.matches) narrowOpen.clear();
+    panels().forEach(apply);
+    updatePageButton();
+  });
+
+  // Seitenwechsel ersetzen #page-content; Knopf danach neu bewerten
+  $(function () {
+    const content = document.getElementById('page-content');
+    if (content) new MutationObserver(schedule).observe(content, { childList: true, subtree: true });
+  });
+
+  return { attach };
+})();
 
 function createPanel(head, body, footer, bodyid, css, panelId, type = 'panel-default') {
   const cont = document.createElement('div');
