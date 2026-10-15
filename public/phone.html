@@ -31,7 +31,7 @@
     :root:not([data-theme="light"]) {
       color-scheme: dark;
       --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
-      --text: #dddddd; --muted: #aaaaaa; --line: #212121; --bar-line: #212121;
+      --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
       --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
       --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
     }
@@ -39,7 +39,7 @@
   :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
-    --text: #dddddd; --muted: #aaaaaa; --line: #212121; --bar-line: #212121;
+    --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
     --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
     --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
   }
@@ -84,6 +84,11 @@
   .seg button { border: none; border-radius: 0; padding: 6px 10px; font-size: 13px; background: var(--btn); }
   .seg button + button { border-left: 1px solid var(--btn-line); }
   .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+  .rgb-live { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+  .rgb-dot { width: 72px; height: 72px; border-radius: 50%; border: 4px solid var(--btn-line); background: #ff0000; flex: none; }
+  .rgb-every { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .rgb-every select { width: auto; }
+  .rgb-sel { width: 120px; }
   .gc-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 4px 0 12px; }
   .gc-label { font-weight: 600; font-size: 14px; }
   .gc-note { color: var(--muted); font-size: 12px; flex-basis: 100%; }
@@ -272,7 +277,8 @@
   .pv-x:hover { color: var(--text); background: var(--bg); }
   .pv-x svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
   /* width handles on both side edges, only with a mouse (the height follows the picture) */
-  .pv-resize { display: none; position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; touch-action: none; }
+  .pv-resize { display: none; position: absolute; top: 0; bottom: 0; width: 8px; cursor: nwse-resize; touch-action: none; }
+  .pv-resize.r { cursor: nesw-resize; }
   .pv-resize.l { left: -4px; }
   .pv-resize.r { right: -4px; }
   @media (pointer: fine) { .pv-resize { display: block; } }
@@ -313,12 +319,23 @@
             display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px;
             background: var(--bg); border-bottom: 1px solid var(--bar-line); }
   .tb-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  @media (min-width: 768px) { .tb-left { width: calc(var(--side-w) - 8px); justify-content: center; } }
+  @media (min-width: 768px) { .tb-left { gap: 12px; padding-left: 4px; } }
   .tb-menu { width: 44px; height: 36px; padding: 0; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
              border-radius: 4px; border: 1px solid transparent; background: color-mix(in srgb, var(--text) 10%, transparent); }
   .tb-menu span { display: block; width: 20px; height: 2px; border-radius: 1px; background: var(--text); }
-  .tb-logo { display: block; height: auto; width: 170px; min-width: 96px; flex: 0 1 auto; }
-  @media (max-width: 767px) { .tb-logo { width: 120px; } }
+  .tb-home { display: block; flex: 0 1 auto; min-width: 96px; }
+  .tb-logo { display: block; height: auto; width: 150px; max-width: 100%; }
+  @media (max-width: 767px) { .tb-logo { width: 116px; } }
+  .tb-title { font-size: 17px; white-space: nowrap; color: var(--text); }
+  @media (max-width: 767px) { .tb-title { display: none; } }
+  @media (min-width: 768px) { main > header { display: none !important; } }
+  .tb-drop { position: relative; }
+  .tb-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 70; min-width: 220px; padding: 6px 0; border-radius: 4px;
+            background: var(--card); border: 1px solid var(--btn-line); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+  .tb-pop button { display: block; width: 100%; text-align: left; border: none; border-radius: 0; background: none; padding: 9px 16px; font-size: 14px; color: var(--text); }
+  .tb-pop button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .tb-pop hr { border: none; border-top: 1px solid var(--btn-line); margin: 6px 0; }
+  @media (max-width: 767px) { .tb-pop { position: fixed; top: calc(var(--bar-h) + 4px); right: 8px; } }
   .logo-dark { display: none; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
   :root[data-theme="dark"] .logo-dark { display: block; }
@@ -372,14 +389,27 @@
 <nav id="topbar" aria-label="Kopfzeile">
   <div class="tb-left">
     <button type="button" class="tb-menu" id="tb-menu" aria-label="Menü"><span></span><span></span><span></span></button>
-    <img class="tb-logo logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion">
-    <img class="tb-logo logo-dark" src="/static/hyperion-logo.png" alt="Hyperion">
+    <a class="tb-home" id="tb-home" target="hyperion-webui" rel="noopener" title="Hyperion-WebUI öffnen">
+      <img class="tb-logo logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion">
+      <img class="tb-logo logo-dark" src="/static/hyperion-logo.png" alt="Hyperion">
+    </a>
+    <span class="tb-title">TV-Testseite</span>
   </div>
   <div class="tb-icons">
     <button type="button" class="tb-icon" id="tb-fold"></button>
     <button type="button" class="tb-icon" id="tb-preview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
     <button type="button" class="tb-icon" id="tb-lang"></button>
     <button type="button" class="tb-icon" id="tb-theme"></button>
+    <div class="tb-drop">
+      <button type="button" class="tb-icon" id="tb-power" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></button>
+      <div class="tb-pop" id="tb-power-menu" hidden>
+        <button type="button" data-system="suspend">Ruhezustand</button>
+        <button type="button" data-system="resume">Aktivieren</button>
+        <hr>
+        <button type="button" data-system="restart">Neustart</button>
+        <button type="button" data-system="usbResetRestart">USB-Reset + Neustart</button>
+      </div>
+    </div>
   </div>
 </nav>
 <main id="main">
@@ -498,6 +528,29 @@
   </section>
 
   <!-- ===== black bars test ===== -->
+
+  <!-- ===== RGB byte order wizard (like the WebUI's) ===== -->
+  <section class="card" id="card-rgb">
+    <h2>RGB-Byte-Reihenfolge</h2>
+    <p class="help">Findet die richtige Reihenfolge der Farbkanäle deiner LED-Hardware, wie der RGB-Byte-Reihenfolge-Assistent im WebUI. Gebraucht wird er bei der Ersteinrichtung oder wenn die LEDs z.&nbsp;B. blau oder grün leuchten, obwohl sie rot sein sollten. Hyperion schaltet die LEDs dabei direkt abwechselnd auf Rot und Grün, unabhängig vom TV-Bild. Der Punkt unten zeigt die gerade gesendete Farbe.</p>
+    <div class="seg full gt-controls" role="group" aria-label="RGB-Assistent">
+      <button type="button" id="rgb-start"></button>
+    </div>
+    <div id="rgb-run" hidden>
+      <div class="rgb-live">
+        <span class="rgb-dot" id="rgb-dot"></span>
+        <label class="rgb-every">Farbe wechseln alle
+          <select id="rgb-every"><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="30">30 s</option></select>
+        </label>
+      </div>
+      <p class="help" style="margin:10px 0 6px">Welche Farbe zeigen deine LEDs, wenn der Punkt …</p>
+      <div class="frow"><label for="rgb-r">… rot ist?</label><span class="inputs"><select id="rgb-r" class="rgb-sel"><option value=""></option><option value="r">Rot</option><option value="g">Grün</option><option value="b">Blau</option></select></span></div>
+      <div class="frow"><label for="rgb-g">… grün ist?</label><span class="inputs"><select id="rgb-g" class="rgb-sel"><option value=""></option><option value="r">Rot</option><option value="g">Grün</option><option value="b">Blau</option></select></span></div>
+      <p class="note" id="rgb-result"></p>
+      <button type="button" class="primary wide" id="rgb-save" hidden></button>
+    </div>
+    <p class="note" id="rgb-current"></p>
+  </section>
 
   <section class="card" id="card-bars">
     <h2>Schwarze Balken Test</h2>
@@ -945,8 +998,8 @@
 </button>
 <div class="toast" id="toast" role="alert" hidden></div>
 <section class="pv-panel" id="pv-panel" hidden aria-label="Grabber-Vorschau">
-  <div class="pv-resize l" data-edge="l" title="Breite ändern"></div>
-  <div class="pv-resize r" data-edge="r" title="Breite ändern"></div>
+  <div class="pv-resize l" data-edge="l" title="Größe ändern"></div>
+  <div class="pv-resize r" data-edge="r" title="Größe ändern"></div>
   <div class="pv-head" id="pv-head" title="Zum Verschieben ziehen">
     <b>Grabber-Vorschau</b>
     <svg class="pv-grip" viewBox="0 0 18 8" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="2" r="1.4"/><circle cx="9" cy="2" r="1.4"/><circle cx="15" cy="2" r="1.4"/><circle cx="3" cy="6" r="1.4"/><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/></g></svg>
@@ -1049,6 +1102,9 @@
   };
   const menuBtn = document.getElementById("tb-menu");
   tip(menuBtn, "Menü");
+  // the logo opens Hyperion's WebUI (port 8090 on the same host) in its own tab; the named
+  // target brings back a WebUI tab this page opened before instead of opening another one
+  document.getElementById("tb-home").href = `${location.protocol}//${location.hostname}:8090/`;
 
   const fold = document.getElementById("fold-all");
   const tbFold = document.getElementById("tb-fold");
@@ -2933,6 +2989,127 @@ async function grabberTestAction(kind) {
   }
 }
 $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
+
+// ---------- power menu (Hyperion system commands, like the WebUI) ----------
+
+(function () {
+  const btn = $("tb-power");
+  const menu = $("tb-power-menu");
+  btn.dataset.tip = I18N.t("System: Ruhezustand, Neustart");
+  btn.setAttribute("aria-label", btn.dataset.tip);
+  const close = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+  btn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    menu.hidden = !menu.hidden;
+    btn.setAttribute("aria-expanded", String(!menu.hidden));
+  });
+  document.addEventListener("click", (ev) => { if (!menu.hidden && !menu.contains(ev.target)) close(); });
+  const ASK = {
+    restart: "Hyperion jetzt neu starten? Die LEDs sind dabei kurz aus.",
+    usbResetRestart: "Grabber per USB zurücksetzen und Hyperion neu starten? Die LEDs sind dabei kurz aus.",
+  };
+  menu.querySelectorAll("[data-system]").forEach((b) => b.addEventListener("click", async () => {
+    close();
+    const sub = b.dataset.system;
+    if (ASK[sub] && !confirm(I18N.t(ASK[sub]))) return;
+    try {
+      const res = await fetch("/api/hyperion/system", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subcommand: sub }) });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error);
+    } catch (e) {
+      showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
+    }
+  }));
+})();
+
+// ---------- RGB byte order wizard (like the WebUI's) ----------
+
+(function () {
+  let timer = null;
+  let current = "rgb";   // the LED device's color order
+  let color = "r";        // what the LEDs get right now
+  const COLORS = { r: [255, 0, 0], g: [0, 255, 0] };
+  const call = async (body) => {
+    const res = await fetch("/api/hyperion/rgbwizard", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error);
+    return out;
+  };
+  const fail = (e) => showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
+  const running = () => timer !== null;
+
+  const show = async (c) => {
+    color = c;
+    $("rgb-dot").style.background = c === "r" ? "#ff0000" : "#00ff00";
+    try { await call({ action: "color", color: COLORS[c] }); } catch (e) { fail(e); stop(); }
+  };
+  const schedule = () => {
+    clearInterval(timer);
+    timer = setInterval(() => show(color === "r" ? "g" : "r"), Number($("rgb-every").value) * 1000);
+  };
+  const render = () => {
+    $("rgb-start").innerHTML = running() ? `${ICON.stop}<span>${I18N.t("Beenden")}</span>` : `${ICON.play}<span>${I18N.t("Assistent starten")}</span>`;
+    $("rgb-start").classList.toggle("running", running());
+    $("rgb-run").hidden = !running();
+    $("rgb-current").textContent = tr("Aktuelle Reihenfolge der LED-Hardware: {o}", { o: current.toUpperCase() });
+  };
+  // the same mapping as the WebUI wizard: every channel of the order is replaced by the one the LEDs showed
+  const evaluate = () => {
+    const red = $("rgb-r").value;
+    const green = $("rgb-g").value;
+    for (const opt of $("rgb-g").options) opt.disabled = opt.value !== "" && opt.value === red;
+    for (const opt of $("rgb-r").options) opt.disabled = opt.value !== "" && opt.value === green;
+    const save = $("rgb-save");
+    if (!red || !green || red === green) {
+      $("rgb-result").textContent = "";
+      save.hidden = true;
+      return;
+    }
+    const blue = "rgb".replace(red, "").replace(green, "");
+    const next = current.split("").map((ch) => (ch === "r" ? red : ch === "g" ? green : blue)).join("");
+    if (red === "r" && green === "g") {
+      $("rgb-result").textContent = I18N.t("Deine RGB-Byte-Reihenfolge ist bereits richtig eingestellt.");
+      save.hidden = true;
+      return;
+    }
+    $("rgb-result").textContent = tr("Neue Reihenfolge: {o}", { o: next.toUpperCase() });
+    save.textContent = tr("Reihenfolge {o} übernehmen", { o: next.toUpperCase() });
+    save.dataset.order = next;
+    save.hidden = false;
+  };
+  async function start() {
+    try {
+      current = (await (await fetch("/api/hyperion/device")).json()).colorOrder || "rgb";
+    } catch { /* stays rgb */ }
+    $("rgb-r").value = "";
+    $("rgb-g").value = "";
+    evaluate();
+    schedule();
+    render();
+    show("r");
+  }
+  async function stop() {
+    clearInterval(timer);
+    timer = null;
+    render();
+    try { await call({ action: "clear" }); } catch (e) { fail(e); }
+  }
+  $("rgb-start").addEventListener("click", () => (running() ? stop() : start()));
+  $("rgb-every").addEventListener("change", () => { if (running()) schedule(); });
+  $("rgb-r").addEventListener("change", evaluate);
+  $("rgb-g").addEventListener("change", evaluate);
+  $("rgb-save").addEventListener("click", async () => {
+    try {
+      const out = await call({ action: "save", colorOrder: $("rgb-save").dataset.order });
+      current = out.colorOrder;
+      await stop();
+      $("rgb-current").textContent = tr("Gespeichert. Aktuelle Reihenfolge der LED-Hardware: {o}", { o: current.toUpperCase() });
+    } catch (e) { fail(e); }
+  });
+  // leaving the page ends the wizard, so the LEDs do not stay red or green
+  addEventListener("pagehide", () => { if (running()) navigator.sendBeacon?.("/api/hyperion/rgbwizard-clear"); });
+  fetch("/api/hyperion/device").then((r) => r.json()).then((d) => { current = d.colorOrder || "rgb"; render(); }).catch(render);
+})();
 $("gx-custom").addEventListener("click", () => grabberTestAction("custom"));
 
 // a picker for an own color (row) or a new one (no row). Like the test colors, every change is

@@ -727,6 +727,20 @@ function exclusive(task) {
   return run;
 }
 
+// one authorized JSON-API command (system commands, the RGB wizard's color)
+const RGB_WIZARD_PRIORITY = 1;
+async function hyperionCommand(cmd) {
+  const api = await openHyperion();
+  try {
+    await loginHyperion(api);
+    const reply = await api.call(cmd);
+    if (!reply.success) throw new Error(`Hyperion: ${reply.error ?? "Befehl fehlgeschlagen"}`);
+    return reply;
+  } finally {
+    api.close();
+  }
+}
+
 // Writes one whole settings block of instance 0 and returns what Hyperion stored
 async function writeInstanceSetting(type, next) {
   const api = await openHyperion();
@@ -951,6 +965,44 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && p === "/api/hyperion/color") return sendJson(res, 200, readInstanceSetting("color"));
+
+    // Hyperion system commands like the power menu of the WebUI
+    if (req.method === "POST" && p === "/api/hyperion/system") {
+      const { subcommand } = await readBody(req);
+      if (!["suspend", "resume", "restart", "usbResetRestart"].includes(subcommand)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      await hyperionCommand({ command: "system", subcommand });
+      return sendJson(res, 200, { ok: true });
+    }
+
+    // RGB byte order wizard like the WebUI's: Hyperion shows red or green on the LEDs (priority 1),
+    // the answers give the new color order of the LED device
+    if (req.method === "GET" && p === "/api/hyperion/device") {
+      const device = readInstanceSetting("device");
+      return sendJson(res, 200, { type: device.type ?? null, colorOrder: device.colorOrder ?? "rgb" });
+    }
+    // sent by the page when it is left during the wizard (sendBeacon, no body)
+    if (req.method === "POST" && p === "/api/hyperion/rgbwizard-clear") {
+      await hyperionCommand({ command: "clear", priority: RGB_WIZARD_PRIORITY }).catch(() => {});
+      return sendJson(res, 200, { ok: true });
+    }
+    if (req.method === "POST" && p === "/api/hyperion/rgbwizard") {
+      const { action, color, colorOrder } = await readBody(req);
+      if (action === "color") {
+        if (!Array.isArray(color) || color.length !== 3 || !color.every((v) => Number.isInteger(v) && v >= 0 && v <= 255)) return sendJson(res, 400, { error: "Ungültige Farbe" });
+        await hyperionCommand({ command: "color", color, priority: RGB_WIZARD_PRIORITY, origin: "TV-Testseite" });
+        return sendJson(res, 200, { ok: true });
+      }
+      if (action === "clear") {
+        await hyperionCommand({ command: "clear", priority: RGB_WIZARD_PRIORITY });
+        return sendJson(res, 200, { ok: true });
+      }
+      if (action === "save") {
+        if (typeof colorOrder !== "string" || !/^[rgb]{3}$/.test(colorOrder) || new Set(colorOrder).size !== 3) return sendJson(res, 400, { error: "Ungültige Reihenfolge" });
+        const device = await exclusive(() => writeInstanceSetting("device", { ...readInstanceSetting("device"), colorOrder }));
+        return sendJson(res, 200, { colorOrder: device.colorOrder });
+      }
+      return sendJson(res, 400, { error: "Unbekannte Aktion" });
+    }
     // LED sampling areas [hmin, hmax, vmin, vmax]: the gray still detector only sees these parts of the picture
     if (req.method === "GET" && p === "/api/hyperion/leds") return sendJson(res, 200, readInstanceSetting("leds").map((l) => [l.hmin, l.hmax, l.vmin, l.vmax]));
     // black threshold of the LED device (fork extension), drawn in the gray curve graph
