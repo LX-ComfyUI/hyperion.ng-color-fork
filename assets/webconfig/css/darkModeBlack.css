@@ -242,3 +242,11 @@ button.close:hover {
     border-color: #005d5c;
     background-color: #080808;
 }
+
+/* Fork-Erweiterung: Erklärungsblase der (i)-Symbole */
+#info-pop {
+    background-color: #1e1e1e;
+    color: #DDDDDD;
+    border-color: rgba(255, 255, 255, .15);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+}

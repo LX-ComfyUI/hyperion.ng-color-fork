@@ -50,8 +50,9 @@ $(function() {
 			if(!mInit)
 			{
 				mInit = true;
-				$('#main-nav').css({"position":"fixed","right":"-235px","top":"45px","width":"230px","border":"1px solid rgba(0, 0, 0, .2)","box-shadow":"0 3px 9px rgba(0, 0, 0, .5)"});
-				topOffset = 100; // 2-row-menu
+				// Fork-Erweiterung: unter der kompakten, festen Kopfzeile (56 px, css/hyperion.css)
+				$('#main-nav').css({"position":"fixed","right":"-235px","top":"56px","width":"230px","border":"1px solid rgba(0, 0, 0, .2)","box-shadow":"0 3px 9px rgba(0, 0, 0, .5)"});
+				topOffset = 56;
 				
 				$('.mnava').bind('click.smnav', function(){
 					$( "#main-nav" ).animate({right: "-235px",}, 300 );

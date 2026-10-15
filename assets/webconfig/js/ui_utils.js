@@ -666,8 +666,120 @@ function createJsonEditor(container, schema, setconfig, usePanel, arrayre) {
     }
   }
 
+  infoIcons.watch(editor);
   return editor;
 }
+
+// Fork-Erweiterung: (i)-Symbol an jedem Einstellungsfeld, zu dem es eine Erklärung gibt
+// ("…_title" -> "…_expl", derselbe Text wie in der Erklärungstabelle). Antippen oder Klicken öffnet
+// die Erklärung in einer kleinen Blase; der frühere title-Tooltip ließ sich auf Touch-Geräten nicht
+// öffnen (Bootstraps Tooltip-Plugin ist in der eingebundenen bootstrap.min.js nicht enthalten).
+// Mit der Maus erscheint die Blase auch beim Darüberfahren.
+const infoIcons = (function () {
+  let pop = null;
+  let current = null;
+  let pinned = false;
+
+  function popup() {
+    if (!pop) {
+      pop = document.createElement('div');
+      pop.id = 'info-pop';
+      pop.setAttribute('role', 'tooltip');
+      pop.hidden = true;
+      document.body.appendChild(pop);
+    }
+    return pop;
+  }
+
+  function hide() {
+    if (current) current.setAttribute('aria-expanded', 'false');
+    current = null;
+    pinned = false;
+    if (pop) pop.hidden = true;
+  }
+
+  function show(button, pin) {
+    const el = popup();
+    if (current && current !== button) current.setAttribute('aria-expanded', 'false');
+    current = button;
+    pinned = pin;
+    button.setAttribute('aria-expanded', 'true');
+    el.innerHTML = button.dataset.info;
+    el.hidden = false;
+    // unter dem Symbol, waagerecht im sichtbaren Bereich gehalten (clientWidth ohne Bildlaufleiste)
+    const viewWidth = document.documentElement.clientWidth;
+    el.style.left = '0px';
+    el.style.maxWidth = Math.min(380, viewWidth - 16) + 'px';
+    const r = button.getBoundingClientRect();
+    const width = el.offsetWidth;
+    const left = Math.max(8, Math.min(r.left - 12, viewWidth - width - 8));
+    el.style.left = (left + globalThis.scrollX) + 'px';
+    el.style.top = (r.bottom + globalThis.scrollY + 6) + 'px';
+  }
+
+  function add(label, html) {
+    if (!label || !html || label.querySelector('.info-icon')) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'info-icon';
+    button.dataset.info = html;
+    button.setAttribute('aria-label', $.i18n('general_info_icon_label'));
+    button.setAttribute('aria-expanded', 'false');
+    button.innerHTML = '<i class="fa fa-info-circle"></i>';
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (current === button && pinned) hide();
+      else show(button, true);
+    });
+    button.addEventListener('pointerenter', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) show(button, false);
+    });
+    button.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && current === button && !pinned) hide();
+    });
+    label.appendChild(button);
+  }
+
+  // alle Felder eines Editors; neue Felder (Listeneinträge, umgeschaltete Typen) kommen nach "change"
+  function watch(editor) {
+    let timer = null;
+    const run = function () {
+      timer = null;
+      for (const path in editor.editors) {
+        const ed = editor.editors[path];
+        const key = ed?.schema?.title;
+        if (!ed?.label || typeof key !== 'string' || !key.includes('title')) continue;
+        const explKey = key.replace('title', 'expl');
+        const text = $.i18n(explKey);
+        if (text && text !== explKey) add(ed.label, text);
+      }
+    };
+    const schedule = function () {
+      if (!timer) timer = setTimeout(run, 0);
+    };
+    editor.on('ready', schedule);
+    editor.on('change', schedule);
+    schedule();
+  }
+
+  document.addEventListener('click', function (e) {
+    if (pop && !pop.hidden && !pop.contains(e.target)) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  globalThis.addEventListener('resize', hide);
+  // Seitenwechsel: die Blase gehört zu einem Symbol, das es nicht mehr gibt
+  $(function () {
+    const content = document.getElementById('page-content');
+    if (content) new MutationObserver(function () {
+      if (current && !current.isConnected) hide();
+    }).observe(content, { childList: true });
+  });
+
+  return { add, watch };
+})();
 
 // Update the selection for JSON Editor
 function updateJsonEditorSelection(

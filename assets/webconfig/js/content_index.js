@@ -483,13 +483,7 @@ function bindUiHandlers() {
     });
   });
 
-  // Scroll-based logo visibility
-  window.addEventListener("scroll", function () {
-    const logo = document.getElementById("navbar_brand_logo");
-    if (!logo) return;
-
-    logo.style.display = window.scrollY > 65 ? "none" : "";
-  }, { passive: true });
+  // Fork-Erweiterung: das Logo bleibt in der festen Kopfzeile sichtbar (früher beim Scrollen ausgeblendet)
   
 }
 

@@ -1088,3 +1088,163 @@ h3.page-header .help-fold-all {
   font-size: 13px;
   margin-top: -2px;
 }
+
+/* Fork-Erweiterung: feste Kopfzeile und Seitenleiste. Die Kopfzeile bleibt beim Scrollen oben
+   (sticky), das Logo ist auf die Breite der Seitenleiste verkleinert; die Seitenleiste steht fest
+   darunter und scrollt bei Bedarf in sich. Auf dem Smartphone eine kompakte Zeile mit kleinem Logo,
+   den Symbolen und dem Menüknopf. */
+@media (min-width: 768px) {
+  nav.navbar-static-top {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    min-height: 72px !important;
+  }
+  .navbar-brand {
+    height: 72px;
+    display: flex;
+    align-items: center;
+  }
+  #navbar_brand_logo {
+    width: 220px;
+    height: auto;
+  }
+  .navbar-top-links li a {
+    min-height: 72px;
+  }
+  #main-nav {
+    position: fixed !important;
+    top: 72px;
+    bottom: 0;
+    left: 10px;
+    width: 250px;
+    margin-top: 0;
+    overflow-y: auto;
+  }
+  html {
+    scroll-padding-top: 82px;
+  }
+}
+@media (max-width: 767px) {
+  nav.navbar-static-top {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    min-height: 56px !important;
+    display: flex;
+    align-items: center;
+    padding-right: 56px;
+  }
+  nav.navbar-static-top .navbar-header {
+    float: none;
+    flex: 0 0 96px;
+    margin: 0 !important;
+  }
+  nav.navbar-static-top .navbar-brand {
+    float: none;
+    height: 56px;
+    padding: 0 0 0 10px;
+    left: 0;
+    display: flex;
+    align-items: center;
+  }
+  #navbar_brand_logo {
+    width: 100%;
+    height: auto;
+  }
+  #top-navbar {
+    display: flex !important;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    margin: 0;
+    float: none;
+  }
+  /* kein display hier: versteckte Symbole (style="display:none") müssen versteckt bleiben */
+  #top-navbar > li {
+    position: relative;
+  }
+  #top-navbar > li > a {
+    min-height: 56px;
+    padding: 0 7px;
+  }
+  #top-navbar > li > a > .fa,
+  #top-navbar > li > a > .mdi {
+    font-size: 20px;
+    margin-right: 0;
+  }
+  #top-navbar .fa-caret-down {
+    display: none;
+  }
+  /* Menüs der Symbole am rechten Rand unter der Kopfzeile, damit sie nie aus dem Bild ragen */
+  #top-navbar .dropdown-menu {
+    position: fixed;
+    top: 56px;
+    right: 8px;
+    left: auto;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+  }
+  /* Seitenmenü: rechts außerhalb des Bildes, der Menüknopf schiebt es herein (sb-admin-2.js) */
+  #main-nav {
+    position: fixed;
+    top: 56px;
+    right: -235px;
+    width: 230px;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
+    border: 1px solid rgba(0, 0, 0, .2);
+    box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
+    z-index: 999;
+  }
+  .navbar-toggle {
+    top: 0;
+    margin: 11px 8px 0 0;
+    z-index: 1001;
+  }
+  html {
+    scroll-padding-top: 66px;
+  }
+}
+
+/* Fork-Erweiterung: (i)-Symbol an den Einstellungsfeldern und die Erklärungsblase (infoIcons in
+   js/ui_utils.js); die Schaltfläche ist größer als das Symbol, damit sie sich gut antippen lässt */
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: -6px -2px -6px 2px;
+  padding: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #3a87ad;
+  font-size: 14px;
+  line-height: 1;
+  vertical-align: baseline;
+  cursor: pointer;
+}
+.info-icon:hover,
+.info-icon:focus-visible,
+.info-icon[aria-expanded="true"] {
+  color: #0E83E7;
+  background: rgba(14, 131, 231, .12);
+}
+#info-pop {
+  position: absolute;
+  z-index: 1060;
+  box-sizing: border-box;
+  max-width: min(380px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, .15);
+  border-radius: 6px;
+  background: #fff;
+  color: #333;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+  font-size: 13px;
+  font-weight: normal;
+  line-height: 1.45;
+}
+#info-pop[hidden] {
+  display: none;
+}
+

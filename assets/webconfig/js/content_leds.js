@@ -1097,12 +1097,7 @@ $(document).ready(function () {
         if ($label.data('forkInfoIconAdded')) return;
         var explText = $.i18n(explKey);
         if (!explText || explText === explKey) return;
-        $label.append(
-          $('<i>')
-            .addClass('fa fa-info-circle')
-            .attr('title', explText.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')) // Tooltips zeigen kein HTML
-            .css({ 'margin-left': '6px', cursor: 'help', color: '#3a87ad' })
-        );
+        infoIcons.add(fieldEditor.label, explText); // Fork: gemeinsames (i)-Symbol mit Blase (ui_utils.js)
         $label.data('forkInfoIconAdded', true);
       }
 
