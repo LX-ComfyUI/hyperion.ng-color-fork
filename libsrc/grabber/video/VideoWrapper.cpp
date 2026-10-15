@@ -3,6 +3,8 @@
 #include <grabber/video/VideoWrapper.h>
 
 // qt includes
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QTimer>
 
@@ -150,6 +152,24 @@ void VideoWrapper::readError(const char* err)
 	}
 }
 
+#if defined(ENABLE_V4L2)
+namespace {
+	// a V4L2 node whose sysfs name matches the device name the grabber is configured with
+	bool videoNodeWithNameExists(const QString& deviceName)
+	{
+		for (const QString& node : QDir("/sys/class/video4linux").entryList({ "video*" }, QDir::Dirs | QDir::System))
+		{
+			QFile file("/sys/class/video4linux/" + node + "/name");
+			if (file.open(QIODevice::ReadOnly) && QString::fromUtf8(file.readAll()).trimmed() == deviceName)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+#endif
+
 void VideoWrapper::tryReconnect()
 {
 	// stop retrying when the grabber was disabled or got restarted elsewhere (e.g. settings save)
@@ -160,7 +180,8 @@ void VideoWrapper::tryReconnect()
 	}
 
 #if defined(ENABLE_V4L2)
-	if (!QFileInfo::exists(_devicePath))
+	// the device may also come back under another node number; the grabber then finds it by name
+	if (!QFileInfo::exists(_devicePath) && !videoNodeWithNameExists(_deviceName))
 	{
 		return;
 	}

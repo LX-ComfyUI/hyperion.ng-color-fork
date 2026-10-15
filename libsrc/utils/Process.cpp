@@ -69,11 +69,18 @@
 
 			QFile(skipBootSequenceMarkerPath()).open(QIODevice::WriteOnly);
 
-			auto arguments = QCoreApplication::arguments();
-			if (!arguments.contains("--wait-hyperion"))
-				arguments << "--wait-hyperion";
+			// Fork: under systemd (INVOCATION_ID is set for service processes) the service
+			// manager restarts Hyperion on the non-zero exit code. A self-relaunched copy
+			// would run alongside the exiting process, consume the restart markers (boot
+			// effect skip, USB reset) and then be killed by systemd with the old cgroup.
+			if (qEnvironmentVariableIsEmpty("INVOCATION_ID"))
+			{
+				auto arguments = QCoreApplication::arguments();
+				if (!arguments.contains("--wait-hyperion"))
+					arguments << "--wait-hyperion";
 
-			QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments);
+				QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments);
+			}
 
 			//Exit with non-zero code to ensure service deamon restarts hyperion
 			QCoreApplication::exit(exitCode);

@@ -193,6 +193,23 @@ bool V4L2Grabber::init()
 		qCDebug(grabber_video_properties) << "_deviceProperties: " << _deviceProperties;
 		qCDebug(grabber_video_properties) << "_deviceControls: " << _deviceControls;
 
+		// Fork: the kernel numbers the nodes anew when a USB grabber comes back while its old node
+		// is still open (USB reset, replug); then the configured path is missing or belongs to
+		// another device. Use the node that carries the configured device name instead.
+		if (_currentDeviceName.compare("none", Qt::CaseInsensitive) != 0
+			&& (!_deviceProperties.contains(_currentDevicePath) || _deviceProperties.value(_currentDevicePath).name != _currentDeviceName))
+		{
+			for (auto it = _deviceProperties.cbegin(); it != _deviceProperties.cend(); ++it)
+			{
+				if (it.value().name == _currentDeviceName)
+				{
+					Info(_log, "Configured device path '%s' does not lead to '%s', using '%s'", QSTRING_CSTR(_currentDevicePath), QSTRING_CSTR(_currentDeviceName), QSTRING_CSTR(it.key()));
+					_currentDevicePath = it.key();
+					break;
+				}
+			}
+		}
+
 		if(!_deviceProperties.contains(_currentDevicePath))
 		{
 			Debug(_log, "Configured device at '%s' is not available.", QSTRING_CSTR(_currentDevicePath));

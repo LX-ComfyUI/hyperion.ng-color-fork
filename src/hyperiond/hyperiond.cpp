@@ -150,12 +150,51 @@ namespace {
 		return {};
 	}
 
-	// Consumes the marker of the "USB reset + restart" event and resets the capture
-	// card's USB device. Runs before the video grabber opens the device, so no
-	// process holds the node and the kernel re-creates it under the same name.
+	// /dev paths of the video nodes that belong to a USB device directory
+	QStringList videoNodesOfUsbDevice(const QString& usbDir)
+	{
+		QStringList nodes;
+		for (const QString& node : QDir("/sys/class/video4linux").entryList({ "video*" }, QDir::Dirs | QDir::System, QDir::Name))
+		{
+			if (usbDeviceDirForVideoNode(node) == usbDir)
+			{
+				nodes << "/dev/" + node;
+			}
+		}
+		return nodes;
+	}
+
+	// true while another process (e.g. the Hyperion instance that is shutting down) has one
+	// of the nodes open; only processes of the same user are visible, which covers Hyperion
+	bool videoNodeHeldByOtherProcess(const QStringList& nodes)
+	{
+		const QString self = QString::number(QCoreApplication::applicationPid());
+		for (const QString& pid : QDir("/proc").entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+		{
+			if (pid == self || !pid.at(0).isDigit())
+			{
+				continue;
+			}
+			const QDir fdDir("/proc/" + pid + "/fd");
+			for (const QFileInfo& fd : fdDir.entryInfoList(QDir::Files | QDir::System | QDir::NoDotAndDotDot))
+			{
+				if (nodes.contains(fd.symLinkTarget()))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	// Handles the marker of the "USB reset + restart" event and resets the capture card's USB
+	// device. Runs before the video grabber opens the device and waits until no other process
+	// holds its node: resetting while one does makes the kernel re-create the node under a new
+	// number (/dev/video0 -> /dev/video1). The marker goes only after the reset, so a process
+	// that is stopped half-way leaves the reset to the next start.
 	void resetVideoCaptureUsbDeviceIfRequested(const QSharedPointer<Logger>& log, const QString& devicePath)
 	{
-		if (!QFile::remove(Process::usbResetMarkerPath()))
+		if (!QFile::exists(Process::usbResetMarkerPath()))
 		{
 			return;
 		}
@@ -163,8 +202,21 @@ namespace {
 		const QString usbDir = usbDeviceDirForVideoDevice(devicePath);
 		if (usbDir.isEmpty())
 		{
+			QFile::remove(Process::usbResetMarkerPath());
 			Warning(log, "No USB capture device found for '%s' - skipping USB reset", QSTRING_CSTR(devicePath));
 			return;
+		}
+
+		QElapsedTimer waited;
+		waited.start();
+		const QStringList nodes = videoNodesOfUsbDevice(usbDir);
+		while (videoNodeHeldByOtherProcess(nodes) && waited.elapsed() < 10000)
+		{
+			QThread::msleep(100);
+		}
+		if (waited.elapsed() >= 100)
+		{
+			Info(log, "Waited %lld ms until no other process held the capture device", waited.elapsed());
 		}
 
 		const QString busDev = QString("%1/%2")
@@ -177,6 +229,7 @@ namespace {
 			QSTRING_CSTR(busDev));
 		// The device node is root:root, hence sudo (alexo has NOPASSWD:ALL)
 		Process::command_exec("sudo -n usbreset " + busDev);
+		QFile::remove(Process::usbResetMarkerPath());
 
 		// The UVC driver re-probes and udev re-creates the node shortly after the reset
 		QElapsedTimer timer;
