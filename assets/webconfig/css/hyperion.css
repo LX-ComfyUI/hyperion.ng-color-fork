@@ -1168,18 +1168,29 @@ input[type="radio"] .styled:checked + label::after {
     min-height: 56px !important;
     display: flex;
     align-items: center;
-    padding-right: 56px;
   }
+  /* Menüknopf links neben dem Logo */
   nav.navbar-static-top .navbar-header {
     float: none;
-    flex: 0 1 96px;
-    min-width: 40px;
+    flex: 0 1 auto;
+    min-width: 0;
     margin: 0 !important;
+    display: flex;
+    align-items: center;
+  }
+  nav.navbar-static-top .navbar-toggle {
+    order: -1;
+    position: static;
+    float: none;
+    flex: none;
+    margin: 0 2px 0 8px;
   }
   nav.navbar-static-top .navbar-brand {
     float: none;
+    flex: 0 1 96px;
+    min-width: 40px;
     height: 56px;
-    padding: 0 0 0 10px;
+    padding: 0 0 0 6px;
     left: 0;
     display: flex;
     align-items: center;
@@ -1223,22 +1234,18 @@ input[type="radio"] .styled:checked + label::after {
     max-height: calc(100vh - 64px);
     overflow-y: auto;
   }
-  /* Seitenmenü: rechts außerhalb des Bildes, der Menüknopf schiebt es herein (sb-admin-2.js) */
+  /* Seitenmenü: Schublade links außerhalb des Bildes, der Menüknopf schiebt sie herein (sb-admin-2.js) */
   #main-nav {
     position: fixed;
     top: 56px;
-    right: -235px;
+    left: -235px;
+    right: auto;
     width: 230px;
     max-height: calc(100vh - 56px);
     overflow-y: auto;
     border: 1px solid rgba(0, 0, 0, .2);
     box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
     z-index: 999;
-  }
-  .navbar-toggle {
-    top: 0;
-    margin: 11px 8px 0 0;
-    z-index: 1001;
   }
   html {
     scroll-padding-top: 66px;

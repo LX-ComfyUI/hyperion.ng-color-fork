@@ -4,16 +4,19 @@ $(function() {
     // Fork-Erweiterung: toggle: false, damit das Aufklappen einer Gruppe die andere nicht zuklappt
     $('#side-menu').metisMenu({ toggle: false });
 
-    // Fork-Erweiterung: "LED Instanzen" klappt nur per Klick auf den eigenen Titel auf und zu und
-    // merkt sich den Zustand. Navigation und SwitchToMenuItem klappen die Gruppe sonst ungefragt
-    // zu; solche Änderungen werden auf den gespeicherten Zustand zurückgesetzt.
-    var link = document.getElementById('MenuItemLedInstances');
-    var list = link && link.nextElementSibling;
-    if (list) {
-        var KEY = 'ledInstancesMenuOpen';
+    // Fork-Erweiterung: Die Gruppen "LED Instanzen" und "System" klappen nur per Klick auf ihren
+    // eigenen Titel auf und zu und merken sich den Zustand. Navigation und SwitchToMenuItem klappen
+    // sie sonst ungefragt zu; solche Änderungen werden auf den gespeicherten Zustand zurückgesetzt.
+    var keepGroupState = function (linkId, key, defaultOpen) {
+        var link = document.getElementById(linkId);
+        var list = link && link.nextElementSibling;
+        if (!list) return;
         var userUntil = 0;
         var stored = function () {
-            try { return localStorage.getItem(KEY) !== 'closed'; } catch (e) { return true; }
+            try {
+                var v = localStorage.getItem(key);
+                return v === null ? defaultOpen : v !== 'closed';
+            } catch (e) { return defaultOpen; }
         };
         var show = function (open) {
             list.classList.toggle('mm-show', open);
@@ -27,12 +30,14 @@ $(function() {
             if (list.classList.contains('mm-collapsing')) return;
             var shown = list.classList.contains('mm-show');
             if (Date.now() < userUntil) {
-                try { localStorage.setItem(KEY, shown ? 'open' : 'closed'); } catch (e) { }
+                try { localStorage.setItem(key, shown ? 'open' : 'closed'); } catch (e) { }
             } else if (shown !== stored()) {
                 show(stored());
             }
         }).observe(list, { attributes: true, attributeFilter: ['class'] });
-    }
+    };
+    keepGroupState('MenuItemLedInstances', 'ledInstancesMenuOpen', true);
+    keepGroupState('MenuItemSystem', 'systemMenuOpen', false);
 
 });
 
@@ -45,25 +50,21 @@ $(function() {
     $(window).on("load resize", function() {
         var topOffset = 50;
         var width = (this.window.innerWidth > 0) ? this.window.innerWidth : this.screen.width;
+		// Fork-Erweiterung: im schmalen Fenster ist das Seitenmenü eine Schublade von links unter der
+		// festen Kopfzeile (Lage und Größe in css/hyperion.css); hier nur das Zurücksetzen beim Umschalten
 		if (width < 768)
 		{
 			if(!mInit)
 			{
 				mInit = true;
-				// Fork-Erweiterung: unter der kompakten, festen Kopfzeile (56 px, css/hyperion.css)
-				$('#main-nav').css({"position":"fixed","right":"-235px","top":"56px","width":"230px","border":"1px solid rgba(0, 0, 0, .2)","box-shadow":"0 3px 9px rgba(0, 0, 0, .5)"});
-				topOffset = 56;
-				
-				$('.mnava').bind('click.smnav', function(){
-					$( "#main-nav" ).animate({right: "-235px",}, 300 );
-					$(".navbar-toggle").addClass("closed");
-				});
+				$('#main-nav').removeAttr('style');
+				$(".navbar-toggle").addClass("closed");
 			}
+			topOffset = 56;
 		}
 		else
 		{
-			$( "#main-nav" ).removeAttr('style').css({"position":"fixed"});
-			$( ".mnava" ).off('click.smnav');
+			$( "#main-nav" ).removeAttr('style');
 			mInit = false;
 		}
 
@@ -92,15 +93,15 @@ $(function() {
     }
 });
 
+// Fork-Erweiterung: Menüknopf links neben dem Logo öffnet und schließt die Schublade; ein Menüpunkt
+// schließt sie wieder (früher nur gebunden, wenn die Initialisierung beim Laden griff)
+var navDrawer = function (open) {
+	$('#main-nav').stop().animate({ left: open ? "0px" : "-235px" }, 300);
+	$(".navbar-toggle").toggleClass("closed", !open);
+};
 $('.navbar-toggle').on('click', function(){
-	if($('#main-nav').css("right") != "-2px")
-	{
-		 $('#main-nav').animate({right: "-2px",}, 300 );
-		 $(".navbar-toggle").removeClass("closed");
-	}
-	else
-	{
-		$('#main-nav').animate({right: "-235px",}, 300 );
-		$(".navbar-toggle").addClass("closed");
-	}
+	navDrawer($(".navbar-toggle").hasClass("closed"));
+});
+$(document).on('click', '.mnava', function(){
+	if (window.innerWidth < 768) navDrawer(false);
 });
