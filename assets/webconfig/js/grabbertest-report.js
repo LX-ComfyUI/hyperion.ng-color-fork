@@ -49,7 +49,7 @@
       grayChartHint: "Waagerecht die gesendete Stufe, senkrecht was der Grabber liefert. Die gepunktete Linie ist ideal. Beide Achsen sind gestaucht, damit die dunklen Stufen lesbar bleiben.",
       ladders: "Farbleitern",
       laddersHint: "Jede Farbe in mehreren Helligkeiten. Durchgezogen der Kanal der Farbe, gestrichelt die Kanäle, die dunkel bleiben sollten.",
-      colLadder: "Farbe", colVisible: "erkennbar ab", colPure: "Farbton stimmt ab", colPurity: "Fremdanteil bei 255",
+      colLadder: "Farbe", colVisible: "erkennbar ab", colPure: "Farbton stimmt ab", colStrength: "Stärke bei 128", colPurity: "Fremdanteil bei 255",
       never: "nie",
       allValues: "Alle Messwerte",
       colColor: "Farbe", colSent: "gesendet", colGot: "Grabber", colDiff: "Abweichung", colNoise: "Rauschen",
@@ -77,11 +77,17 @@
       f_darkHue: "Dunkle Farben verlieren ihren Farbton: {list}.",
       f_darkHueGood: "Auch dunkle Farben behalten ihren Farbton.",
       f_crosstalk: "Farben sind nicht rein: {list}. Das deutet auf eine abweichende Farbmatrix (BT.601/BT.709) oder eine Farbsättigungs-Einstellung hin.",
+      f_strengthGood: "Alle Farben kommen ungefähr gleich stark an wie Grau (Abweichung höchstens {v} %).",
+      f_strength: "Farben kommen unterschiedlich stark an: {list} (bei Stufe 128, Grau 128 = 100 %). Zu schwache Farben leuchten an den LEDs schwächer, als sie im Bild sind.",
+      f_strengthClip: "Verstärkte Farben erreichen den Höchstwert schon vor 255: {list}. Hellere Töne dieser Farben lassen sich nicht mehr unterscheiden.",
+      f_matrix: "Fremdanteile und ungleiche Stärke zusammen sind das typische Bild einer abweichenden Farbmatrix: Der Grabber (oder ein Gerät davor, etwa ein HDMI-Splitter) rechnet die Farben mit einer anderen Norm um, als das Zuspielgerät sendet. Der Fernseher ist daran nicht beteiligt, weil der Grabber das Signal vor ihm abgreift. Graustufen sind davon nicht betroffen.",
       f_unstable: "{n} Schritte wurden nicht ganz ruhig gemessen. Wiederhole den Test, wenn Werte seltsam aussehen.",
       pureFromItem: "{c} erst ab {v}",
       visibleFromItem: "{c} erst ab {v} erkennbar",
       neverItem: "{c} gar nicht",
       crosstalkItem: "{c} {v} %",
+      strengthItem: "{c} {v} %",
+      clipItem: "{c} bei etwa {v}",
       keys: { device: "Gerät", input: "Eingang", width: "Breite", height: "Höhe", fps: "Bildrate", encoding: "Format", hardware_brightness: "Helligkeit", hardware_contrast: "Kontrast", hardware_saturation: "Sättigung", hardware_hue: "Farbton" },
     },
     en: {
@@ -97,7 +103,7 @@
       grayChartHint: "Horizontal the level sent, vertical what the grabber delivers. The dotted line is ideal. Both axes are compressed so the dark levels stay readable.",
       ladders: "Color ladders",
       laddersHint: "Each color at several brightness levels. Solid: the color's channel, dashed: the channels that should stay dark.",
-      colLadder: "Color", colVisible: "visible from", colPure: "hue correct from", colPurity: "foreign share at 255",
+      colLadder: "Color", colVisible: "visible from", colPure: "hue correct from", colStrength: "strength at 128", colPurity: "foreign share at 255",
       never: "never",
       allValues: "All measured values",
       colColor: "Color", colSent: "sent", colGot: "grabber", colDiff: "deviation", colNoise: "noise",
@@ -125,11 +131,17 @@
       f_darkHue: "Dark colors lose their hue: {list}.",
       f_darkHueGood: "Dark colors keep their hue too.",
       f_crosstalk: "Colors are not pure: {list}. This points to a different color matrix (BT.601/BT.709) or a saturation setting.",
+      f_strengthGood: "All colors arrive about as strong as gray (at most {v} % off).",
+      f_strength: "Colors arrive with different strength: {list} (at level 128, gray 128 = 100 %). Colors that arrive too weak light up weaker on the LEDs than they are in the picture.",
+      f_strengthClip: "Boosted colors reach the maximum before 255: {list}. Brighter shades of these colors can no longer be told apart.",
+      f_matrix: "Foreign shares and uneven strength together are the typical sign of a different color matrix: the grabber (or a device in front of it, such as an HDMI splitter) converts the colors with a different standard than the source device sends. The TV is not involved, the grabber taps the signal before it. Gray levels are not affected.",
       f_unstable: "{n} steps were not measured quite steadily. Repeat the test if values look odd.",
       pureFromItem: "{c} only from {v}",
       visibleFromItem: "{c} only visible from {v}",
       neverItem: "{c} not at all",
       crosstalkItem: "{c} {v} %",
+      strengthItem: "{c} {v} %",
+      clipItem: "{c} at about {v}",
       keys: { device: "device", input: "input", width: "width", height: "height", fps: "frame rate", encoding: "format", hardware_brightness: "brightness", hardware_contrast: "contrast", hardware_saturation: "saturation", hardware_hue: "hue" },
     },
   };
@@ -213,7 +225,18 @@
       }
       const top = graded.find((g) => g.level === 255);
       const crosstalk = top && top.mainRise > 0 ? (100 * top.foreignRise) / top.mainRise : null;
-      return { name, mask, rows: graded, visibleFrom, pureFrom, crosstalk };
+      // strength: the color's channels against the same gray level, at 128 where nothing clips yet
+      const ref = rows.find((s) => Math.max(...s.sent) === 128);
+      const refGray = grays.find((s) => s.sent[0] === 128);
+      let strength = null;
+      if (ref && refGray) {
+        const parts = main.map((i) => (refGray.got[i] - black[i] > 8 ? (ref.got[i] - black[i]) / (refGray.got[i] - black[i]) : null));
+        if (parts.every((v) => v !== null)) strength = (100 * parts.reduce((a, b) => a + b, 0)) / parts.length;
+      }
+      // boosted and stuck at the top at 255: from about this level on the color clips
+      const clipFrom = strength !== null && strength > 105 && top && Math.max(...main.map((i) => top.got[i])) >= 254
+        ? Math.round(25500 / strength) : null;
+      return { name, mask, rows: graded, visibleFrom, pureFrom, crosstalk, strength, clipFrom };
     });
 
     const unstable = steps.filter((s) => s.unstable).length;
@@ -243,6 +266,13 @@
     if (!lost.length && !lateHue.length && ladders.some((l) => l.rows.length)) add("ok", "f_darkHueGood");
     const impure = ladders.filter((l) => l.crosstalk !== null && l.crosstalk > 10);
     if (impure.length) add("warn", "f_crosstalk", { ladders: impure });
+    const measured = ladders.filter((l) => l.strength !== null);
+    const uneven = measured.filter((l) => Math.abs(l.strength - 100) > 5).sort((p, q) => Math.abs(q.strength - 100) - Math.abs(p.strength - 100));
+    if (uneven.length) add("warn", "f_strength", { ladders: uneven });
+    else if (measured.length) add("ok", "f_strengthGood", { v: Math.max(...measured.map((l) => Math.abs(l.strength - 100))) });
+    const clipped = ladders.filter((l) => l.clipFrom !== null);
+    if (clipped.length) add("warn", "f_strengthClip", { ladders: clipped });
+    if (impure.length && uneven.length) add("warn", "f_matrix");
     if (unstable) add("warn", "f_unstable", { n: unstable });
 
     return { black, white, gain, drift, darkLostTo, lightLostFrom, tint, noise, ladders, findings, limited };
@@ -351,6 +381,12 @@
           return fill(t[f.key], { list: p.ladders.map((l) => (l.visibleFrom === null ? fill(t.neverItem, { c: t[l.name] }) : fill(t.visibleFromItem, { c: t[l.name], v: l.visibleFrom }))).join(", ") });
         case "f_crosstalk":
           return fill(t[f.key], { list: p.ladders.map((l) => fill(t.crosstalkItem, { c: t[l.name], v: num(l.crosstalk, 0) })).join(", ") });
+        case "f_strengthGood":
+          return fill(t[f.key], { v: num(p.v, 0) });
+        case "f_strength":
+          return fill(t[f.key], { list: p.ladders.map((l) => fill(t.strengthItem, { c: t[l.name], v: num(l.strength, 0) })).join(", ") });
+        case "f_strengthClip":
+          return fill(t[f.key], { list: p.ladders.map((l) => fill(t.clipItem, { c: t[l.name], v: l.clipFrom })).join(", ") });
         default:
           return fill(t[f.key], p);
       }
@@ -398,9 +434,9 @@
           const dashed = [0, 1, 2].filter((i) => !l.mask[i]);
           out += `<div><div class="cap"><span class="gtr-sw" style="background:${hex(l.mask.map((m) => m * 255))}"></span>${t[l.name]}</div>${chartSvg(rows, solid, dashed, { width: 170, height: 120, small: true })}</div>`;
         }
-        out += `</div><div class="gtr-scroll"><table class="gtr-table"><thead><tr><th>${t.colLadder}</th><th>${t.colVisible}</th><th>${t.colPure}</th><th>${t.colPurity}</th></tr></thead><tbody>`;
+        out += `</div><div class="gtr-scroll"><table class="gtr-table"><thead><tr><th>${t.colLadder}</th><th>${t.colVisible}</th><th>${t.colPure}</th><th>${t.colStrength}</th><th>${t.colPurity}</th></tr></thead><tbody>`;
         for (const l of ladders) {
-          out += `<tr><td><span class="gtr-sw" style="background:${hex(l.mask.map((m) => m * 255))}"></span> ${t[l.name]}</td><td>${l.visibleFrom ?? t.never}</td><td>${l.pureFrom ?? t.never}</td><td>${l.crosstalk === null ? "–" : num(l.crosstalk, 0) + " %"}</td></tr>`;
+          out += `<tr><td><span class="gtr-sw" style="background:${hex(l.mask.map((m) => m * 255))}"></span> ${t[l.name]}</td><td>${l.visibleFrom ?? t.never}</td><td>${l.pureFrom ?? t.never}</td><td>${l.strength === null ? "–" : num(l.strength, 0) + " %"}</td><td>${l.crosstalk === null ? "–" : num(l.crosstalk, 0) + " %"}</td></tr>`;
         }
         out += "</tbody></table></div>";
       }
