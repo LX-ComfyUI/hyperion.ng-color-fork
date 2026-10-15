@@ -70,8 +70,14 @@ $(document).ready(function () {
         });
       };
       renderGrabberTest();
-      // ein neuer Test von der Testseite (oder geänderte Grabber-Einstellungen) zeigt sich sofort
-      $(globalThis.hyperion).on("cmd-settings-update", function (event) {
+      // ein neuer Test von der Testseite (oder geänderte Grabber-Einstellungen) zeigt sich sofort;
+      // der Handler bleibt nach einem Seitenwechsel am globalen Objekt hängen, daher nur einmal
+      // anmelden und abmelden, sobald der Bericht nicht mehr auf der Seite ist
+      $(globalThis.hyperion).off("cmd-settings-update.grabbertest").on("cmd-settings-update.grabbertest", function (event) {
+        if (!document.getElementById('grabbertest_report')) {
+          $(globalThis.hyperion).off("cmd-settings-update.grabbertest");
+          return;
+        }
         const data = event.response && event.response.data;
         if (data && (data.grabberTest || data.grabberV4L2)) {
           if (data.grabberTest) globalThis.serverConfig.grabberTest = data.grabberTest;
