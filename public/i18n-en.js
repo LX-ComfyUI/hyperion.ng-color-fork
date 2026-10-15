@@ -76,7 +76,7 @@ window.I18N_EN = {
  "Dauer des Abfalls": "Drop duration",
  "Dauer eines Durchlaufs": "Duration of one pass",
  "Dauer je Richtung": "Duration per direction",
- "Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2 Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.": "The <b>basic test</b> automatically goes through gray levels, color ladders from very dark to bright and two mixed colors and takes about 2 minutes. Leave the TV and the source device alone meanwhile. The phone may turn off, the test keeps running on the Hyperion server.",
+ "Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.": "The <b>basic test</b> automatically goes through gray levels, color ladders from very dark to bright and two mixed colors and takes about 2½ minutes. Leave the TV and the source device alone meanwhile. The phone may turn off, the test keeps running on the Hyperion server.",
  "Der Grabber liefert keine Bilder mehr": "The grabber stopped delivering pictures",
  "Der Grabber liefert keine Bilder. Ist die USB-Aufnahme in Hyperion eingeschaltet?": "The grabber delivers no pictures. Is USB capture switched on in Hyperion?",
  "Der Grabber sieht die Linien auf dem TV mit, sie verfälschen die Erkennung und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.": "The grabber sees the lines on the TV too, they distort the detection and the LEDs. For real tests better use the preview only.",

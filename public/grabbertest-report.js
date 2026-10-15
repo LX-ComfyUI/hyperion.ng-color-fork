@@ -16,8 +16,8 @@
   "use strict";
 
   const GRAYS = [2, 4, 8, 12, 16, 20, 24, 32, 48, 64, 96, 128, 160, 192, 224, 235, 245, 255];
-  const PRIMARY_LEVELS = [4, 8, 16, 32, 50, 128, 255];
-  const SECONDARY_LEVELS = [16, 50, 128, 255];
+  const PRIMARY_LEVELS = [4, 8, 16, 32, 50, 128, 192, 224, 240, 255];
+  const SECONDARY_LEVELS = [16, 50, 128, 192, 224, 240, 255];
   const LADDERS = [
     ["red", [1, 0, 0], PRIMARY_LEVELS],
     ["green", [0, 1, 0], PRIMARY_LEVELS],
@@ -229,13 +229,26 @@
       const ref = rows.find((s) => Math.max(...s.sent) === 128);
       const refGray = grays.find((s) => s.sent[0] === 128);
       let strength = null;
+      let parts = null;
       if (ref && refGray) {
-        const parts = main.map((i) => (refGray.got[i] - black[i] > 8 ? (ref.got[i] - black[i]) / (refGray.got[i] - black[i]) : null));
+        parts = main.map((i) => (refGray.got[i] - black[i] > 8 ? (ref.got[i] - black[i]) / (refGray.got[i] - black[i]) : null));
         if (parts.every((v) => v !== null)) strength = (100 * parts.reduce((a, b) => a + b, 0)) / parts.length;
+        else parts = null;
       }
-      // boosted and stuck at the top at 255: from about this level on the color clips
-      const clipFrom = strength !== null && strength > 105 && top && Math.max(...main.map((i) => top.got[i])) >= 254
-        ? Math.round(25500 / strength) : null;
+      // a boosted channel that is stuck at the top at 255 clips from about 255 / gain on; the measured
+      // levels between 128 and 255 (if the test had them) narrow the estimate down
+      let clipFrom = null;
+      if (parts && top) {
+        for (const [k, i] of main.entries()) {
+          if (parts[k] <= 1.05 || top.got[i] < 254) continue;
+          let from = 255 / parts[k];
+          const below = graded.filter((g) => g.level < 255 && g.got[i] < 254).map((g) => g.level);
+          const above = graded.filter((g) => g.got[i] >= 254).map((g) => g.level);
+          if (below.length) from = Math.max(from, Math.max(...below));
+          if (above.length) from = Math.min(from, Math.min(...above));
+          clipFrom = Math.round(clipFrom === null ? from : Math.min(clipFrom, from));
+        }
+      }
       return { name, mask, rows: graded, visibleFrom, pureFrom, crosstalk, strength, clipFrom };
     });
 
