@@ -88,7 +88,7 @@ body{
 .ltd{width:auto;text-align:left;white-space:nowrap;vertical-align:middle !important;padding:6px !important;}
 .itd{width:100%;padding:6px !important;}
 table.input-group{width:100%}
-@media (max-width: 767px) {.ltd{white-space:normal;}}
+@media (max-width: 767.98px) {.ltd{white-space:normal;}}
 
 /*icon spacing*/
 .fa-fw, .mdi-24px{margin-right:5px;}
@@ -105,7 +105,7 @@ table.first_cell_borderless td:first-child{width: 25px !important;}
 .navbar-brand{top:0px;left:17px;padding-top:0;}
 .sidebar{margin-top:85px;}
 .dropdown{font-size:18px;}
-@media (max-width: 767px) {.sidebar{margin-top:0px;padding-top:0px !important;}}
+@media (max-width: 767.98px) {.sidebar{margin-top:0px;padding-top:0px !important;}}
 .page-header{margin-top:0px;}
 
 .navbar-top-links li a {
@@ -1088,31 +1088,23 @@ input[type="radio"] .styled:checked + label::after {
   line-height: 1;
 }
 
-/* Fork-Erweiterung: Name der Kopfzeilen-Symbole beim Darüberfahren (data-tip, js/ui_utils.js); rechtsbündig
-   unter dem Symbol, weil die Symbole am rechten Rand stehen */
-@media (hover: hover) {
-  #top-navbar > li > a[data-tip] {
-    position: relative;
-  }
-  #top-navbar > li > a[data-tip]:hover::after {
-    content: attr(data-tip);
-    position: absolute;
-    top: calc(100% - 12px);
-    right: 0;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background: rgba(30, 30, 34, .92);
-    color: #fff;
-    font-size: 12px;
-    font-weight: normal;
-    line-height: 1.3;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 1100;
-  }
-  #top-navbar > li.open > a[data-tip]::after {
-    display: none;
-  }
+/* Fork-Erweiterung: Name der Kopfzeilen-Symbole beim Darüberfahren (data-tip, js/ui_utils.js); steht
+   neben dem Mauszeiger und weicht am Fensterrand aus */
+#hover-tip {
+  position: fixed;
+  z-index: 10050;
+  max-width: calc(100vw - 16px);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(30, 30, 34, .92);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#hover-tip[hidden] {
+  display: none;
 }
 
 /* Fork-Erweiterung: feste Kopfzeile und Seitenleiste. Die Kopfzeile bleibt beim Scrollen oben
@@ -1189,7 +1181,7 @@ input[type="radio"] .styled:checked + label::after {
     scroll-padding-top: 82px;
   }
 }
-@media (max-width: 767px) {
+@media (max-width: 767.98px) {
   nav.navbar-static-top {
     position: sticky;
     top: 0;
@@ -1337,10 +1329,107 @@ nav.navbar-static-top .navbar-toggle {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-@media (max-width: 767px) {
+@media (max-width: 767.98px) {
   #btn_darkmode > a svg {
     width: 18px;
     height: 18px;
   }
 }
 
+
+/* Fork-Erweiterung: LED-Visualisierung kompakt wie die Grabber-Vorschau der TV-Testseite: schmale
+   Kopfzeile nur mit Schließen, kleine Symbolknöpfe (Name beim Darüberfahren), das Bild behält beim
+   Vergrößern sein Seitenverhältnis (js/ledsim.js); Höhe folgt der Breite, daher keine Griffe oben/unten */
+#ledsim_dialog {
+  position: fixed !important;
+}
+#ledsim_dialog > [data-role="header"] {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 0;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  border-bottom: none;
+  cursor: move;
+}
+#ledsim_dialog > [data-role="header"] [data-role="title"] {
+  display: none;
+}
+#ledsim_dialog > [data-role="header"] [data-role="close"] {
+  float: none;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 50%;
+}
+#ledsim_dialog > [data-role="body"] {
+  padding: 0 8px !important;
+}
+#ledsim_dialog #ledsim_text {
+  display: none;
+}
+#ledsim_dialog #leds_canvas {
+  margin: 0;
+}
+#ledsim_dialog > [data-role="footer"] {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: none;
+}
+#ledsim_dialog > [data-role="footer"] .btn {
+  margin: 0;
+  padding: 3px 9px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+#ledsim_dialog > [data-role="footer"] .btn > span {
+  display: none;
+}
+#ledsim_dialog > .gj-resizable-n,
+#ledsim_dialog > .gj-resizable-s {
+  display: none !important;
+}
+/* Griffe innen, sonst schneidet das Fenster (overflow hidden) sie zur Hälfte ab */
+#ledsim_dialog > .gj-resizable-e { right: 0; width: 6px; }
+#ledsim_dialog > .gj-resizable-w { left: 0; width: 6px; }
+#ledsim_dialog > .gj-resizable-ne { right: 0; top: 0; width: 12px; height: 12px; }
+#ledsim_dialog > .gj-resizable-nw { left: 0; top: 0; width: 12px; height: 12px; }
+#ledsim_dialog > .gj-resizable-se { right: 0; bottom: 0; width: 12px; height: 12px; }
+#ledsim_dialog > .gj-resizable-sw { left: 0; bottom: 0; width: 12px; height: 12px; }
+
+/* Fork-Erweiterung: alle Kopfzeilen-Symbole (Schriftsymbole und SVG) in der Höhe mittig, gleiche Linie
+   (die Einträge standen auf der Textgrundlinie, der mit SVG dadurch 3 px höher) */
+#top-navbar > li {
+  vertical-align: top;
+}
+#top-navbar > li > a {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Fork-Erweiterung: Liste der Graukurven-Punkte per Klick auf die Überschrift einklappbar (content_colors.js) */
+.gc-points-title {
+  cursor: pointer;
+  user-select: none;
+}
+.gc-points-chevron {
+  width: 16px;
+  margin-right: 4px;
+  font-size: 12px;
+  opacity: .6;
+  transition: transform .15s;
+}
+.gc-points-folded .gc-points-chevron {
+  transform: rotate(-90deg);
+}
+.gc-points-count {
+  font-weight: normal;
+  opacity: .7;
+}

@@ -42,6 +42,9 @@ $(function() {
 });
 
 var mInit = false;
+// Fork-Erweiterung: dieselbe Grenze wie das CSS (min-width: 768px). innerWidth ist ganzzahlig gerundet und
+// lag bei Zoom oder Windows-Skalierung (z. B. 767,2 px) auf der falschen Seite
+var wideLayout = window.matchMedia("(min-width: 768px)");
 
 //Loads the correct sidebar on window load,
 //collapses the sidebar on window resize.
@@ -49,10 +52,9 @@ var mInit = false;
 $(function() {
     $(window).on("load resize", function() {
         var topOffset = 50;
-        var width = (this.window.innerWidth > 0) ? this.window.innerWidth : this.screen.width;
 		// Fork-Erweiterung: im schmalen Fenster ist das Seitenmenü eine Schublade von links unter der
 		// festen Kopfzeile (Lage und Größe in css/hyperion.css); hier nur das Zurücksetzen beim Umschalten
-		if (width < 768)
+		if (!wideLayout.matches)
 		{
 			if(!mInit)
 			{
@@ -106,12 +108,12 @@ var setSideCollapsed = function (collapsed) {
 };
 try { document.documentElement.classList.toggle("side-collapsed", localStorage.getItem("sideCollapsed") === "1"); } catch (e) { }
 $('.navbar-toggle').on('click', function(){
-	if (window.innerWidth >= 768) {
+	if (wideLayout.matches) {
 		setSideCollapsed(!document.documentElement.classList.contains("side-collapsed"));
 		return;
 	}
 	navDrawer($(".navbar-toggle").hasClass("closed"));
 });
 $(document).on('click', '.mnava', function(){
-	if (window.innerWidth < 768) navDrawer(false);
+	if (!wideLayout.matches) navDrawer(false);
 });

@@ -332,6 +332,46 @@ $(document).ready(function () {
         };
         editor.on('change', refresh);
         refresh();
+
+        // Die Punkte lassen sich auch im Graphen bearbeiten, daher ist ihre Liste einklappbar
+        // (Klick auf die Überschrift, Zustand für alle Profile gespeichert, Standard: zu)
+        var title = pointsEditor.title;
+        var panel = pointsEditor.panel;
+        if (title && panel) {
+          var storedOpen = function () {
+            try { return localStorage.getItem('grayCurvePointsOpen') === '1'; } catch (e) { return false; }
+          };
+          var count = $('<span class="gc-points-count">')[0];
+          var chevron = $('<i class="fa fa-chevron-down gc-points-chevron" aria-hidden="true"></i>')[0];
+          title.classList.add('gc-points-title');
+          title.insertBefore(chevron, title.firstChild);
+          $(title).children('span').first().after(count);
+          var show = function (open) {
+            panel.style.display = open ? '' : 'none';
+            title.classList.toggle('gc-points-folded', !open);
+            title.setAttribute('aria-expanded', String(open));
+          };
+          var updateCount = function () {
+            var value = pointsEditor.getValue();
+            count.textContent = Array.isArray(value) ? ' (' + value.length + ')' : '';
+          };
+          title.setAttribute('role', 'button');
+          title.tabIndex = 0;
+          var toggle = function (ev) {
+            if (ev.target.closest('.info-icon, button')) return;
+            var open = title.classList.contains('gc-points-folded');
+            try { localStorage.setItem('grayCurvePointsOpen', open ? '1' : '0'); } catch (e) { }
+            $('.gc-points-title').each(function () { $(this).trigger('gcPointsShow', [open]); });
+          };
+          $(title).on('gcPointsShow', function (ev, open) { show(open); });
+          title.addEventListener('click', toggle);
+          title.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(ev); }
+          });
+          editor.on('change', updateCount);
+          updateCount();
+          show(storedOpen());
+        }
       })('root.color.channelAdjustment.' + i);
     }
   })(editor_color);

@@ -1,3 +1,17 @@
+// Fork-Erweiterung: Gijgo rechnet die Lage eines festen (position: fixed) Fensters über offsetParent; Firefox
+// liefert dort <body> und Gijgo zieht dann bei jedem Mausschritt die Scrollhöhe ab: nach dem Scrollen sprang
+// das Fenster beim Verschieben aus dem Bild. Feste Elemente stehen einfach dort, wo sie im Fenster sind.
+if (typeof gj !== "undefined" && gj.core && gj.core.position) {
+  var gjPosition = gj.core.position;
+  gj.core.position = function (el) {
+    if (el && el.nodeType === 1 && getComputedStyle(el).position === "fixed") {
+      var r = el.getBoundingClientRect();
+      return { top: r.top, left: r.left, bottom: r.bottom, right: r.right };
+    }
+    return gjPosition(el);
+  };
+}
+
 $(document).ready(function () {
   var modalOpened = false;
   var ledsim_width = 540;
@@ -79,30 +93,36 @@ $(document).ready(function () {
     leds = window.serverConfig.leds;
     grabberConfig = window.serverConfig.grabberV4L2;
 
-    // Fork-Erweiterung: ohne Erklärkasten; das Fenster startet wie die Grabber-Vorschau der TV-Testseite
-    // klein unten links (siehe "opened")
+    // Fork-Erweiterung: kompakt wie die Grabber-Vorschau der TV-Testseite: startet klein unten links
+    // (siehe "opened"), die Höhe folgt immer der Breite im Seitenverhältnis des Bildes (fitHeight)
     ledsim_width = 350;
-    ledsim_height = 400;
 
     dialog = $("#ledsim_dialog").dialog({
       uiLibrary: 'bootstrap',
       resizable: true,
       modal: false,
-      minWidth: 350,
+      minWidth: 230,
       width: ledsim_width,
-      minHeight: 400,
-      height: ledsim_height,
+      minHeight: 100,
       closeOnEscape: true,
       autoOpen: false,
       title: $.i18n('main_ledsim_title'),
       resize: function (e) {
+        fitHeight();
         updateLedLayout();
       },
       opened: function (e) {
 
-        // Fork-Erweiterung: kein Titeltext, Start klein unten links
+        // Fork-Erweiterung: kein Titeltext, Knöpfe nur als Symbol mit Namen beim Darüberfahren, Start klein unten links
         $(this).get(0).querySelector(".modal-title").textContent = "";
-        $("#ledsim_dialog").css({ width: ledsim_width + "px", height: ledsim_height + "px", left: "10px", top: (globalThis.innerHeight - ledsim_height - 10) + "px", right: "auto", bottom: "auto" });
+        $("#ledsim_dialog [data-role=footer] .btn").each(function () {
+          var label = $(this).children("span").text();
+          this.dataset.tip = label;
+          this.setAttribute("aria-label", label);
+        });
+        $("#ledsim_dialog").css({ width: ledsim_width + "px", left: "10px", right: "auto", bottom: "auto" });
+        fitHeight();
+        $("#ledsim_dialog").css({ top: Math.max(10, globalThis.innerHeight - $("#ledsim_dialog").outerHeight() - 10) + "px" });
         lC = false;
 
         if (!lC) {
@@ -124,8 +144,16 @@ $(document).ready(function () {
         lC = false;
       },
       resizeStop: function (e) {
+        fitHeight();
+        resizeFromTop = false;
+        fitHeight(true);
         updateLedLayout();
       }
+    });
+    $("#ledsim_dialog").on("pointerdown mousedown touchstart", ".gj-resizable-handle", function () {
+      // oberer Griff oder Fenster unten am Rand (Startlage): die Unterkante bleibt stehen, es wächst nach oben
+      resizeBottom = this.parentElement.getBoundingClientRect().bottom;
+      resizeFromTop = /gj-resizable-n/.test(this.className) || resizeBottom > globalThis.innerHeight - 40;
     });
     // apply new configuration
     $(window.hyperion).on("serverConfig_updated", function (event) {
@@ -188,6 +216,43 @@ $(document).ready(function () {
     }
   }
 
+  // Fork-Erweiterung: Höhe des Fensters aus der Breite: Bild im Seitenverhältnis des Grabber-Bildes
+  // (16:9 bis das erste Bild da ist), darüber die schmale Kopfzeile, darunter die Knöpfe. Breiter als
+  // das Browserfenster geht es nicht.
+  var imageAspect = 9 / 16;
+  var glowCanvas = document.createElement("canvas");
+  var glowAt = 0;
+  var resizeFromTop = false;
+  var resizeBottom = 0;
+  function fitHeight(keepInWindow) {
+    var dlg = $("#ledsim_dialog");
+    var maxWidth = globalThis.innerWidth - 20;
+    if (dlg.outerWidth() > maxWidth) dlg.css("width", maxWidth + "px");
+    var body = dlg.children("[data-role=body]");
+    var width = body.width();
+    var height = Math.round(width * imageAspect);
+    var chrome = dlg.children("[data-role=header]").outerHeight() + dlg.children("[data-role=footer]").outerHeight() + dlg.outerHeight() - dlg.innerHeight();
+    // höher als das Browserfenster geht es auch nicht: dann wird die Breite passend kleiner
+    var maxHeight = globalThis.innerHeight - 20 - chrome;
+    if (height > maxHeight) {
+      var sides = dlg.outerWidth() - width;
+      height = Math.max(50, maxHeight);
+      width = Math.round(height / imageAspect);
+      dlg.css("width", (width + sides) + "px");
+    }
+    body.css("height", height + "px");
+    var total = chrome + height;
+    dlg.css("height", total + "px");
+    // beim Ziehen an einem oberen Griff bleibt die Unterkante stehen; sonst die Oberkante. Nur beim
+    // Öffnen und bei neuem Seitenverhältnis wird das Fenster ins Bild geschoben (beim Ziehen würde das
+    // Verschieben die Rechnung von Gijgo aufschaukeln)
+    if (resizeFromTop && resizeBottom) dlg.css("top", Math.max(0, resizeBottom - total) + "px");
+    if (keepInWindow) {
+      var top = dlg[0].getBoundingClientRect().top;
+      dlg.css("top", Math.max(0, Math.min(top, globalThis.innerHeight - total - 10)) + "px");
+    }
+  }
+
   function updateLedLayout() {
     if (grabberConfig.enable && grabberConfig.signalDetection && storedAccess === 'expert') {
       $("#sigDetectArea_toggle").show();
@@ -196,8 +261,9 @@ $(document).ready(function () {
     }
 
     //calculate body size
-    canvas_height = $('#ledsim_dialog').outerHeight() - $('#ledsim_text').outerHeight() - $('[data-role=footer]').outerHeight() - $('[data-role=header]').outerHeight() - 40;
-    canvas_width = $('#ledsim_dialog').outerWidth() - 30;
+    // Fork-Erweiterung: das Bild füllt den Inhaltsbereich, dessen Höhe fitHeight() setzt
+    canvas_width = Math.round($('#ledsim_dialog > [data-role=body]').width());
+    canvas_height = Math.round(canvas_width * imageAspect);
 
     $("[id$=_preview_canv]").prop({ "width": canvas_width, "height": canvas_height });
     $('#leds_canvas').css("--width-var", canvas_width + "px");
@@ -262,9 +328,22 @@ $(document).ready(function () {
     }
     else {
       printLedsToCanvas(event.response.data.leds)
-      $('#leds_canvas').css("--background-var", "url(" + ($('#leds_preview_canv')[0]).toDataURL("image/jpg") + ") no-repeat top left");
-      // Safari workaround (redraw canvas)
-      $('#leds_canvas').parent().hide().show(0);
+      // Fork-Erweiterung: der unscharfe Schein hinter dem Bild kam aus einem PNG der ganzen LED-Leinwand bei
+      // jedem LED-Bild (bis 100/s); bei großem Fenster legte das den Browser lahm. Jetzt aus einer kleinen
+      // Kopie und höchstens 10-mal pro Sekunde, wegen der Unschärfe sieht er gleich aus.
+      var now = Date.now();
+      if (now - glowAt >= 100) {
+        glowAt = now;
+        var src = $('#leds_preview_canv')[0];
+        if (src.width > 0 && src.height > 0) {
+          glowCanvas.width = 160;
+          glowCanvas.height = Math.max(1, Math.round(160 * src.height / src.width));
+          glowCanvas.getContext("2d").drawImage(src, 0, 0, glowCanvas.width, glowCanvas.height);
+          $('#leds_canvas').css("--background-var", "url(" + glowCanvas.toDataURL("image/png") + ") no-repeat top left");
+          // Safari workaround (redraw canvas)
+          $('#leds_canvas').parent().hide().show(0);
+        }
+      }
     }
   });
 
@@ -281,6 +360,14 @@ $(document).ready(function () {
 
       var image = new Image();
       image.onload = function () {
+        // Fork-Erweiterung: Seitenverhältnis vom Grabber-Bild übernehmen (z. B. 4:3-Quelle)
+        var aspect = image.height / image.width;
+        if (image.width > 0 && Math.abs(aspect - imageAspect) > 0.005) {
+          imageAspect = aspect;
+          resizeFromTop = false;
+          fitHeight(true);
+          updateLedLayout();
+        }
         imageCanvasNodeCtx.drawImage(image, 0, 0, canvas_width, canvas_height);
       };
       image.src = imageData;

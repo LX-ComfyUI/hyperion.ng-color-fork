@@ -1459,12 +1459,52 @@ const helpFold = (function () {
 })();
 
 // Fork-Erweiterung: kurzer Name beim Darüberfahren mit der Maus über die Symbole der Kopfzeile
-// (data-tip-key in index.html, angezeigt per CSS aus data-tip; übersetzt erst beim Darüberfahren,
-// weil die Sprachdatei beim Laden der Seite noch nicht da ist)
+// (data-tip-key in index.html; übersetzt erst beim Darüberfahren, weil die Sprachdatei beim Laden der
+// Seite noch nicht da ist). Der Name steht neben dem Mauszeiger und weicht am Fensterrand nach links
+// bzw. oben aus, damit er immer ganz lesbar ist.
 $(function () {
   $('#top-navbar').on('mouseenter focusin', 'li > a[data-tip-key]', function () {
     this.dataset.tip = $.i18n(this.dataset.tipKey);
     this.setAttribute('aria-label', this.dataset.tip);
+  });
+
+  const tip = document.createElement('div');
+  tip.id = 'hover-tip';
+  tip.hidden = true;
+  document.body.appendChild(tip);
+  let target = null;
+  const hide = () => { target = null; tip.hidden = true; };
+  const place = (x, y) => {
+    const gap = 8;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = x + 14, top = y + 20;
+    if (left + w > window.innerWidth - gap) left = x - w - 10;
+    if (top + h > window.innerHeight - gap) top = y - h - 10;
+    tip.style.left = Math.max(gap, left) + 'px';
+    tip.style.top = Math.max(gap, top) + 'px';
+  };
+  document.addEventListener('pointerover', (ev) => {
+    if (ev.pointerType !== 'mouse') return;
+    const el = ev.target.closest && ev.target.closest('[data-tip]');
+    if (!el || el === target) return;
+    // offenes Menü des Symbols: kein Name darüber
+    if (el.closest('li.open')) return hide();
+    target = el;
+    tip.textContent = el.dataset.tip;
+    tip.hidden = false;
+    place(ev.clientX, ev.clientY);
+  });
+  document.addEventListener('pointermove', (ev) => {
+    if (!target) return;
+    if (!target.contains(ev.target)) return hide();
+    tip.textContent = target.dataset.tip;
+    place(ev.clientX, ev.clientY);
+  });
+  document.addEventListener('pointerdown', hide, true);
+  window.addEventListener('scroll', hide, true);
+  window.addEventListener('blur', hide);
+  document.addEventListener('pointerout', (ev) => {
+    if (target && !target.contains(ev.relatedTarget)) hide();
   });
 });
 
