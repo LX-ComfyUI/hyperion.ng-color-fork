@@ -62,6 +62,8 @@ const DEFAULT_STATE = {
   grabberColors: [],
   // saved settings per test (name, favorite star): { [test]: [{ id, name, fav, settings, savedAt }] }
   testPresets: {},
+  // switch Hyperion features off that would falsify the running test, and back on afterwards
+  testGuard: true,
   // language chosen last on a control page; the TV page follows it
   lang: "de",
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
@@ -215,6 +217,7 @@ function sanitize(input) {
     );
   }
   if (input.lang === "en" || input.lang === "de") out.lang = input.lang;
+  out.testGuard = input.testGuard !== false;
   for (const test of PRESET_TESTS) {
     const list = Array.isArray(input.testPresets?.[test]) ? input.testPresets[test] : [];
     const clean = list.filter((p) => p && typeof p.id === "string" && typeof p.name === "string" && p.settings && typeof p.settings === "object")
@@ -250,7 +253,7 @@ function phoneCount() {
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
 function broadcast() {
   // serverNow lets the TV time the gray test against the Pi's clock, not its own
-  const payload = `data: ${JSON.stringify({ ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
+  const payload = `data: ${JSON.stringify({ ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
   for (const res of clients.keys()) res.write(payload);
 }
 
@@ -982,6 +985,125 @@ async function readHyperionDefaults() {
 }
 
 // Builds the same structure as Hyperion's own export ("config getconfig") from a DB backup
+// --- Test guard ---
+// While a test runs, Hyperion features that would falsify it are switched off for the time of the
+// test and restored afterwards: the gray still detection would dim or freeze the LEDs on a still test
+// picture, the black border detection takes dark test pictures or the frame of the position test for
+// bars, a backlight lights LEDs that should stay dark, the stray LED filter darkens dim red LEDs,
+// and a deep capture depth lets the position marker reach neighbouring LEDs. A feature a running test
+// is about stays as it is (black bars test: black border detection, gray still test: gray still
+// detection, depth test: capture depth). testguard.json keeps the original values, so a restart
+// of this server still restores them; a value changed by hand during the test is left as it is.
+const GUARD_FILE = path.join(DATA_DIR, "testguard.json");
+const GUARD_DEPTH = { topBottom: 3, leftRight: 2 };
+let guardInfo = { applied: [] };
+
+// what the tests on the TV now ask for: { key: { type, path, value, label } }
+function guardWanted(entries = {}) {
+  if (!state.testGuard) return {};
+  const tests = [];
+  const shownColor = state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000";
+  const pattern = ["grayTest", "depthTest", "fracTest", "posTest"].some((t) => state[t]?.active) || state.posGuide?.active;
+  if (state.grayTest?.active) tests.push("gray");
+  if (state.depthTest?.active) tests.push("depth");
+  if (state.fracTest?.active) tests.push("frac");
+  if (state.posTest?.active || state.posGuide?.active) tests.push("pos");
+  if (Object.values(state.bars ?? {}).some((v) => v > 0)) tests.push("bars");
+  if (shownColor && !pattern) tests.push("color");
+  if (!tests.length) return {};
+  const off = new Set();
+  const add = (...k) => k.forEach((x) => off.add(x));
+  for (const t of tests) {
+    if (t === "color") add("grayStill", "blackborder", "backlight", "stray");
+    if (t === "bars") add("grayStill", "backlight");
+    if (t === "gray") add("backlight");
+    if (t === "depth") add("grayStill", "blackborder", "backlight");
+    if (t === "frac") add("grayStill", "blackborder", "backlight", "stray");
+    if (t === "pos") add("grayStill", "blackborder", "backlight", "depth");
+  }
+  // what a running test is about stays as it is
+  if (tests.includes("bars")) off.delete("blackborder");
+  if (tests.includes("gray")) off.delete("grayStill");
+  if (tests.includes("depth")) off.delete("depth");
+
+  const want = {};
+  let color = null;
+  try { color = readInstanceSetting("color"); } catch {}
+  if (off.has("blackborder")) want.blackborder = { type: "blackborderdetector", path: ["enable"], value: false, label: "Schwarzbalken-Erkennung" };
+  if (off.has("grayStill")) want.grayStill = { type: "blackborderdetector", path: ["grayStillImageDetector", "enabled"], value: false, label: "Graues-Standbild-Erkennung" };
+  if (off.has("stray")) want.stray = { type: "device", path: ["strayLedSuppressor", "enabled"], value: false, label: "Störlicht-Filter" };
+  if (off.has("backlight")) (color?.channelAdjustment ?? []).forEach((_, i) => {
+    want["backlight" + i] = { type: "color", path: ["channelAdjustment", i, "backlightThreshold"], value: 0, label: "Hintergrundbeleuchtung" };
+  });
+  if (off.has("depth") && color?.ledAreaDepth) for (const k of ["topBottom", "leftRight"]) {
+    // judged by the value before the test (the setting may already be the guard's own)
+    const key = "depth" + k;
+    const v = Number(entries[key] ? entries[key].original : color.ledAreaDepth[k]) || 0;
+    // 0 = the layout's depth, deeper than the standard of the test
+    if (v === 0 || v > GUARD_DEPTH[k]) want[key] = { type: "color", path: ["ledAreaDepth", k], value: GUARD_DEPTH[k], label: `Erfassungstiefe (${GUARD_DEPTH.topBottom} % / ${GUARD_DEPTH.leftRight} %)` };
+  }
+  return want;
+}
+
+const getPath = (obj, p) => p.reduce((o, k) => (o == null ? undefined : o[k]), obj);
+function setPath(obj, p, v) {
+  const parent = getPath(obj, p.slice(0, -1));
+  if (parent && typeof parent === "object") parent[p[p.length - 1]] = v;
+}
+function loadGuard() {
+  try { return JSON.parse(fs.readFileSync(GUARD_FILE, "utf8")); } catch { return { entries: {} }; }
+}
+function saveGuard(g) {
+  if (!Object.keys(g.entries).length) { fs.rmSync(GUARD_FILE, { force: true }); return; }
+  const tmp = GUARD_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(g));
+  fs.renameSync(tmp, GUARD_FILE);
+}
+
+// Brings Hyperion in line with guardWanted(): restores what is no longer needed, switches off what
+// is new; one write per settings block. Without a Hyperion login nothing can be written.
+async function syncGuard() {
+  const g = loadGuard();
+  const want = guardWanted(g.entries);
+  const configs = {};
+  const read = (type) => (configs[type] ??= readInstanceSetting(type));
+  const changed = new Set();
+  for (const [key, e] of Object.entries(g.entries)) {
+    if (want[key] && JSON.stringify(want[key].path) === JSON.stringify(e.path)) continue;
+    const cfg = read(e.type);
+    // only if it still has our value; a value changed by hand during the test stays
+    if (JSON.stringify(getPath(cfg, e.path)) === JSON.stringify(e.value)) { setPath(cfg, e.path, e.original); changed.add(e.type); }
+    delete g.entries[key];
+  }
+  for (const [key, w] of Object.entries(want)) {
+    if (g.entries[key]) continue;
+    const cfg = read(w.type);
+    const current = getPath(cfg, w.path);
+    if (current === undefined || JSON.stringify(current) === JSON.stringify(w.value)) continue;
+    g.entries[key] = { ...w, original: current };
+    setPath(cfg, w.path, w.value);
+    changed.add(w.type);
+  }
+  if (changed.size) {
+    if (!readToken()) throw new Error("Nicht mit Hyperion verbunden");
+    for (const type of changed) await writeInstanceSetting(type, configs[type]);
+  }
+  saveGuard(g);
+  guardInfo = { applied: [...new Set(Object.values(g.entries).map((e) => e.label))] };
+  if (changed.size) broadcast();
+}
+
+let guardTimer = null;
+function scheduleGuard() {
+  clearTimeout(guardTimer);
+  guardTimer = setTimeout(() => {
+    exclusive(syncGuard).catch((err) => {
+      guardInfo = { ...guardInfo, error: err.message };
+      broadcast();
+    });
+  }, 400);
+}
+
 // --- LED layout correction (guided position test) ---
 // layoutfix.json keeps the layout as it was before the first correction (base), the offsets now
 // applied to it, the ones before (one step back) and the layout written, to notice changes made
@@ -1106,7 +1228,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/tv") return serveStatic(res, "tv.html");
     if (req.method === "GET" && p.startsWith("/static/")) return serveStatic(res, p.slice("/static/".length));
 
-    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo });
+    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo });
     if (req.method === "GET" && p === "/api/presets") return sendJson(res, 200, PRESETS);
 
     if (req.method === "GET" && p === "/api/events") {
@@ -1280,10 +1402,12 @@ const server = http.createServer(async (req, res) => {
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
       const lang = patch.lang === "en" || patch.lang === "de" ? patch.lang : state.lang;
       const testPresets = patch.presetOp ? applyPresetOp(patch.presetOp, state.testPresets) : state.testPresets;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets });
+      const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard });
       saveState();
       broadcast();
-      return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo });
+      scheduleGuard();
+      return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo });
     }
 
     // grabber test: the stored results (Hyperion's global setting), start and stop
@@ -1342,6 +1466,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 refreshLayoutFixInfo();
+// restore what a test switched off before a restart, or switch off again for a test still running
+scheduleGuard();
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`tvtest listening on :${PORT}`);

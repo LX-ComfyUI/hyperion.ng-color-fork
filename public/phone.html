@@ -485,6 +485,7 @@
   <section class="card" id="card-intro">
     <h2>So funktioniert's</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Störlicht-Filter und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
     <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Backup</b></a> (ganz unten) sicherst du die komplette Hyperion-Konfiguration auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf das Wort <b>Backup</b> springt dorthin.</p>
   </section>
 
@@ -517,6 +518,7 @@
   <section class="card" id="card-color">
     <h2>Testfarben</h2>
     <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne.</p>
+    <p class="note guard-note" hidden></p>
     <div class="gc-row">
       <span class="gc-label">Grabber-Farbkorrektur</span>
       <div class="seg" role="group" aria-label="Grabber-Farbkorrektur">
@@ -535,7 +537,7 @@
       </div>
 
       <div class="col">
-        <div class="hy-col" id="hy-col">
+        <div class="hy-col hy-scope" id="hy-col">
           <h3 style="margin-top:0">Farben in Hyperion</h3>
           <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort.</p>
           <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
@@ -572,17 +574,24 @@
             <div id="hy-stops"></div>
           </div>
           </div>
-          <hr class="hy-sep">
-
-          <h4 class="hy-h" data-hy-group="curve"><span>Graukurve (Fork-Erweiterung)</span></h4>
-          <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. Ein Punkt im Graphen (oder „Am TV zeigen“) legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
-          <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Aktiviert</span></label>
-          <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
-          <div id="hy-curve-graph"></div>
-          <div id="hy-curve"></div>
           <p class="note" id="hy-note"></p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ===== Hyperion gray curve (own card below the test colors) ===== -->
+  <section class="card" id="card-gcc">
+    <h2>Graukurve (Hyperion)</h2>
+    <div class="hy-scope" id="gcc">
+
+    <h4 class="hy-h" data-hy-group="curve" style="margin-top:0"><span>Graukurve (Fork-Erweiterung)</span></h4>
+    <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. Ein Punkt im Graphen (oder „Am TV zeigen“) legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
+    <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Aktiviert</span></label>
+    <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
+    <div id="hy-curve-graph"></div>
+    <div id="hy-curve"></div>
+      <p class="note" id="gcc-note"></p>
     </div>
   </section>
 
@@ -614,6 +623,7 @@
   <section class="card" id="card-bars">
     <h2>Schwarze Balken Test</h2>
     <p class="help">Simuliert Balken wie bei Kinofilmen. Damit testest du die Schwarzbalken-Erkennung von Hyperion: Die LEDs am Rand sollten den Balken ignorieren und weiter die Bildfarbe zeigen. Werte in Prozent der Bildhöhe bzw.&nbsp;‑breite.</p>
+    <p class="note guard-note" hidden></p>
     <div class="tp" data-test="bars"></div>
 
     <div id="bars-pairs"></div>
@@ -675,6 +685,7 @@
   <section class="card" id="card-gs">
     <h2>Graues Standbild Test</h2>
     <p class="help">Manche Player blenden ein pausiertes Video nach kurzer Zeit zu einem grauen, dunkleren Standbild ab. Hier stellst du das auf dem TV nach: ein Grauton, auf Wunsch mit Helligkeitsabfall.</p>
+    <p class="note guard-note" hidden></p>
     <div class="tp" data-test="grayTest"></div>
 
     <div style="margin-top:12px">
@@ -745,6 +756,7 @@
   <section class="card" id="card-dt">
     <h2>Erfassungstiefe Test</h2>
     <p class="help">Zeigt, wie tief die LEDs ins Bild schauen. <b>Rahmen:</b> Der Bildrand hat die Außenfarbe, innen liegt die Innenfarbe. Ist der Rand mindestens so tief wie die Erfassungstiefe, zeigen die LEDs die reine Außenfarbe. Ist er schmaler, mischen sie die Innenfarbe dazu. <b>Wandernde Linie:</b> Eine Linie in der Außenfarbe läuft vom Rand nach innen. Die LEDs zeigen sie nur, solange sie im erfassten Bereich liegt.</p>
+    <p class="note guard-note" hidden></p>
     <div class="tp" data-test="depthTest"></div>
 
     <label class="field">Muster</label>
@@ -842,6 +854,7 @@
   <section class="card" id="card-ft">
     <h2>Nachkommastellen Test</h2>
     <p class="help">Zeigt dunkle Töne <b>zwischen</b> zwei ganzen Stufen, z. B. 25,5. Der TV kann nur ganze Stufen, deshalb mischt ein feines Punktraster 25 und 26. Jede LED mittelt über ihren Bereich und sieht so die Kommazahl. <b>Mit Nachkommastellen</b> folgen die LEDs diesen Zwischenstufen. <b>Ohne</b> springen sie nur in ganzen Stufen, und im Dunkeln ist eine Stufe 7 bis 30 % der LED-Helligkeit.</p>
+    <p class="note guard-note" hidden></p>
     <div class="tp" data-test="fracTest"></div>
 
     <label class="field">Muster</label>
@@ -905,6 +918,7 @@
   <section class="card" id="card-lp">
     <h2>LED-Position Test</h2>
     <p class="help">Der TV zeigt eine helle Markierung genau im Bildbereich einer LED, so wie Hyperion ihn mit der eingestellten Erfassungstiefe abtastet. Der Grabber sieht die Markierung, und Hyperion lässt genau diese LED leuchten. <b>Sitzt die leuchtende LED direkt neben der Markierung, passt die Zuordnung.</b> Leuchtet sie ein Stück daneben, ist das Layout an dieser Stelle verschoben. <b>Lauflicht:</b> Die Markierung wandert um den ganzen Rahmen.</p>
+    <p class="note guard-note" hidden></p>
     <div class="tp" data-test="posTest"></div>
 
     <label class="field">Muster</label>
@@ -959,6 +973,7 @@
   <section class="card" id="card-lg">
     <h2>LED-Position Kalibrierung</h2>
     <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
+    <p class="note guard-note" hidden></p>
     <div class="status" id="lg-layout"></div>
     <div class="lg-actions" id="lg-layout-actions"></div>
 
@@ -1433,6 +1448,7 @@ function renderState() {
   renderPosTest();
   renderPosGuide();
   renderTestPresets();
+  renderGuard();
   renderOverlayChecks();
   renderGrabberRun();
   renderGrabberCorrection();
@@ -1944,7 +1960,7 @@ function renderColorEditor() {
     if (document.activeElement !== inp) inp.value = entry?.[inp.dataset.rgb]?.[Number(inp.dataset.ch)] ?? "";
     inp.disabled = !writable;
   });
-  document.querySelectorAll("#hy-col [data-cfield]").forEach(el => {
+  document.querySelectorAll(".hy-scope [data-cfield]").forEach(el => {
     const value = readField(entry, el.dataset.cfield, Number(el.dataset.stop));
     if (el.type === "checkbox") el.checked = value === true;
     else if (document.activeElement !== el && value !== undefined) el.value = value;
@@ -1967,8 +1983,10 @@ function renderColorEditor() {
     : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
     : !entry ? "Kein Farbeintrag gefunden."
     : null;
-  if (problem) note.textContent = problem;
-  else if (HY_STATUS_NOTE.test(note.textContent)) note.textContent = "";
+  for (const n of [note, $("gcc-note")]) {
+    if (problem) n.textContent = problem;
+    else if (HY_STATUS_NOTE.test(n.textContent)) n.textContent = "";
+  }
 }
 
 async function loadColorConfig() {
@@ -1987,16 +2005,19 @@ async function loadColorConfig() {
 }
 
 // one save per field: { index, field, value, stop }
+// the gray curve has its own card and note
+const colorNote = (field) => $(String(field).startsWith("grayCurve") ? "gcc-note" : "hy-note");
 async function saveColor(field, value, stop) {
-  $("hy-note").textContent = "Speichere in Hyperion …";
+  const note = colorNote(field);
+  note.textContent = "Speichere in Hyperion …";
   try {
     const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, field, value, stop }) });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error);
     colorConfig = body;
-    $("hy-note").textContent = "Gespeichert, wirkt sofort auf die LEDs.";
+    note.textContent = "Gespeichert, wirkt sofort auf die LEDs.";
   } catch (e) {
-    $("hy-note").textContent = "Speichern fehlgeschlagen: " + e.message;
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
     await loadColorConfig();
     return false;
   }
@@ -2017,14 +2038,14 @@ async function saveRgbRow(field) {
 }
 
 // one delegated listener for every field in the Hyperion column
-$("hy-col").addEventListener("input", (ev) => {
+document.querySelectorAll(".hy-scope").forEach((scope) => scope.addEventListener("input", (ev) => {
   const el = ev.target;
   if (el.type === "range" && el.dataset.cfield) {
     const [unit, dec] = COLOR_SLIDER_UNITS[el.dataset.cfield] ?? ["", 0];
     $(el.id + "_v").textContent = `${fmt(el.value, dec)}${unit}`;
   }
-});
-$("hy-col").addEventListener("change", (ev) => {
+}));
+document.querySelectorAll(".hy-scope").forEach((scope) => scope.addEventListener("change", (ev) => {
   const el = ev.target;
   if (!el.dataset.cfield) return;
   if (el.type === "checkbox") return saveColor(el.dataset.cfield, el.checked);
@@ -2037,7 +2058,7 @@ $("hy-col").addEventListener("change", (ev) => {
   }
   if (empty) el.value = v;
   saveColor(el.dataset.cfield, v, el.dataset.stop === undefined ? undefined : Number(el.dataset.stop));
-});
+}));
 $("hy-entry").addEventListener("change", (ev) => { colorIndex = Number(ev.target.value); renderColorEditor(); });
 
 // ---------- black bars ----------
@@ -2602,6 +2623,19 @@ $("lp-speed").addEventListener("input", (ev) => { $("lp-speed_v").textContent = 
 $("lp-speed").addEventListener("change", (ev) => sendPosTest({ speed: Number(ev.target.value) }));
 $("lp-color").addEventListener("change", (ev) => sendPosTest({ color: ev.target.value }));
 
+
+// ---------- test guard ----------
+// The server switches features off that would falsify the running test (and restores them after);
+// each test card tells what is off right now
+$("guard-enabled").addEventListener("change", (ev) => { state = { ...state, testGuard: ev.target.checked }; send({ testGuard: ev.target.checked }); });
+function renderGuard() {
+  $("guard-enabled").checked = state.testGuard !== false;
+  const applied = state.guard?.applied ?? [];
+  const text = state.guard?.error ? tr("Testschutz: {a}", { a: state.guard.error })
+    : applied.length ? tr("Für den Test vorübergehend aus: {a}. Danach wieder wie vorher.", { a: applied.map((l) => tr(l)).join(", ") }) : "";
+  document.querySelectorAll(".guard-note").forEach((n) => { n.hidden = !text; n.textContent = text; });
+}
+
 // ---------- saved settings per test (presets) ----------
 // Each test card has a box: "Standard" loads the test's standard settings, "Speichern" stores the
 // current settings under a name. Saved ones load with a tap, a star makes them favorites (shown as
@@ -3053,7 +3087,7 @@ async function loadHyDefaults() {
 
 function applyPlaceholders() {
   if (!hyDefaults) return;
-  document.querySelectorAll('#hy-col input[type="number"][data-cfield]').forEach((el) => {
+  document.querySelectorAll('.hy-scope input[type="number"][data-cfield]').forEach((el) => {
     const v = hyDefault(el.dataset.cfield);
     el.placeholder = v === undefined ? "" : fmtDefault(v);
   });
@@ -3101,7 +3135,7 @@ document.addEventListener("click", (ev) => {
   const g = ev.target.closest("[data-hy-reset]");
   if (g) {
     const name = g.closest(".hy-h")?.querySelector("span")?.textContent ?? "";
-    if (confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: name }))) saveColorBatch(HY_GROUP_FIELDS[g.dataset.hyReset], $("hy-note"));
+    if (confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: name }))) saveColorBatch(HY_GROUP_FIELDS[g.dataset.hyReset], g.dataset.hyReset === "curve" ? $("gcc-note") : $("hy-note"));
     return;
   }
   const c = ev.target.closest("[data-card-reset]");

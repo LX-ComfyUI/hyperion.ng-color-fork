@@ -2,6 +2,17 @@
 // normalized text of a text node or attribute, or the innerHTML of an element that holds only text and
 // inline markup, or the template of an I18N.tr() call with its {placeholders}.
 window.I18N_EN = {
+ "Graukurve (Hyperion)": "Gray curve (Hyperion)",
+ "Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Störlicht-Filter und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small>": "Switch off interfering Hyperion features during a test<small>While a test or a test color runs, the page temporarily switches off what would falsify the result: gray still image detection, black bar detection, backlight, stray LED filter and, for the position test, a deep capture depth. What the test is checking stays on. Afterwards everything is as before.</small>",
+ "Störende Hyperion-Funktionen während eines Tests ausschalten": "Switch off interfering Hyperion features during a test",
+ "Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Störlicht-Filter und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.": "While a test or a test color runs, the page temporarily switches off what would falsify the result: gray still image detection, black bar detection, backlight, stray LED filter and, for the position test, a deep capture depth. What the test is checking stays on. Afterwards everything is as before.",
+ "Testschutz: {a}": "Test guard: {a}",
+ "Für den Test vorübergehend aus: {a}. Danach wieder wie vorher.": "Temporarily off for the test: {a}. Back as before afterwards.",
+ "Graues-Standbild-Erkennung": "gray still image detection",
+ "Hintergrundbeleuchtung": "backlight",
+ "Störlicht-Filter": "stray LED filter",
+ "Erfassungstiefe (3 % / 2 %)": "capture depth (3 % / 2 %)",
+ "Nicht mit Hyperion verbunden": "Not connected to Hyperion",
  "LED-Position Kalibrierung": "LED position calibration",
  "Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.": "The test shows 5 points per LED run one after the other (at both ends, at a quarter, in the middle and at three quarters). On the TV a bright line marks the LED, next to it there is a <b>ruler</b> with one tick per neighboring LED and an <b>orange arrow</b>. Move the arrow with the arrow buttons here exactly to the LED that really lights up and tap <b>Apply</b>. At the end the page shows the pattern per run and suggests a correction of the LED layout. A <b>check run</b> at the same points then shows whether it fits.",
  "Pfeil nach links": "Arrow to the left",
