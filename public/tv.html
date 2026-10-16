@@ -30,6 +30,12 @@
      sampling areas, so the grabber does not light LEDs with it */
   #pos .tick { position: absolute; background: #8a8a8a; }
   #pos .tick.zero { background: #e8e8e8; }
+  #pos .arrow { position: absolute; width: 0; height: 0; transform: translate(-50%, -50%); border: 1.6vh solid transparent; transition: left .12s, top .12s; }
+  #pos .arrow.down { border-bottom: none; border-top: 2.4vh solid #ffb020; }
+  #pos .arrow.up { border-top: none; border-bottom: 2.4vh solid #ffb020; }
+  #pos .arrow.left { border-left: none; border-right: 2.4vh solid #ffb020; }
+  #pos .arrow.right { border-right: none; border-left: 2.4vh solid #ffb020; }
+  #pos .arrow.dim { opacity: .35; }
   #pos .tlabel { position: absolute; transform: translate(-50%, -50%); color: #b0b0b0; font: 600 2.4vh/1 system-ui, sans-serif; }
 
   #frac { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
@@ -286,7 +292,7 @@ function renderPosTest() {
   const areas = applyLedAreaDepth(ledAreas ?? [], areaDepth?.topBottom, areaDepth?.leftRight);
   const step = () => {
     const ids = posTestIndices(p, areas.length, Date.now() + clockOffset);
-    const key = ids.join() + p.color + areas.length + JSON.stringify(areaDepth) + JSON.stringify(ids.map((i) => areas[i])) + !!state.posGuide?.active;
+    const key = ids.join() + p.color + areas.length + JSON.stringify(areaDepth) + JSON.stringify(ids.map((i) => areas[i])) + !!state.posGuide?.active + (state.posGuide?.cursor ?? 0);
     if (key !== posDrawn) {
       posDrawn = key;
       el.innerHTML = ids.map((i) => {
@@ -334,7 +340,35 @@ function rulerHtml(areas, i) {
     out += `<div class="tick${k === 0 ? " zero" : ""}" style="left:${r[0] * 100}%;top:${r[2] * 100}%;width:${(r[1] - r[0]) * 100}%;height:${(r[3] - r[2]) * 100}%"></div>`;
     if (Math.abs(k) === RULER_REACH) out += `<div class="tlabel" style="left:${lx * 100}%;top:${ly * 100}%">${RULER_REACH}</div>`;
   }
-  return out;
+  return out + arrowHtml(areas, run, i);
+}
+
+// The arrow the control page moves: above the ruler (seen from the edge), pointing to the edge, at
+// the LED that many numbers from the marked one. Near a corner it may lie in a sampling area of
+// the other edge; it is drawn faint there, so it hardly tints that LED.
+function arrowHtml(areas, run, i) {
+  const cursor = Number(state.posGuide?.cursor) || 0;
+  const j = i + cursor;
+  const a = j >= run.start && j <= run.end ? areas[j] : null;
+  let x, y;
+  if (a) { x = (a[0] + a[1]) / 2; y = (a[2] + a[3]) / 2; }
+  else {
+    // beyond the end of the run: continue with the spacing of the last two LEDs
+    const k = j < run.start ? run.start : run.end, k2 = j < run.start ? run.start + 1 : run.end - 1;
+    const c = (n) => [(areas[n][0] + areas[n][1]) / 2, (areas[n][2] + areas[n][3]) / 2];
+    const [p, q] = [c(k), c(k2)], steps = Math.abs(j - k);
+    x = p[0] + (p[0] - q[0]) * steps; y = p[1] + (p[1] - q[1]) * steps;
+  }
+  const base = areas[i];
+  const off = 0.015 + (run.edge === "top" || run.edge === "bottom" ? 0.04 : 0.025) + 0.05;
+  let dir, ax = x, ay = y;
+  if (run.edge === "bottom") { dir = "down"; ay = base[2] - off; }
+  else if (run.edge === "top") { dir = "up"; ay = base[3] + off; }
+  else if (run.edge === "left") { dir = "left"; ax = base[1] + off; }
+  else { dir = "right"; ax = base[0] - off; }
+  const box = [ax - 0.012, ax + 0.012, ay - 0.022, ay + 0.022];
+  const dim = areas.some((r) => box[0] < r[1] && box[1] > r[0] && box[2] < r[3] && box[3] > r[2]);
+  return `<div class="arrow ${dir}${dim ? " dim" : ""}" style="left:${ax * 100}%;top:${ay * 100}%"></div>`;
 }
 
 function renderDebug() {
@@ -408,7 +442,7 @@ function connectEvents() {
     const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || JSON.stringify(msg.depthTest) !== JSON.stringify(state.depthTest)
       || JSON.stringify(msg.fracTest) !== JSON.stringify(state.fracTest)
       || JSON.stringify(msg.posTest) !== JSON.stringify(state.posTest)
-      || msg.posGuide?.active !== state.posGuide?.active
+      || msg.posGuide?.active !== state.posGuide?.active || msg.posGuide?.cursor !== state.posGuide?.cursor
       || msg.color !== state.color || msg.colorActive !== state.colorActive;
     // a layout correction was written: read the LED areas again right away
     if (msg.layoutFix?.stamp && msg.layoutFix.stamp !== state.layoutFix?.stamp && state.layoutFix) loadLedAreas();

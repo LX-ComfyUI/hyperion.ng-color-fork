@@ -2,6 +2,20 @@
 // normalized text of a text node or attribute, or the innerHTML of an element that holds only text and
 // inline markup, or the template of an I18N.tr() call with its {placeholders}.
 window.I18N_EN = {
+ "LED-Position Kalibrierung": "LED position calibration",
+ "Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.": "The test shows 5 points per LED run one after the other (at both ends, at a quarter, in the middle and at three quarters). On the TV a bright line marks the LED, next to it there is a <b>ruler</b> with one tick per neighboring LED and an <b>orange arrow</b>. Move the arrow with the arrow buttons here exactly to the LED that really lights up and tap <b>Apply</b>. At the end the page shows the pattern per run and suggests a correction of the LED layout. A <b>check run</b> at the same points then shows whether it fits.",
+ "Pfeil nach links": "Arrow to the left",
+ "Pfeil nach rechts": "Arrow to the right",
+ "Pfeil nach oben": "Arrow up",
+ "Pfeil nach unten": "Arrow down",
+ "an der Markierung": "at the marker",
+ "{a} {b}": "{a} {b}",
+ "{a} LEDs": "{a} LEDs",
+ "darüber": "above",
+ "darunter": "below",
+ "Pfeil:": "Arrow:",
+ "Übernehmen und weiter": "Apply and continue",
+ "Schieb den orangen Pfeil auf dem TV genau über die LED, die leuchtet, dann „Übernehmen“.": "Move the orange arrow on the TV exactly to the LED that lights up, then “Apply”.",
  "<span>Farben</span>": "<span>Colors</span>",
  "<span>Helligkeit und Sättigung</span>": "<span>Brightness and saturation</span>",
  "<span>Gamma und Farbtemperatur</span>": "<span>Gamma and color temperature</span>",

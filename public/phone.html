@@ -286,6 +286,10 @@
   .lg-row .lg-dir { flex: 0 0 74px; font-size: 13px; color: var(--muted); }
   .lg-row button { flex: 1; min-width: 0; padding: 10px 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .lg-row button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .lg-move { display: flex; align-items: stretch; gap: 8px; margin-top: 6px; }
+  .lg-move button { flex: 0 0 72px; font-size: 26px; line-height: 1; padding: 12px 0; }
+  .lg-cur { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); border-radius: 8px; font-size: 14px; text-align: center; padding: 4px; }
+  .lg-cur b { font-size: 18px; font-variant-numeric: tabular-nums; }
   .lg-ok { width: 100%; margin-top: 6px; padding: 10px; font-size: 15px; font-weight: 600; }
   .lg-ok[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   .lg-runs { display: grid; gap: 10px; margin-top: 10px; }
@@ -953,8 +957,8 @@
 
   <!-- ===== guided LED position test ===== -->
   <section class="card" id="card-lg">
-    <h2>LED-Position geführt</h2>
-    <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Neben der Markierung zeigt der TV ein <b>Lineal</b>: ein Strich je Nachbar-LED, der lange Strich mit der 5 ist die fünfte LED. Du tippst an, wo die leuchtende LED im Vergleich zur Markierung sitzt. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
+    <h2>LED-Position Kalibrierung</h2>
+    <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
     <div class="status" id="lg-layout"></div>
     <div class="lg-actions" id="lg-layout-actions"></div>
 
@@ -2727,11 +2731,6 @@ fetch("/api/testdefaults").then((r) => r.json()).then((d) => { testDefaults = d;
 // sides); the page turns it into an offset in LED numbers: +3 = the LED sits where the marker of
 // the LED with a number 3 higher would be. The server turns the answers into a corrected layout.
 
-const LG_SIDES = {
-  horizontal: [["left", "← links"], ["right", "rechts →"]],
-  vertical: [["up", "↑ oben"], ["down", "↓ unten"]],
-};
-
 // run of an LED and whether its numbers grow to the right (top/bottom) or downwards (sides)
 function lgRun(areas, i) {
   const run = ledSegments(areas).find((s) => i >= s.start && i <= s.end);
@@ -2767,7 +2766,7 @@ function lgStart(round) {
   if (!areas) return;
   const points = guidePoints(ledSegments(areas).filter((s) => s.edge !== "other" && s.end - s.start >= 2));
   if (!points.length) return;
-  sendPosGuide({ active: true, round, points, step: 0, answers: {}, done: false },
+  sendPosGuide({ active: true, round, points, step: 0, answers: {}, done: false, cursor: 0 },
     { active: true, mode: "single", width: 1, index: points[0] });
 }
 
@@ -2777,7 +2776,9 @@ function lgGoto(step, answers) {
     sendPosGuide({ ...g, answers, step: g.points.length, active: false, done: true }, { active: false });
     return;
   }
-  sendPosGuide({ ...g, answers, step: Math.max(0, step), active: true }, { active: true, mode: "single", width: 1, index: g.points[Math.max(0, step)] });
+  const at = Math.max(0, step);
+  const before = answers[g.points[at]];
+  sendPosGuide({ ...g, answers, step: at, active: true, cursor: typeof before === "number" ? before : 0 }, { active: true, mode: "single", width: 1, index: g.points[at] });
 }
 
 function lgAnswer(value) {
@@ -2792,23 +2793,45 @@ $("lg-back").addEventListener("click", () => lgGoto(state.posGuide.step - 1, sta
 $("lg-skip").addEventListener("click", () => lgAnswer(null));
 $("lg-stop").addEventListener("click", () => sendPosGuide({ ...state.posGuide, active: false }, { active: false }));
 
-function lgRenderAnswers(run, current) {
-  const sides = LG_SIDES[run.horizontal ? "horizontal" : "vertical"];
-  const chosen = typeof current === "number" ? current : undefined;
-  const btn = (dir, n) => {
-    const value = lgOffset(run, dir, n);
-    return `<button type="button" data-lg="${value}" aria-pressed="${chosen === value}" aria-label="${tr("{a} LEDs {b}", { a: n, b: tr(sides.find((s) => s[0] === dir)[1]) })}">${n}</button>`;
-  };
-  const [first, second] = sides;
-  const key = JSON.stringify([run.start, run.grows, chosen, I18N.lang]);
+const LG_ARROWS = { horizontal: [["left", "◀", "Pfeil nach links"], ["right", "▶", "Pfeil nach rechts"]], vertical: [["up", "▲", "Pfeil nach oben"], ["down", "▼", "Pfeil nach unten"]] };
+
+// arrow buttons move the arrow on the TV live (one LED per tap); "Übernehmen" takes where it points
+function lgRenderAnswers(run, cursor) {
+  const [first, second] = LG_ARROWS[run.horizontal ? "horizontal" : "vertical"];
+  const dir = lgDirection(run, cursor);
+  const where = !cursor ? tr("an der Markierung")
+    : tr("{a} {b}", { a: Math.abs(cursor) === 1 ? tr("1 LED") : tr("{a} LEDs", { a: Math.abs(cursor) }), b: tr({ left: "links", right: "rechts", up: "darüber", down: "darunter" }[dir]) });
+  const key = JSON.stringify([run.start, run.grows, cursor, I18N.lang]);
   if ($("lg-answers").dataset.key === key) return;
   $("lg-answers").dataset.key = key;
+  const btn = ([d, sym, label]) => {
+    const next = cursor + lgOffset(run, d, 1);
+    return `<button type="button" data-lg-move="${next}" aria-label="${tr(label)}" title="${tr(label)}"${Math.abs(next) > MAX_ANSWER ? " disabled" : ""}>${sym}</button>`;
+  };
   $("lg-answers").innerHTML =
-    `<div class="lg-row"><span class="lg-dir">${tr(first[1])}</span>${[5, 4, 3, 2, 1].map((n) => btn(first[0], n)).join("")}</div>` +
-    `<button type="button" class="lg-ok" data-lg="0" aria-pressed="${chosen === 0}">${tr("Passt (direkt an der Markierung)")}</button>` +
-    `<div class="lg-row"><span class="lg-dir">${tr(second[1])}</span>${[1, 2, 3, 4, 5].map((n) => btn(second[0], n)).join("")}</div>`;
-  $("lg-answers").querySelectorAll("[data-lg]").forEach((b) => b.addEventListener("click", () => lgAnswer(Number(b.dataset.lg))));
+    `<div class="lg-move">${btn(first)}<div class="lg-cur"><span>${tr("Pfeil:")}</span><b>${where}</b></div>${btn(second)}</div>` +
+    `<button type="button" class="lg-ok primary" data-lg-take>${tr("Übernehmen und weiter")}</button>`;
+  $("lg-answers").querySelectorAll("[data-lg-move]").forEach((b) => b.addEventListener("click", () => lgMove(Number(b.dataset.lgMove))));
+  $("lg-answers").querySelector("[data-lg-take]").addEventListener("click", () => lgAnswer(state.posGuide.cursor ?? 0));
 }
+
+function lgMove(cursor) {
+  const g = state.posGuide;
+  if (!g?.active || Math.abs(cursor) > MAX_ANSWER) return;
+  sendPosGuide({ ...g, cursor });
+}
+
+// on a PC the arrow keys move the arrow too, Enter takes it (while the calibration runs and no field has focus)
+document.addEventListener("keydown", (ev) => {
+  const g = state?.posGuide;
+  if (!g?.active || g.step >= g.points.length || ev.target.closest?.("input, select, textarea")) return;
+  const areas = lpAreas();
+  const run = areas && lgRun(areas, g.points[g.step]);
+  if (!run) return;
+  const keys = run.horizontal ? { ArrowLeft: "left", ArrowRight: "right" } : { ArrowUp: "up", ArrowDown: "down" };
+  if (keys[ev.key]) { ev.preventDefault(); lgMove((g.cursor ?? 0) + lgOffset(run, keys[ev.key], 1)); }
+  else if (ev.key === "Enter" && ev.target === document.body) { ev.preventDefault(); lgAnswer(g.cursor ?? 0); }
+});
 
 // small chart of one run: measured offsets (dots) and the straight line through them
 function lgRunSvg(run, sum) {
@@ -2911,10 +2934,8 @@ function renderPosGuide() {
     $("lg-progress").innerHTML = tr("{r} · Stelle <b>{a}</b> von {b} · LED <b>{i}</b>", { r: g.round === "control" ? tr("Kontrolllauf") : tr("Messung"), a: g.step + 1, b: g.points.length, i }) +
       (run ? `<div>${tr("Strang {a} (LED {b}–{c}, {d})", { a: tr(EDGE_NAMES[run.edge]), b: run.start, c: run.end, d: segmentDirection(areas, run) })}</div>` : "");
     $("lg-map").innerHTML = lpMapSvg(areas, [i], state.posTest.color);
-    $("lg-question").textContent = run?.horizontal
-      ? tr("Wo leuchtet die LED im Vergleich zur Markierung? Zähl die Striche am Lineal: links oder rechts davon?")
-      : tr("Wo leuchtet die LED im Vergleich zur Markierung? Zähl die Striche am Lineal: darüber oder darunter?");
-    if (run) lgRenderAnswers(run, g.answers[i]);
+    $("lg-question").textContent = tr("Schieb den orangen Pfeil auf dem TV genau über die LED, die leuchtet, dann „Übernehmen“.");
+    if (run) lgRenderAnswers(run, Number(g.cursor) || 0);
     $("lg-back").disabled = g.step === 0;
   }
 

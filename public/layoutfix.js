@@ -11,7 +11,7 @@ import { applyLedAreaDepth, ledSegments } from "./overlay.js";
 
 // measuring points per edge run: near both ends, at a quarter, the middle and three quarters
 export const GUIDE_FRACTIONS = [0.04, 0.27, 0.5, 0.73, 0.96];
-export const MAX_ANSWER = 5;
+export const MAX_ANSWER = 8;
 
 // edge runs of a layout, as the position test shows them (runs without an edge are left out)
 export function layoutRuns(leds) {

@@ -54,9 +54,10 @@ const DEFAULT_STATE = {
   // LED position test pattern: a marker exactly in the sampling area of LED `index` (width LEDs
   // around it) on `background`. run: the marker moves on by speed LEDs per second from index
   posTest: { active: false, mode: "single", index: 0, width: 1, speed: 10, color: "#ffffff", background: "black", startedAt: 0 },
-  // guided position test: it steps posTest through `points`, answers = offset per LED (null = skipped).
-  // round: "measure" on the layout as it is, "control" after a correction
-  posGuide: { active: false, round: "measure", points: [], step: 0, answers: {}, done: false },
+  // LED position calibration: it steps posTest through `points`, answers = offset per LED (null = skipped).
+  // round: "measure" on the layout as it is, "control" after a correction. cursor: where the arrow
+  // on the TV points now, in LED numbers from the marked LED
+  posGuide: { active: false, round: "measure", points: [], step: 0, answers: {}, done: false, cursor: 0 },
   // own colors of the grabber test, measured one after the other
   grabberColors: [],
   // saved settings per test (name, favorite star): { [test]: [{ id, name, fav, settings, savedAt }] }
@@ -202,6 +203,7 @@ function sanitize(input) {
     step: num(pg.step, 0, points.length, 0),
     answers,
     done: pg.done === true,
+    cursor: num(pg.cursor, -MAX_ANSWER, MAX_ANSWER, 0),
   };
   const o = { ...DEFAULT_STATE.overlays, ...(input.overlays ?? {}) };
   out.overlays = Object.fromEntries(Object.keys(DEFAULT_STATE.overlays).map((k) => [k, o[k] === true]));
