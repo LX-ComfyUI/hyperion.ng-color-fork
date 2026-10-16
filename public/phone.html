@@ -262,6 +262,33 @@
   .card-reset button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 13px; }
   .card-reset button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   input::placeholder { color: var(--muted); opacity: .75; }
+  /* test server card: status lists with colored symbols (like the grabber test) and the guard table */
+  .ts-list { list-style: none; margin: 4px 0 8px; padding: 0; }
+  .ts-list li { display: flex; align-items: flex-start; justify-content: flex-start; flex-wrap: nowrap; gap: 8px; padding: 5px 0; margin: 0; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .ts-list li:last-child { border-bottom: none; }
+  .ts-list .ico { flex: none; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .ts-list .ts-ok .ico { background: #2fa36b; }
+  .ts-list .ts-warn .ico { background: #d08a00; }
+  .ts-list .ts-bad .ico { background: #d93025; }
+  .ts-list .ts-off .ico { background: #9aa0a6; }
+  .ts-list .ts-run .ico { background: var(--accent); }
+  .ts-list .ts-name { flex: 1 1 auto; min-width: 0; hyphens: auto; overflow-wrap: break-word; }
+  .ts-list .ts-val { flex: 0 1 auto; max-width: 55%; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .ts-guard-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+  .ts-guard-head #ts-reset { margin-left: auto; padding: 6px 12px; font-size: 13px; }
+  .ts-lock { position: relative; width: 44px; height: 44px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .ts-lock svg { position: relative; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ts-lock::before { content: ""; position: absolute; inset: 0; background: var(--accent); opacity: .35; transform: scaleY(0); transform-origin: bottom; }
+  .ts-lock.holding::before { transform: scaleY(1); transition: transform 1s linear; }
+  .ts-lock.open { color: var(--accent); border-color: var(--accent); }
+  .ts-matrix-wrap { overflow-x: auto; }
+  .ts-matrix { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+  .ts-matrix th, .ts-matrix td { padding: 6px 6px; border-bottom: 1px solid var(--line); text-align: center; }
+  .ts-matrix th:first-child, .ts-matrix td:first-child { text-align: left; position: sticky; left: 0; background: var(--card); }
+  .ts-matrix thead th { font-weight: 600; font-size: 12px; vertical-align: bottom; }
+  .ts-matrix input { width: 18px; height: 18px; margin: 0; }
+  .ts-matrix .fixed { color: var(--muted); font-size: 11px; }
+  .ts-matrix tr.active-col, .ts-matrix .active-col { background: color-mix(in srgb, var(--accent) 12%, transparent); }
   /* saved settings of a test (presets) */
   .tp { margin: 10px 0 4px; padding: 8px 10px; border-radius: 8px; background: var(--bg); font-size: 13px; }
   .tp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -486,7 +513,7 @@
     <h2>So funktioniert's</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <label class="check" style="margin-top:10px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Störlicht-Filter, Signalerkennung des Grabbers, beim Erfassungstiefe-Test die Kantenverstärkung und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
-    <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Backup</b></a> (ganz unten) sicherst du die komplette Hyperion-Konfiguration auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf das Wort <b>Backup</b> springt dorthin.</p>
+    <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Hyperion Backup</b></a> (unten) sicherst du die komplette Hyperion-Konfiguration auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf <b>Hyperion Backup</b> springt dorthin.</p>
   </section>
 
   <!-- ===== grabber test ===== -->
@@ -971,7 +998,7 @@
 
   <!-- ===== guided LED position test ===== -->
   <section class="card" id="card-lg">
-    <h2>LED-Position Kalibrierung</h2>
+    <h2>LED-Position Kalibrieren</h2>
     <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
     <p class="note guard-note" hidden></p>
     <div class="status" id="lg-layout"></div>
@@ -1006,13 +1033,34 @@
 
   <!-- ===== backup ===== -->
   <section class="card" id="card-backup">
-    <h2>Backup</h2>
+    <h2>Hyperion Backup</h2>
     <p class="help">Sichert die komplette Hyperion-Konfiguration (LEDs, Farben, Grabber) auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du zu einem gesicherten Stand zurück. Dabei wird vorher automatisch der aktuelle Stand gesichert, und Hyperion startet neu.</p>
     <div id="conn">Verbindung zu Hyperion wird geprüft …</div>
     <button class="wide" id="connect" hidden>Mit Hyperion verbinden</button>
     <button class="wide primary" id="backup">Backup erstellen</button>
     <ul id="backups"></ul>
     <div id="status" role="status"></div>
+  </section>
+
+  <!-- ===== test server: status and test guard ===== -->
+  <section class="card" id="card-ts">
+    <h2>Testserver</h2>
+    <p class="help">Zustand der Testseite, der Verbindung zu Hyperion, der Funktionen in Hyperion, die Tests beeinflussen, und der Tests selbst. Unten legst du fest, was der Testschutz während eines Tests ausschaltet.</p>
+    <h3>Status</h3>
+    <ul class="ts-list" id="ts-status"></ul>
+    <h3>Funktionen in Hyperion</h3>
+    <ul class="ts-list" id="ts-features"></ul>
+    <h3>Tests</h3>
+    <ul class="ts-list" id="ts-tests"></ul>
+    <h3>Testschutz</h3>
+    <p class="help">Haken: Diese Funktion wird während des Tests vorübergehend ausgeschaltet und danach wieder wie vorher eingestellt. <b>geprüft</b>: Um diese Funktion geht es im Test, sie bleibt an. Zum Ändern das Schloss gedrückt halten.</p>
+    <div class="ts-guard-head">
+      <button type="button" class="ts-lock" id="ts-lock" aria-label="Zum Entsperren gedrückt halten" title="Zum Entsperren gedrückt halten"></button>
+      <label class="check" style="margin:0"><input type="checkbox" id="ts-guard-enabled"><span>Testschutz an</span></label>
+      <button type="button" id="ts-reset">Zurücksetzen</button>
+    </div>
+    <div class="ts-matrix-wrap"><table class="ts-matrix" id="ts-matrix"></table></div>
+    <p class="note" id="ts-note"></p>
   </section>
 </main>
 
@@ -1449,6 +1497,7 @@ function renderState() {
   renderPosGuide();
   renderTestPresets();
   renderGuard();
+  renderTestServer();
   renderOverlayChecks();
   renderGrabberRun();
   renderGrabberCorrection();
@@ -1980,7 +2029,7 @@ function renderColorEditor() {
   // A status note that no longer applies is cleared, save results stay until the next save.
   const note = $("hy-note");
   const problem = !colorConfig ? (/^(Farbwerte nicht lesbar|Color values not readable)/.test(note.textContent) ? note.textContent : "Lade Farbwerte …")
-    : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
+    : !hyperionConnected ? "Zum Ändern zuerst unten bei Hyperion Backup „Mit Hyperion verbinden“."
     : !entry ? "Kein Farbeintrag gefunden."
     : null;
   for (const n of [note, $("gcc-note")]) {
@@ -2346,7 +2395,7 @@ function renderDepthConfig() {
   const note = $("dp-cfg-note");
   const problem = !colorConfig ? "Lade Einstellungen …"
     : !cfg ? "Braucht die neue Hyperion-Version mit einstellbarer Erfassungstiefe."
-    : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
+    : !hyperionConnected ? "Zum Ändern zuerst unten bei Hyperion Backup „Mit Hyperion verbinden“."
     : null;
   if (problem) note.textContent = problem;
   else if (DP_STATUS_NOTE.test(note.textContent)) note.textContent = "";
@@ -2623,6 +2672,145 @@ $("lp-speed").addEventListener("input", (ev) => { $("lp-speed_v").textContent = 
 $("lp-speed").addEventListener("change", (ev) => sendPosTest({ speed: Number(ev.target.value) }));
 $("lp-color").addEventListener("change", (ev) => sendPosTest({ color: ev.target.value }));
 
+
+
+// ---------- test server card: status, tests, test guard rules ----------
+const TS_FEATURE_LABELS = {
+  grayStill: "Graues-Standbild-Erkennung", blackborder: "Schwarzbalken-Erkennung", backlight: "Hintergrundbeleuchtung",
+  stray: "Störlicht-Filter", signal: "Signalerkennung des Grabbers", edgeBoost: "Kantenverstärkung", depth: "Erfassungstiefe 3 % / 2 %",
+};
+const TS_TESTS = [["color", "Testfarben"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "Erfassungstiefe"], ["frac", "Nachkommastellen"], ["pos", "LED-Position"]];
+const TS_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
+const TS_LOCK = {
+  closed: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  open: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>',
+};
+const TS_UNLOCK_MS = 120000;
+let tsStatus = null;
+let tsUnlockedUntil = 0;
+let tsTimer = null;
+
+const tsItem = (cls, ico, name, val) => `<li class="ts-${cls}"><span class="ico">${ico}</span><span class="ts-name">${name}</span>${val ? `<span class="ts-val">${val}</span>` : ""}</li>`;
+
+// which kinds of tests run now (the same rules as the server's test guard)
+function tsRunning() {
+  const shown = state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000";
+  const pattern = testPatternActive() || state.posGuide?.active;
+  return {
+    color: shown && !pattern, bars: Object.values(state.bars ?? {}).some((v) => v > 0), gray: !!state.grayTest?.active,
+    depth: !!state.depthTest?.active, frac: !!state.fracTest?.active, pos: !!(state.posTest?.active || state.posGuide?.active),
+  };
+}
+
+async function loadTsStatus() {
+  try { tsStatus = await (await fetch("/api/testserver/status")).json(); } catch { tsStatus = null; }
+  renderTestServer();
+}
+
+function renderTestServer() {
+  if (!state) return;
+  const st = tsStatus;
+  const time = (ms) => new Date(ms).toLocaleString(I18N.locale, { dateStyle: "short", timeStyle: "short" });
+  let html = "";
+  if (!st) html = tsItem("bad", "✕", tr("Testseiten-Server"), tr("keine Antwort"));
+  else {
+    html += tsItem("ok", "✓", tr("Testseiten-Server"), tr("läuft seit {a}", { a: time(st.server.startedAt) }));
+    html += st.hyperion.connected ? tsItem("ok", "✓", tr("Verbindung zu Hyperion"), tr("angemeldet"))
+      : tsItem("bad", "✕", tr("Verbindung zu Hyperion"), st.hyperion.error ? tr(st.hyperion.error) : tr("nicht verbunden"));
+    html += st.clients.tv ? tsItem("ok", "✓", tr("TV-Seite"), tr("{a} verbunden", { a: st.clients.tv })) : tsItem("warn", "!", tr("TV-Seite"), tr("nicht geöffnet"));
+    html += tsItem("ok", "✓", tr("Steuerseiten"), tr("{a} verbunden", { a: st.clients.phone }));
+    html += st.monitor.debugOk ? tsItem("ok", "✓", tr("Live-Daten von Hyperion"), tr("kommen an"))
+      : tsItem(st.monitor.connected ? "warn" : "bad", st.monitor.connected ? "!" : "✕", tr("Live-Daten von Hyperion"), st.monitor.connected ? tr("keine Daten") : tr("keine Verbindung"));
+    html += tsItem(st.monitor.preview ? "run" : "off", st.monitor.preview ? "▶" : "–", tr("Grabber-Bild an Vorschau"), st.monitor.preview ? tr("läuft") : tr("aus"));
+    const g = st.guard;
+    html += g.error ? tsItem("bad", "✕", tr("Testschutz"), tr(g.error))
+      : !g.enabled ? tsItem("warn", "!", tr("Testschutz"), tr("aus"))
+      : g.applied?.length ? tsItem("run", "▶", tr("Testschutz"), tr("schaltet gerade {a} aus", { a: g.applied.length }))
+      : tsItem("ok", "✓", tr("Testschutz"), tr("an, nichts ausgeschaltet"));
+  }
+  $("ts-status").innerHTML = html;
+  $("ts-features").innerHTML = (st?.features ?? []).map((f) => f.guarded
+    ? tsItem("warn", "!", tr(f.label), f.key === "depth" ? tr("3 % / 2 % (Testschutz)") : tr("aus (Testschutz)"))
+    : tsItem(f.on ? "ok" : "off", f.on ? "✓" : "–", tr(f.label), (f.on ? tr("an") : tr("aus")) + (f.detail && f.on ? " · " + f.detail : ""))).join("")
+    || `<li>${tr("Keine Daten von Hyperion")}</li>`;
+
+  const run = tsRunning();
+  const tests = [
+    ...TS_TESTS.map(([k, label]) => [label, k === "pos" ? !!state.posTest?.active && !state.posGuide?.active : run[k]]),
+    ["LED-Position Kalibrieren", !!state.posGuide?.active],
+    ["Grabber-Test", !!state.grabberRun?.running],
+  ];
+  $("ts-tests").innerHTML = tests.map(([label, on]) => tsItem(on ? "run" : "off", on ? "▶" : "–", tr(label), on ? tr("läuft") : tr("aus"))).join("");
+
+  // guard table: features down, tests across; the column of a running test is highlighted
+  const unlocked = Date.now() < tsUnlockedUntil;
+  $("ts-lock").innerHTML = unlocked ? TS_LOCK.open : TS_LOCK.closed;
+  $("ts-lock").classList.toggle("open", unlocked);
+  $("ts-lock").title = $("ts-lock").ariaLabel = unlocked ? tr("Entsperrt, antippen zum Sperren") : tr("Zum Entsperren gedrückt halten");
+  $("ts-guard-enabled").checked = state.testGuard !== false;
+  $("ts-guard-enabled").disabled = !unlocked;
+  $("ts-reset").disabled = !unlocked;
+  const rules = state.guardRules ?? {};
+  const key = JSON.stringify([rules, unlocked, run, I18N.lang]);
+  if ($("ts-matrix").dataset.key !== key) {
+    $("ts-matrix").dataset.key = key;
+    const col = (t) => (run[t] ? ' class="active-col"' : "");
+    $("ts-matrix").innerHTML = `<thead><tr><th>${tr("Funktion")}</th>${TS_TESTS.map(([t, l]) => `<th${col(t)}>${tr(l)}</th>`).join("")}</tr></thead><tbody>` +
+      Object.entries(TS_FEATURE_LABELS).map(([f, label]) => `<tr><td>${tr(label)}</td>${TS_TESTS.map(([t]) => (TS_FIXED[t] ?? []).includes(f)
+        ? `<td${col(t)}><span class="fixed">${tr("geprüft")}</span></td>`
+        : `<td${col(t)}><input type="checkbox" data-ts-test="${t}" data-ts-feature="${f}" aria-label="${tr(label)} · ${tr(TS_TESTS.find((x) => x[0] === t)[1])}"${(rules[t] ?? []).includes(f) ? " checked" : ""}${unlocked ? "" : " disabled"}></td>`).join("")}</tr>`).join("") + "</tbody>";
+  }
+}
+
+$("ts-matrix").addEventListener("change", (ev) => {
+  const el = ev.target.closest("[data-ts-test]");
+  if (!el || Date.now() >= tsUnlockedUntil) return renderTestServer();
+  const t = el.dataset.tsTest;
+  const list = new Set(state.guardRules?.[t] ?? []);
+  if (el.checked) list.add(el.dataset.tsFeature); else list.delete(el.dataset.tsFeature);
+  state = { ...state, guardRules: { ...state.guardRules, [t]: [...list] } };
+  send({ guardRules: { [t]: [...list] } });
+  tsUnlockedUntil = Date.now() + TS_UNLOCK_MS;
+});
+$("ts-guard-enabled").addEventListener("change", (ev) => { state = { ...state, testGuard: ev.target.checked }; send({ testGuard: ev.target.checked }); });
+$("ts-reset").addEventListener("click", () => {
+  if (Date.now() >= tsUnlockedUntil) return;
+  if (!confirm(tr("Testschutz-Regeln auf den Standard zurücksetzen?"))) return;
+  send({ guardRulesReset: true });
+});
+
+// the lock opens only when held for a second (a tap on the open lock closes it again)
+{
+  const lock = $("ts-lock");
+  let holdTimer = null;
+  const cancel = () => { clearTimeout(holdTimer); holdTimer = null; lock.classList.remove("holding"); };
+  lock.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    if (Date.now() < tsUnlockedUntil) { tsUnlockedUntil = 0; $("ts-note").textContent = ""; renderTestServer(); return; }
+    lock.classList.add("holding");
+    holdTimer = setTimeout(() => {
+      cancel();
+      tsUnlockedUntil = Date.now() + TS_UNLOCK_MS;
+      $("ts-note").textContent = tr("Entsperrt für 2 Minuten.");
+      renderTestServer();
+      setTimeout(() => { if (Date.now() >= tsUnlockedUntil) { $("ts-note").textContent = ""; renderTestServer(); } }, TS_UNLOCK_MS + 100);
+    }, 1000);
+  });
+  for (const t of ["pointerup", "pointerleave", "pointercancel"]) lock.addEventListener(t, () => {
+    if (holdTimer) { cancel(); $("ts-note").textContent = tr("Zum Entsperren das Schloss eine Sekunde gedrückt halten."); }
+  });
+  lock.addEventListener("contextmenu", (ev) => ev.preventDefault());
+}
+
+// status from the server every few seconds while the card is open
+function tsPoll() {
+  clearInterval(tsTimer);
+  if ($("card-ts").classList.contains("closed")) return;
+  loadTsStatus();
+  tsTimer = setInterval(loadTsStatus, 3000);
+}
+new MutationObserver(tsPoll).observe($("card-ts"), { attributes: true, attributeFilter: ["class"] });
+tsPoll();
 
 // ---------- test guard ----------
 // The server switches features off that would falsify the running test (and restores them after);
@@ -2958,7 +3146,7 @@ function renderPosGuide() {
   $("lg-resume").hidden = running || g.done || !g.points.length || g.step === 0;
 
   const warn = posWarnings(running);
-  if (!hyperionConnected && g.done) warn.push(tr("Zum Anwenden der Korrektur zuerst unten bei Backup „Mit Hyperion verbinden“."));
+  if (!hyperionConnected && g.done) warn.push(tr("Zum Anwenden der Korrektur zuerst unten bei Hyperion Backup „Mit Hyperion verbinden“."));
   $("lg-warn").hidden = !warn.length;
   $("lg-warn").textContent = warn.join(" ");
 
@@ -3028,7 +3216,7 @@ function renderFracConfig() {
   const note = $("fm-cfg-note");
   const problem = !colorConfig ? "Lade Einstellungen …"
     : !known ? "Braucht die neue Hyperion-Version (Fork)."
-    : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
+    : !hyperionConnected ? "Zum Ändern zuerst unten bei Hyperion Backup „Mit Hyperion verbinden“."
     : null;
   for (const n of [note, $("ft-fm-note")]) {
     if (problem) n.textContent = problem;
@@ -3195,7 +3383,7 @@ function renderBbConfig() {
   $("gs-edge-note").textContent = !bbConfig ? "" : !edgeKnown ? "(braucht die neue Hyperion-Version)"
     : [0, 3, 6, 9].includes(edge) ? "" : `(eingestellt: ${edge} %)`;
   // a state note is set or cleared here, a save result stays until the next save
-  const problem = !bbConfig ? "Einstellungen nicht lesbar." : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“." : null;
+  const problem = !bbConfig ? "Einstellungen nicht lesbar." : !hyperionConnected ? "Zum Ändern zuerst unten bei Hyperion Backup „Mit Hyperion verbinden“." : null;
   for (const id of ["bb-cfg-note", "gs-cfg-note"]) {
     const el = $(id);
     if (problem) { if (!/^(Einstellungen nicht lesbar|Settings not readable)/.test(el.textContent)) el.textContent = problem; }

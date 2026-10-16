@@ -32,6 +32,21 @@ const TOKEN_REQUEST_TIMEOUT_MS = 180_000; // Hyperion drops unanswered token req
 const MAX_CUSTOM_COLORS = 24;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
+// Test guard rules: which Hyperion features each kind of test switches off while it runs. Features a
+// test is about stay on and cannot be chosen (black bars: black border detection, gray still image:
+// gray still detection, capture depth: capture depth).
+const GUARD_FEATURES = ["grayStill", "blackborder", "backlight", "stray", "signal", "edgeBoost", "depth"];
+const GUARD_TESTS = ["color", "bars", "gray", "depth", "frac", "pos"];
+const GUARD_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
+const DEFAULT_GUARD_RULES = {
+  color: ["grayStill", "blackborder", "backlight", "stray", "signal"],
+  bars: ["grayStill", "backlight"],
+  gray: ["backlight", "signal"],
+  depth: ["grayStill", "blackborder", "backlight", "signal", "edgeBoost"],
+  frac: ["grayStill", "blackborder", "backlight", "stray", "signal"],
+  pos: ["grayStill", "blackborder", "backlight", "depth", "signal"],
+};
+
 const DEFAULT_STATE = {
   color: "#000000",
   // false = the TV shows black instead of `color` (the on/off button per test color)
@@ -64,6 +79,7 @@ const DEFAULT_STATE = {
   testPresets: {},
   // switch Hyperion features off that would falsify the running test, and back on afterwards
   testGuard: true,
+  guardRules: DEFAULT_GUARD_RULES,
   // language chosen last on a control page; the TV page follows it
   lang: "de",
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
@@ -218,6 +234,10 @@ function sanitize(input) {
   }
   if (input.lang === "en" || input.lang === "de") out.lang = input.lang;
   out.testGuard = input.testGuard !== false;
+  out.guardRules = Object.fromEntries(GUARD_TESTS.map((t) => {
+    const list = Array.isArray(input.guardRules?.[t]) ? input.guardRules[t] : DEFAULT_GUARD_RULES[t];
+    return [t, GUARD_FEATURES.filter((f) => list.includes(f) && !(GUARD_FIXED[t] ?? []).includes(f))];
+  }));
   for (const test of PRESET_TESTS) {
     const list = Array.isArray(input.testPresets?.[test]) ? input.testPresets[test] : [];
     const clean = list.filter((p) => p && typeof p.id === "string" && typeof p.name === "string" && p.settings && typeof p.settings === "object")
@@ -985,6 +1005,44 @@ async function readHyperionDefaults() {
 }
 
 // Builds the same structure as Hyperion's own export ("config getconfig") from a DB backup
+// --- Status of the test server, Hyperion and the tests (card "Testserver") ---
+const SERVER_STARTED = Date.now();
+async function testServerStatus() {
+  const roles = [...clients.values()];
+  const safe = (f) => { try { return f(); } catch { return null; } };
+  const bb = safe(() => readInstanceSetting("blackborderdetector"));
+  const color = safe(() => readInstanceSetting("color"));
+  const device = safe(() => readInstanceSetting("device"));
+  const smoothing = safe(() => readInstanceSetting("smoothing"));
+  const v4l = safe(() => readGlobalSetting("grabberV4L2"));
+  const entry = color?.channelAdjustment?.[0];
+  const guarded = new Set(Object.keys(loadGuard().entries).map((k) => k.replace(/\d+$/, "").replace(/^depth(topBottom|leftRight)$/, "depth")));
+  const depth = color?.ledAreaDepth;
+  const feature = (key, label, on, detail) => ({ key, label, on, detail: detail ?? null, guarded: guarded.has(key) });
+  return {
+    server: { startedAt: SERVER_STARTED, port: PORT },
+    hyperion: await hyperionStatus(),
+    clients: { tv: roles.filter((r) => r === "tv").length, phone: roles.filter((r) => r === "phone").length },
+    monitor: { connected: !!monitor, debugOk: !!lastDebug?.ok, debugAt: lastDebug?.at ?? null, preview: !!monitor?.imageStreaming },
+    features: bb && color ? [
+      feature("blackborder", "Schwarzbalken-Erkennung", bb.enable === true),
+      feature("grayStill", "Graues-Standbild-Erkennung", bb.grayStillImageDetector?.enabled === true),
+      feature("backlight", "Hintergrundbeleuchtung", (color.channelAdjustment ?? []).some((a) => Number(a.backlightThreshold) > 0), entry ? String(entry.backlightThreshold) : null),
+      feature("stray", "Störlicht-Filter", device?.strayLedSuppressor?.enabled === true),
+      feature("signal", "Signalerkennung des Grabbers", v4l?.signalDetection === true),
+      feature("edgeBoost", "Kantenverstärkung", color.edgeTransitionBoost?.enabled === true),
+      feature("depth", "Erfassungstiefe", !!depth && (Number(depth.topBottom) > 0 || Number(depth.leftRight) > 0), depth ? `${depth.topBottom} % / ${depth.leftRight} %` : null),
+      feature("smoothing", "Glättung", smoothing?.enable === true, smoothing ? `${smoothing.time_ms} ms` : null),
+      feature("correction", "Grabber-Farbkorrektur", grabberCorrection.enable),
+      feature("fractional", "LED-Mittelwert mit Nachkommastellen", color.fractionalMean === true),
+      feature("grayAxis", "Grauachsen-Korrektur", entry?.grayAxisTrim?.enabled === true),
+      feature("grayCurve", "Graukurve", entry?.grayCurve?.enabled === true),
+      feature("layoutFix", "LED-Layout-Korrektur", layoutFixInfo.corrected),
+    ] : [],
+    guard: { enabled: state.testGuard, ...guardInfo },
+  };
+}
+
 // --- Test guard ---
 // While a test runs, Hyperion features that would falsify it are switched off for the time of the
 // test and restored afterwards: the gray still detection would dim or freeze the LEDs on a still test
@@ -1013,19 +1071,9 @@ function guardWanted(entries = {}) {
   if (shownColor && !pattern) tests.push("color");
   if (!tests.length) return {};
   const off = new Set();
-  const add = (...k) => k.forEach((x) => off.add(x));
-  for (const t of tests) {
-    if (t === "color") add("grayStill", "blackborder", "backlight", "stray", "signal");
-    if (t === "bars") add("grayStill", "backlight");
-    if (t === "gray") add("backlight", "signal");
-    if (t === "depth") add("grayStill", "blackborder", "backlight", "signal", "edgeBoost");
-    if (t === "frac") add("grayStill", "blackborder", "backlight", "stray", "signal");
-    if (t === "pos") add("grayStill", "blackborder", "backlight", "depth", "signal");
-  }
+  for (const t of tests) for (const f of state.guardRules?.[t] ?? DEFAULT_GUARD_RULES[t]) off.add(f);
   // what a running test is about stays as it is
-  if (tests.includes("bars")) off.delete("blackborder");
-  if (tests.includes("gray")) off.delete("grayStill");
-  if (tests.includes("depth")) off.delete("depth");
+  for (const t of tests) for (const f of GUARD_FIXED[t] ?? []) off.delete(f);
 
   const want = {};
   let color = null;
@@ -1276,6 +1324,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, await saveBlackborder(patch));
     }
 
+    if (req.method === "GET" && p === "/api/testserver/status") return sendJson(res, 200, await testServerStatus());
     if (req.method === "GET" && p === "/api/hyperion/defaults") return sendJson(res, 200, await readHyperionDefaults());
     // standard settings of the test patterns (the "Standard" button of each test card)
     if (req.method === "GET" && p === "/api/testdefaults") return sendJson(res, 200, DEFAULT_STATE);
@@ -1414,7 +1463,8 @@ const server = http.createServer(async (req, res) => {
       const lang = patch.lang === "en" || patch.lang === "de" ? patch.lang : state.lang;
       const testPresets = patch.presetOp ? applyPresetOp(patch.presetOp, state.testPresets) : state.testPresets;
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard });
+      const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules });
       saveState();
       broadcast();
       scheduleGuard();
