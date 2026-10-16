@@ -10,11 +10,41 @@ $(document).ready(function () {
   var editor_smoothing = null;
   var editor_blackborder = null;
 
+  // Fork-Erweiterung: die Erfassungstiefe der LED-Bereiche (color.ledAreaDepth) wird auf der Seite
+  // LED-Hardware eingestellt; hier fehlt sie im Formular, beim Speichern bleibt der Wert aus Hyperion
+  var colorSchema = $.extend(true, {}, window.schema.color);
+  delete colorSchema.properties.ledAreaDepth;
+  var colorValue = function () {
+    var value = editor_color.getValue();
+    var depth = window.serverConfig.color && window.serverConfig.color.ledAreaDepth;
+    if (depth && value.color) value.color.ledAreaDepth = depth;
+    return value;
+  };
+
+  // Fork-Erweiterung: Grauachsen-Korrektur und Graukurve stehen in eigenen Bereichen unter der
+  // Farbkalibrierung (Teil desselben Formulars wie bei der Graues-Standbild-Erkennung, jeder Bereich
+  // speichert das ganze Formular). Nur im Experten-Modus, wie die Einstellungen selbst.
+  var profileProps = colorSchema.properties.channelAdjustment.items.properties;
+  var GRAY_SECTIONS = [
+    { key: 'grayAxisTrim', container: 'editor_container_grayaxis', button: 'btn_submit_grayaxis', icon: 'fa-sliders' },
+    { key: 'grayCurve', container: 'editor_container_graycurve', button: 'btn_submit_graycurve', icon: 'fa-line-chart' }
+  ].filter(function (sec) {
+    var prop = profileProps[sec.key];
+    return prop && (prop.access !== 'expert' || storedAccess === 'expert');
+  });
+
   if (window.showOptHelp) {
     //color
     $('#conf_cont').append(createRow('conf_cont_color'));
     $('#conf_cont_color').append(createOptPanel('fa-photo', $.i18n("edt_conf_color_heading_title"), 'editor_container_color', 'btn_submit_color'));
-    $('#conf_cont_color').append(createHelpTable(window.schema.color.properties, $.i18n("edt_conf_color_heading_title")));
+    $('#conf_cont_color').append(createHelpTable(colorSchema.properties, $.i18n("edt_conf_color_heading_title")));
+
+    GRAY_SECTIONS.forEach(function (sec) {
+      var title = $.i18n(profileProps[sec.key].title);
+      $('#conf_cont').append(createRow('conf_cont_' + sec.key));
+      $('#conf_cont_' + sec.key).append(createOptPanel(sec.icon, title, sec.container, sec.button));
+      $('#conf_cont_' + sec.key).append(createHelpTable(profileProps[sec.key].properties, title));
+    });
 
     //smoothing
     $('#conf_cont').append(createRow('conf_cont_smoothing'));
@@ -35,6 +65,9 @@ $(document).ready(function () {
   else {
     $('#conf_cont').addClass('row');
     $('#conf_cont').append(createOptPanel('fa-photo', $.i18n("edt_conf_color_heading_title"), 'editor_container_color', 'btn_submit_color'));
+    GRAY_SECTIONS.forEach(function (sec) {
+      $('#conf_cont').append(createOptPanel(sec.icon, $.i18n(profileProps[sec.key].title), sec.container, sec.button));
+    });
     $('#conf_cont').append(createOptPanel('fa-photo', $.i18n("edt_conf_smooth_heading_title"), 'editor_container_smoothing', 'btn_submit_smoothing'));
     if (BORDERDETECT_ENABLED) {
       $('#conf_cont').append(createOptPanel('fa-photo', $.i18n("edt_conf_bb_heading_title"), 'editor_container_blackborder', 'btn_submit_blackborder'));
@@ -46,16 +79,54 @@ $(document).ready(function () {
 
   //color
   editor_color = createJsonEditor('editor_container_color', {
-    color: window.schema.color
+    color: colorSchema
   }, true, true);
 
+  var colorButtons = ['#btn_submit_color'].concat(GRAY_SECTIONS.map(function (sec) { return '#' + sec.button; }));
   editor_color.on('change', function () {
-    editor_color.validate().length || window.readOnlyMode ? $('#btn_submit_color').prop('disabled', true) : $('#btn_submit_color').prop('disabled', false);
+    $(colorButtons.join(',')).prop('disabled', !!(editor_color.validate().length || window.readOnlyMode));
+    relocateGraySections();
   });
 
-  $('#btn_submit_color').off().on('click', function () {
-    requestWriteConfig(editor_color.getValue());
+  $(colorButtons.join(',')).off().on('click', function () {
+    requestWriteConfig(colorValue());
   });
+
+  // Fork-Erweiterung: die Teile jedes Farbprofils in ihre Bereiche umhängen. Beim Hinzufügen oder
+  // Entfernen eines Profils baut der Editor die Zeilen neu auf, daher bei jeder Änderung prüfen.
+  function relocateGraySections() {
+    var adjustments = editor_color.getEditor('root.color.channelAdjustment');
+    var count = adjustments && adjustments.rows ? adjustments.rows.length : 0;
+    GRAY_SECTIONS.forEach(function (sec) {
+      var target = document.getElementById(sec.container);
+      if (!target) return;
+      for (var i = 0; i < count; i++) {
+        var part = editor_color.getEditor('root.color.channelAdjustment.' + i + '.' + sec.key);
+        if (!part || !part.container) continue;
+        var holderId = sec.container + '_profile_' + i;
+        var holder = document.getElementById(holderId);
+        if (!holder) {
+          holder = document.createElement('div');
+          holder.id = holderId;
+          holder.className = 'fork-profile-part';
+          holder.innerHTML = '<h5 class="fork-profile-name"></h5>';
+          target.appendChild(holder);
+        }
+        var profile = editor_color.getEditor('root.color.channelAdjustment.' + i + '.id');
+        var name = holder.querySelector('.fork-profile-name');
+        name.textContent = $.i18n('edt_conf_color_profile_label', profile ? profile.getValue() : String(i + 1));
+        name.style.display = count > 1 ? '' : 'none';
+        if (part.title) part.title.style.display = 'none';
+        if (part.container.parentNode !== holder) holder.appendChild(part.container);
+      }
+      // Bereiche entfernter Profile
+      $(target).children('.fork-profile-part').each(function () {
+        var index = Number(this.id.split('_profile_')[1]);
+        if (index >= count) $(this).remove();
+      });
+    });
+  }
+  relocateGraySections();
 
   // Fork-Erweiterung: kleines Info-Symbol neben jedem Feld der
   // Farbanpassungs-Seite, das per Hover den passenden "_expl"-Beschreibungs-
@@ -279,11 +350,6 @@ $(document).ready(function () {
     };
     // LED-Mittelwert mit Nachkommastellen (Fork-Erweiterung), Ebene "color"
     attachInfoIcon('root.color.fractionalMean', 'edt_conf_color_fractionalMean_expl');
-
-    // Erfassungstiefe der LED-Bereiche (Fork-Erweiterung), Ebene "color"
-    attachInfoIcon('root.color.ledAreaDepth', 'edt_conf_color_ledAreaDepth_expl');
-    attachInfoIcon('root.color.ledAreaDepth.topBottom', 'edt_conf_color_ledAreaDepth_topBottom_expl');
-    attachInfoIcon('root.color.ledAreaDepth.leftRight', 'edt_conf_color_ledAreaDepth_leftRight_expl');
 
     attachInfoIcon('root.color.edgeTransitionBoost', edgeBoostFields['']);
     delete edgeBoostFields[''];

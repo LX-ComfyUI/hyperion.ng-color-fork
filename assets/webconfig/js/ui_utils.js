@@ -1246,8 +1246,43 @@ function createOptPanel(phicon, phead, bodyid, footerid, css, panelId) {
   pfooter.setAttribute("id", footerid);
   pfooter.innerHTML = '<i class="fa fa-fw fa-save"></i>' + $.i18n('general_button_savesettings');
 
-  return createPanel(phead, "", pfooter, bodyid, css, panelId);
+  const panel = createPanel(phead, "", pfooter, bodyid, css, panelId);
+  // Fork-Erweiterung: jeder Einstellungsbereich lässt sich wie die Erklärungen auf- und zuklappen
+  optFold.attach(panel.querySelector('.panel') ?? panel, bodyid);
+  return panel;
 }
+
+// Fork-Erweiterung: Einstellungsbereiche (createOptPanel) per Klick auf die Titelzeile zuklappen; der
+// Zustand wird je Bereich gespeichert (Standard: offen). Zugeklappt sind Inhalt und Speichern-Knopf weg.
+const optFold = (function () {
+  const storageKey = (key) => 'optFold_' + key;
+  function apply(panel) {
+    const open = getStorage(storageKey(panel.dataset.optFold)) !== 'closed';
+    panel.classList.toggle('opt-folded', !open);
+    panel.querySelector('.help-fold-toggle')?.setAttribute('aria-expanded', String(open));
+  }
+  function attach(panel, key) {
+    if (!panel || !key) return;
+    const heading = panel.querySelector('.panel-heading');
+    if (!heading) return;
+    panel.classList.add('opt-fold');
+    panel.dataset.optFold = key;
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'help-fold-toggle';
+    toggle.setAttribute('aria-label', $.i18n('general_help_fold_toggle'));
+    toggle.innerHTML = '<i class="fa fa-chevron-down"></i>';
+    heading.appendChild(toggle);
+    heading.addEventListener('click', function (ev) {
+      if (ev.target.closest('a, input, select, label') && !ev.target.closest('.help-fold-toggle')) return;
+      const open = panel.classList.contains('opt-folded');
+      setStorage(storageKey(key), open ? 'open' : 'closed');
+      apply(panel);
+    });
+    apply(panel);
+  }
+  return { attach };
+})();
 
 function compareTwoValues(key1, key2, order = 'asc') {
   return function innerSort(a, b) {

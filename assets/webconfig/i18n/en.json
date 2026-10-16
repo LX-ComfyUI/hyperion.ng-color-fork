@@ -449,6 +449,7 @@
   "edt_conf_color_leds_title": "LED index",
   "edt_conf_color_magenta_expl": "The calibrated magenta value. Each RGB component in the range 0 to 255.",
   "edt_conf_color_magenta_title": "Magenta",
+  "edt_conf_color_profile_label": "Profile “$1”",
   "edt_conf_color_red_expl": "The calibrated red value. Each RGB component in the range 0 to 255.",
   "edt_conf_color_red_title": "Red",
   "edt_conf_color_temperature_expl": "Adjusts the color temperature. Range 1000 to 40000 Kelvin in steps of 100.",

@@ -1996,6 +1996,30 @@ $(document).ready(function () {
     }
   });
 
+  // Fork-Erweiterung: Erfassungstiefe der LED-Bereiche (color.ledAreaDepth) im Reiter "LED Layout",
+  // unter der Layout-Auswahl. Die Einstellung gehört zu den Farbeinstellungen; gespeichert wird der
+  // ganze Farbblock aus Hyperion mit der neuen Tiefe, sonst bleibt alles wie es ist.
+  (function addAreaDepthPanel() {
+    var depthSchema = window.schema.color && window.schema.color.properties.ledAreaDepth;
+    if (!depthSchema || (depthSchema.access === 'expert' && storedAccess !== 'expert')) return;
+    var panel = createOptPanel('fa-arrows-alt', $.i18n(depthSchema.title), 'editor_container_areadepth', 'btn_submit_areadepth');
+    panel.className = '';
+    $('#layout_type').append(panel);
+    var depthEditor = createJsonEditor('editor_container_areadepth', { ledAreaDepth: depthSchema }, true, true);
+    var current = window.serverConfig.color && window.serverConfig.color.ledAreaDepth;
+    if (current) depthEditor.getEditor('root.ledAreaDepth').setValue(current);
+    var expl = $.i18n('edt_conf_color_ledAreaDepth_expl');
+    if (window.showOptHelp && expl !== 'edt_conf_color_ledAreaDepth_expl') createHint('intro', expl, 'editor_container_areadepth');
+    depthEditor.on('change', function () {
+      $('#btn_submit_areadepth').prop('disabled', !!(depthEditor.validate().length || window.readOnlyMode));
+    });
+    $('#btn_submit_areadepth').off().on('click', function () {
+      var color = $.extend(true, {}, window.serverConfig.color);
+      color.ledAreaDepth = depthEditor.getValue().ledAreaDepth;
+      requestWriteConfig({ color: color });
+    });
+  })();
+
   removeOverlay();
 });
 

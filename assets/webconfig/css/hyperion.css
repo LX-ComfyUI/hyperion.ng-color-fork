@@ -1080,6 +1080,24 @@ input[type="radio"] .styled:checked + label::after {
 .help-fold.help-folded > .panel-body {
   display: none;
 }
+/* Fork-Erweiterung: zuklappbare Einstellungsbereiche (optFold in js/ui_utils.js) */
+.opt-fold > .panel-heading {
+  cursor: pointer;
+  position: relative;
+  padding-right: 46px;
+  user-select: none;
+}
+.opt-fold.opt-folded > .panel-body,
+.opt-fold.opt-folded > .panel-footer {
+  display: none;
+}
+.opt-fold.opt-folded .help-fold-toggle .fa {
+  transform: rotate(-90deg);
+}
+.fork-profile-name {
+  margin: 4px 0 8px;
+  font-weight: 600;
+}
 .help-fold.help-folded .help-fold-toggle .fa {
   transform: rotate(-90deg);
 }

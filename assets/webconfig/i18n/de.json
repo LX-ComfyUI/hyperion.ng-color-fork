@@ -445,6 +445,7 @@
   "edt_conf_color_leds_title": "LED-Iindex",
   "edt_conf_color_magenta_expl": "Kalibrierter Magentawert. Jeder RGB-Anteil im Wertebereich 0 bis 255.",
   "edt_conf_color_magenta_title": "Magenta",
+  "edt_conf_color_profile_label": "Profil „$1“",
   "edt_conf_color_red_expl": "Kalibrierter Rotwert. Jeder RGB-Anteil im Wertebereich 0 bis 255.",
   "edt_conf_color_red_title": "Rot",
   "edt_conf_color_reducedPixelSetFactorFactor_expl": "Es wird nur eine reduzierte Menge von Pixeln pro definiertem LED-Bereich ausgewertet, Niedrig ~25%, Mittel ~10%, Hoch ~6%",
