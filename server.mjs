@@ -990,7 +990,8 @@ async function readHyperionDefaults() {
 // test and restored afterwards: the gray still detection would dim or freeze the LEDs on a still test
 // picture, the black border detection takes dark test pictures or the frame of the position test for
 // bars, a backlight lights LEDs that should stay dark, the stray LED filter darkens dim red LEDs,
-// and a deep capture depth lets the position marker reach neighbouring LEDs. A feature a running test
+// a deep capture depth lets the position marker reach neighbouring LEDs, the grabber's signal
+// detection takes a dark test picture for "no signal" and the edge boost changes the depth frame. A feature a running test
 // is about stays as it is (black bars test: black border detection, gray still test: gray still
 // detection, depth test: capture depth). testguard.json keeps the original values, so a restart
 // of this server still restores them; a value changed by hand during the test is left as it is.
@@ -1014,12 +1015,12 @@ function guardWanted(entries = {}) {
   const off = new Set();
   const add = (...k) => k.forEach((x) => off.add(x));
   for (const t of tests) {
-    if (t === "color") add("grayStill", "blackborder", "backlight", "stray");
+    if (t === "color") add("grayStill", "blackborder", "backlight", "stray", "signal");
     if (t === "bars") add("grayStill", "backlight");
-    if (t === "gray") add("backlight");
-    if (t === "depth") add("grayStill", "blackborder", "backlight");
-    if (t === "frac") add("grayStill", "blackborder", "backlight", "stray");
-    if (t === "pos") add("grayStill", "blackborder", "backlight", "depth");
+    if (t === "gray") add("backlight", "signal");
+    if (t === "depth") add("grayStill", "blackborder", "backlight", "signal", "edgeBoost");
+    if (t === "frac") add("grayStill", "blackborder", "backlight", "stray", "signal");
+    if (t === "pos") add("grayStill", "blackborder", "backlight", "depth", "signal");
   }
   // what a running test is about stays as it is
   if (tests.includes("bars")) off.delete("blackborder");
@@ -1031,6 +1032,9 @@ function guardWanted(entries = {}) {
   try { color = readInstanceSetting("color"); } catch {}
   if (off.has("blackborder")) want.blackborder = { type: "blackborderdetector", path: ["enable"], value: false, label: "Schwarzbalken-Erkennung" };
   if (off.has("grayStill")) want.grayStill = { type: "blackborderdetector", path: ["grayStillImageDetector", "enabled"], value: false, label: "Graues-Standbild-Erkennung" };
+  // a black or dark test picture would count as "no signal" and switch the LEDs off
+  if (off.has("signal")) want.signal = { type: "grabberV4L2", global: true, path: ["signalDetection"], value: false, label: "Signalerkennung des Grabbers" };
+  if (off.has("edgeBoost")) want.edgeBoost = { type: "color", path: ["edgeTransitionBoost", "enabled"], value: false, label: "Kantenverstärkung" };
   if (off.has("stray")) want.stray = { type: "device", path: ["strayLedSuppressor", "enabled"], value: false, label: "Störlicht-Filter" };
   if (off.has("backlight")) (color?.channelAdjustment ?? []).forEach((_, i) => {
     want["backlight" + i] = { type: "color", path: ["channelAdjustment", i, "backlightThreshold"], value: 0, label: "Hintergrundbeleuchtung" };
@@ -1066,18 +1070,22 @@ async function syncGuard() {
   const g = loadGuard();
   const want = guardWanted(g.entries);
   const configs = {};
-  const read = (type) => (configs[type] ??= readInstanceSetting(type));
+  const globals = new Set();
+  const read = (type, global) => {
+    if (global) globals.add(type);
+    return (configs[type] ??= global ? readGlobalSetting(type) : readInstanceSetting(type));
+  };
   const changed = new Set();
   for (const [key, e] of Object.entries(g.entries)) {
     if (want[key] && JSON.stringify(want[key].path) === JSON.stringify(e.path)) continue;
-    const cfg = read(e.type);
+    const cfg = read(e.type, e.global);
     // only if it still has our value; a value changed by hand during the test stays
     if (JSON.stringify(getPath(cfg, e.path)) === JSON.stringify(e.value)) { setPath(cfg, e.path, e.original); changed.add(e.type); }
     delete g.entries[key];
   }
   for (const [key, w] of Object.entries(want)) {
     if (g.entries[key]) continue;
-    const cfg = read(w.type);
+    const cfg = read(w.type, w.global);
     const current = getPath(cfg, w.path);
     if (current === undefined || JSON.stringify(current) === JSON.stringify(w.value)) continue;
     g.entries[key] = { ...w, original: current };
@@ -1086,7 +1094,10 @@ async function syncGuard() {
   }
   if (changed.size) {
     if (!readToken()) throw new Error("Nicht mit Hyperion verbunden");
-    for (const type of changed) await writeInstanceSetting(type, configs[type]);
+    for (const type of changed) {
+      if (globals.has(type)) await writeGlobalSetting(type, configs[type]);
+      else await writeInstanceSetting(type, configs[type]);
+    }
   }
   saveGuard(g);
   guardInfo = { applied: [...new Set(Object.values(g.entries).map((e) => e.label))] };
