@@ -26,6 +26,11 @@
   /* LED position test: markers in the sampling areas of the chosen LEDs */
   #pos { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
   #pos .mark { position: absolute; }
+  /* guided position test: a ruler with the neighbouring LEDs, drawn inside the picture beyond the
+     sampling areas, so the grabber does not light LEDs with it */
+  #pos .tick { position: absolute; background: #8a8a8a; }
+  #pos .tick.zero { background: #e8e8e8; }
+  #pos .tlabel { position: absolute; transform: translate(-50%, -50%); color: #b0b0b0; font: 600 2.4vh/1 system-ui, sans-serif; }
 
   #frac { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
 
@@ -113,7 +118,7 @@
 <script src="/static/i18n.js"></script>
 <script>I18N.start();</script>
 <script type="module">
-import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, posTestIndices, GRAY_STILL_CSS } from "/static/overlay.js";
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, posTestIndices, ledSegments, GRAY_STILL_CSS } from "/static/overlay.js";
 
 const style = document.createElement("style");
 style.textContent = GRAY_STILL_CSS;
@@ -279,17 +284,55 @@ function renderPosTest() {
   const areas = applyLedAreaDepth(ledAreas ?? [], areaDepth?.topBottom, areaDepth?.leftRight);
   const step = () => {
     const ids = posTestIndices(p, areas.length, Date.now() + clockOffset);
-    const key = ids.join() + p.color + areas.length + JSON.stringify(areaDepth);
+    const key = ids.join() + p.color + areas.length + JSON.stringify(areaDepth) + JSON.stringify(ids.map((i) => areas[i])) + !!state.posGuide?.active;
     if (key !== posDrawn) {
       posDrawn = key;
       el.innerHTML = ids.map((i) => {
         const [x1, x2, y1, y2] = areas[i];
         return `<div class="mark" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;background:${p.color}"></div>`;
-      }).join("");
+      }).join("") + (state.posGuide?.active && p.mode === "single" ? rulerHtml(areas, ids[Math.floor(ids.length / 2)]) : "");
     }
     if (p.mode === "run") posFrame = requestAnimationFrame(step);
   };
   step();
+}
+
+// Ruler of the guided test: a tick at each of the 5 neighbouring LEDs on both sides of the marked
+// one (same edge run), numbered by distance, between the sampling areas and the middle of the
+// picture. A tick that would fall into any sampling area is left out (corners).
+const RULER_REACH = 5;
+function rulerHtml(areas, i) {
+  const run = ledSegments(areas).find((s) => i >= s.start && i <= s.end);
+  if (!run || run.edge === "other") return "";
+  const horizontal = run.edge === "top" || run.edge === "bottom";
+  const gap = 0.015, len = horizontal ? 0.04 : 0.025, labelGap = horizontal ? 0.03 : 0.018;
+  const thin = 0.0012;
+  const hits = (r) => areas.some((a) => r[0] < a[1] && r[1] > a[0] && r[2] < a[3] && r[3] > a[2]);
+  let out = "";
+  for (let k = -RULER_REACH; k <= RULER_REACH; k++) {
+    const j = i + k;
+    if (j < run.start || j > run.end) continue;
+    const a = areas[j];
+    const cx = (a[0] + a[1]) / 2, cy = (a[2] + a[3]) / 2;
+    let r, lx, ly;
+    if (run.edge === "bottom") { r = [cx - thin, cx + thin, a[2] - gap - len, a[2] - gap]; lx = cx; ly = r[2] - labelGap; }
+    else if (run.edge === "top") { r = [cx - thin, cx + thin, a[3] + gap, a[3] + gap + len]; lx = cx; ly = r[3] + labelGap; }
+    else if (run.edge === "left") { r = [a[1] + gap, a[1] + gap + len, cy - thin, cy + thin]; lx = r[1] + labelGap; ly = cy; }
+    else { r = [a[0] - gap - len, a[0] - gap, cy - thin, cy + thin]; lx = r[0] - labelGap; ly = cy; }
+    // like a ruler: the marked LED and 5 long, 1 to 4 short (the ticks are only a few pixels apart,
+    // so only the 5 carries a number)
+    const short = k !== 0 && Math.abs(k) !== RULER_REACH;
+    if (short) {
+      if (run.edge === "bottom") r[2] += len / 2;
+      else if (run.edge === "top") r[3] -= len / 2;
+      else if (run.edge === "left") r[1] -= len / 2;
+      else r[0] += len / 2;
+    }
+    if (hits(r)) continue;
+    out += `<div class="tick${k === 0 ? " zero" : ""}" style="left:${r[0] * 100}%;top:${r[2] * 100}%;width:${(r[1] - r[0]) * 100}%;height:${(r[3] - r[2]) * 100}%"></div>`;
+    if (Math.abs(k) === RULER_REACH) out += `<div class="tlabel" style="left:${lx * 100}%;top:${ly * 100}%">${RULER_REACH}</div>`;
+  }
+  return out;
 }
 
 function renderDebug() {
@@ -363,7 +406,10 @@ function connectEvents() {
     const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || JSON.stringify(msg.depthTest) !== JSON.stringify(state.depthTest)
       || JSON.stringify(msg.fracTest) !== JSON.stringify(state.fracTest)
       || JSON.stringify(msg.posTest) !== JSON.stringify(state.posTest)
+      || msg.posGuide?.active !== state.posGuide?.active
       || msg.color !== state.color || msg.colorActive !== state.colorActive;
+    // a layout correction was written: read the LED areas again right away
+    if (msg.layoutFix?.stamp && msg.layoutFix.stamp !== state.layoutFix?.stamp && state.layoutFix) loadLedAreas();
     state = msg;
     if (grayChanged) render();
     else { renderBars(); renderDebug(); renderGrabberTest(); renderHints(); }

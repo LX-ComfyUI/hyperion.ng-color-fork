@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { createRequire } from "node:module";
 
+import { layoutRuns, offsetsFromAnswers, composeOffsets, correctedLeds, sameLayout, MAX_ANSWER } from "./public/layoutfix.js";
+
 const require = createRequire(import.meta.url);
 const qrcode = require("qrcode-generator");
 
@@ -52,6 +54,9 @@ const DEFAULT_STATE = {
   // LED position test pattern: a marker exactly in the sampling area of LED `index` (width LEDs
   // around it) on `background`. run: the marker moves on by speed LEDs per second from index
   posTest: { active: false, mode: "single", index: 0, width: 1, speed: 10, color: "#ffffff", background: "black", startedAt: 0 },
+  // guided position test: it steps posTest through `points`, answers = offset per LED (null = skipped).
+  // round: "measure" on the layout as it is, "control" after a correction
+  posGuide: { active: false, round: "measure", points: [], step: 0, answers: {}, done: false },
   // own colors of the grabber test, measured one after the other
   grabberColors: [],
   // language chosen last on a control page; the TV page follows it
@@ -152,6 +157,21 @@ function sanitize(input) {
     background: lp.background === "gray" ? "gray" : "black",
     startedAt: num(lp.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
   };
+  const pg = { ...DEFAULT_STATE.posGuide, ...(input.posGuide ?? {}) };
+  const points = Array.isArray(pg.points) ? pg.points.map(Number).filter((i) => Number.isInteger(i) && i >= 0 && i < 10000).slice(0, 200) : [];
+  const answers = {};
+  for (const [i, v] of Object.entries(pg.answers ?? {})) {
+    if (!points.includes(Number(i))) continue;
+    answers[i] = v === null ? null : num(v, -MAX_ANSWER, MAX_ANSWER, 0);
+  }
+  out.posGuide = {
+    active: pg.active === true && points.length > 0,
+    round: pg.round === "control" ? "control" : "measure",
+    points,
+    step: num(pg.step, 0, points.length, 0),
+    answers,
+    done: pg.done === true,
+  };
   const o = { ...DEFAULT_STATE.overlays, ...(input.overlays ?? {}) };
   out.overlays = Object.fromEntries(Object.keys(DEFAULT_STATE.overlays).map((k) => [k, o[k] === true]));
   if (input.presetColors && typeof input.presetColors === "object") {
@@ -190,7 +210,7 @@ function phoneCount() {
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
 function broadcast() {
   // serverNow lets the TV time the gray test against the Pi's clock, not its own
-  const payload = `data: ${JSON.stringify({ ...state, grabberRun, grabberCorrection, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
+  const payload = `data: ${JSON.stringify({ ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
   for (const res of clients.keys()) res.write(payload);
 }
 
@@ -867,6 +887,70 @@ function saveColor(patch) {
 }
 
 // Builds the same structure as Hyperion's own export ("config getconfig") from a DB backup
+// --- LED layout correction (guided position test) ---
+// layoutfix.json keeps the layout as it was before the first correction (base), the offsets now
+// applied to it, the ones before (one step back) and the layout written, to notice changes made
+// elsewhere (WebUI): if Hyperion's layout is neither the written nor the base one, it becomes the
+// new base.
+const LAYOUT_FIX_FILE = path.join(DATA_DIR, "layoutfix.json");
+let layoutFixInfo = { corrected: false, hasPrevious: false, savedAt: 0, stamp: 0 };
+
+function loadLayoutFix() {
+  try { return JSON.parse(fs.readFileSync(LAYOUT_FIX_FILE, "utf8")); } catch { return null; }
+}
+function saveLayoutFix(fix) {
+  const tmp = LAYOUT_FIX_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(fix));
+  fs.renameSync(tmp, LAYOUT_FIX_FILE);
+}
+// the stored correction only counts while Hyperion still has the layout written with it
+function currentLayoutFix() {
+  const live = readInstanceSetting("leds");
+  let fix = loadLayoutFix();
+  if (fix && !sameLayout(live, fix.applied) && !sameLayout(live, fix.base)) fix = null;
+  if (fix && sameLayout(live, fix.base)) fix = { ...fix, offsets: null, applied: fix.base };
+  return { live, fix };
+}
+function refreshLayoutFixInfo() {
+  try {
+    const { fix } = currentLayoutFix();
+    layoutFixInfo = { corrected: !!fix?.offsets, hasPrevious: !!(fix?.offsets && fix.previous), savedAt: fix?.savedAt ?? 0, stamp: layoutFixInfo.stamp };
+  } catch {
+    layoutFixInfo = { ...layoutFixInfo, corrected: false, hasPrevious: false };
+  }
+}
+
+async function writeLayout(fix, offsets) {
+  const runs = layoutRuns(fix.base);
+  const next = offsets ? correctedLeds(fix.base, runs, offsets) : fix.base;
+  makeBackup();
+  const written = await writeInstanceSetting("leds", next);
+  saveLayoutFix({ ...fix, offsets, applied: written, savedAt: Date.now() });
+  layoutFixInfo = { corrected: !!offsets, hasPrevious: !!(offsets && fix.previous), savedAt: Date.now(), stamp: Date.now() };
+  broadcast();
+  return layoutFixInfo;
+}
+
+// apply: answers measured on Hyperion's layout as it is now; on a corrected layout they add up
+function layoutFixAction(action, answers) {
+  return exclusive(async () => {
+    const { live, fix: current } = currentLayoutFix();
+    const fix = current ?? { base: live, offsets: null, previous: null };
+    if (action === "apply") {
+      if (!answers || typeof answers !== "object") throw new Error("Keine Antworten");
+      const runs = layoutRuns(fix.base);
+      if (live.length !== fix.base.length) throw new Error("Die LED-Anzahl hat sich geändert");
+      const clean = Object.fromEntries(Object.entries(answers).map(([i, v]) => [i, v === null ? null : num(v, -MAX_ANSWER, MAX_ANSWER, 0)]));
+      const residual = offsetsFromAnswers(live.length, runs, clean);
+      const offsets = fix.offsets ? composeOffsets(fix.offsets, residual, runs) : residual;
+      return writeLayout({ ...fix, previous: fix.offsets ?? null }, offsets);
+    }
+    if (action === "undo") return writeLayout({ ...fix, previous: null }, fix.previous ?? null);
+    if (action === "restore") return writeLayout({ ...fix, previous: null }, null);
+    throw new Error("Unbekannte Aktion");
+  });
+}
+
 function configFromBackup(file) {
   const db = new DatabaseSync(file, { readOnly: true });
   try {
@@ -927,7 +1011,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/tv") return serveStatic(res, "tv.html");
     if (req.method === "GET" && p.startsWith("/static/")) return serveStatic(res, p.slice("/static/".length));
 
-    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun, grabberCorrection });
+    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo });
     if (req.method === "GET" && p === "/api/presets") return sendJson(res, 200, PRESETS);
 
     if (req.method === "GET" && p === "/api/events") {
@@ -1004,6 +1088,11 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 400, { error: "Unbekannte Aktion" });
     }
     // LED sampling areas [hmin, hmax, vmin, vmax]: the gray still detector only sees these parts of the picture
+    if (req.method === "GET" && p === "/api/layoutfix") { refreshLayoutFixInfo(); return sendJson(res, 200, layoutFixInfo); }
+    if (req.method === "POST" && p === "/api/layoutfix") {
+      const { action, answers } = await readBody(req);
+      return sendJson(res, 200, await layoutFixAction(action, answers));
+    }
     if (req.method === "GET" && p === "/api/hyperion/leds") return sendJson(res, 200, readInstanceSetting("leds").map((l) => [l.hmin, l.hmax, l.vmin, l.vmax]));
     // black threshold of the LED device (fork extension), drawn in the gray curve graph
     if (req.method === "GET" && p === "/api/hyperion/blackthreshold") return sendJson(res, 200, readInstanceSetting("device").blackThreshold ?? null);
@@ -1078,6 +1167,8 @@ const server = http.createServer(async (req, res) => {
       const fracTest = { ...state.fracTest, ...(patch.fracTest ?? {}) };
       if (patch.fracTest || patch.fracRestart) fracTest.startedAt = Date.now();
       const posTest = { ...state.posTest, ...(patch.posTest ?? {}) };
+      // the guided test is sent as a whole (step and answers belong together)
+      const posGuide = patch.posGuide ? { ...state.posGuide, ...patch.posGuide } : state.posGuide;
       // the running light starts again from its LED on every change
       if (patch.posTest || patch.posRestart) posTest.startedAt = Date.now();
       // only one test pattern at a time: starting one ends the others, a new test color ends all
@@ -1090,10 +1181,10 @@ const server = http.createServer(async (req, res) => {
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
       const lang = patch.lang === "en" || patch.lang === "de" ? patch.lang : state.lang;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, overlays, lang });
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang });
       saveState();
       broadcast();
-      return sendJson(res, 200, { ...state, grabberRun, grabberCorrection });
+      return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo });
     }
 
     // grabber test: the stored results (Hyperion's global setting), start and stop
@@ -1150,6 +1241,8 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 400, { error: err.message });
   }
 });
+
+refreshLayoutFixInfo();
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`tvtest listening on :${PORT}`);

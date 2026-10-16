@@ -248,6 +248,21 @@
   .lp-jumps button { padding: 5px 9px; font-size: 12px; border-radius: 8px; }
   .lp-jumps button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   .lp-map { margin-top: 12px; }
+  /* guided position test */
+  .lg-q { margin: 12px 0 6px; font-size: 14px; }
+  .lg-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .lg-row .lg-dir { flex: 0 0 74px; font-size: 13px; color: var(--muted); }
+  .lg-row button { flex: 1; min-width: 0; padding: 10px 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lg-row button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .lg-ok { width: 100%; margin-top: 6px; padding: 10px; font-size: 15px; font-weight: 600; }
+  .lg-ok[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .lg-runs { display: grid; gap: 10px; margin-top: 10px; }
+  .lg-run { background: var(--bg); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .lg-run svg { display: block; width: 100%; height: auto; margin-top: 6px; }
+  .lg-run b { font-weight: 600; }
+  .lg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .lg-actions button { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .lg-actions button svg { width: 16px; height: 16px; flex: none; fill: currentColor; }
   .lp-map svg { display: block; width: 100%; max-width: 440px; height: auto; border-radius: 8px; background: #111; }
   .grayswatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--chip-line); flex: none; }
 
@@ -882,6 +897,40 @@
     </div>
   </section>
 
+  <!-- ===== guided LED position test ===== -->
+  <section class="card" id="card-lg">
+    <h2>LED-Position geführt</h2>
+    <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Neben der Markierung zeigt der TV ein <b>Lineal</b>: ein Strich je Nachbar-LED, der lange Strich mit der 5 ist die fünfte LED. Du tippst an, wo die leuchtende LED im Vergleich zur Markierung sitzt. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
+    <div class="status" id="lg-layout"></div>
+    <div class="lg-actions" id="lg-layout-actions"></div>
+
+    <div id="lg-idle">
+      <div class="lg-actions">
+        <button type="button" class="primary" id="lg-start">Test starten</button>
+        <button type="button" id="lg-resume" hidden>Fortsetzen</button>
+      </div>
+    </div>
+
+    <div id="lg-run" hidden>
+      <div class="status" id="lg-progress"></div>
+      <div class="lp-map" id="lg-map"></div>
+      <p class="lg-q" id="lg-question"></p>
+      <div id="lg-answers"></div>
+      <div class="seg full" role="group" aria-label="Test steuern" style="margin-top:10px">
+        <button type="button" id="lg-back">Zurück</button>
+        <button type="button" id="lg-skip">Nicht erkennbar</button>
+        <button type="button" id="lg-stop">Abbrechen</button>
+      </div>
+    </div>
+
+    <div id="lg-result" hidden>
+      <div class="status" id="lg-summary"></div>
+      <div class="lg-runs" id="lg-runs"></div>
+      <div class="lg-actions" id="lg-result-actions"></div>
+    </div>
+    <p class="warn" id="lg-warn" hidden></p>
+  </section>
+
   <!-- ===== backup ===== -->
   <section class="card" id="card-backup">
     <h2>Backup</h2>
@@ -1188,6 +1237,7 @@
 <script src="/static/grabbertest-report.js"></script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, ledSegments, posTestIndices, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
+import { guidePoints, runSummary, MAX_ANSWER } from "/static/layoutfix.js";
 
 const EDGES = ["top", "bottom", "left", "right"];
 const BAR_PAIRS = [
@@ -1323,6 +1373,7 @@ function renderState() {
   renderDepthTest();
   renderFracTest();
   renderPosTest();
+  renderPosGuide();
   renderOverlayChecks();
   renderGrabberRun();
   renderGrabberCorrection();
@@ -1339,7 +1390,8 @@ function renderCardBadges() {
     "card-gs": state.grayTest?.active && "läuft",
     "card-dt": state.depthTest?.active && "läuft",
     "card-ft": state.fracTest?.active && "läuft",
-    "card-lp": state.posTest?.active && "läuft",
+    "card-lp": state.posTest?.active && !state.posGuide?.active && "läuft",
+    "card-lg": state.posGuide?.active && "läuft",
   };
   for (const [id, text] of Object.entries(badges)) {
     const badge = document.querySelector(`#${id} .card-toggle .badge`);
@@ -2385,6 +2437,16 @@ function lpMapSvg(areas, ids, color) {
   return `<svg viewBox="0 0 ${W + 2 * P} ${H + 2 * P}" role="img" aria-label="${tr("Lage der markierten LED im Bild")}"><rect x="${P}" y="${P}" width="${W}" height="${H}" fill="#000" stroke="#555" stroke-width="0.6"/>${all}${marked}${ring}</svg>`;
 }
 
+// what makes the marker sit in the wrong place: black bars on the TV, a black border Hyperion removes
+function posWarnings(active) {
+  const warn = [];
+  if (Object.values(state.bars ?? {}).some((v) => v > 0)) warn.push(tr("Die schwarzen Balken sind an. Hyperion misst dann ab der Balkenkante, die Markierung sitzt nicht mehr im richtigen Bereich. Für diesen Test die Balken auf 0 % stellen."));
+  const border = (debug?.ok ? debug.blackborder : null)?.currentBorder;
+  if (active && border && !border.unknown && (border.horizontalSize > 0 || border.verticalSize > 0))
+    warn.push(tr("Hyperion zieht gerade einen Schwarzbalken ab (oben/unten {a} px, links/rechts {b} px). Dann verschieben sich die Bereiche. Hintergrund „Dunkelgrau“ wählen oder die Schwarzbalken-Erkennung kurz ausschalten.", { a: border.horizontalSize, b: border.verticalSize }));
+  return warn;
+}
+
 function renderPosLive() {
   const p = state.posTest;
   const areas = lpAreas();
@@ -2406,11 +2468,7 @@ function renderPosLive() {
     (p.active ? "" : `<div>${tr("Test läuft nicht.")}</div>`);
   $("lp-map").innerHTML = lpMapSvg(areas, ids, p.color);
 
-  const warn = [];
-  if (Object.values(state.bars ?? {}).some((v) => v > 0)) warn.push(tr("Die schwarzen Balken sind an. Hyperion misst dann ab der Balkenkante, die Markierung sitzt nicht mehr im richtigen Bereich. Für diesen Test die Balken auf 0 % stellen."));
-  const border = bb?.currentBorder;
-  if (p.active && border && !border.unknown && (border.horizontalSize > 0 || border.verticalSize > 0))
-    warn.push(tr("Hyperion zieht gerade einen Schwarzbalken ab (oben/unten {a} px, links/rechts {b} px). Dann verschieben sich die Bereiche. Hintergrund „Dunkelgrau“ wählen oder die Schwarzbalken-Erkennung kurz ausschalten.", { a: border.horizontalSize, b: border.verticalSize }));
+  const warn = posWarnings(p.active);
   $("lp-warn").hidden = !warn.length;
   $("lp-warn").textContent = warn.join(" ");
 }
@@ -2473,6 +2531,223 @@ $("lp-index").addEventListener("change", (ev) => sendPosTest({ index: Number(ev.
 $("lp-speed").addEventListener("input", (ev) => { $("lp-speed_v").textContent = `${ev.target.value} LEDs/s`; });
 $("lp-speed").addEventListener("change", (ev) => sendPosTest({ speed: Number(ev.target.value) }));
 $("lp-color").addEventListener("change", (ev) => sendPosTest({ color: ev.target.value }));
+
+// ---------- guided LED position test ----------
+// It steps the position test through 5 points per edge run. The answer is where the lit LED sits
+// compared with the marker, in the screen direction (left/right on top and bottom, up/down at the
+// sides); the page turns it into an offset in LED numbers: +3 = the LED sits where the marker of
+// the LED with a number 3 higher would be. The server turns the answers into a corrected layout.
+
+const LG_SIDES = {
+  horizontal: [["left", "← links"], ["right", "rechts →"]],
+  vertical: [["up", "↑ oben"], ["down", "↓ unten"]],
+};
+
+// run of an LED and whether its numbers grow to the right (top/bottom) or downwards (sides)
+function lgRun(areas, i) {
+  const run = ledSegments(areas).find((s) => i >= s.start && i <= s.end);
+  if (!run) return null;
+  const c = (k) => [(areas[k][0] + areas[k][1]) / 2, (areas[k][2] + areas[k][3]) / 2];
+  const horizontal = run.edge === "top" || run.edge === "bottom";
+  const axis = horizontal ? 0 : 1;
+  const grows = c(run.end)[axis] >= c(run.start)[axis];
+  return { ...run, horizontal, grows };
+}
+
+// screen direction + distance -> offset in LED numbers, and back
+function lgOffset(run, dir, n) {
+  const towardsHigher = (dir === "right" || dir === "down") === run.grows;
+  return towardsHigher ? n : -n;
+}
+function lgDirection(run, offset) {
+  if (!offset) return null;
+  const higher = offset > 0;
+  if (run.horizontal) return higher === run.grows ? "right" : "left";
+  return higher === run.grows ? "down" : "up";
+}
+
+function sendPosGuide(guide, posTest) {
+  state = { ...state, posGuide: guide, ...(posTest ? { posTest: { ...state.posTest, ...posTest } } : {}) };
+  if (posTest?.active === true) endOtherTests("posTest");
+  renderState();
+  send({ posGuide: guide, ...(posTest ? { posTest } : {}) });
+}
+
+function lgStart(round) {
+  const areas = lpAreas();
+  if (!areas) return;
+  const points = guidePoints(ledSegments(areas).filter((s) => s.edge !== "other" && s.end - s.start >= 2));
+  if (!points.length) return;
+  sendPosGuide({ active: true, round, points, step: 0, answers: {}, done: false },
+    { active: true, mode: "single", width: 1, index: points[0] });
+}
+
+function lgGoto(step, answers) {
+  const g = state.posGuide;
+  if (step >= g.points.length) {
+    sendPosGuide({ ...g, answers, step: g.points.length, active: false, done: true }, { active: false });
+    return;
+  }
+  sendPosGuide({ ...g, answers, step: Math.max(0, step), active: true }, { active: true, mode: "single", width: 1, index: g.points[Math.max(0, step)] });
+}
+
+function lgAnswer(value) {
+  const g = state.posGuide;
+  const i = g.points[g.step];
+  lgGoto(g.step + 1, { ...g.answers, [i]: value });
+}
+
+$("lg-start").addEventListener("click", () => lgStart(state.layoutFix?.corrected ? "control" : "measure"));
+$("lg-resume").addEventListener("click", () => lgGoto(state.posGuide.step, state.posGuide.answers));
+$("lg-back").addEventListener("click", () => lgGoto(state.posGuide.step - 1, state.posGuide.answers));
+$("lg-skip").addEventListener("click", () => lgAnswer(null));
+$("lg-stop").addEventListener("click", () => sendPosGuide({ ...state.posGuide, active: false }, { active: false }));
+
+function lgRenderAnswers(run, current) {
+  const sides = LG_SIDES[run.horizontal ? "horizontal" : "vertical"];
+  const chosen = typeof current === "number" ? current : undefined;
+  const btn = (dir, n) => {
+    const value = lgOffset(run, dir, n);
+    return `<button type="button" data-lg="${value}" aria-pressed="${chosen === value}" aria-label="${tr("{a} LEDs {b}", { a: n, b: tr(sides.find((s) => s[0] === dir)[1]) })}">${n}</button>`;
+  };
+  const [first, second] = sides;
+  const key = JSON.stringify([run.start, run.grows, chosen, I18N.lang]);
+  if ($("lg-answers").dataset.key === key) return;
+  $("lg-answers").dataset.key = key;
+  $("lg-answers").innerHTML =
+    `<div class="lg-row"><span class="lg-dir">${tr(first[1])}</span>${[5, 4, 3, 2, 1].map((n) => btn(first[0], n)).join("")}</div>` +
+    `<button type="button" class="lg-ok" data-lg="0" aria-pressed="${chosen === 0}">${tr("Passt (direkt an der Markierung)")}</button>` +
+    `<div class="lg-row"><span class="lg-dir">${tr(second[1])}</span>${[1, 2, 3, 4, 5].map((n) => btn(second[0], n)).join("")}</div>`;
+  $("lg-answers").querySelectorAll("[data-lg]").forEach((b) => b.addEventListener("click", () => lgAnswer(Number(b.dataset.lg))));
+}
+
+// small chart of one run: measured offsets (dots) and the straight line through them
+function lgRunSvg(run, sum) {
+  const W = 300, H = 90, P = 16, R = MAX_ANSWER;
+  const x = (i) => P + ((i - run.start) / Math.max(1, run.end - run.start)) * (W - 2 * P);
+  const y = (o) => H / 2 - (o / R) * (H / 2 - 8);
+  let grid = "";
+  for (let o = -R; o <= R; o++) grid += `<line x1="${P}" x2="${W - P}" y1="${y(o)}" y2="${y(o)}" stroke="${o ? "#444" : "#888"}" stroke-width="${o ? 0.5 : 1}"/>`;
+  grid += `<text x="2" y="${y(R) + 4}" font-size="9" fill="#999">+${R}</text><text x="2" y="${y(-R) + 4}" font-size="9" fill="#999">−${R}</text>`;
+  const line = sum.slope !== undefined ? `<line x1="${x(run.start)}" y1="${y(Math.max(-R, Math.min(R, sum.start)))}" x2="${x(run.end)}" y2="${y(Math.max(-R, Math.min(R, sum.end)))}" stroke="#0e83e7" stroke-width="1.5" stroke-dasharray="4 3"/>` : "";
+  const dots = sum.points.map(([i, o]) => `<circle cx="${x(i)}" cy="${y(o)}" r="3.5" fill="#ffb020"/>`).join("");
+  const labels = `<text x="${P}" y="${H - 1}" font-size="9" fill="#999">${run.start}</text><text x="${W - P}" y="${H - 1}" font-size="9" fill="#999" text-anchor="end">${run.end}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${tr("Versatz entlang des Strangs")}">${grid}${line}${dots}${labels}</svg>`;
+}
+
+function lgResultHtml(areas, g) {
+  const runs = ledSegments(areas).filter((s) => s.edge !== "other" && s.end - s.start >= 2);
+  const values = Object.values(g.answers).filter((v) => typeof v === "number");
+  const off = values.filter((v) => v !== 0);
+  const maxAbs = values.length ? Math.max(...values.map(Math.abs)) : 0;
+  let summary;
+  if (!values.length) summary = tr("Keine Antworten.");
+  else if (!off.length) summary = g.round === "control" ? tr("<b>Alles passt.</b> Die Korrektur ist richtig, du kannst sie so behalten.") : tr("<b>Alles passt.</b> Keine Korrektur nötig.");
+  else summary = tr("{a} von {b} Stellen weichen ab, höchstens {c} LEDs.", { a: off.length, b: values.length, c: maxAbs }) + (g.round === "control" && maxAbs <= 1 ? " " + tr("Das ist schon nah dran; eine weitere Korrektur nimmt den Rest weg.") : "");
+  const cards = runs.map((r) => {
+    const sum = runSummary(r, g.answers);
+    const name = tr("{a}: LED {b}–{c}, {d}", { a: tr(EDGE_NAMES[r.edge]), b: r.start, c: r.end, d: segmentDirection(areas, r) });
+    let text;
+    if (!sum.points.length) text = tr("Nicht gemessen, bleibt wie es ist.");
+    else if (sum.points.length === 1) text = tr("Nur eine Stelle gemessen: der ganze Strang wird um {a} LEDs verschoben.", { a: fmtSigned(sum.start) });
+    else if (sum.points.every(([, o]) => o === 0)) text = tr("Passt.");
+    else {
+      text = tr("Versatz am Anfang etwa {a}, am Ende etwa {b} LEDs.", { a: fmtSigned(sum.start), b: fmtSigned(sum.end) }) + " ";
+      text += sum.spread <= 1
+        ? (Math.sign(Math.round(sum.start)) !== Math.sign(Math.round(sum.end)) && Math.round(sum.start) && Math.round(sum.end)
+          ? tr("Gleichmäßig gedehnt: das Bild ist an dieser Kante kürzer (oder verschoben) als der LED-Strang.")
+          : tr("Gleichmäßig verschoben bzw. gedehnt."))
+        : tr("Ungleichmäßig (Abweichung bis {a} LEDs von einer Geraden): vermutlich ein Sprung an einer Lötstelle oder Ecke. Die Korrektur folgt den Messpunkten.", { a: fmt(sum.spread, 1) });
+    }
+    return `<div class="lg-run"><div><b>${name}</b></div><div>${text}</div>${sum.points.length ? lgRunSvg(r, sum) : ""}</div>`;
+  }).join("");
+  return { summary, cards, needsFix: off.length > 0 };
+}
+const fmtSigned = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + fmt(Math.abs(v), Math.abs(v) < 10 && Math.round(v) !== v ? 1 : 0);
+
+async function lgLayoutAction(action) {
+  try {
+    const body = action === "apply" ? { action, answers: state.posGuide.answers } : { action };
+    const res = await fetch("/api/layoutfix", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const reply = await res.json();
+    if (!res.ok) throw new Error(reply.error);
+    state = { ...state, layoutFix: reply };
+    await loadLedAreas();
+    if (action === "apply") sendPosGuide({ ...state.posGuide, done: false, answers: {}, step: 0, active: false });
+    renderState();
+  } catch (e) {
+    showError(tr("Nicht gespeichert: {a}", { a: e.message }));
+  }
+}
+
+function renderPosGuide() {
+  const g = state.posGuide;
+  const fix = state.layoutFix ?? {};
+  const areas = lpAreas();
+  if (!g) return;
+  // layout status and the way back
+  const when = fix.savedAt ? new Date(fix.savedAt).toLocaleString(I18N.locale, { dateStyle: "short", timeStyle: "short" }) : "";
+  $("lg-layout").innerHTML = fix.corrected
+    ? tr("LED-Layout: <b>korrigiert</b> ({a}). Das Original ist gespeichert.", { a: when })
+    : tr("LED-Layout: <b>wie in Hyperion eingestellt</b> (keine Korrektur aktiv).");
+  const layoutActions = [];
+  if (fix.hasPrevious) layoutActions.push(`<button type="button" data-lg-layout="undo">${tr("Letzte Korrektur zurücknehmen")}</button>`);
+  if (fix.corrected) layoutActions.push(`<button type="button" data-lg-layout="restore">${tr("Original-Layout wiederherstellen")}</button>`);
+  const lkey = layoutActions.join("") + hyperionConnected;
+  if ($("lg-layout-actions").dataset.key !== lkey) {
+    $("lg-layout-actions").dataset.key = lkey;
+    $("lg-layout-actions").innerHTML = layoutActions.join("");
+    $("lg-layout-actions").querySelectorAll("[data-lg-layout]").forEach((b) => {
+      b.disabled = !hyperionConnected;
+      b.addEventListener("click", () => lgLayoutAction(b.dataset.lgLayout));
+    });
+  }
+
+  const running = g.active && g.step < g.points.length;
+  $("lg-run").hidden = !running;
+  $("lg-idle").hidden = running || g.done;
+  $("lg-result").hidden = running || !g.done;
+  $("lg-start").innerHTML = `${ICON.play}<span>${fix.corrected ? tr("Kontrolllauf starten") : tr("Test starten")}</span>`;
+  $("lg-start").disabled = !areas;
+  $("lg-resume").hidden = running || g.done || !g.points.length || g.step === 0;
+
+  const warn = posWarnings(running);
+  if (!hyperionConnected && g.done) warn.push(tr("Zum Anwenden der Korrektur zuerst unten bei Backup „Mit Hyperion verbinden“."));
+  $("lg-warn").hidden = !warn.length;
+  $("lg-warn").textContent = warn.join(" ");
+
+  if (running && areas) {
+    const i = g.points[g.step];
+    const run = lgRun(areas, i);
+    $("lg-progress").innerHTML = tr("{r} · Stelle <b>{a}</b> von {b} · LED <b>{i}</b>", { r: g.round === "control" ? tr("Kontrolllauf") : tr("Messung"), a: g.step + 1, b: g.points.length, i }) +
+      (run ? `<div>${tr("Strang {a} (LED {b}–{c}, {d})", { a: tr(EDGE_NAMES[run.edge]), b: run.start, c: run.end, d: segmentDirection(areas, run) })}</div>` : "");
+    $("lg-map").innerHTML = lpMapSvg(areas, [i], state.posTest.color);
+    $("lg-question").textContent = run?.horizontal
+      ? tr("Wo leuchtet die LED im Vergleich zur Markierung? Zähl die Striche am Lineal: links oder rechts davon?")
+      : tr("Wo leuchtet die LED im Vergleich zur Markierung? Zähl die Striche am Lineal: darüber oder darunter?");
+    if (run) lgRenderAnswers(run, g.answers[i]);
+    $("lg-back").disabled = g.step === 0;
+  }
+
+  if (!running && g.done && areas) {
+    const r = lgResultHtml(areas, g);
+    $("lg-summary").innerHTML = r.summary;
+    const key = JSON.stringify([g.answers, I18N.lang, areas.length]);
+    if ($("lg-runs").dataset.key !== key) { $("lg-runs").dataset.key = key; $("lg-runs").innerHTML = r.cards; }
+    const actions = [];
+    if (r.needsFix) actions.push(`<button type="button" class="primary" data-lg-act="apply">${g.round === "control" ? tr("Restabweichung zusätzlich korrigieren") : tr("Korrektur anwenden")}</button>`);
+    actions.push(`<button type="button" data-lg-act="again">${tr("Messung wiederholen")}</button>`);
+    const akey = actions.join("") + hyperionConnected;
+    if ($("lg-result-actions").dataset.key !== akey) {
+      $("lg-result-actions").dataset.key = akey;
+      $("lg-result-actions").innerHTML = actions.join("");
+      $("lg-result-actions").querySelectorAll("[data-lg-act]").forEach((b) => {
+        if (b.dataset.lgAct === "apply") b.disabled = !hyperionConnected;
+        b.addEventListener("click", () => (b.dataset.lgAct === "apply" ? lgLayoutAction("apply") : lgStart(state.layoutFix?.corrected ? "control" : "measure")));
+      });
+    }
+  }
+}
 
 // ---------- Hyperion fractional LED mean (color.fractionalMean) ----------
 
@@ -3243,6 +3518,7 @@ async function loadLedAreas() {
     ledAreas = await (await fetch("/api/hyperion/leds")).json();
     renderDebug();
     renderDepthConfig();
+    if (state) { renderPosTest(); renderPosGuide(); }
   } catch { /* the preview then shows the status line only */ }
 }
 
@@ -3268,6 +3544,8 @@ async function init() {
     const msg = JSON.parse(ev.data);
     if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
     if (pendingSends > 0) return; // do not overwrite a slider that is being sent
+    // a layout correction was written: read the LED areas again
+    if (msg.layoutFix?.stamp && state?.layoutFix && msg.layoutFix.stamp !== state.layoutFix.stamp) loadLedAreas();
     state = msg;
     renderState();
     renderDebug();
