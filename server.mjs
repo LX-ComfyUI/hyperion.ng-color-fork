@@ -387,7 +387,7 @@ async function hyperionStatus() {
 // --- Live monitor: one persistent JSON-API connection for the fork's "forkdebug" state and the grabber image ---
 
 const DEBUG_POLL_MS = 250;
-const PREVIEW_INTERVAL_MS = 125; // about 8 frames per second to the phones
+const PREVIEW_INTERVAL_MS = 50; // up to 20 frames per second, as fast as Hyperion sends them to the WebUI
 const previewClients = new Set();
 let monitor = null; // { sock, call, imageStreaming }
 let latestFrame = null;

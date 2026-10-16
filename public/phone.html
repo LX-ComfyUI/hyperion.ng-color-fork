@@ -325,9 +325,9 @@
   .tb-menu span { display: block; width: 20px; height: 2px; border-radius: 1px; background: var(--text); }
   .tb-home { display: block; flex: 0 1 auto; min-width: 96px; }
   .tb-logo { display: block; height: auto; width: 150px; max-width: 100%; }
-  @media (max-width: 767px) { .tb-logo { width: 116px; } }
+  @media (max-width: 767.98px) { .tb-logo { width: 116px; } }
   .tb-title { font-size: 17px; white-space: nowrap; color: var(--text); }
-  @media (max-width: 767px) { .tb-title { display: none; } }
+  @media (max-width: 767.98px) { .tb-title { display: none; } }
   @media (min-width: 768px) { main > header { display: none !important; } }
   .tb-drop { position: relative; }
   .tb-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 70; min-width: 220px; padding: 6px 0; border-radius: 4px;
@@ -335,7 +335,7 @@
   .tb-pop button { display: block; width: 100%; text-align: left; border: none; border-radius: 0; background: none; padding: 9px 16px; font-size: 14px; color: var(--text); }
   .tb-pop button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
   .tb-pop hr { border: none; border-top: 1px solid var(--btn-line); margin: 6px 0; }
-  @media (max-width: 767px) { .tb-pop { position: fixed; top: calc(var(--bar-h) + 4px); right: 8px; } }
+  @media (max-width: 767.98px) { .tb-pop { position: fixed; top: calc(var(--bar-h) + 4px); right: 8px; } }
   .logo-dark { display: none; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
   :root[data-theme="dark"] .logo-dark { display: block; }
@@ -346,11 +346,10 @@
   .tb-icon:hover { background: color-mix(in srgb, var(--text) 10%, transparent); }
   .tb-icon[aria-pressed="true"] { color: var(--accent); }
   .tb-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  /* name of an icon on mouse hover, right aligned below it like in the WebUI */
-  @media (hover: hover) {
-    .tb-icon[data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 2px); right: 0; padding: 4px 8px; border-radius: 4px;
-      background: rgba(30, 30, 34, .92); color: #fff; font-size: 12px; font-weight: normal; white-space: nowrap; pointer-events: none; z-index: 60; }
-  }
+  /* name of an icon on mouse hover, next to the mouse pointer like in the WebUI (script below) */
+  #hover-tip { position: fixed; z-index: 70; max-width: calc(100vw - 16px); padding: 4px 8px; border-radius: 4px; background: rgba(30, 30, 34, .92);
+               color: #fff; font-size: 12px; font-weight: normal; line-height: 1.3; white-space: nowrap; pointer-events: none; }
+  #hover-tip[hidden] { display: none; }
 
   #side { display: flex; flex-direction: column; position: fixed; top: var(--bar-h); bottom: 0; left: 0; z-index: 44; width: var(--side-w);
           box-sizing: border-box; overflow-y: auto; background: var(--bg); padding: 0; gap: 0; }
@@ -367,7 +366,7 @@
     :root.side-collapsed #side { display: none; }
     :root.side-collapsed main { margin-left: 0; border-left: none; }
   }
-  @media (max-width: 767px) {
+  @media (max-width: 767.98px) {
     #side { transform: translateX(-100%); transition: transform .25s; width: 240px; box-shadow: 0 3px 9px rgba(0, 0, 0, .5); border-right: 1px solid var(--bar-line); }
     :root.side-open #side { transform: none; }
     main { padding: 12px; }
@@ -1086,6 +1085,44 @@
     if (root.classList.contains("side-open") && !side.contains(ev.target) && !ev.target.closest("#tb-menu")) setDrawer(false);
   });
   wide.addEventListener("change", () => setDrawer(false));
+
+  // name of an icon next to the mouse pointer; flips to the left/top at the window edge so it is
+  // always fully readable (mouse only, touch taps open the icon directly)
+  {
+    const tip = document.createElement("div");
+    tip.id = "hover-tip";
+    tip.hidden = true;
+    document.body.appendChild(tip);
+    let target = null;
+    const hide = () => { target = null; tip.hidden = true; };
+    const place = (x, y) => {
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      let left = x + 14, top = y + 20;
+      if (left + w > innerWidth - 8) left = x - w - 10;
+      if (top + h > innerHeight - 8) top = y - h - 10;
+      tip.style.left = Math.max(8, left) + "px";
+      tip.style.top = Math.max(8, top) + "px";
+    };
+    document.addEventListener("pointerover", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      const el = ev.target.closest?.("[data-tip]");
+      if (!el || el === target) return;
+      target = el;
+      tip.textContent = el.dataset.tip;
+      tip.hidden = false;
+      place(ev.clientX, ev.clientY);
+    });
+    document.addEventListener("pointermove", (ev) => {
+      if (!target) return;
+      if (!target.contains(ev.target)) return hide();
+      tip.textContent = target.dataset.tip;
+      place(ev.clientX, ev.clientY);
+    });
+    document.addEventListener("pointerout", (ev) => { if (target && !target.contains(ev.relatedTarget)) hide(); });
+    document.addEventListener("pointerdown", hide, true);
+    addEventListener("scroll", hide, true);
+    addEventListener("blur", hide);
+  }
 
   // bar icons
   const SVG = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
