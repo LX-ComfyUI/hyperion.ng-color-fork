@@ -95,6 +95,8 @@
   .seg.full { display: flex; }
   .seg.full button { flex: 1; padding: 9px 4px; font-size: 14px; }
   .seg.small button { padding: 4px 9px; font-size: 12px; }
+  /* standard value of a preset row */
+  .seg button.std { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; font-weight: 700; }
 
   /* sliders: thick track and big thumb for touch */
   input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; margin: 0; height: 40px; width: 100%; accent-color: var(--accent); }
@@ -142,6 +144,10 @@
      whatever scrolls underneath it and would otherwise hide/steal taps from the rightmost icon */
   #crow-presets, #crow-custom, #gx-colors { box-sizing: border-box; }
   .hy-col { background: var(--inset); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
+  /* settings in Hyperion: after the colors a line, then the groups two side by side, a line, the gray curve */
+  .hy-sep { border: none; border-top: 1px solid var(--line); margin: 16px 0 4px; }
+  .hy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 20px; align-items: start; }
+  .hy-block { min-width: 0; }
   .rgbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
   .rgbrow .rgbname { font-size: 14px; min-width: 64px; }
   .rgbrow.flash { animation: rgbflash 1.2s ease-out; border-radius: 8px; }
@@ -248,6 +254,32 @@
   .lp-jumps button { padding: 5px 9px; font-size: 12px; border-radius: 8px; }
   .lp-jumps button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   .lp-map { margin-top: 12px; }
+  /* heading of a group of Hyperion settings with its reset button */
+  .hy-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .hy-reset { width: 32px; height: 32px; flex: none; }
+  .hy-reset svg { width: 17px; height: 17px; }
+  .card-reset { display: flex; justify-content: flex-end; margin-top: 8px; }
+  .card-reset button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 13px; }
+  .card-reset button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  input::placeholder { color: var(--muted); opacity: .75; }
+  /* saved settings of a test (presets) */
+  .tp { margin: 10px 0 4px; padding: 8px 10px; border-radius: 8px; background: var(--bg); font-size: 13px; }
+  .tp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .tp-head .tp-title { font-weight: 600; margin-right: auto; }
+  .tp button { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+  .tp-favs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tp-favs button[aria-pressed="true"], .tp-name[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .tp-form { display: flex; gap: 6px; margin-top: 8px; }
+  .tp-form input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 6px 8px; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; }
+  .tp-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+  .tp-list li { display: flex; align-items: center; gap: 2px; }
+  .tp-list .tp-name { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tp-list .tp-name small { color: inherit; opacity: .7; margin-left: 6px; }
+  .tp .ibtn { width: 34px; height: 34px; flex: none; }
+  .tp .ibtn svg { width: 18px; height: 18px; }
+  .tp .ibtn.fav { color: #f5b301; }
+  .tp .ibtn.fav svg { fill: currentColor; }
+  .tp-empty { color: var(--muted); margin-top: 6px; }
   /* guided position test */
   .lg-q { margin: 12px 0 6px; font-size: 14px; }
   .lg-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
@@ -504,32 +536,41 @@
           <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort.</p>
           <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
 
-          <h4>Farben</h4>
+          <h4 class="hy-h" data-hy-group="colors"><span>Farben</span></h4>
           <div id="hy-rgb"></div>
 
-          <h4>Helligkeit und Sättigung</h4>
-          <div class="srow"><label for="hy-brightness">Helligkeit <span class="val" id="hy-brightness_v"></span></label><input type="range" id="hy-brightness" data-cfield="brightness" data-slider min="0" max="100" step="1"></div>
-          <div class="srow"><label for="hy-saturationGain">Sättigungsverstärkung <span class="val" id="hy-saturationGain_v"></span></label><input type="range" id="hy-saturationGain" data-cfield="saturationGain" data-slider min="0" max="10" step="0.1"></div>
-          <div class="srow"><label for="hy-backlightThreshold">Hintergrundbeleuchtung ab <span class="val" id="hy-backlightThreshold_v"></span></label><input type="range" id="hy-backlightThreshold" data-cfield="backlightThreshold" data-slider min="0" max="100" step="1"></div>
-          <label class="check"><input type="checkbox" data-cfield="backlightColored"><span>Farbige Hintergrundbeleuchtung</span></label>
+          <hr class="hy-sep">
+          <div class="hy-grid">
+          <div class="hy-block">
+            <h4 class="hy-h" data-hy-group="light"><span>Helligkeit und Sättigung</span></h4>
+            <div class="srow"><label for="hy-brightness">Helligkeit <span class="val" id="hy-brightness_v"></span></label><input type="range" id="hy-brightness" data-cfield="brightness" data-slider min="0" max="100" step="1"></div>
+            <div class="srow"><label for="hy-saturationGain">Sättigungsverstärkung <span class="val" id="hy-saturationGain_v"></span></label><input type="range" id="hy-saturationGain" data-cfield="saturationGain" data-slider min="0" max="10" step="0.1"></div>
+            <div class="srow"><label for="hy-backlightThreshold">Hintergrundbeleuchtung ab <span class="val" id="hy-backlightThreshold_v"></span></label><input type="range" id="hy-backlightThreshold" data-cfield="backlightThreshold" data-slider min="0" max="100" step="1"></div>
+            <label class="check"><input type="checkbox" data-cfield="backlightColored"><span>Farbige Hintergrundbeleuchtung</span></label>
+          </div>
+          <div class="hy-block">
+            <h4 class="hy-h" data-hy-group="gamma"><span>Gamma und Farbtemperatur</span></h4>
+            <div class="frow"><label>Gamma Rot</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaRed" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
+            <div class="frow"><label>Gamma Grün</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaGreen" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
+            <div class="frow"><label>Gamma Blau</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaBlue" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
+            <div class="frow"><label>Farbtemperatur (K)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="temperature" min="1000" max="40000" step="100" inputmode="numeric"></span></div>
+          </div>
+          <div class="hy-block">
+            <h4 class="hy-h" data-hy-group="edge"><span>Kantenverstärkung (Fork-Erweiterung)</span></h4>
+            <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="edgeTransitionBoost.enabled"><span>Aktiviert</span></label>
+            <div class="frow"><label>Übergangsbreite (LEDs, 1–3)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.ledWidth" min="1" max="3" step="1" inputmode="numeric"></span></div>
+            <div class="frow"><label>Kanten-Empfindlichkeit (5–255)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.edgeSensitivity" min="5" max="255" step="1" inputmode="numeric"></span></div>
+            <div class="frow"><label>Verstärkungsfaktor (0–2)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.boostStrength" min="0" max="2" step="0.05" inputmode="decimal"></span></div>
+          </div>
+          <div class="hy-block">
+            <h4 class="hy-h" data-hy-group="axis"><span>Grauachsen-Korrektur (Fork-Erweiterung)</span></h4>
+            <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayAxisTrim.enabled"><span>Aktiviert</span></label>
+            <div id="hy-stops"></div>
+          </div>
+          </div>
+          <hr class="hy-sep">
 
-          <h4>Gamma und Farbtemperatur</h4>
-          <div class="frow"><label>Gamma Rot</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaRed" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
-          <div class="frow"><label>Gamma Grün</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaGreen" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
-          <div class="frow"><label>Gamma Blau</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaBlue" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
-          <div class="frow"><label>Farbtemperatur (K)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="temperature" min="1000" max="40000" step="100" inputmode="numeric"></span></div>
-
-          <h4>Kantenverstärkung (Fork-Erweiterung)</h4>
-          <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="edgeTransitionBoost.enabled"><span>Aktiviert</span></label>
-          <div class="frow"><label>Übergangsbreite (LEDs, 1–3)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.ledWidth" min="1" max="3" step="1" inputmode="numeric"></span></div>
-          <div class="frow"><label>Kanten-Empfindlichkeit (5–255)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.edgeSensitivity" min="5" max="255" step="1" inputmode="numeric"></span></div>
-          <div class="frow"><label>Verstärkungsfaktor (0–2)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.boostStrength" min="0" max="2" step="0.05" inputmode="decimal"></span></div>
-
-          <h4>Grauachsen-Korrektur (Fork-Erweiterung)</h4>
-          <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayAxisTrim.enabled"><span>Aktiviert</span></label>
-          <div id="hy-stops"></div>
-
-          <h4>Graukurve (Fork-Erweiterung)</h4>
+          <h4 class="hy-h" data-hy-group="curve"><span>Graukurve (Fork-Erweiterung)</span></h4>
           <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. Ein Punkt im Graphen (oder „Am TV zeigen“) legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
           <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Aktiviert</span></label>
           <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
@@ -569,6 +610,7 @@
   <section class="card" id="card-bars">
     <h2>Schwarze Balken Test</h2>
     <p class="help">Simuliert Balken wie bei Kinofilmen. Damit testest du die Schwarzbalken-Erkennung von Hyperion: Die LEDs am Rand sollten den Balken ignorieren und weiter die Bildfarbe zeigen. Werte in Prozent der Bildhöhe bzw.&nbsp;‑breite.</p>
+    <div class="tp" data-test="bars"></div>
 
     <div id="bars-pairs"></div>
 
@@ -608,6 +650,7 @@
       <div><label class="field" for="bb-inconsistent">Inkonsistente Bilder</label><input type="number" id="bb-inconsistent" min="0" inputmode="numeric"></div>
       <div><label class="field" for="bb-blur">Unscharfe Pixel</label><input type="number" id="bb-blur" min="0" inputmode="numeric"></div>
     </div>
+    <div class="card-reset"><button type="button" data-card-reset="bb">Auf Standard zurücksetzen</button></div>
     <p class="note" id="bb-cfg-note"></p>
 
     <div class="sub">
@@ -628,6 +671,7 @@
   <section class="card" id="card-gs">
     <h2>Graues Standbild Test</h2>
     <p class="help">Manche Player blenden ein pausiertes Video nach kurzer Zeit zu einem grauen, dunkleren Standbild ab. Hier stellst du das auf dem TV nach: ein Grauton, auf Wunsch mit Helligkeitsabfall.</p>
+    <div class="tp" data-test="grayTest"></div>
 
     <div style="margin-top:12px">
       <label class="field" for="gt-tone">Grauton</label>
@@ -676,6 +720,7 @@
       <button data-gs-mode="freeze">Farben einfrieren</button>
       <button data-gs-mode="off">LEDs aus</button>
     </div>
+    <div class="card-reset"><button type="button" data-card-reset="gsd">Auf Standard zurücksetzen</button></div>
     <p class="note" id="gs-cfg-note"></p>
 
     <div class="sub">
@@ -696,6 +741,7 @@
   <section class="card" id="card-dt">
     <h2>Erfassungstiefe Test</h2>
     <p class="help">Zeigt, wie tief die LEDs ins Bild schauen. <b>Rahmen:</b> Der Bildrand hat die Außenfarbe, innen liegt die Innenfarbe. Ist der Rand mindestens so tief wie die Erfassungstiefe, zeigen die LEDs die reine Außenfarbe. Ist er schmaler, mischen sie die Innenfarbe dazu. <b>Wandernde Linie:</b> Eine Linie in der Außenfarbe läuft vom Rand nach innen. Die LEDs zeigen sie nur, solange sie im erfassten Bereich liegt.</p>
+    <div class="tp" data-test="depthTest"></div>
 
     <label class="field">Muster</label>
     <div class="seg full" role="group" aria-label="Muster" id="dt-pattern">
@@ -726,6 +772,7 @@
         </div>
         <input type="range" id="dt-lr" min="0" max="50" step="0.5">
       </div>
+      <p class="note" style="margin-top:4px">Unterstrichen: Standardwert.</p>
       <button type="button" class="wide" id="dt-match">Rand wie Erfassungstiefe</button>
       <div class="status" id="dt-expect"></div>
     </div>
@@ -768,7 +815,9 @@
       </div>
       <input type="range" id="dp-lr" min="0" max="50" step="0.5">
     </div>
+    <p class="note" style="margin-top:4px">Unterstrichen: Standardwert.</p>
     <p class="warn" id="dp-skip-warn" hidden></p>
+    <div class="card-reset"><button type="button" data-card-reset="dtd">Auf Standard zurücksetzen</button></div>
     <p class="note" id="dp-cfg-note"></p>
 
     <div class="sub">
@@ -789,6 +838,7 @@
   <section class="card" id="card-ft">
     <h2>Nachkommastellen Test</h2>
     <p class="help">Zeigt dunkle Töne <b>zwischen</b> zwei ganzen Stufen, z. B. 25,5. Der TV kann nur ganze Stufen, deshalb mischt ein feines Punktraster 25 und 26. Jede LED mittelt über ihren Bereich und sieht so die Kommazahl. <b>Mit Nachkommastellen</b> folgen die LEDs diesen Zwischenstufen. <b>Ohne</b> springen sie nur in ganzen Stufen, und im Dunkeln ist eine Stufe 7 bis 30 % der LED-Helligkeit.</p>
+    <div class="tp" data-test="fracTest"></div>
 
     <label class="field">Muster</label>
     <div class="seg full" role="group" aria-label="Muster" id="ft-pattern">
@@ -826,6 +876,8 @@
       <div class="row"><input type="range" id="ft-every" min="0.5" max="10" step="0.5"><span class="val" id="ft-every_v"></span></div>
     </div>
 
+    <label class="check"><input type="checkbox" id="ft-fm-enabled"><span>Mittelwert mit Nachkommastellen (Hyperion)<small>Zum Vergleichen während des Tests an- und ausschalten. Wirkt sofort.</small></span></label>
+    <p class="note" id="ft-fm-note"></p>
     <div class="status" id="ft-now"></div>
     <p class="note">Der Grabber sieht die Töne nicht ganz genau (Rauschen, angehobenes Schwarz). Achte deshalb auf den Unterschied zwischen Nachkommastellen an und aus, nicht auf den genauen Wert. Am besten im abgedunkelten Raum.</p>
 
@@ -841,6 +893,7 @@
     <p class="help">Jede LED bekommt den Durchschnitt der Bildpunkte ihres Bereichs. Mit Haken geht dieser Wert samt Nachkommastellen in die 16-Bit-Ausgabe (nur bei LEDs mit 16 Bit pro Farbe, z. B. HD108). Ohne Haken wird er auf eine ganze Zahl abgeschnitten. Die Einstellung wird direkt in Hyperion gespeichert und wirkt sofort. Zum Vergleichen beim Test oben einfach an- und ausschalten.</p>
     <div class="status" id="fm-status">Warte auf Daten von Hyperion …</div>
     <label class="check"><input type="checkbox" id="fm-enabled"><span>Mittelwert mit Nachkommastellen</span></label>
+    <div class="card-reset"><button type="button" data-card-reset="fmd">Auf Standard zurücksetzen</button></div>
     <p class="note" id="fm-cfg-note"></p>
   </section>
 
@@ -848,6 +901,7 @@
   <section class="card" id="card-lp">
     <h2>LED-Position Test</h2>
     <p class="help">Der TV zeigt eine helle Markierung genau im Bildbereich einer LED, so wie Hyperion ihn mit der eingestellten Erfassungstiefe abtastet. Der Grabber sieht die Markierung, und Hyperion lässt genau diese LED leuchten. <b>Sitzt die leuchtende LED direkt neben der Markierung, passt die Zuordnung.</b> Leuchtet sie ein Stück daneben, ist das Layout an dieser Stelle verschoben. <b>Lauflicht:</b> Die Markierung wandert um den ganzen Rahmen.</p>
+    <div class="tp" data-test="posTest"></div>
 
     <label class="field">Muster</label>
     <div class="seg full" role="group" aria-label="Muster" id="lp-mode">
@@ -1374,6 +1428,7 @@ function renderState() {
   renderFracTest();
   renderPosTest();
   renderPosGuide();
+  renderTestPresets();
   renderOverlayChecks();
   renderGrabberRun();
   renderGrabberCorrection();
@@ -1899,6 +1954,7 @@ function renderColorEditor() {
   updateSendButtons();
   renderDepthConfig();
   renderFracConfig();
+  applyPlaceholders();
 
   // a missing config only means "not loaded yet" here, loadColorConfig reports real read errors.
   // A status note that no longer applies is cleared, save results stay until the next save.
@@ -1917,6 +1973,7 @@ async function loadColorConfig() {
     if (!res.ok) throw new Error((await res.json()).error);
     colorConfig = await res.json();
     deviceBlack = await fetch("/api/hyperion/blackthreshold").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    loadHyDefaults();
   } catch (e) {
     colorConfig = null;
     $("hy-note").textContent = "Farbwerte nicht lesbar: " + e.message;
@@ -1945,7 +2002,8 @@ async function saveColor(field, value, stop) {
 
 async function saveRgbRow(field) {
   const inputs = [...document.querySelectorAll(`#hy-rgb input[data-rgb="${field}"]`)];
-  const values = inputs.map(i => i.value.trim());
+  // an emptied channel takes the standard value shown as placeholder
+  const values = inputs.map((i, ch) => i.value.trim() || String(hyDefault(field)?.[ch] ?? ""));
   const rgb = values.map(Number);
   if (values.some(v => v === "") || rgb.some((c) => !Number.isInteger(c) || c < 0 || c > 255)) {
     $("hy-note").textContent = "RGB braucht drei ganze Zahlen von 0 bis 255.";
@@ -1966,11 +2024,14 @@ $("hy-col").addEventListener("change", (ev) => {
   const el = ev.target;
   if (!el.dataset.cfield) return;
   if (el.type === "checkbox") return saveColor(el.dataset.cfield, el.checked);
-  const v = Number(el.value);
-  if (el.value === "" || !Number.isFinite(v)) {
+  // an emptied field takes the standard value shown as placeholder
+  const empty = el.value.trim() === "";
+  const v = empty ? hyDefault(el.dataset.cfield) : Number(el.value);
+  if (typeof v !== "number" || !Number.isFinite(v)) {
     $("hy-note").textContent = "Bitte eine Zahl eingeben.";
     return renderColorEditor();
   }
+  if (empty) el.value = v;
   saveColor(el.dataset.cfield, v, el.dataset.stop === undefined ? undefined : Number(el.dataset.stop));
 });
 $("hy-entry").addEventListener("change", (ev) => { colorIndex = Number(ev.target.value); renderColorEditor(); });
@@ -2097,20 +2158,25 @@ $("gt-restart").addEventListener("click", () => send({ grayRestart: true }));
 
 // ---------- capture depth test pattern ----------
 
-const DT_PRESETS = { tb: [3, 5, 8], lr: [4, 8, 12] };          // frame depth of the test pattern
-const DP_PRESETS = { tb: [0, 3, 5, 8], lr: [0, 4, 8, 12] };     // Hyperion's capture depth, 0 = layout
+const DT_PRESETS = { tb: [1, 2, 3, 5, 8], lr: [1, 2, 3, 4, 8, 10] };          // frame depth of the test pattern
+const DP_PRESETS = { tb: [0, 1, 2, 3, 5, 8], lr: [0, 1, 2, 3, 4, 8, 10] };     // Hyperion's capture depth, 0 = layout
 let clockOffset = 0;           // Pi clock minus this device's clock (the sweep runs on the Pi's clock)
 let dtPosTimer = null;
 
 const pct = (v) => `${fmt(v, Number.isInteger(v) ? 0 : 1)} %`;
 
-function buildPresets(id, values, dataKey, zeroLabel) {
-  $(id).innerHTML = values.map(v => `<button type="button" data-${dataKey}="${v}">${v === 0 && zeroLabel ? zeroLabel : pct(v)}</button>`).join("");
+// the standard value is marked (underlined, "Standard" in its name)
+function buildPresets(id, values, dataKey, zeroLabel, standard) {
+  $(id).innerHTML = values.map(v => {
+    const label = v === 0 && zeroLabel ? zeroLabel : pct(v);
+    const std = v === standard ? ` class="std" title="${tr("Standard")}" aria-label="${label} (${tr("Standard")})"` : "";
+    return `<button type="button" data-${dataKey}="${v}"${std}>${label}</button>`;
+  }).join("");
 }
-buildPresets("dt-tb-presets", DT_PRESETS.tb, "dt-tb", null);
-buildPresets("dt-lr-presets", DT_PRESETS.lr, "dt-lr", null);
-buildPresets("dp-tb-presets", DP_PRESETS.tb, "dp-tb", "Layout");
-buildPresets("dp-lr-presets", DP_PRESETS.lr, "dp-lr", "Layout");
+buildPresets("dt-tb-presets", DT_PRESETS.tb, "dt-tb", null, 5);
+buildPresets("dt-lr-presets", DT_PRESETS.lr, "dt-lr", null, 8);
+buildPresets("dp-tb-presets", DP_PRESETS.tb, "dp-tb", "Layout", 0);
+buildPresets("dp-lr-presets", DP_PRESETS.lr, "dp-lr", "Layout", 0);
 
 // the color lists offer the test colors (with their edits) and the own colors
 function fillColorSelect(sel, value) {
@@ -2532,6 +2598,129 @@ $("lp-speed").addEventListener("input", (ev) => { $("lp-speed_v").textContent = 
 $("lp-speed").addEventListener("change", (ev) => sendPosTest({ speed: Number(ev.target.value) }));
 $("lp-color").addEventListener("change", (ev) => sendPosTest({ color: ev.target.value }));
 
+// ---------- saved settings per test (presets) ----------
+// Each test card has a box: "Standard" loads the test's standard settings, "Speichern" stores the
+// current settings under a name. Saved ones load with a tap, a star makes them favorites (shown as
+// quick buttons and first in the list), and they can be renamed, overwritten with the current
+// settings or deleted. They are kept on the Hyperion server, so every device sees them.
+
+const TP_ICON = {
+  star: '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+};
+const TP_SEND = {
+  bars: (s) => setBars(s),
+  grayTest: (s) => sendGrayTest(s),
+  depthTest: (s) => sendDepthTest(s),
+  fracTest: (s) => sendFracTest(s),
+  posTest: (s) => sendPosTest(s),
+};
+let testDefaults = null;
+const tpOpen = new Set();      // tests whose list is unfolded
+const tpEditing = {};          // test -> preset id being renamed, or "new" for the save form
+
+function tpCurrent(test) {
+  const src = state?.[test] ?? {};
+  if (test === "bars") return { ...src };
+  const { active, startedAt, ...rest } = src;
+  return rest;
+}
+function tpDefaults(test) {
+  if (!testDefaults) return null;
+  const src = testDefaults[test] ?? {};
+  if (test === "bars") return { ...src };
+  const { active, startedAt, ...rest } = src;
+  return rest;
+}
+const tpSame = (a, b) => !!a && !!b && Object.keys(b).every((k) => JSON.stringify(a[k]) === JSON.stringify(b[k]));
+const tpEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+async function tpOp(op) {
+  const body = await send({ presetOp: op });
+  if (body) { state = body; renderState(); renderTestPresets(true); }
+  return body;
+}
+
+function renderTestPresets(force = false) {
+  document.querySelectorAll(".tp[data-test]").forEach((box) => {
+    const test = box.dataset.test;
+    const list = [...(state.testPresets?.[test] ?? [])].sort((a, b) => (b.fav - a.fav) || a.name.localeCompare(b.name, I18N.locale));
+    const cur = tpCurrent(test);
+    const editing = tpEditing[test];
+    const open = tpOpen.has(test);
+    const key = JSON.stringify([list, cur, editing, open, !!testDefaults, I18N.lang]);
+    if (box.dataset.key === key) return;
+    // do not rebuild under a name being typed
+    if (!force && box.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
+    box.dataset.key = key;
+    const def = tpDefaults(test);
+    const favs = list.filter((p) => p.fav);
+    let html = `<div class="tp-head"><span class="tp-title">${tr("Gespeicherte Einstellungen")}</span>` +
+      `<button type="button" data-tp="default"${def && tpSame(cur, def) ? ' aria-pressed="true"' : ""}${def ? "" : " disabled"}>${tr("Standard")}</button>` +
+      `<button type="button" data-tp="new">${tr("Speichern …")}</button>` +
+      (list.length ? `<button type="button" data-tp="toggle" aria-expanded="${open}">${open ? tr("Liste zu") : tr("Alle ({a})", { a: list.length })}</button>` : "") +
+      `</div>`;
+    if (favs.length && !open) html += `<div class="tp-favs">${favs.map((p) => `<button type="button" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}">★ ${tpEsc(p.name)}</button>`).join("")}</div>`;
+    if (editing === "new") html += `<div class="tp-form"><input type="text" maxlength="60" placeholder="${tr("Name der Einstellungen")}" aria-label="${tr("Name der Einstellungen")}"><button type="button" class="primary" data-tp="save-new">${tr("Speichern")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></div>`;
+    if (open) {
+      html += `<ul class="tp-list">${list.map((p) => {
+        const star = `<button type="button" class="ibtn${p.fav ? " fav" : ""}" data-tp="fav" data-id="${p.id}" title="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-label="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-pressed="${p.fav}">${TP_ICON.star}</button>`;
+        if (editing === p.id) return `<li>${star}<span class="tp-form" style="flex:1;margin:0"><input type="text" maxlength="60" value="${tpEsc(p.name)}" aria-label="${tr("Neuer Name")}"><button type="button" class="primary" data-tp="save-name" data-id="${p.id}">${tr("OK")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></span></li>`;
+        const when = new Date(p.savedAt).toLocaleDateString(I18N.locale, { day: "2-digit", month: "2-digit" });
+        return `<li>${star}<button type="button" class="tp-name" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}" title="${tr("Laden")}">${tpEsc(p.name)}<small>${when}</small></button>` +
+          `<button type="button" class="ibtn" data-tp="rename" data-id="${p.id}" title="${tr("Umbenennen")}" aria-label="${tr("Umbenennen")}">${TP_ICON.pencil}</button>` +
+          `<button type="button" class="ibtn" data-tp="update" data-id="${p.id}" title="${tr("Mit den aktuellen Einstellungen überschreiben")}" aria-label="${tr("Mit den aktuellen Einstellungen überschreiben")}">${TP_ICON.save}</button>` +
+          `<button type="button" class="ibtn" data-tp="delete" data-id="${p.id}" title="${tr("Löschen")}" aria-label="${tr("Löschen")}">${ICON.trash}</button></li>`;
+      }).join("")}</ul>`;
+    }
+    box.innerHTML = html;
+    const input = box.querySelector("input");
+    if (input) {
+      input.focus();
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") box.querySelector('[data-tp="save-new"], [data-tp="save-name"]')?.click();
+        if (ev.key === "Escape") { delete tpEditing[test]; renderTestPresets(); }
+      });
+    }
+  });
+}
+
+document.addEventListener("click", async (ev) => {
+  const b = ev.target.closest(".tp [data-tp]");
+  if (!b) return;
+  const box = b.closest(".tp");
+  const test = box.dataset.test;
+  const preset = (state.testPresets?.[test] ?? []).find((p) => p.id === b.dataset.id);
+  const name = () => box.querySelector("input")?.value.trim() ?? "";
+  switch (b.dataset.tp) {
+    case "default": { const d = tpDefaults(test); if (d) TP_SEND[test](d); break; }
+    case "load": if (preset) TP_SEND[test](preset.settings); break;
+    case "new": tpEditing[test] = "new"; renderTestPresets(true); break;
+    case "cancel": delete tpEditing[test]; renderTestPresets(true); break;
+    case "toggle": if (tpOpen.has(test)) tpOpen.delete(test); else tpOpen.add(test); renderTestPresets(true); break;
+    case "save-new":
+      if (!name()) return box.querySelector("input")?.focus();
+      if (await tpOp({ op: "save", test, name: name(), settings: tpCurrent(test) })) delete tpEditing[test];
+      renderTestPresets(true);
+      break;
+    case "rename": tpEditing[test] = b.dataset.id; renderTestPresets(true); break;
+    case "save-name":
+      if (!name()) return box.querySelector("input")?.focus();
+      if (await tpOp({ op: "rename", test, id: b.dataset.id, name: name() })) delete tpEditing[test];
+      renderTestPresets(true);
+      break;
+    case "fav": tpOp({ op: "fav", test, id: b.dataset.id }); break;
+    case "update":
+      if (preset && confirm(tr("„{a}“ mit den aktuellen Einstellungen überschreiben?", { a: preset.name }))) tpOp({ op: "update", test, id: b.dataset.id, settings: tpCurrent(test) });
+      break;
+    case "delete":
+      if (preset && confirm(tr("„{a}“ löschen?", { a: preset.name }))) tpOp({ op: "delete", test, id: b.dataset.id });
+      break;
+  }
+});
+fetch("/api/testdefaults").then((r) => r.json()).then((d) => { testDefaults = d; if (state) renderTestPresets(); }).catch(() => {});
+
 // ---------- guided LED position test ----------
 // It steps the position test through 5 points per edge run. The answer is where the lit LED sits
 // compared with the marker, in the screen direction (left/right on top and bottom, up/down at the
@@ -2771,8 +2960,10 @@ const FM_STATUS_NOTE = /^(Lade|Braucht die neue|Zum Ändern zuerst|Loading|Needs
 function renderFracConfig() {
   const known = colorConfig && "fractionalMean" in colorConfig;
   const on = !!colorConfig?.fractionalMean;
-  $("fm-enabled").checked = on;
-  $("fm-enabled").disabled = !(hyperionConnected && known && colorConfig?.channelAdjustment?.length);
+  for (const id of ["fm-enabled", "ft-fm-enabled"]) {
+    $(id).checked = on;
+    $(id).disabled = !(hyperionConnected && known && colorConfig?.channelAdjustment?.length);
+  }
   const blockers = fracBlockers();
   $("fm-status").innerHTML = !colorConfig ? "Warte auf Daten von Hyperion …"
     : !known ? "Diese Hyperion-Version kennt den Mittelwert mit Nachkommastellen nicht."
@@ -2784,14 +2975,16 @@ function renderFracConfig() {
     : !known ? "Braucht die neue Hyperion-Version (Fork)."
     : !hyperionConnected ? "Zum Ändern zuerst unten bei Backup „Mit Hyperion verbinden“."
     : null;
-  if (problem) note.textContent = problem;
-  else if (FM_STATUS_NOTE.test(note.textContent)) note.textContent = "";
+  for (const n of [note, $("ft-fm-note")]) {
+    if (problem) n.textContent = problem;
+    else if (FM_STATUS_NOTE.test(n.textContent)) n.textContent = "";
+  }
   if (state?.fracTest) renderFracNow();
 }
 
-$("fm-enabled").addEventListener("change", async (ev) => {
+// the switch is in the Hyperion card and, for comparing during the test, in the test card
+const saveFractional = async (ev, note) => {
   const value = ev.target.checked;
-  const note = $("fm-cfg-note");
   note.textContent = "Speichere in Hyperion …";
   try {
     const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, field: "fractionalMean", value }) });
@@ -2805,6 +2998,103 @@ $("fm-enabled").addEventListener("change", async (ev) => {
     return;
   }
   renderColorEditor();
+};
+$("fm-enabled").addEventListener("change", (ev) => saveFractional(ev, $("fm-cfg-note")));
+$("ft-fm-enabled").addEventListener("change", (ev) => saveFractional(ev, $("ft-fm-note")));
+
+
+// ---------- standard values of Hyperion's settings ----------
+// From Hyperion's own schema: shown as placeholder in empty number fields (like in the WebUI), an
+// emptied field takes it, and the reset buttons write them (a group or card in one save).
+let hyDefaults = null;
+const HY_GROUP_FIELDS = {
+  colors: ["white", "red", "green", "blue", "cyan", "magenta", "yellow"],
+  light: ["brightness", "saturationGain", "backlightThreshold", "backlightColored"],
+  gamma: ["gammaRed", "gammaGreen", "gammaBlue", "temperature"],
+  edge: ["edgeTransitionBoost.enabled", "edgeTransitionBoost.ledWidth", "edgeTransitionBoost.edgeSensitivity", "edgeTransitionBoost.boostStrength"],
+  axis: ["grayAxisTrim.enabled", "grayAxisTrim.stops"],
+  curve: ["grayCurve.enabled", "grayCurve.saturationLimit", "grayCurve.points"],
+};
+const BB_RESET_KEYS = ["enable", "mode", "threshold", "unknownFrameCnt", "borderFrameCnt", "maxInconsistentCnt", "blurRemoveCnt"];
+const hyDefault = (field) => hyDefaults?.color?.[field];
+const fmtDefault = (v) => (typeof v === "number" ? v.toLocaleString(I18N.locale, { useGrouping: false, maximumFractionDigits: 4 }) : "");
+
+async function loadHyDefaults() {
+  if (hyDefaults || !hyperionConnected) return;
+  try {
+    const res = await fetch("/api/hyperion/defaults");
+    if (!res.ok) return;
+    hyDefaults = await res.json();
+  } catch { return; }
+  renderColorEditor();
+  renderBbConfig();
+}
+
+function applyPlaceholders() {
+  if (!hyDefaults) return;
+  document.querySelectorAll('#hy-col input[type="number"][data-cfield]').forEach((el) => {
+    const v = hyDefault(el.dataset.cfield);
+    el.placeholder = v === undefined ? "" : fmtDefault(v);
+  });
+  document.querySelectorAll("#hy-rgb input[data-rgb]").forEach((el) => {
+    const v = hyDefault(el.dataset.rgb)?.[Number(el.dataset.ch)];
+    el.placeholder = v === undefined ? "" : String(v);
+  });
+  for (const { id, key } of BB_NUMBERS) {
+    const v = hyDefaults.blackborder?.[key];
+    $(id).placeholder = v === undefined ? "" : String(v);
+  }
+  document.querySelectorAll(".hy-h[data-hy-group]").forEach((h) => {
+    if (h.querySelector(".hy-reset")) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ibtn hy-reset";
+    b.dataset.hyReset = h.dataset.hyGroup;
+    b.title = b.ariaLabel = tr("Auf Standard zurücksetzen");
+    b.innerHTML = ICON.reset;
+    h.appendChild(b);
+  });
+  document.querySelectorAll(".hy-reset").forEach((b) => { b.disabled = !hyperionConnected || !colorConfig; });
+  document.querySelectorAll("[data-card-reset]").forEach((b) => { b.disabled = !hyperionConnected; });
+}
+
+async function saveColorBatch(fields, note) {
+  const batch = fields.filter((f) => hyDefault(f) !== undefined).map((f) => ({ field: f, value: hyDefault(f) }));
+  if (!batch.length) return;
+  note.textContent = "Speichere in Hyperion …";
+  try {
+    const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, batch }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    colorConfig = body;
+    note.textContent = tr("Standardwerte gespeichert, wirken sofort auf die LEDs.");
+  } catch (e) {
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
+    await loadColorConfig();
+    return;
+  }
+  renderColorEditor();
+}
+
+document.addEventListener("click", (ev) => {
+  const g = ev.target.closest("[data-hy-reset]");
+  if (g) {
+    const name = g.closest(".hy-h")?.querySelector("span")?.textContent ?? "";
+    if (confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: name }))) saveColorBatch(HY_GROUP_FIELDS[g.dataset.hyReset], $("hy-note"));
+    return;
+  }
+  const c = ev.target.closest("[data-card-reset]");
+  if (!c || !hyDefaults) return;
+  const title = c.closest(".card")?.querySelector(".card-toggle .ttl, h2")?.textContent ?? "";
+  if (!confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: title }))) return;
+  const bb = hyDefaults.blackborder ?? {};
+  if (c.dataset.cardReset === "bb") saveBb(Object.fromEntries(BB_RESET_KEYS.filter((k) => k in bb).map((k) => [k, bb[k]])), tr("Standardwerte"));
+  if (c.dataset.cardReset === "gsd") {
+    const gs = Object.fromEntries(Object.entries(bb).filter(([k]) => k.startsWith("grayStillImageDetector.")).map(([k, v]) => [k.split(".")[1], v]));
+    saveBb({ grayStillImageDetector: gs }, tr("Standardwerte"));
+  }
+  if (c.dataset.cardReset === "dtd") saveColorBatch(["ledAreaDepth.topBottom", "ledAreaDepth.leftRight"], $("dp-cfg-note"));
+  if (c.dataset.cardReset === "fmd") saveColorBatch(["fractionalMean"], $("fm-cfg-note"));
 });
 
 // ---------- Hyperion settings: black-border detector and gray still detector ----------
@@ -2857,6 +3147,7 @@ function renderBbConfig() {
     else if (BB_STATUS_NOTE.test(el.textContent)) el.textContent = "";
   }
   renderGrayTest();
+  applyPlaceholders();
 }
 
 const BB_STATUS_NOTE = /^(Einstellungen nicht lesbar|Zum Ändern zuerst|Settings not readable|To change values)/;
@@ -2907,8 +3198,9 @@ $("bb-threshold").addEventListener("change", (ev) => saveBb({ threshold: Number(
 for (const { id, key } of BB_NUMBERS) {
   // an emptied field would arrive as 0, so only whole numbers are saved
   $(id).addEventListener("change", (ev) => {
-    const v = Number(ev.target.value);
-    if (ev.target.value.trim() === "" || !Number.isInteger(v) || v < 0) {
+    const empty = ev.target.value.trim() === "";
+    const v = empty ? hyDefaults?.blackborder?.[key] : Number(ev.target.value);
+    if (!Number.isInteger(v) || v < 0) {
       $("bb-cfg-note").textContent = "Bitte eine ganze Zahl ab 0 eingeben.";
       renderBbConfig();
       return;

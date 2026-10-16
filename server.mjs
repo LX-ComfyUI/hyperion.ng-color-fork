@@ -59,6 +59,8 @@ const DEFAULT_STATE = {
   posGuide: { active: false, round: "measure", points: [], step: 0, answers: {}, done: false },
   // own colors of the grabber test, measured one after the other
   grabberColors: [],
+  // saved settings per test (name, favorite star): { [test]: [{ id, name, fav, settings, savedAt }] }
+  testPresets: {},
   // language chosen last on a control page; the TV page follows it
   lang: "de",
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
@@ -86,6 +88,35 @@ const PRESETS = [
   { id: "black", color: "#000000", name: "Schwarz" },
 ];
 const PRESET_IDS = PRESETS.map((p) => p.id);
+
+// Tests whose settings can be saved as presets; the settings are the test's state without the run state
+const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest"];
+const MAX_TEST_PRESETS = 50;
+function presetSettings(test, settings) {
+  if (test === "bars") return sanitize({ bars: settings }).bars;
+  const { active, startedAt, ...rest } = sanitize({ [test]: { ...settings, active: false } })[test];
+  return rest;
+}
+function applyPresetOp(op, presets) {
+  const test = op?.test;
+  if (!PRESET_TESTS.includes(test)) throw new Error("Unbekannter Test");
+  const list = [...(presets[test] ?? [])];
+  const at = list.findIndex((p) => p.id === op.id);
+  const name = typeof op.name === "string" ? op.name.trim().slice(0, 60) : "";
+  if (op.op === "save") {
+    if (!name) throw new Error("Bitte einen Namen eingeben");
+    if (list.length >= MAX_TEST_PRESETS) throw new Error(`Maximal ${MAX_TEST_PRESETS} Vorlagen je Test`);
+    list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, fav: false, settings: op.settings ?? {}, savedAt: Date.now() });
+  } else {
+    if (at < 0) throw new Error("Vorlage nicht gefunden");
+    if (op.op === "delete") list.splice(at, 1);
+    else if (op.op === "fav") list[at] = { ...list[at], fav: !list[at].fav };
+    else if (op.op === "rename") { if (!name) throw new Error("Bitte einen Namen eingeben"); list[at] = { ...list[at], name }; }
+    else if (op.op === "update") list[at] = { ...list[at], settings: op.settings ?? {}, savedAt: Date.now() };
+    else throw new Error("Unbekannte Aktion");
+  }
+  return { ...presets, [test]: list };
+}
 
 let state = loadState();
 const clients = new Map(); // response -> role ("tv" | "phone")
@@ -182,6 +213,13 @@ function sanitize(input) {
     );
   }
   if (input.lang === "en" || input.lang === "de") out.lang = input.lang;
+  for (const test of PRESET_TESTS) {
+    const list = Array.isArray(input.testPresets?.[test]) ? input.testPresets[test] : [];
+    const clean = list.filter((p) => p && typeof p.id === "string" && typeof p.name === "string" && p.settings && typeof p.settings === "object")
+      .slice(0, MAX_TEST_PRESETS)
+      .map((p) => ({ id: p.id.slice(0, 40), name: p.name.trim().slice(0, 60) || "?", fav: p.fav === true, settings: presetSettings(test, p.settings), savedAt: num(p.savedAt, 0, Number.MAX_SAFE_INTEGER, 0) }));
+    if (clean.length) out.testPresets[test] = clean;
+  }
   if (Array.isArray(input.grabberColors)) {
     const colors = input.grabberColors.filter((c) => typeof c === "string" && HEX_COLOR.test(c)).map((c) => c.toLowerCase());
     out.grabberColors = [...new Set(colors)].slice(0, MAX_CUSTOM_COLORS);
@@ -807,6 +845,7 @@ const COLOR_FIELDS = {
   "grayCurve.point.gainGreen": ["num", 0, 2, 0.01],
   "grayCurve.point.gainBlue": ["num", 0, 2, 0.01],
   "grayCurve.points": ["points"],
+  "grayAxisTrim.stops": ["stops"],
   "edgeTransitionBoost.enabled": ["bool"],
   "edgeTransitionBoost.ledWidth": ["num", 1, 3, 1],
   "edgeTransitionBoost.edgeSensitivity": ["num", 5, 255, 1],
@@ -843,6 +882,9 @@ function mergeColor(current, patch) {
     if (!stop) throw new Error("Stufe nicht gefunden");
     target = stop;
     key = field.split(".")[2];
+  } else if (field === "grayAxisTrim.stops") {
+    target = entry.grayAxisTrim;
+    key = "stops";
   } else if (field === "grayAxisTrim.enabled") {
     target = entry.grayAxisTrim;
     key = "enabled";
@@ -864,6 +906,17 @@ function mergeColor(current, patch) {
     target[key] = rgb;
   } else if (kind === "bool") {
     target[key] = value === true;
+  } else if (kind === "stops") {
+    // reset of the gray axis correction: the stops as a whole
+    if (!Array.isArray(value) || value.length < 1 || value.length > 12) throw new Error("Die Grauachsen-Korrektur braucht 1 bis 12 Stufen");
+    const stops = value.map((p) => ({
+      saturationUpTo: num(p?.saturationUpTo, 0, 1, NaN, 0.01),
+      gainRed: num(p?.gainRed, 0, 4, NaN, 0.05),
+      gainGreen: num(p?.gainGreen, 0, 4, NaN, 0.05),
+      gainBlue: num(p?.gainBlue, 0, 4, NaN, 0.05),
+    }));
+    if (stops.some((p) => Object.values(p).some((v) => !Number.isFinite(v)))) throw new Error("Ungültige Stufe");
+    target[key] = stops;
   } else if (kind === "points") {
     // 1-12 points like in the graph, two points never share a brightness (Hyperion sorts them)
     if (!Array.isArray(value) || value.length < 1 || value.length > 12) throw new Error("Die Graukurve braucht 1 bis 12 Punkte");
@@ -882,8 +935,48 @@ function mergeColor(current, patch) {
   return next;
 }
 
+// patch.batch = several fields in one write (reset of a group to the standard values)
 function saveColor(patch) {
-  return exclusive(() => writeInstanceSetting("color", mergeColor(readInstanceSetting("color"), patch)));
+  return exclusive(() => {
+    const current = readInstanceSetting("color");
+    const next = Array.isArray(patch.batch)
+      ? patch.batch.reduce((cfg, f) => mergeColor(cfg, { ...f, index: patch.index }), current)
+      : mergeColor(current, patch);
+    return writeInstanceSetting("color", next);
+  });
+}
+
+// Standard values from Hyperion's own schema ("config getschema"), for the placeholders of empty
+// fields and the reset buttons: per page field name, like COLOR_FIELDS and the black border fields
+let hyperionDefaults = null;
+async function readHyperionDefaults() {
+  if (hyperionDefaults) return hyperionDefaults;
+  const reply = await hyperionCommand({ command: "config", subcommand: "getschema" });
+  const props = reply.info?.properties ?? {};
+  const c = props.color?.properties ?? {};
+  const entry = c.channelAdjustment?.items?.properties ?? {};
+  const sub = (o, k) => o?.properties?.[k];
+  const color = {};
+  for (const field of Object.keys(COLOR_FIELDS)) {
+    const [head, mid, last] = field.split(".");
+    let node;
+    if (field === "fractionalMean") node = c.fractionalMean;
+    else if (head === "edgeTransitionBoost" || head === "ledAreaDepth") node = sub(c[head], mid);
+    else if (field === "grayAxisTrim.stops") node = sub(entry.grayAxisTrim, "stops");
+    else if (mid === "stop") node = sub(sub(entry.grayAxisTrim, "stops")?.items, last);
+    else if (mid === "point") node = sub(sub(entry.grayCurve, "points")?.items, last);
+    else if (head === "grayAxisTrim" || head === "grayCurve") node = sub(entry[head], mid);
+    else node = entry[field];
+    if (node && "default" in node) color[field] = node.default;
+  }
+  const bbProps = props.blackborderdetector?.properties ?? {};
+  const blackborder = {};
+  for (const [k, v] of Object.entries(bbProps)) {
+    if ("default" in v) blackborder[k] = v.default;
+    for (const [k2, v2] of Object.entries(v.properties ?? {})) if ("default" in v2) blackborder[`${k}.${k2}`] = v2.default;
+  }
+  hyperionDefaults = { color, blackborder };
+  return hyperionDefaults;
 }
 
 // Builds the same structure as Hyperion's own export ("config getconfig") from a DB backup
@@ -1048,6 +1141,9 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, await saveBlackborder(patch));
     }
 
+    if (req.method === "GET" && p === "/api/hyperion/defaults") return sendJson(res, 200, await readHyperionDefaults());
+    // standard settings of the test patterns (the "Standard" button of each test card)
+    if (req.method === "GET" && p === "/api/testdefaults") return sendJson(res, 200, DEFAULT_STATE);
     if (req.method === "GET" && p === "/api/hyperion/color") return sendJson(res, 200, readInstanceSetting("color"));
 
     // Hyperion system commands like the power menu of the WebUI
@@ -1181,7 +1277,8 @@ const server = http.createServer(async (req, res) => {
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
       const lang = patch.lang === "en" || patch.lang === "de" ? patch.lang : state.lang;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang });
+      const testPresets = patch.presetOp ? applyPresetOp(patch.presetOp, state.testPresets) : state.testPresets;
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets });
       saveState();
       broadcast();
       return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo });
