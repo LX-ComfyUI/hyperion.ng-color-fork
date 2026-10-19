@@ -384,6 +384,17 @@
   .gx-bar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
   #gx-colors { margin-top: 4px; }
   #gx-report { margin-top: 4px; }
+  /* cards with a test for the TV and the matching Hyperion setting: side by side on wide windows,
+     one below the other on narrow ones; each column keeps the id of its former card */
+  .pair { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  .pair-col { min-width: 0; scroll-margin-top: calc(var(--bar-h, 0px) + 8px); }
+  .pair-col + .pair-col { border-top: 1px solid var(--btn-line); padding-top: 16px; }
+  h3.pair-ttl { margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--text); }
+  @media (min-width: 1180px) {
+    :root:not([data-device="phone"]) .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; }
+    :root:not([data-device="phone"]) .pair-col { padding: 0 24px 0 0; }
+    :root:not([data-device="phone"]) .pair-col + .pair-col { border-top: none; border-left: 1px solid var(--btn-line); padding: 0 0 0 24px; }
+  }
   #gx-slots { margin: 8px 0 4px; }
   /* guide card: one line per tool, the name opens its card */
   .guide { margin: 0 0 12px; padding-left: 22px; font-size: 14px; color: var(--muted); }
@@ -541,7 +552,7 @@
   <section class="card" id="card-intro">
     <h2>Anleitung</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
-    <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Die Karten mit „(Hyperion)“ im Namen enthalten die passenden Einstellungen in Hyperion. Sie werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
+    <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
     <h3>Vor dem Start</h3>
     <ul class="guide">
       <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere die Konfiguration, bevor du etwas änderst. Mit Wiederherstellen kommst du jederzeit zu diesem Stand zurück.</li>
@@ -696,388 +707,403 @@
     <p class="note" id="rgb-current"></p>
   </section>
 
-  <section class="card" id="card-bars">
-    <h2>Schwarze Balken Test</h2>
-    <p class="help">Simuliert Balken wie bei Kinofilmen. Damit testest du die Schwarzbalken-Erkennung von Hyperion: Die LEDs am Rand sollten den Balken ignorieren und weiter die Bildfarbe zeigen. Werte in Prozent der Bildhöhe bzw.&nbsp;‑breite.</p>
-    <p class="note guard-note" hidden></p>
-    <div class="tp" data-test="bars"></div>
+  <section class="card card-pair" id="card-p-bars">
+    <h2>Schwarze Balken</h2>
+    <div class="pair">
+    <div class="pair-col" id="card-bars">
+      <h3 class="pair-ttl">Schwarze Balken Test</h3>
+      <p class="help">Simuliert Balken wie bei Kinofilmen. Damit testest du die Schwarzbalken-Erkennung von Hyperion: Die LEDs am Rand sollten den Balken ignorieren und weiter die Bildfarbe zeigen. Werte in Prozent der Bildhöhe bzw.&nbsp;‑breite.</p>
+      <p class="note guard-note" hidden></p>
+      <div class="tp" data-test="bars"></div>
 
-    <div id="bars-pairs"></div>
+      <div id="bars-pairs"></div>
 
-    <details class="more" id="more-bars">
-      <summary>Einzeln einstellen (oben, unten, links, rechts)</summary>
-      <div id="bars-single" style="margin-top:12px"></div>
-      <button type="button" class="card-close" id="collapse-bars" title="Zuklappen" aria-label="Zuklappen"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg></button>
-    </details>
-    <button class="wide" id="reset" style="margin-top:12px">Alle Balken auf 0 %</button>
-  </section>
-
-  <!-- ===== Hyperion black-border detection ===== -->
-  <section class="card" id="card-bb">
-    <h2>Schwarzbalken-Erkennung (Hyperion)</h2>
-    <p class="help">So erkennt Hyperion die Balken im Grabber-Bild. Die Werte werden direkt in Hyperion gespeichert.</p>
-    <div class="status" id="bb-status">Warte auf Daten von Hyperion …</div>
-
-    <label class="check"><input type="checkbox" id="bb-enabled"><span>Schwarzbalken-Erkennung aktiv</span></label>
-
-    <label class="field">Modus</label>
-    <div class="seg full" role="group" aria-label="Erkennungsmodus" id="bb-mode">
-      <button data-bb-mode="default">Standard</button>
-      <button data-bb-mode="classic">Klassisch</button>
-      <button data-bb-mode="osd">OSD</button>
-      <button data-bb-mode="letterbox">Letterbox</button>
+      <details class="more" id="more-bars">
+        <summary>Einzeln einstellen (oben, unten, links, rechts)</summary>
+        <div id="bars-single" style="margin-top:12px"></div>
+        <button type="button" class="card-close" id="collapse-bars" title="Zuklappen" aria-label="Zuklappen"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg></button>
+      </details>
+      <button class="wide" id="reset" style="margin-top:12px">Alle Balken auf 0 %</button>
     </div>
-    <p class="note" id="bb-mode-help"></p>
-    <p class="note">Mehr Informationen zu den Modi findest du im <a href="https://docs.hyperion-project.org/de/user/advanced/Advanced.html#blackbar-detection" target="_blank" rel="noopener">Hyperion-Wiki</a>.</p>
+    <div class="pair-col" id="card-bb">
+      <h3 class="pair-ttl">Schwarzbalken-Erkennung (Hyperion)</h3>
+      <p class="help">So erkennt Hyperion die Balken im Grabber-Bild. Die Werte werden direkt in Hyperion gespeichert.</p>
+      <div class="status" id="bb-status">Warte auf Daten von Hyperion …</div>
 
-    <label class="field" for="bb-threshold">Schwelle</label>
-    <div class="row"><input type="range" id="bb-threshold" min="0" max="100" step="1"><span class="val" id="bb-threshold_v"></span></div>
+      <label class="check"><input type="checkbox" id="bb-enabled"><span>Schwarzbalken-Erkennung aktiv</span></label>
 
-    <h3>Zählwerte</h3>
-    <div class="numgrid">
-      <div><label class="field" for="bb-unknown">Unbekannte Bilder</label><input type="number" id="bb-unknown" min="0" inputmode="numeric"></div>
-      <div><label class="field" for="bb-border">Randbilder</label><input type="number" id="bb-border" min="0" inputmode="numeric"></div>
-      <div><label class="field" for="bb-inconsistent">Inkonsistente Bilder</label><input type="number" id="bb-inconsistent" min="0" inputmode="numeric"></div>
-      <div><label class="field" for="bb-blur">Unscharfe Pixel</label><input type="number" id="bb-blur" min="0" inputmode="numeric"></div>
+      <label class="field">Modus</label>
+      <div class="seg full" role="group" aria-label="Erkennungsmodus" id="bb-mode">
+        <button data-bb-mode="default">Standard</button>
+        <button data-bb-mode="classic">Klassisch</button>
+        <button data-bb-mode="osd">OSD</button>
+        <button data-bb-mode="letterbox">Letterbox</button>
+      </div>
+      <p class="note" id="bb-mode-help"></p>
+      <p class="note">Mehr Informationen zu den Modi findest du im <a href="https://docs.hyperion-project.org/de/user/advanced/Advanced.html#blackbar-detection" target="_blank" rel="noopener">Hyperion-Wiki</a>.</p>
+
+      <label class="field" for="bb-threshold">Schwelle</label>
+      <div class="row"><input type="range" id="bb-threshold" min="0" max="100" step="1"><span class="val" id="bb-threshold_v"></span></div>
+
+      <h3>Zählwerte</h3>
+      <div class="numgrid">
+        <div><label class="field" for="bb-unknown">Unbekannte Bilder</label><input type="number" id="bb-unknown" min="0" inputmode="numeric"></div>
+        <div><label class="field" for="bb-border">Randbilder</label><input type="number" id="bb-border" min="0" inputmode="numeric"></div>
+        <div><label class="field" for="bb-inconsistent">Inkonsistente Bilder</label><input type="number" id="bb-inconsistent" min="0" inputmode="numeric"></div>
+        <div><label class="field" for="bb-blur">Unscharfe Pixel</label><input type="number" id="bb-blur" min="0" inputmode="numeric"></div>
+      </div>
+      <div class="card-reset"><button type="button" data-card-reset="bb">Auf Standard zurücksetzen</button></div>
+      <p class="note" id="bb-cfg-note"></p>
+
+      <div class="sub">
+        <h3>Anzeige beim Testen</h3>
+        <label class="check"><input type="checkbox" id="ov-bbPreview"><span>Erkennungsbereich in der Grabber-Vorschau anzeigen</span></label>
+        <label class="check"><input type="checkbox" id="ov-bbTv"><span>Erkennungsbereich auf dem TV anzeigen<small>Türkis: wo Hyperion nach Balken sucht. Pink gestrichelt: der übernommene Bildbereich.</small></span></label>
+        <p class="warn" id="bb-tv-warn" hidden>Der Grabber sieht die Linien auf dem TV mit, sie verfälschen die Erkennung und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
+      </div>
+
+      <div class="sub">
+        <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
+        <label class="check" style="margin-top:0"><input type="checkbox" id="bb-live"><span>Hier anzeigen</span></label>
+        <div class="gsbox" id="bb-live-box" hidden></div>
+      </div>
     </div>
-    <div class="card-reset"><button type="button" data-card-reset="bb">Auf Standard zurücksetzen</button></div>
-    <p class="note" id="bb-cfg-note"></p>
-
-    <div class="sub">
-      <h3>Anzeige beim Testen</h3>
-      <label class="check"><input type="checkbox" id="ov-bbPreview"><span>Erkennungsbereich in der Grabber-Vorschau anzeigen</span></label>
-      <label class="check"><input type="checkbox" id="ov-bbTv"><span>Erkennungsbereich auf dem TV anzeigen<small>Türkis: wo Hyperion nach Balken sucht. Pink gestrichelt: der übernommene Bildbereich.</small></span></label>
-      <p class="warn" id="bb-tv-warn" hidden>Der Grabber sieht die Linien auf dem TV mit, sie verfälschen die Erkennung und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
-    </div>
-
-    <div class="sub">
-      <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
-      <label class="check" style="margin-top:0"><input type="checkbox" id="bb-live"><span>Hier anzeigen</span></label>
-      <div class="gsbox" id="bb-live-box" hidden></div>
     </div>
   </section>
 
   <!-- ===== gray still image test ===== -->
-  <section class="card" id="card-gs">
-    <h2>Graues Standbild Test</h2>
-    <p class="help">Manche Player blenden ein pausiertes Video nach kurzer Zeit zu einem grauen, dunkleren Standbild ab. Hier stellst du das auf dem TV nach: ein Grauton, auf Wunsch mit Helligkeitsabfall.</p>
-    <p class="note guard-note" hidden></p>
-    <div class="tp" data-test="grayTest"></div>
+  <section class="card card-pair" id="card-p-gs">
+    <h2>Graues Standbild</h2>
+    <div class="pair">
+    <div class="pair-col" id="card-gs">
+      <h3 class="pair-ttl">Graues Standbild Test</h3>
+      <p class="help">Manche Player blenden ein pausiertes Video nach kurzer Zeit zu einem grauen, dunkleren Standbild ab. Hier stellst du das auf dem TV nach: ein Grauton, auf Wunsch mit Helligkeitsabfall.</p>
+      <p class="note guard-note" hidden></p>
+      <div class="tp" data-test="grayTest"></div>
 
-    <div style="margin-top:12px">
-      <label class="field" for="gt-tone">Grauton</label>
-      <div class="row"><span class="grayswatch" id="gt-swatch"></span><input type="range" id="gt-tone" min="0" max="255" step="1"><span class="val" id="gt-tone_v"></span></div>
-      <label class="check"><input type="checkbox" id="gt-drop"><span>Helligkeitsabfall simulieren</span></label>
-      <div id="gt-drop-settings" class="indent">
-        <label class="field" for="gt-after">Abfall nach</label>
-        <div class="row"><input type="range" id="gt-after" min="0" max="30" step="0.5"><span class="val" id="gt-after_v"></span></div>
-        <label class="field" for="gt-percent">Abfall um <span class="field-hint" id="gt-drop-note"></span></label>
-        <div class="row"><input type="range" id="gt-percent" min="5" max="100" step="5"><span class="val" id="gt-percent_v"></span></div>
-        <label class="field" for="gt-duration">Dauer des Abfalls</label>
-        <div class="row"><input type="range" id="gt-duration" min="0" max="5" step="0.1"><span class="val" id="gt-duration_v"></span></div>
+      <div style="margin-top:12px">
+        <label class="field" for="gt-tone">Grauton</label>
+        <div class="row"><span class="grayswatch" id="gt-swatch"></span><input type="range" id="gt-tone" min="0" max="255" step="1"><span class="val" id="gt-tone_v"></span></div>
+        <label class="check"><input type="checkbox" id="gt-drop"><span>Helligkeitsabfall simulieren</span></label>
+        <div id="gt-drop-settings" class="indent">
+          <label class="field" for="gt-after">Abfall nach</label>
+          <div class="row"><input type="range" id="gt-after" min="0" max="30" step="0.5"><span class="val" id="gt-after_v"></span></div>
+          <label class="field" for="gt-percent">Abfall um <span class="field-hint" id="gt-drop-note"></span></label>
+          <div class="row"><input type="range" id="gt-percent" min="5" max="100" step="5"><span class="val" id="gt-percent_v"></span></div>
+          <label class="field" for="gt-duration">Dauer des Abfalls</label>
+          <div class="row"><input type="range" id="gt-duration" min="0" max="5" step="0.1"><span class="val" id="gt-duration_v"></span></div>
+        </div>
+        <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+          <button type="button" id="gt-toggle"></button>
+          <button type="button" id="gt-restart"></button>
+        </div>
       </div>
-      <div class="seg full gt-controls" role="group" aria-label="Test steuern">
-        <button type="button" id="gt-toggle"></button>
-        <button type="button" id="gt-restart"></button>
+    </div>
+    <div class="pair-col" id="card-gsd">
+      <h3 class="pair-ttl">Graues-Standbild-Erkennung (Hyperion)</h3>
+      <p class="help">So erkennt Hyperion ein graues Standbild im Grabber-Bild und friert die LEDs ein oder schaltet sie aus. Die Werte werden direkt in Hyperion gespeichert.</p>
+      <div class="status" id="gs-status">Warte auf Daten von Hyperion …</div>
+
+      <label class="check"><input type="checkbox" id="gs-enabled"><span>Graues-Standbild-Erkennung aktiv</span></label>
+      <label class="field" for="gs-still">Standbild muss mindestens gleich bleiben für</label>
+      <div class="row"><input type="range" id="gs-still" min="1" max="60" step="1"><span class="val" id="gs-still_v"></span></div>
+      <label class="field" for="gs-drop">Nötiger Helligkeitsabfall (0 = nicht nötig)</label>
+      <div class="row"><input type="range" id="gs-drop" min="0" max="255" step="1"><span class="val" id="gs-drop_v"></span></div>
+      <label class="field" for="gs-window">… innerhalb von</label>
+      <div class="row"><input type="range" id="gs-window" min="0.2" max="5" step="0.1"><span class="val" id="gs-window_v"></span></div>
+      <label class="field" for="gs-change">Toleranz für Bildänderung</label>
+      <div class="row"><input type="range" id="gs-change" min="0" max="64" step="1"><span class="val" id="gs-change_v"></span></div>
+      <label class="field">Ausgewerteter Randbereich <span class="field-hint" id="gs-edge-note"></span></label>
+      <div class="seg full" role="group" aria-label="Ausgewerteter Randbereich" id="gs-edge">
+        <button data-gs-edge="0">LED-Bereiche</button>
+        <button data-gs-edge="3">3 %</button>
+        <button data-gs-edge="6">6 %</button>
+        <button data-gs-edge="9">9 %</button>
+      </div>
+      <p class="note">LED-Bereiche: die Abtastflächen aus dem LED-Layout. Ein Prozentwert wertet stattdessen einen Rahmen dieser Tiefe an allen vier Bildrändern aus, innerhalb erkannter Schwarzbalken.</p>
+      <label class="field">Reaktion</label>
+      <div class="seg full" role="group" aria-label="Reaktion">
+        <button data-gs-mode="freeze">Farben einfrieren</button>
+        <button data-gs-mode="off">LEDs aus</button>
+      </div>
+      <div class="card-reset"><button type="button" data-card-reset="gsd">Auf Standard zurücksetzen</button></div>
+      <p class="note" id="gs-cfg-note"></p>
+
+      <div class="sub">
+        <h3>Anzeige beim Testen</h3>
+        <label class="check"><input type="checkbox" id="ov-gsPreview"><span>Ausgewerteten Bereich in der Grabber-Vorschau anzeigen<small>Orange: was Hyperion auswertet, je nach Einstellung oben die Abtastflächen der LEDs oder der Randbereich, innerhalb übernommener Schwarzbalken.</small></span></label>
+        <label class="check"><input type="checkbox" id="ov-gsTv"><span>Ausgewerteten Bereich auf dem TV anzeigen<small>Orange Randbereiche, dazu eine kleine Statusbox in der Bildmitte.</small></span></label>
+        <p class="warn" id="gs-tv-warn" hidden>Der Grabber sieht die orange Markierung mit. Sie liegt genau im ausgewerteten Bereich und verfälscht Helligkeit, Abfall und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
+      </div>
+
+      <div class="sub">
+        <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
+        <label class="check" style="margin-top:0"><input type="checkbox" id="gs-live"><span>Hier anzeigen</span></label>
+        <div class="gsbox" id="gs-live-box" hidden></div>
       </div>
     </div>
-  </section>
-
-  <!-- ===== Hyperion gray still image detection ===== -->
-  <section class="card" id="card-gsd">
-    <h2>Graues-Standbild-Erkennung (Hyperion)</h2>
-    <p class="help">So erkennt Hyperion ein graues Standbild im Grabber-Bild und friert die LEDs ein oder schaltet sie aus. Die Werte werden direkt in Hyperion gespeichert.</p>
-    <div class="status" id="gs-status">Warte auf Daten von Hyperion …</div>
-
-    <label class="check"><input type="checkbox" id="gs-enabled"><span>Graues-Standbild-Erkennung aktiv</span></label>
-    <label class="field" for="gs-still">Standbild muss mindestens gleich bleiben für</label>
-    <div class="row"><input type="range" id="gs-still" min="1" max="60" step="1"><span class="val" id="gs-still_v"></span></div>
-    <label class="field" for="gs-drop">Nötiger Helligkeitsabfall (0 = nicht nötig)</label>
-    <div class="row"><input type="range" id="gs-drop" min="0" max="255" step="1"><span class="val" id="gs-drop_v"></span></div>
-    <label class="field" for="gs-window">… innerhalb von</label>
-    <div class="row"><input type="range" id="gs-window" min="0.2" max="5" step="0.1"><span class="val" id="gs-window_v"></span></div>
-    <label class="field" for="gs-change">Toleranz für Bildänderung</label>
-    <div class="row"><input type="range" id="gs-change" min="0" max="64" step="1"><span class="val" id="gs-change_v"></span></div>
-    <label class="field">Ausgewerteter Randbereich <span class="field-hint" id="gs-edge-note"></span></label>
-    <div class="seg full" role="group" aria-label="Ausgewerteter Randbereich" id="gs-edge">
-      <button data-gs-edge="0">LED-Bereiche</button>
-      <button data-gs-edge="3">3 %</button>
-      <button data-gs-edge="6">6 %</button>
-      <button data-gs-edge="9">9 %</button>
-    </div>
-    <p class="note">LED-Bereiche: die Abtastflächen aus dem LED-Layout. Ein Prozentwert wertet stattdessen einen Rahmen dieser Tiefe an allen vier Bildrändern aus, innerhalb erkannter Schwarzbalken.</p>
-    <label class="field">Reaktion</label>
-    <div class="seg full" role="group" aria-label="Reaktion">
-      <button data-gs-mode="freeze">Farben einfrieren</button>
-      <button data-gs-mode="off">LEDs aus</button>
-    </div>
-    <div class="card-reset"><button type="button" data-card-reset="gsd">Auf Standard zurücksetzen</button></div>
-    <p class="note" id="gs-cfg-note"></p>
-
-    <div class="sub">
-      <h3>Anzeige beim Testen</h3>
-      <label class="check"><input type="checkbox" id="ov-gsPreview"><span>Ausgewerteten Bereich in der Grabber-Vorschau anzeigen<small>Orange: was Hyperion auswertet, je nach Einstellung oben die Abtastflächen der LEDs oder der Randbereich, innerhalb übernommener Schwarzbalken.</small></span></label>
-      <label class="check"><input type="checkbox" id="ov-gsTv"><span>Ausgewerteten Bereich auf dem TV anzeigen<small>Orange Randbereiche, dazu eine kleine Statusbox in der Bildmitte.</small></span></label>
-      <p class="warn" id="gs-tv-warn" hidden>Der Grabber sieht die orange Markierung mit. Sie liegt genau im ausgewerteten Bereich und verfälscht Helligkeit, Abfall und die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
-    </div>
-
-    <div class="sub">
-      <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
-      <label class="check" style="margin-top:0"><input type="checkbox" id="gs-live"><span>Hier anzeigen</span></label>
-      <div class="gsbox" id="gs-live-box" hidden></div>
     </div>
   </section>
 
   <!-- ===== capture depth test ===== -->
-  <section class="card" id="card-dt">
-    <h2>Erfassungstiefe Test</h2>
-    <p class="help">Zeigt, wie tief die LEDs ins Bild schauen. <b>Rahmen:</b> Der Bildrand hat die Außenfarbe, innen liegt die Innenfarbe. Ist der Rand mindestens so tief wie die Erfassungstiefe, zeigen die LEDs die reine Außenfarbe. Ist er schmaler, mischen sie die Innenfarbe dazu. <b>Wandernde Linie:</b> Eine Linie in der Außenfarbe läuft vom Rand nach innen. Die LEDs zeigen sie nur, solange sie im erfassten Bereich liegt.</p>
-    <p class="note guard-note" hidden></p>
-    <div class="tp" data-test="depthTest"></div>
+  <section class="card card-pair" id="card-p-dt">
+    <h2>Erfassungstiefe</h2>
+    <div class="pair">
+    <div class="pair-col" id="card-dt">
+      <h3 class="pair-ttl">Erfassungstiefe Test</h3>
+      <p class="help">Zeigt, wie tief die LEDs ins Bild schauen. <b>Rahmen:</b> Der Bildrand hat die Außenfarbe, innen liegt die Innenfarbe. Ist der Rand mindestens so tief wie die Erfassungstiefe, zeigen die LEDs die reine Außenfarbe. Ist er schmaler, mischen sie die Innenfarbe dazu. <b>Wandernde Linie:</b> Eine Linie in der Außenfarbe läuft vom Rand nach innen. Die LEDs zeigen sie nur, solange sie im erfassten Bereich liegt.</p>
+      <p class="note guard-note" hidden></p>
+      <div class="tp" data-test="depthTest"></div>
 
-    <label class="field">Muster</label>
-    <div class="seg full" role="group" aria-label="Muster" id="dt-pattern">
-      <button type="button" data-dt-pattern="frame">Rahmen</button>
-      <button type="button" data-dt-pattern="sweep">Wandernde Linie</button>
+      <label class="field">Muster</label>
+      <div class="seg full" role="group" aria-label="Muster" id="dt-pattern">
+        <button type="button" data-dt-pattern="frame">Rahmen</button>
+        <button type="button" data-dt-pattern="sweep">Wandernde Linie</button>
+      </div>
+
+      <div class="dt-colors">
+        <label class="dt-color"><span>Außenfarbe</span><span class="row"><span class="grayswatch" id="dt-outer-swatch"></span><select id="dt-outer" aria-label="Außenfarbe"></select></span></label>
+        <label class="dt-color"><span>Innenfarbe</span><span class="row"><span class="grayswatch" id="dt-inner-swatch"></span><select id="dt-inner" aria-label="Innenfarbe"></select></span></label>
+        <button type="button" class="ibtn" id="dt-swap" title="Farben tauschen" aria-label="Farben tauschen"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+      </div>
+
+      <div id="dt-frame">
+        <div class="bar-row" style="margin-top:14px">
+          <div class="bar-head">
+            <label for="dt-tb">Rand oben + unten</label>
+            <span class="right"><span class="val" id="dt-tb_v"></span>
+              <span class="seg small" role="group" aria-label="Voreinstellungen Rand oben und unten" id="dt-tb-presets"></span></span>
+          </div>
+          <input type="range" id="dt-tb" min="0" max="50" step="0.5">
+        </div>
+        <div class="bar-row">
+          <div class="bar-head">
+            <label for="dt-lr">Rand links + rechts</label>
+            <span class="right"><span class="val" id="dt-lr_v"></span>
+              <span class="seg small" role="group" aria-label="Voreinstellungen Rand links und rechts" id="dt-lr-presets"></span></span>
+          </div>
+          <input type="range" id="dt-lr" min="0" max="50" step="0.5">
+        </div>
+        <p class="note" style="margin-top:4px">Unterstrichen: Standardwert.</p>
+        <button type="button" class="wide" id="dt-match">Rand wie Erfassungstiefe</button>
+        <div class="status" id="dt-expect"></div>
+      </div>
+
+      <div id="dt-sweep">
+        <label class="field" for="dt-max">Linie läuft bis</label>
+        <div class="row"><input type="range" id="dt-max" min="1" max="50" step="1"><span class="val" id="dt-max_v"></span></div>
+        <label class="field" for="dt-secs">Dauer eines Durchlaufs</label>
+        <div class="row"><input type="range" id="dt-secs" min="2" max="60" step="1"><span class="val" id="dt-secs_v"></span></div>
+        <label class="field" for="dt-line">Linienstärke <span class="field-hint">(% der Bildhöhe)</span></label>
+        <div class="row"><input type="range" id="dt-line" min="0.5" max="5" step="0.5"><span class="val" id="dt-line_v"></span></div>
+        <div class="status" id="dt-pos"></div>
+      </div>
+
+      <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+        <button type="button" id="dt-toggle"></button>
+        <button type="button" id="dt-restart"></button>
+      </div>
     </div>
+    <div class="pair-col" id="card-dtd">
+      <h3 class="pair-ttl">LED-Erfassungstiefe (Hyperion)</h3>
+      <p class="help">Wie tief die Abtastflächen der LEDs ins Bild reichen: oben und unten in Prozent der Bildhöhe, links und rechts in Prozent der Bildbreite, jeweils innerhalb erkannter Schwarzbalken. <b>Layout</b> (0) nimmt die Tiefe aus dem LED-Layout. Die Werte werden direkt in Hyperion gespeichert und wirken sofort.</p>
+      <div class="status" id="dp-status">Warte auf Daten von Hyperion …</div>
 
-    <div class="dt-colors">
-      <label class="dt-color"><span>Außenfarbe</span><span class="row"><span class="grayswatch" id="dt-outer-swatch"></span><select id="dt-outer" aria-label="Außenfarbe"></select></span></label>
-      <label class="dt-color"><span>Innenfarbe</span><span class="row"><span class="grayswatch" id="dt-inner-swatch"></span><select id="dt-inner" aria-label="Innenfarbe"></select></span></label>
-      <button type="button" class="ibtn" id="dt-swap" title="Farben tauschen" aria-label="Farben tauschen"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
-    </div>
-
-    <div id="dt-frame">
       <div class="bar-row" style="margin-top:14px">
         <div class="bar-head">
-          <label for="dt-tb">Rand oben + unten</label>
-          <span class="right"><span class="val" id="dt-tb_v"></span>
-            <span class="seg small" role="group" aria-label="Voreinstellungen Rand oben und unten" id="dt-tb-presets"></span></span>
+          <label for="dp-tb">Oben + Unten</label>
+          <span class="right"><span class="val" id="dp-tb_v"></span>
+            <span class="seg small" role="group" aria-label="Voreinstellungen oben und unten" id="dp-tb-presets"></span></span>
         </div>
-        <input type="range" id="dt-tb" min="0" max="50" step="0.5">
+        <input type="range" id="dp-tb" min="0" max="50" step="0.5">
       </div>
       <div class="bar-row">
         <div class="bar-head">
-          <label for="dt-lr">Rand links + rechts</label>
-          <span class="right"><span class="val" id="dt-lr_v"></span>
-            <span class="seg small" role="group" aria-label="Voreinstellungen Rand links und rechts" id="dt-lr-presets"></span></span>
+          <label for="dp-lr">Links + Rechts</label>
+          <span class="right"><span class="val" id="dp-lr_v"></span>
+            <span class="seg small" role="group" aria-label="Voreinstellungen links und rechts" id="dp-lr-presets"></span></span>
         </div>
-        <input type="range" id="dt-lr" min="0" max="50" step="0.5">
+        <input type="range" id="dp-lr" min="0" max="50" step="0.5">
       </div>
       <p class="note" style="margin-top:4px">Unterstrichen: Standardwert.</p>
-      <button type="button" class="wide" id="dt-match">Rand wie Erfassungstiefe</button>
-      <div class="status" id="dt-expect"></div>
-    </div>
+      <p class="warn" id="dp-skip-warn" hidden></p>
+      <div class="card-reset"><button type="button" data-card-reset="dtd">Auf Standard zurücksetzen</button></div>
+      <p class="note" id="dp-cfg-note"></p>
 
-    <div id="dt-sweep">
-      <label class="field" for="dt-max">Linie läuft bis</label>
-      <div class="row"><input type="range" id="dt-max" min="1" max="50" step="1"><span class="val" id="dt-max_v"></span></div>
-      <label class="field" for="dt-secs">Dauer eines Durchlaufs</label>
-      <div class="row"><input type="range" id="dt-secs" min="2" max="60" step="1"><span class="val" id="dt-secs_v"></span></div>
-      <label class="field" for="dt-line">Linienstärke <span class="field-hint">(% der Bildhöhe)</span></label>
-      <div class="row"><input type="range" id="dt-line" min="0.5" max="5" step="0.5"><span class="val" id="dt-line_v"></span></div>
-      <div class="status" id="dt-pos"></div>
-    </div>
-
-    <div class="seg full gt-controls" role="group" aria-label="Test steuern">
-      <button type="button" id="dt-toggle"></button>
-      <button type="button" id="dt-restart"></button>
-    </div>
-  </section>
-
-  <!-- ===== Hyperion capture depth ===== -->
-  <section class="card" id="card-dtd">
-    <h2>LED-Erfassungstiefe (Hyperion)</h2>
-    <p class="help">Wie tief die Abtastflächen der LEDs ins Bild reichen: oben und unten in Prozent der Bildhöhe, links und rechts in Prozent der Bildbreite, jeweils innerhalb erkannter Schwarzbalken. <b>Layout</b> (0) nimmt die Tiefe aus dem LED-Layout. Die Werte werden direkt in Hyperion gespeichert und wirken sofort.</p>
-    <div class="status" id="dp-status">Warte auf Daten von Hyperion …</div>
-
-    <div class="bar-row" style="margin-top:14px">
-      <div class="bar-head">
-        <label for="dp-tb">Oben + Unten</label>
-        <span class="right"><span class="val" id="dp-tb_v"></span>
-          <span class="seg small" role="group" aria-label="Voreinstellungen oben und unten" id="dp-tb-presets"></span></span>
+      <div class="sub">
+        <h3>Anzeige beim Testen</h3>
+        <label class="check"><input type="checkbox" id="ov-dpPreview"><span>Erfassten Bereich in der Grabber-Vorschau anzeigen<small>Grün: die Abtastflächen der LEDs mit der eingestellten Tiefe. Gestrichelt: die Innenkante der Tiefe an jeder Seite.</small></span></label>
+        <label class="check"><input type="checkbox" id="ov-dpTv"><span>Erfassten Bereich auf dem TV anzeigen</span></label>
+        <p class="warn" id="dp-tv-warn" hidden>Der Grabber sieht die grüne Markierung mit. Sie liegt genau im erfassten Bereich und färbt die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
       </div>
-      <input type="range" id="dp-tb" min="0" max="50" step="0.5">
-    </div>
-    <div class="bar-row">
-      <div class="bar-head">
-        <label for="dp-lr">Links + Rechts</label>
-        <span class="right"><span class="val" id="dp-lr_v"></span>
-          <span class="seg small" role="group" aria-label="Voreinstellungen links und rechts" id="dp-lr-presets"></span></span>
+
+      <div class="sub">
+        <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
+        <label class="check" style="margin-top:0"><input type="checkbox" id="dp-live"><span>Hier anzeigen</span></label>
+        <div class="gsbox" id="dp-live-box" hidden></div>
       </div>
-      <input type="range" id="dp-lr" min="0" max="50" step="0.5">
     </div>
-    <p class="note" style="margin-top:4px">Unterstrichen: Standardwert.</p>
-    <p class="warn" id="dp-skip-warn" hidden></p>
-    <div class="card-reset"><button type="button" data-card-reset="dtd">Auf Standard zurücksetzen</button></div>
-    <p class="note" id="dp-cfg-note"></p>
-
-    <div class="sub">
-      <h3>Anzeige beim Testen</h3>
-      <label class="check"><input type="checkbox" id="ov-dpPreview"><span>Erfassten Bereich in der Grabber-Vorschau anzeigen<small>Grün: die Abtastflächen der LEDs mit der eingestellten Tiefe. Gestrichelt: die Innenkante der Tiefe an jeder Seite.</small></span></label>
-      <label class="check"><input type="checkbox" id="ov-dpTv"><span>Erfassten Bereich auf dem TV anzeigen</span></label>
-      <p class="warn" id="dp-tv-warn" hidden>Der Grabber sieht die grüne Markierung mit. Sie liegt genau im erfassten Bereich und färbt die LEDs. Zum echten Testen besser nur die Vorschau nutzen.</p>
-    </div>
-
-    <div class="sub">
-      <h3>Live-Ablauf (Entwickler-Ansicht)</h3>
-      <label class="check" style="margin-top:0"><input type="checkbox" id="dp-live"><span>Hier anzeigen</span></label>
-      <div class="gsbox" id="dp-live-box" hidden></div>
     </div>
   </section>
 
   <!-- ===== fractional LED mean test ===== -->
-  <section class="card" id="card-ft">
-    <h2>Nachkommastellen Test</h2>
-    <p class="help">Zeigt dunkle Töne <b>zwischen</b> zwei ganzen Stufen, z. B. 25,5. Der TV kann nur ganze Stufen, deshalb mischt ein feines Punktraster 25 und 26. Jede LED mittelt über ihren Bereich und sieht so die Kommazahl. <b>Mit Nachkommastellen</b> folgen die LEDs diesen Zwischenstufen. <b>Ohne</b> springen sie nur in ganzen Stufen, und im Dunkeln ist eine Stufe 7 bis 30 % der LED-Helligkeit.</p>
-    <p class="note guard-note" hidden></p>
-    <div class="tp" data-test="fracTest"></div>
+  <section class="card card-pair" id="card-p-ft">
+    <h2>Nachkommastellen</h2>
+    <div class="pair">
+    <div class="pair-col" id="card-ft">
+      <h3 class="pair-ttl">Nachkommastellen Test</h3>
+      <p class="help">Zeigt dunkle Töne <b>zwischen</b> zwei ganzen Stufen, z. B. 25,5. Der TV kann nur ganze Stufen, deshalb mischt ein feines Punktraster 25 und 26. Jede LED mittelt über ihren Bereich und sieht so die Kommazahl. <b>Mit Nachkommastellen</b> folgen die LEDs diesen Zwischenstufen. <b>Ohne</b> springen sie nur in ganzen Stufen, und im Dunkeln ist eine Stufe 7 bis 30 % der LED-Helligkeit.</p>
+      <p class="note guard-note" hidden></p>
+      <div class="tp" data-test="fracTest"></div>
 
-    <label class="field">Muster</label>
-    <div class="seg full" role="group" aria-label="Muster" id="ft-pattern">
-      <button type="button" data-ft-pattern="ramp">Langsamer Verlauf</button>
-      <button type="button" data-ft-pattern="toggle">Stufenwechsel</button>
-    </div>
-    <label class="field">Farbe</label>
-    <div class="seg full" role="group" aria-label="Farbe" id="ft-tint">
-      <button type="button" data-ft-tint="gray">Grau</button>
-      <button type="button" data-ft-tint="red">Rot</button>
-      <button type="button" data-ft-tint="green">Grün</button>
-      <button type="button" data-ft-tint="blue">Blau</button>
-    </div>
-
-    <div id="ft-ramp">
-      <label class="field" for="ft-from">Von</label>
-      <div class="row"><span class="grayswatch" id="ft-from-swatch"></span><input type="range" id="ft-from" min="0" max="255" step="1"><span class="val" id="ft-from_v"></span></div>
-      <label class="field" for="ft-to">Bis</label>
-      <div class="row"><span class="grayswatch" id="ft-to-swatch"></span><input type="range" id="ft-to" min="0" max="255" step="1"><span class="val" id="ft-to_v"></span></div>
-      <label class="field" for="ft-secs">Dauer je Richtung</label>
-      <div class="row"><input type="range" id="ft-secs" min="2" max="120" step="1"><span class="val" id="ft-secs_v"></span></div>
-    </div>
-
-    <div id="ft-toggle-settings">
-      <label class="field" for="ft-base">Grundton</label>
-      <div class="row"><span class="grayswatch" id="ft-base-swatch"></span><input type="range" id="ft-base" min="0" max="254" step="1"><span class="val" id="ft-base_v"></span></div>
-      <label class="field">Wechselt zu Grundton plus</label>
-      <div class="seg full" role="group" aria-label="Unterschied" id="ft-delta">
-        <button type="button" data-ft-delta="0.25">¼ Stufe</button>
-        <button type="button" data-ft-delta="0.5">½ Stufe</button>
-        <button type="button" data-ft-delta="0.75">¾ Stufe</button>
-        <button type="button" data-ft-delta="1">1 Stufe</button>
+      <label class="field">Muster</label>
+      <div class="seg full" role="group" aria-label="Muster" id="ft-pattern">
+        <button type="button" data-ft-pattern="ramp">Langsamer Verlauf</button>
+        <button type="button" data-ft-pattern="toggle">Stufenwechsel</button>
       </div>
-      <label class="field" for="ft-every">Wechsel alle</label>
-      <div class="row"><input type="range" id="ft-every" min="0.5" max="10" step="0.5"><span class="val" id="ft-every_v"></span></div>
+      <label class="field">Farbe</label>
+      <div class="seg full" role="group" aria-label="Farbe" id="ft-tint">
+        <button type="button" data-ft-tint="gray">Grau</button>
+        <button type="button" data-ft-tint="red">Rot</button>
+        <button type="button" data-ft-tint="green">Grün</button>
+        <button type="button" data-ft-tint="blue">Blau</button>
+      </div>
+
+      <div id="ft-ramp">
+        <label class="field" for="ft-from">Von</label>
+        <div class="row"><span class="grayswatch" id="ft-from-swatch"></span><input type="range" id="ft-from" min="0" max="255" step="1"><span class="val" id="ft-from_v"></span></div>
+        <label class="field" for="ft-to">Bis</label>
+        <div class="row"><span class="grayswatch" id="ft-to-swatch"></span><input type="range" id="ft-to" min="0" max="255" step="1"><span class="val" id="ft-to_v"></span></div>
+        <label class="field" for="ft-secs">Dauer je Richtung</label>
+        <div class="row"><input type="range" id="ft-secs" min="2" max="120" step="1"><span class="val" id="ft-secs_v"></span></div>
+      </div>
+
+      <div id="ft-toggle-settings">
+        <label class="field" for="ft-base">Grundton</label>
+        <div class="row"><span class="grayswatch" id="ft-base-swatch"></span><input type="range" id="ft-base" min="0" max="254" step="1"><span class="val" id="ft-base_v"></span></div>
+        <label class="field">Wechselt zu Grundton plus</label>
+        <div class="seg full" role="group" aria-label="Unterschied" id="ft-delta">
+          <button type="button" data-ft-delta="0.25">¼ Stufe</button>
+          <button type="button" data-ft-delta="0.5">½ Stufe</button>
+          <button type="button" data-ft-delta="0.75">¾ Stufe</button>
+          <button type="button" data-ft-delta="1">1 Stufe</button>
+        </div>
+        <label class="field" for="ft-every">Wechsel alle</label>
+        <div class="row"><input type="range" id="ft-every" min="0.5" max="10" step="0.5"><span class="val" id="ft-every_v"></span></div>
+      </div>
+
+      <label class="check"><input type="checkbox" id="ft-fm-enabled"><span>Mittelwert mit Nachkommastellen (Hyperion)<small>Zum Vergleichen während des Tests an- und ausschalten. Wirkt sofort.</small></span></label>
+      <p class="note" id="ft-fm-note"></p>
+      <div class="status" id="ft-now"></div>
+      <p class="note">Der Grabber sieht die Töne nicht ganz genau (Rauschen, angehobenes Schwarz). Achte deshalb auf den Unterschied zwischen Nachkommastellen an und aus, nicht auf den genauen Wert. Am besten im abgedunkelten Raum.</p>
+
+      <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+        <button type="button" id="ft-run"></button>
+        <button type="button" id="ft-restart"></button>
+      </div>
     </div>
-
-    <label class="check"><input type="checkbox" id="ft-fm-enabled"><span>Mittelwert mit Nachkommastellen (Hyperion)<small>Zum Vergleichen während des Tests an- und ausschalten. Wirkt sofort.</small></span></label>
-    <p class="note" id="ft-fm-note"></p>
-    <div class="status" id="ft-now"></div>
-    <p class="note">Der Grabber sieht die Töne nicht ganz genau (Rauschen, angehobenes Schwarz). Achte deshalb auf den Unterschied zwischen Nachkommastellen an und aus, nicht auf den genauen Wert. Am besten im abgedunkelten Raum.</p>
-
-    <div class="seg full gt-controls" role="group" aria-label="Test steuern">
-      <button type="button" id="ft-run"></button>
-      <button type="button" id="ft-restart"></button>
+    <div class="pair-col" id="card-fmd">
+      <h3 class="pair-ttl">LED-Mittelwert mit Nachkommastellen (Hyperion)</h3>
+      <p class="help">Jede LED bekommt den Durchschnitt der Bildpunkte ihres Bereichs. Mit Haken geht dieser Wert samt Nachkommastellen in die 16-Bit-Ausgabe (nur bei LEDs mit 16 Bit pro Farbe, z. B. HD108). Ohne Haken wird er auf eine ganze Zahl abgeschnitten. Die Einstellung wird direkt in Hyperion gespeichert und wirkt sofort. Zum Vergleichen beim Test oben einfach an- und ausschalten.</p>
+      <div class="status" id="fm-status">Warte auf Daten von Hyperion …</div>
+      <label class="check"><input type="checkbox" id="fm-enabled"><span>Mittelwert mit Nachkommastellen</span></label>
+      <div class="card-reset"><button type="button" data-card-reset="fmd">Auf Standard zurücksetzen</button></div>
+      <p class="note" id="fm-cfg-note"></p>
     </div>
-  </section>
-
-  <!-- ===== Hyperion fractional LED mean ===== -->
-  <section class="card" id="card-fmd">
-    <h2>LED-Mittelwert mit Nachkommastellen (Hyperion)</h2>
-    <p class="help">Jede LED bekommt den Durchschnitt der Bildpunkte ihres Bereichs. Mit Haken geht dieser Wert samt Nachkommastellen in die 16-Bit-Ausgabe (nur bei LEDs mit 16 Bit pro Farbe, z. B. HD108). Ohne Haken wird er auf eine ganze Zahl abgeschnitten. Die Einstellung wird direkt in Hyperion gespeichert und wirkt sofort. Zum Vergleichen beim Test oben einfach an- und ausschalten.</p>
-    <div class="status" id="fm-status">Warte auf Daten von Hyperion …</div>
-    <label class="check"><input type="checkbox" id="fm-enabled"><span>Mittelwert mit Nachkommastellen</span></label>
-    <div class="card-reset"><button type="button" data-card-reset="fmd">Auf Standard zurücksetzen</button></div>
-    <p class="note" id="fm-cfg-note"></p>
+    </div>
   </section>
 
   <!-- ===== LED position test ===== -->
-  <section class="card" id="card-lp">
-    <h2>LED-Position Test</h2>
-    <p class="help">Der TV zeigt eine helle Markierung genau im Bildbereich einer LED, so wie Hyperion ihn mit der eingestellten Erfassungstiefe abtastet. Der Grabber sieht die Markierung, und Hyperion lässt genau diese LED leuchten. <b>Sitzt die leuchtende LED direkt neben der Markierung, passt die Zuordnung.</b> Leuchtet sie ein Stück daneben, ist das Layout an dieser Stelle verschoben. <b>Lauflicht:</b> Die Markierung wandert um den ganzen Rahmen.</p>
-    <p class="note guard-note" hidden></p>
-    <div class="tp" data-test="posTest"></div>
+  <section class="card card-pair" id="card-p-lp">
+    <h2>LED-Position</h2>
+    <div class="pair">
+    <div class="pair-col" id="card-lp">
+      <h3 class="pair-ttl">LED-Position Test</h3>
+      <p class="help">Der TV zeigt eine helle Markierung genau im Bildbereich einer LED, so wie Hyperion ihn mit der eingestellten Erfassungstiefe abtastet. Der Grabber sieht die Markierung, und Hyperion lässt genau diese LED leuchten. <b>Sitzt die leuchtende LED direkt neben der Markierung, passt die Zuordnung.</b> Leuchtet sie ein Stück daneben, ist das Layout an dieser Stelle verschoben. <b>Lauflicht:</b> Die Markierung wandert um den ganzen Rahmen.</p>
+      <p class="note guard-note" hidden></p>
+      <div class="tp" data-test="posTest"></div>
 
-    <label class="field">Muster</label>
-    <div class="seg full" role="group" aria-label="Muster" id="lp-mode">
-      <button type="button" data-lp-mode="single">Einzelne LED</button>
-      <button type="button" data-lp-mode="run">Lauflicht</button>
-    </div>
+      <label class="field">Muster</label>
+      <div class="seg full" role="group" aria-label="Muster" id="lp-mode">
+        <button type="button" data-lp-mode="single">Einzelne LED</button>
+        <button type="button" data-lp-mode="run">Lauflicht</button>
+      </div>
 
-    <label class="field" for="lp-index"><span id="lp-index-label">LED</span> <span class="field-hint">(Nummer wie im Hyperion-WebUI, ab 0)</span></label>
-    <div class="row"><input type="range" id="lp-index" min="0" max="643" step="1"><span class="val" id="lp-index_v"></span></div>
-    <div class="seg full lp-steps" role="group" aria-label="LED wechseln">
-      <button type="button" data-lp-step="-10">−10</button>
-      <button type="button" data-lp-step="-1">−1</button>
-      <button type="button" data-lp-step="1">+1</button>
-      <button type="button" data-lp-step="10">+10</button>
-    </div>
-    <div class="lp-jumps" id="lp-jumps" role="group" aria-label="Abschnittsanfänge"></div>
+      <label class="field" for="lp-index"><span id="lp-index-label">LED</span> <span class="field-hint">(Nummer wie im Hyperion-WebUI, ab 0)</span></label>
+      <div class="row"><input type="range" id="lp-index" min="0" max="643" step="1"><span class="val" id="lp-index_v"></span></div>
+      <div class="seg full lp-steps" role="group" aria-label="LED wechseln">
+        <button type="button" data-lp-step="-10">−10</button>
+        <button type="button" data-lp-step="-1">−1</button>
+        <button type="button" data-lp-step="1">+1</button>
+        <button type="button" data-lp-step="10">+10</button>
+      </div>
+      <div class="lp-jumps" id="lp-jumps" role="group" aria-label="Abschnittsanfänge"></div>
 
-    <div id="lp-run">
-      <label class="field" for="lp-speed">Geschwindigkeit <span class="field-hint" id="lp-round"></span></label>
-      <div class="row"><input type="range" id="lp-speed" min="1" max="60" step="1"><span class="val" id="lp-speed_v"></span></div>
-    </div>
+      <div id="lp-run">
+        <label class="field" for="lp-speed">Geschwindigkeit <span class="field-hint" id="lp-round"></span></label>
+        <div class="row"><input type="range" id="lp-speed" min="1" max="60" step="1"><span class="val" id="lp-speed_v"></span></div>
+      </div>
 
-    <label class="field">Breite der Markierung</label>
-    <div class="seg full" role="group" aria-label="Breite der Markierung" id="lp-width">
-      <button type="button" data-lp-width="1">1 LED</button>
-      <button type="button" data-lp-width="3">3 LEDs</button>
-      <button type="button" data-lp-width="5">5 LEDs</button>
-    </div>
+      <label class="field">Breite der Markierung</label>
+      <div class="seg full" role="group" aria-label="Breite der Markierung" id="lp-width">
+        <button type="button" data-lp-width="1">1 LED</button>
+        <button type="button" data-lp-width="3">3 LEDs</button>
+        <button type="button" data-lp-width="5">5 LEDs</button>
+      </div>
 
-    <div class="dt-colors">
-      <label class="dt-color"><span>Farbe</span><span class="row"><span class="grayswatch" id="lp-color-swatch"></span><select id="lp-color" aria-label="Farbe der Markierung"></select></span></label>
-    </div>
-    <label class="field">Hintergrund</label>
-    <div class="seg full" role="group" aria-label="Hintergrund" id="lp-bg">
-      <button type="button" data-lp-bg="black">Schwarz</button>
-      <button type="button" data-lp-bg="gray">Dunkelgrau</button>
-    </div>
-    <p class="note">Dunkelgrau hilft, wenn die Schwarzbalken-Erkennung das fast schwarze Bild als Balken deutet.</p>
+      <div class="dt-colors">
+        <label class="dt-color"><span>Farbe</span><span class="row"><span class="grayswatch" id="lp-color-swatch"></span><select id="lp-color" aria-label="Farbe der Markierung"></select></span></label>
+      </div>
+      <label class="field">Hintergrund</label>
+      <div class="seg full" role="group" aria-label="Hintergrund" id="lp-bg">
+        <button type="button" data-lp-bg="black">Schwarz</button>
+        <button type="button" data-lp-bg="gray">Dunkelgrau</button>
+      </div>
+      <p class="note">Dunkelgrau hilft, wenn die Schwarzbalken-Erkennung das fast schwarze Bild als Balken deutet.</p>
 
-    <div class="lp-map" id="lp-map"></div>
-    <div class="status" id="lp-status"></div>
-    <p class="warn" id="lp-warn" hidden></p>
+      <div class="lp-map" id="lp-map"></div>
+      <div class="status" id="lp-status"></div>
+      <p class="warn" id="lp-warn" hidden></p>
 
-    <div class="seg full gt-controls" role="group" aria-label="Test steuern">
-      <button type="button" id="lp-toggle"></button>
-      <button type="button" id="lp-restart"></button>
-    </div>
-  </section>
-
-  <!-- ===== guided LED position test ===== -->
-  <section class="card" id="card-lg">
-    <h2>LED-Position Kalibrieren</h2>
-    <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
-    <p class="note guard-note" hidden></p>
-    <div class="status" id="lg-layout"></div>
-    <div class="lg-actions" id="lg-layout-actions"></div>
-
-    <div id="lg-idle">
-      <div class="lg-actions">
-        <button type="button" class="primary" id="lg-start">Test starten</button>
-        <button type="button" id="lg-resume" hidden>Fortsetzen</button>
+      <div class="seg full gt-controls" role="group" aria-label="Test steuern">
+        <button type="button" id="lp-toggle"></button>
+        <button type="button" id="lp-restart"></button>
       </div>
     </div>
+    <div class="pair-col" id="card-lg">
+      <h3 class="pair-ttl">LED-Position Kalibrieren</h3>
+      <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
+      <p class="note guard-note" hidden></p>
+      <div class="status" id="lg-layout"></div>
+      <div class="lg-actions" id="lg-layout-actions"></div>
 
-    <div id="lg-run" hidden>
-      <div class="status" id="lg-progress"></div>
-      <div class="lp-map" id="lg-map"></div>
-      <p class="lg-q" id="lg-question"></p>
-      <div id="lg-answers"></div>
-      <div class="seg full" role="group" aria-label="Test steuern" style="margin-top:10px">
-        <button type="button" id="lg-back">Zurück</button>
-        <button type="button" id="lg-skip">Nicht erkennbar</button>
-        <button type="button" id="lg-stop">Abbrechen</button>
+      <div id="lg-idle">
+        <div class="lg-actions">
+          <button type="button" class="primary" id="lg-start">Test starten</button>
+          <button type="button" id="lg-resume" hidden>Fortsetzen</button>
+        </div>
       </div>
-    </div>
 
-    <div id="lg-result" hidden>
-      <div class="status" id="lg-summary"></div>
-      <div class="lg-runs" id="lg-runs"></div>
-      <div class="lg-actions" id="lg-result-actions"></div>
+      <div id="lg-run" hidden>
+        <div class="status" id="lg-progress"></div>
+        <div class="lp-map" id="lg-map"></div>
+        <p class="lg-q" id="lg-question"></p>
+        <div id="lg-answers"></div>
+        <div class="seg full" role="group" aria-label="Test steuern" style="margin-top:10px">
+          <button type="button" id="lg-back">Zurück</button>
+          <button type="button" id="lg-skip">Nicht erkennbar</button>
+          <button type="button" id="lg-stop">Abbrechen</button>
+        </div>
+      </div>
+
+      <div id="lg-result" hidden>
+        <div class="status" id="lg-summary"></div>
+        <div class="lg-runs" id="lg-runs"></div>
+        <div class="lg-actions" id="lg-result-actions"></div>
+      </div>
+      <p class="warn" id="lg-warn" hidden></p>
     </div>
-    <p class="warn" id="lg-warn" hidden></p>
+    </div>
   </section>
 
   <!-- ===== backup ===== -->
@@ -1199,7 +1225,7 @@
   // links to a card (like "Backup") open it first
   document.addEventListener("click", (ev) => {
     const a = ev.target.closest('a[href^="#card-"]');
-    const card = a && document.querySelector(a.getAttribute("href"));
+    const card = a && document.querySelector(a.getAttribute("href"))?.closest("main > section.card");
     if (card) setCardOpen(card, true);
   });
 })();
@@ -1566,8 +1592,13 @@ function renderCardBadges() {
     "card-lp": state.posTest?.active && !state.posGuide?.active && "läuft",
     "card-lg": state.posGuide?.active && "läuft",
   };
+  const perCard = new Map();
   for (const [id, text] of Object.entries(badges)) {
-    const badge = document.querySelector(`#${id} .card-toggle .badge`);
+    const card = document.getElementById(id)?.closest("main > section.card");
+    if (card && !perCard.get(card)) perCard.set(card, text);
+  }
+  for (const [card, text] of perCard) {
+    const badge = card.querySelector(".card-toggle .badge");
     if (!badge) continue;
     badge.hidden = !text;
     badge.textContent = text || "";
@@ -3374,7 +3405,7 @@ document.addEventListener("click", (ev) => {
   }
   const c = ev.target.closest("[data-card-reset]");
   if (!c || !hyDefaults) return;
-  const title = c.closest(".card")?.querySelector(".card-toggle .ttl, h2")?.textContent ?? "";
+  const title = (c.closest(".pair-col")?.querySelector(":scope > h3.pair-ttl") ?? c.closest(".card")?.querySelector(".card-toggle .ttl, h2"))?.textContent ?? "";
   if (!confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: title }))) return;
   const bb = hyDefaults.blackborder ?? {};
   if (c.dataset.cardReset === "bb") saveBb(Object.fromEntries(BB_RESET_KEYS.filter((k) => k in bb).map((k) => [k, bb[k]])), tr("Standardwerte"));
