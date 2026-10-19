@@ -114,6 +114,10 @@
       corrMatrix: "Matrix aus dem Grundtest vom {date}",
       corrSwitch: "Grabber-Farbkorrektur aktiv",
       slTitle: "Kalibrierungen dieses Grabbers",
+      slSelect: "Grabber",
+      slSelectHint: "Der Grabber, den Hyperion verwendet (wie im WebUI unter Aufnahme Hardware → USB-Aufnahme → Gerät gefunden). Ein anderer stellt Hyperion um.",
+      slMissing: "{name} (nicht angeschlossen)",
+      slConfirmSwitch: "Hyperion auf den Grabber {name} umstellen? Die Aufnahme startet dabei neu, die LEDs sind kurz aus.",
       slGrabber: "Grabber: {name}",
       slNoDevice: "Kein Grabber erkannt. Sobald der Grabber Bilder liefert, erscheint hier sein Name.",
       slIntro: "Jedes Grabber-Modell hat drei Speicherplätze. Verwendet wird der aktive Platz des Grabbers, der gerade angeschlossen ist. Nach einem Grabberwechsel gilt automatisch dessen Kalibrierung, für einen Grabber ohne Kalibrierung bleibt die Korrektur aus.",
@@ -231,6 +235,10 @@
       corrMatrix: "Matrix from the basic test of {date}",
       corrSwitch: "Grabber color correction active",
       slTitle: "Calibrations of this grabber",
+      slSelect: "Grabber",
+      slSelectHint: "The grabber Hyperion uses (like in the WebUI under Capturing Hardware → USB Capture → Device discovered). Choosing another one switches Hyperion over.",
+      slMissing: "{name} (not connected)",
+      slConfirmSwitch: "Switch Hyperion to the grabber {name}? Capturing restarts, the LEDs are off for a moment.",
       slGrabber: "Grabber: {name}",
       slNoDevice: "No grabber detected. As soon as the grabber delivers frames, its name appears here.",
       slIntro: "Every grabber model has three memory slots. The active slot of the grabber connected right now is used. After a grabber change its own calibration applies automatically, for a grabber without calibration the correction stays off.",
@@ -938,12 +946,16 @@
     .gtr-slot-actions { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 0; }
     .gtr-slot-actions button { width: auto; margin: 0; }
     .gtr-others { margin: 10px 0 0; }
+    .gtr-select { margin: 2px 0 4px; }
+    .gtr-select select { font: inherit; font-size: 15px; padding: 6px 10px; width: auto; min-width: min(320px, 100%); max-width: 100%; border-radius: 6px; border: 1px solid rgba(128, 128, 128, .5); background: transparent; color: inherit; }
+    .gtr-select option { color: #222; background: #fff; }
     .gtr-other { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid rgba(128, 128, 128, .25); }
   `;
 
   // Memory slots of the connected grabber and the other known grabbers. onAction(op, args) makes
-  // them editable (null: read only); toggle adds the on/off switch for the correction.
-  function renderSlots(element, { grabberTest, device, lang = "de", onAction = null, toggle = false, buttonClass = "" } = {}) {
+  // them editable (null: read only); toggle adds the on/off switch for the correction. devices
+  // ([{ name, label, missing }]) with onSelectDevice(name) shows the grabber as a dropdown.
+  function renderSlots(element, { grabberTest, device, lang = "de", onAction = null, toggle = false, buttonClass = "", devices = null, onSelectDevice = null } = {}) {
     if (!element) return;
     ensureStyle(element.ownerDocument);
     const doc = element.ownerDocument;
@@ -962,10 +974,18 @@
     const basicHere = !!(basic && sameGrabber(testDevice(basic), device));
     const canSave = !!(onAction && basicHere && !fitCorrection(basic).error);
     const slotName = (i) => t.slSlot.replace("{n}", i + 1);
+    const ask = (text) => (typeof global.confirm === "function" ? global.confirm(text) : true);
     const btn = (action, i, label) => `<button type="button" class="${buttonClass}" data-sl="${action}" data-slot="${i}">${esc(label)}</button>`;
 
     let out = `<div class="gtr gtr-slots"><h4 style="margin-top:0">${esc(t.slTitle)}</h4>`;
-    out += `<p class="gtr-meta">${device ? r.fill(esc(t.slGrabber), { name: `<b>${esc(displayName(device))}</b>` }) : esc(t.slNoDevice)}</p>`;
+    if (Array.isArray(devices) && onSelectDevice) {
+      const opts = devices.map((d) => `<option value="${esc(d.name)}"${d.name === device ? " selected" : ""}>${esc(d.missing ? t.slMissing.replace("{name}", d.label ?? displayName(d.name)) : d.label ?? displayName(d.name))}</option>`);
+      if (!devices.some((d) => d.name === device)) opts.unshift(`<option value="" selected>${esc(device ? displayName(device) : "–")}</option>`);
+      out += `<div class="gtr-select"><select data-sl-device aria-label="${esc(t.slSelect)}">${opts.join("")}</select></div>`
+        + `<p class="gtr-hint">${esc(t.slSelectHint)}</p>`;
+    } else {
+      out += `<p class="gtr-meta">${device ? r.fill(esc(t.slGrabber), { name: `<b>${esc(displayName(device))}</b>` }) : esc(t.slNoDevice)}</p>`;
+    }
     if (device) {
       out += `<p class="gtr-hint">${esc(t.slIntro)}</p>`;
       if (toggle && onAction) {
@@ -1014,9 +1034,21 @@
     }
     out += `</div>`;
     element.innerHTML = out;
+    const select = element.querySelector("select[data-sl-device]");
+    if (select) {
+      select.addEventListener("change", () => {
+        const name = select.value;
+        if (!name || name === device) return;
+        const label = select.options[select.selectedIndex].textContent;
+        if (!ask(r.fill(t.slConfirmSwitch, { name: label }))) {
+          select.value = devices.some((d) => d.name === device) ? device : "";
+          return;
+        }
+        onSelectDevice(name);
+      });
+    }
     if (!onAction) return;
 
-    const ask = (text) => (typeof global.confirm === "function" ? global.confirm(text) : true);
     element.querySelectorAll("button[data-sl]").forEach((b) => b.addEventListener("click", () => {
       const op = b.dataset.sl;
       const i = Number(b.dataset.slot);
