@@ -21,12 +21,11 @@ $(document).ready(function () {
     return value;
   };
 
-  // Fork-Erweiterung: Grauachsen-Korrektur und Graukurve stehen in eigenen Bereichen unter der
+  // Fork-Erweiterung: die Graukurve steht in einem eigenen Bereich unter der
   // Farbkalibrierung (Teil desselben Formulars wie bei der Graues-Standbild-Erkennung, jeder Bereich
   // speichert das ganze Formular). Nur im Experten-Modus, wie die Einstellungen selbst.
   var profileProps = colorSchema.properties.channelAdjustment.items.properties;
   var GRAY_SECTIONS = [
-    { key: 'grayAxisTrim', container: 'editor_container_grayaxis', button: 'btn_submit_grayaxis', icon: 'fa-sliders' },
     { key: 'grayCurve', container: 'editor_container_graycurve', button: 'btn_submit_graycurve', icon: 'fa-line-chart' }
   ].filter(function (sec) {
     var prop = profileProps[sec.key];
@@ -173,138 +172,16 @@ $(document).ready(function () {
       'gammaRed': 'edt_conf_color_gammaRed_expl',
       'gammaGreen': 'edt_conf_color_gammaGreen_expl',
       'gammaBlue': 'edt_conf_color_gammaBlue_expl',
-      'grayAxisTrim': 'edt_conf_color_grayAxisTrim_expl',
       'grayCurve': 'edt_conf_color_grayCurve_expl'
     };
     Object.keys(staticFields).forEach(function (key) {
       attachInfoIcon(PROFILE_BASE + key, staticFields[key]);
     });
 
-    // grayAxisTrim.enabled ist ein festes (nicht-dynamisches) Feld
-    attachInfoIcon(PROFILE_BASE + 'grayAxisTrim.enabled', 'edt_conf_color_grayAxisTrim_enabled_expl');
-
-    // grayAxisTrim.stops ist eine dynamische Liste (Grauachsen-Stufen,
-    // Fork-Erweiterung) - Felder pro Zeile werden erst beim Hinzufügen
-    // einer Zeile erzeugt, daher per MutationObserver erneut anhängen
-    // statt einmalig.
-    var grayAxisStopFields = {
-      'saturationUpTo': 'edt_conf_color_grayAxisTrim_stops_saturationUpTo_expl',
-      'gainRed': 'edt_conf_color_grayAxisTrim_gainRed_expl',
-      'gainGreen': 'edt_conf_color_grayAxisTrim_gainGreen_expl',
-      'gainBlue': 'edt_conf_color_grayAxisTrim_gainBlue_expl'
-    };
-    var grayAxisStopsEditor;
-    try {
-      grayAxisStopsEditor = editor.getEditor(PROFILE_BASE + 'grayAxisTrim.stops');
-    } catch (e) {
-      grayAxisStopsEditor = null;
-    }
-    if (grayAxisStopsEditor && grayAxisStopsEditor.container) {
-      var attachAllGrayAxisRows = function () {
-        var rowCount = (grayAxisStopsEditor.rows || []).length;
-        for (var i = 0; i < rowCount; i++) {
-          var rowBase = PROFILE_BASE + 'grayAxisTrim.stops.' + i + '.';
-          Object.keys(grayAxisStopFields).forEach(function (key) {
-            attachInfoIcon(rowBase + key, grayAxisStopFields[key]);
-          });
-        }
-      };
-      attachAllGrayAxisRows();
-      var grayAxisStopsObserver = new MutationObserver(function () {
-        attachAllGrayAxisRows();
-      });
-      grayAxisStopsObserver.observe(grayAxisStopsEditor.container, { childList: true, subtree: true });
-
-      // Fork-Erweiterung: die Stufen muessen aufsteigend nach "Saettigung
-      // bis" sortiert sein. Der Server sortiert zwar defensiv vor der
-      // Auswertung, aber eine unsortierte Eingabe hier waere trotzdem
-      // verwirrend, weil die sichtbare Zeilenreihenfolge dann nicht der
-      // tatsaechlich angewendeten Kurve entspricht -- deshalb wird die
-      // Reihenfolge hier aktiv erzwungen statt nur intern stillschweigend
-      // korrigiert: bei einer Unsortierung erscheint eine Warnung, die
-      // betroffenen Zeilen werden rot markiert, und der Speichern-Button
-      // bleibt gesperrt (siehe editor.on('change', ...) unten), bis die
-      // Reihenfolge stimmt.
-      var $grayAxisOrderWarning = $('<div>')
-        .attr('id', 'grayAxisStopsOrderWarning')
-        .css({
-          display: 'none',
-          color: '#a94442',
-          background: '#f2dede',
-          border: '1px solid #ebccd1',
-          borderRadius: '4px',
-          padding: '6px 10px',
-          margin: '4px 0 8px'
-        });
-      $(grayAxisStopsEditor.container).before($grayAxisOrderWarning);
-
-      var getGrayAxisStopField = function (rowIndex) {
-        try {
-          return editor.getEditor(PROFILE_BASE + 'grayAxisTrim.stops.' + rowIndex + '.saturationUpTo');
-        } catch (e) {
-          return null;
-        }
-      };
-
-      var findGrayAxisStopsOrderViolation = function () {
-        var stops;
-        try {
-          stops = grayAxisStopsEditor.getValue();
-        } catch (e) {
-          return -1;
-        }
-        if (!Array.isArray(stops)) return -1;
-        for (var i = 1; i < stops.length; i++) {
-          var prev = stops[i - 1] ? stops[i - 1].saturationUpTo : undefined;
-          var cur = stops[i] ? stops[i].saturationUpTo : undefined;
-          if (typeof prev === 'number' && typeof cur === 'number' && cur <= prev) {
-            return i;
-          }
-        }
-        return -1;
-      };
-
-      var updateGrayAxisStopsOrderCheck = function () {
-        var rowCount = (grayAxisStopsEditor.rows || []).length;
-        for (var i = 0; i < rowCount; i++) {
-          var fieldEditor = getGrayAxisStopField(i);
-          if (fieldEditor && fieldEditor.input) {
-            $(fieldEditor.input).css('border-color', '');
-          }
-        }
-
-        var violationIndex = findGrayAxisStopsOrderViolation();
-        if (violationIndex < 0) {
-          $grayAxisOrderWarning.hide();
-          return false;
-        }
-
-        $grayAxisOrderWarning
-          .text($.i18n('edt_conf_color_grayAxisTrim_stops_order_error') +
-            ' (' + $.i18n('edt_conf_color_grayAxisTrim_stops_itemtitle') + ' ' + violationIndex + ' / ' + (violationIndex + 1) + ')')
-          .show();
-
-        [violationIndex - 1, violationIndex].forEach(function (i) {
-          var fieldEditor = getGrayAxisStopField(i);
-          if (fieldEditor && fieldEditor.input) {
-            $(fieldEditor.input).css('border-color', '#a94442');
-          }
-        });
-
-        return true;
-      };
-
-      updateGrayAxisStopsOrderCheck();
-      editor.on('change', function () {
-        if (updateGrayAxisStopsOrderCheck()) {
-          $('#btn_submit_color').prop('disabled', true);
-        }
-      });
-    }
-
-    // Graukurve (Fork-Erweiterung): feste Felder plus dynamische Punkte-Liste,
-    // gleiches Muster wie bei den Grauachsen-Stufen oben. Die Reihenfolge der
-    // Punkte ist egal, der Server sortiert sie nach Helligkeit.
+    // Graukurve (Fork-Erweiterung): feste Felder plus dynamische Punkte-Liste; die
+    // Felder einer Zeile entstehen erst beim Hinzufügen, daher per MutationObserver
+    // erneut anhängen. Die Reihenfolge der Punkte ist egal, der Server sortiert sie
+    // nach Helligkeit.
     attachInfoIcon(PROFILE_BASE + 'grayCurve.enabled', 'edt_conf_color_grayCurve_enabled_expl');
     attachInfoIcon(PROFILE_BASE + 'grayCurve.saturationLimit', 'edt_conf_color_grayCurve_saturationLimit_expl');
     attachInfoIcon(PROFILE_BASE + 'grayCurve.points', 'edt_conf_color_grayCurve_points_expl');
@@ -336,26 +213,8 @@ $(document).ready(function () {
       }).observe(grayCurvePointsEditor.container, { childList: true, subtree: true });
     }
 
-    // edgeTransitionBoost (Bereichsuebergangsverstaerkung, Fork-Erweiterung)
-    // ist ein eigener, fester Abschnitt auf Ebene von "color" selbst (nicht
-    // pro Farbprofil wie grayAxisTrim), da die Kantenerkennung Nachbar-LEDs
-    // entlang des Streifens braucht statt nur einen einzelnen Bildpunkt.
-    var EDGE_BOOST_BASE = 'root.color.edgeTransitionBoost.';
-    var edgeBoostFields = {
-      '': 'edt_conf_color_edgeTransitionBoost_expl', // Platzhalter fuer den Abschnitt selbst
-      'enabled': 'edt_conf_color_edgeTransitionBoost_enabled_expl',
-      'ledWidth': 'edt_conf_color_edgeTransitionBoost_ledWidth_expl',
-      'edgeSensitivity': 'edt_conf_color_edgeTransitionBoost_edgeSensitivity_expl',
-      'boostStrength': 'edt_conf_color_edgeTransitionBoost_boostStrength_expl'
-    };
     // LED-Mittelwert mit Nachkommastellen (Fork-Erweiterung), Ebene "color"
     attachInfoIcon('root.color.fractionalMean', 'edt_conf_color_fractionalMean_expl');
-
-    attachInfoIcon('root.color.edgeTransitionBoost', edgeBoostFields['']);
-    delete edgeBoostFields[''];
-    Object.keys(edgeBoostFields).forEach(function (key) {
-      attachInfoIcon(EDGE_BOOST_BASE + key, edgeBoostFields[key]);
-    });
 
   })(editor_color);
 

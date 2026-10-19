@@ -9,8 +9,6 @@
 #include <utils/RgbChannelAdjustment.h>
 #include <utils/RgbTransform.h>
 #include <utils/OkhsvTransform.h>
-#include <utils/GrayAxisTrim.h>
-#include <utils/GrayAxisTrimTransform.h>
 #include <utils/GrayCurve.h>
 
 class ColorAdjustment
@@ -38,12 +36,6 @@ public:
 
 	RgbTransform _rgbTransform;
 	OkhsvTransform _okhsvTransform;
-
-	/// Fork extension: independent gray-axis / white-balance trim (DESIGN.md
-	/// feature 4), applied after _okhsvTransform and before the fixed
-	/// 6-anchor mapping above, so this profile stays byte-identical to stock
-	/// Hyperion when _grayAxisTrim is disabled.
-	GrayAxisTrim _grayAxisTrim;
 
 	/// Fork extension: brightness-dependent channel factors for grays ("Graukurve"), applied to
 	/// the LED output after the temperature, see GrayCurve.

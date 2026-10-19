@@ -45,185 +45,42 @@ WebUI panel, `huePicker`/`turnsPercent` JSONEditor formats) is preserved at
 git tag `archive/extended-color-calibration-controlpoints` (last commit
 `517ae806`) for reference or restoration; see
 [[hyperion-fork-schema-change-gotcha]] before restoring it against a config
-that has since moved on. Everything below describes the fork as it exists
-after that removal — only the gray-axis trim remains.
+that has since moved on.
 
-**Independent gray-axis / white-balance trim** — the concrete/green defect
-described in Motivation above is a white-balance problem (a
-low-saturation/neutral-axis tint from the capture sensor), not a
-hue-mapping problem; routing the fix through a saturated hue anchor (the
-removed control-point system) was a workaround with real side effects on
-genuine saturated greens. `GrayAxisTrim` corrects only near-neutral,
-low-chroma pixels directly in RGB, never touching saturated colors.
+**Removed 2026-10-19, per explicit request:** three later fork features were
+taken out completely — code, schema, defaults, stored settings, i18n, WebUI
+and the TV test page:
 
-**Staged gray-axis gain ("Grauachsen-Stufen")** — the trim's original
-single `saturationThreshold`/`gainRed/Green/Blue` quartet only allowed one
-gain for the whole near-neutral band. Real captures often need different
-corrections at different shades of near-gray (e.g. true black-level noise
-vs. a slightly warmer dark gray a bit further out on the saturation axis).
-It's driven by an ordered list of `GrayAxisTrimStop` entries
-(`saturationUpTo`, `gainRed/Green/Blue`), each an anchor point on a
-piecewise-linear gain curve over saturation — see `GrayAxisTrimStop` in
-Architecture below. Deliberately a smooth ramp between stops, not a flat
-staircase: a hard step at a band boundary reproduces the exact flicker bug
-the single-threshold version had before its own smoothing fix (commit
-`a6c62488`).
-`hyperion::createGrayAxisTrim` sorts stops ascending defensively
-server-side regardless of input order, but `content_colors.js` also
-actively *enforces* strictly-ascending `saturationUpTo` in the WebUI itself
-(blocking warning + disabled Speichern-button on violation, offending rows
-outlined) — a user was able to enter stop 1 with a higher `saturationUpTo`
-than stop 2 and only notice the visual list order didn't match the applied
-curve, so relying on the silent server-side sort alone was confusing and
-got upgraded to a hard UI block.
+- **Gray-axis trim** (`grayAxisTrim` per color profile, "Grauachsen-Korrektur"):
+  saturation-gated RGB gains for near-neutral pixels, the same for every
+  brightness. Superseded by the **gray curve** (`grayCurve`, channel factors
+  per brightness for grays) and the **grabber color correction** (3x3 matrix
+  per grabber model, see `GrabberColorCorrection` in `VideoProbe.h`), which
+  fixes the capture chain's color error at its source.
+- **Edge transition boost** (`edgeTransitionBoost`, "Bereichsübergangsverstärkung"):
+  brightened the last 1-3 LEDs on the bright side of a sharp bright/dark edge.
+  Never kept on; the LED capture depth and the fractional LED mean handle
+  edges better.
+- **Stray LED suppressor** (device `strayLedSuppressor`, "Störlicht-Filter"):
+  dimmed isolated faint, wrongly colored (mostly dark red) LEDs in black
+  scenes. Its cause is gone: the current grabber delivers black as 0 without
+  noise, and the 16-bit black threshold (`blackThreshold`) switches off what
+  is left; the filter could also dim genuine dark red content.
 
-## Architecture
-
-- **`GrayAxisTrim`** (`include/utils/GrayAxisTrim.h`) — independent
-  near-neutral RGB gain correction. Driven by an ordered
-  `QVector<GrayAxisTrimStop>` (`saturationUpTo`, `gainRed/Green/Blue`), the
-  "Grauachsen-Stufen" staged gain curve.
-- **`GrayAxisTrimStop`** — one Stuetzstelle of the trim's staged gain curve:
-  flat at the first stop's gain from saturation 0 up to its `saturationUpTo`;
-  linearly blended between two consecutive stops across the saturation span
-  between them; no effect above the last stop's `saturationUpTo` (saturated
-  colors always stay untouched). `hyperion::createGrayAxisTrim` sorts the
-  vector ascending by `saturationUpTo` once at config-parse time, so the
-  per-pixel transform never re-sorts.
-- **`GrayAxisTrimTransform`** (`libsrc/utils/GrayAxisTrimTransform.cpp`) —
-  the engine. Operates per-pixel in Okhsv space (`ColorSys::rgb2okhsv`) just
-  to read the pixel's saturation; the actual correction is a per-channel RGB
-  multiply, no re-encode through `okhsv2rgb` needed. Skips pixels above the
-  last stop's `saturationUpTo` entirely, leaving them byte-identical to
-  stock Hyperion.
-
-## Integration into stock Hyperion
-
-- `ColorAdjustment` (`include/hyperion/ColorAdjustment.h`) gained
-  `_grayAxisTrim`.
-- `hyperion::createColorAdjustment` (`include/utils/hyperion.h`) parses the
-  `grayAxisTrim` JSON key from the color adjustment config, defaulting to
-  disabled — **when absent/disabled, this profile is byte-identical to
-  stock Hyperion.**
-- `MultiColorAdjustment::applyAdjustment` calls
-  `GrayAxisTrimTransform::apply(...)` right after `_okhsvTransform` and
-  before `_rgbTransform.applyGamma`, i.e. after the existing global HSV
-  saturation/value transform but before the final gamma/brightness-component
-  split.
-- `libsrc/hyperion/schema/schema-color.json` exposes `grayAxisTrim` as a
-  JSON-schema object.
-- `assets/webconfig/i18n/{de,en}.json` has full title+description text for
-  every field; `content_colors.js` builds a dedicated WebUI panel (own
-  Stufen list with add/remove rows, live tooltips, and the ascending-order
-  enforcement described above) — not just the raw JSON editor.
+All three were off in the live configuration when they were removed. The
+last commit that still contains them is `21e9211d`; restoring one means
+bringing back its files and schema entries from there (see
+[[hyperion-fork-schema-change-gotcha]] for the stored settings).
 
 ## Flicker safety (critical constraint)
 
 This Hyperion install has hard-won flicker fixes (star grounding, SPI clock
 rate tuning — see the project's `hyperion-good-state-2026-09-16-1mhz` /
-`hyperion-flicker-*` history). `GrayAxisTrim`'s staged gain curve is
-designed around that constraint: a hard on/off or stop-to-stop step would
-itself be a flicker source, since saturation noise hovering around a
-boundary would toggle the correction frame to frame. That's why every
-transition — the original single-threshold cutoff *and* every boundary
-between `GrayAxisTrimStop` entries — is a smooth blend
-(`GrayAxisTrimTransform::apply`), never a hard switch. See "Staged gray-axis
-gain" above for the concrete mechanism and its commit history.
-
-## Edge transition boost (added 2026-09-19)
-
-Independent fork feature, added under "Bildverarbeitung" right after the
-gray-axis trim on the WebUI's Farbe page: **`EdgeTransitionBoost`**
-(`include/utils/EdgeTransitionBoost.h` +
-`EdgeTransitionBoostTransform.h`/`.cpp`) brightens the last 1-3 LEDs on the
-bright side of a sharp brightness edge along the LED strip (e.g. a
-saturated object against a dark/black background), where the mapped camera
-pixels often carry too little clean color, producing a dull or slightly
-dark-reddish edge.
-
-**Architecturally distinct from `GrayAxisTrim`/the removed control-point
-system**: those operate per-pixel in isolation (Okhsv saturation of a
-single LED's own color). This needs the *spatial neighbors* along the
-strip to find brightness edges, so it cannot live inside `ColorAdjustment`
-(a per-profile, per-pixel struct). Instead it's a single
-`EdgeTransitionBoost` member on `MultiColorAdjustment` itself, parsed from
-a new top-level `edgeTransitionBoost` property in `schema-color.json`
-(sibling of `channelAdjustment`, not nested inside it), and applied as a
-whole-array second pass at the end of `MultiColorAdjustment::
-applyAdjustment()`, after every LED's per-profile color adjustment (gamma,
-gray-axis trim, channel adjustment) has already run. No wraparound: LED 0
-and the last LED are never treated as neighbors, since most physical
-layouts (unlike this specific room-perimeter install) are not closed
-loops.
-
-**Math, same anti-flicker doctrine as the gray-axis trim:**
-- Edge detection is stepless, not a hard threshold: `edgeStrength =
-  clamp01(|drop| / edgeSensitivity)` where `drop` is the brightness
-  (`max(R,G,B)`) difference between two adjacent LEDs. A hard cutoff here
-  would reproduce the exact class of flicker bug already fixed once for
-  `GrayAxisTrim`.
-- Spatial falloff across `ledWidth` reuses the same raised-cosine shape
-  the (now-removed) control-point system used for its hue-influence
-  windows.
-- When a LED sits near more than one qualifying edge, the *strongest*
-  weight wins, not a sum — same "don't blend competing effects" principle
-  documented above for control points.
-- Brightening uses a "screen" blend (`value + (255-value) * intensity`)
-  per channel instead of a multiplicative gain: self-limiting by
-  construction (can't overflow/clip), gives large absolute lift to dark
-  LEDs and very little to already-bright ones, so bright scenes can't blow
-  out at boosted edges.
-
-Performance: one read-only O(n) pass building a per-LED weight buffer,
-capped at `ledWidth` (max 3) neighbor writes per detected edge, then one
-O(n) apply pass — negligible relative to typical LED counts (~600-650 on
-this install) at real-time frame rates. Allocates one `QVector<double>`
-scratch buffer per frame; not pooled/reused, since profiling never showed
-a need to.
-
-## Stray LED suppressor (added 2026-09-19)
-
-Post-processing filter, architecturally distinct from every other fork
-feature so far: instead of sitting in the color-adjustment pipeline, it
-runs as the *very last* step before LED values reach the hardware, device-
-agnostic, in `LedDevice` itself (`include/utils/StrayLedSuppressor.h` +
-`libsrc/utils/StrayLedSuppressor.cpp`, applied in
-`LedDevice::updateLeds()` right after the incoming values are copied into
-`_ledUpdateBuffer`, before `write()` is ever called). Settings live in
-`schema-device.json` (sibling of `hardwareLedCount`/`colorOrder`/...), so
-they show up on the WebUI's LED-hardware page using that page's existing
-`options.infoText` tooltip mechanism, not the fork's own custom hover-icon
-system used on the Farbe page (`content_leds.js` needed zero changes).
-
-**Problem it solves**: isolated LEDs glowing faintly in a wrong color
-(typically dark red) in scenes that should render fully black — sensor/
-quantization noise near black, not real content.
-
-**Detection** (Okhsv per LED, `ColorSys::rgb2okhsv`): a candidate is a LED
-whose value is at/below `brightnessThreshold`, saturation at/above
-`saturationThreshold`, and hue within `hueToleranceDegrees` of
-`targetColor`'s hue.
-
-**Global ratio gate**: candidates are counted once per frame; if more than
-`maxAffectedRatioPercent` of all LEDs qualify, the filter is skipped
-entirely for that frame. Cheap (one O(n) counting pass, no spatial
-clustering/connected-components needed) and sufficient to tell "a handful
-of scattered stray pixels" apart from "an intentional, widespread dark-red
-scene" (e.g. tail lights) without ever touching the latter.
-
-**Debounce**: per-LED persistent state (`suppressed` + `consecutiveFrames`
-counter, `QVector<LedState>` owned by the `StrayLedSuppressor` instance,
-resized lazily on first use / LED-count change) — mirrors the
-hysteresis+debounce pattern the fork's removed `LumaGate` used, just
-symmetric (`debounceFrames` applies to entering and leaving suppression
-alike, no separate trigger/release values) since the underlying condition
-here is already a single combined candidate test, not two independent
-thresholds.
-
-**Action**: full off (R=G=B=0) only, deliberately not a selective single-
-channel zero — a stray dark-red LED is almost always broadband near-black
-noise, not "correct G/B with a wrong R channel"; zeroing only R would
-likely leave a dim, oddly cyan-tinted glow instead of true black.
+`hyperion-flicker-*` history). Every fork transform that depends on the
+picture content must therefore blend smoothly instead of switching at a hard
+threshold: noise around a boundary would otherwise toggle the result frame to
+frame. The gray curve, for example, fades out with rising saturation
+(`saturationLimit`) instead of cutting off.
 
 ## Fork maintenance cost (accepted tradeoff)
 

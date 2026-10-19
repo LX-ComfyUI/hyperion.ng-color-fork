@@ -230,23 +230,6 @@
                "saturationGain":1.0,
                "brightnessGain":1.0,
                "temperature" : 6600,
-               "grayAxisTrim":{
-                  "enabled":false,
-                  "stops":[
-                     {
-                        "saturationUpTo":0.0,
-                        "gainRed":1.0,
-                        "gainGreen":1.0,
-                        "gainBlue":1.0
-                     },
-                     {
-                        "saturationUpTo":0.12,
-                        "gainRed":1.0,
-                        "gainGreen":1.0,
-                        "gainBlue":1.0
-                     }
-                  ]
-               },
                "grayCurve":{
                   "enabled":false,
                   "saturationLimit":0.15,
@@ -284,13 +267,7 @@
                   ]
                }
             }
-         ],
-         "edgeTransitionBoost":{
-            "enabled":false,
-            "ledWidth":2,
-            "edgeSensitivity":60,
-            "boostStrength":1.0
-         }
+         ]
       },
       "device":{
          "type":"file",
@@ -302,18 +279,6 @@
          "rewriteTime":0,
          "enableAttempts":6,
          "enableAttemptsInterval":15,
-         "strayLedSuppressor":{
-            "enabled":false,
-            "judgeOn":"grabber",
-            "targetColor":[255,0,0],
-            "brightnessThreshold":30,
-            "hueToleranceDegrees":30,
-            "saturationThreshold":0.15,
-            "brightnessSoftZone":20,
-            "maxAffectedRatioPercent":15,
-            "debounceFrames":15,
-            "fadeFrames":10
-         },
          "blackThreshold":{
             "enabled":true,
             "threshold":0.5

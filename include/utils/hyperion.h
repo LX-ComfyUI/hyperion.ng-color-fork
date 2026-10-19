@@ -116,56 +116,6 @@ namespace hyperion {
 		);
 	}
 
-	/// Fork extension: parse the "grayAxisTrim" object (DESIGN.md feature 4),
-	/// including its staged gain curve (feature 4b, "Grauachsen-Stufen").
-	static GrayAxisTrim createGrayAxisTrim(const QJsonObject& adjustmentConfig)
-	{
-		GrayAxisTrim trim;
-		const QJsonObject t = adjustmentConfig["grayAxisTrim"].toObject();
-		trim.enabled = t["enabled"].toBool(false);
-
-		QVector<GrayAxisTrimStop> stops;
-		const QJsonArray stopsConfig = t["stops"].toArray();
-		for (const QJsonValue & v : stopsConfig)
-		{
-			const QJsonObject s = v.toObject();
-			GrayAxisTrimStop stop;
-			stop.saturationUpTo = s["saturationUpTo"].toDouble(0.1);
-			stop.gainRed        = s["gainRed"].toDouble(1.0);
-			stop.gainGreen      = s["gainGreen"].toDouble(1.0);
-			stop.gainBlue       = s["gainBlue"].toDouble(1.0);
-			stops.push_back(stop);
-		}
-
-		if (stops.isEmpty() && t.contains("saturationThreshold"))
-		{
-			// Legacy pre-"Grauachsen-Stufen" shape: a single
-			// saturationThreshold/gainRed/Green/Blue quartet describing one
-			// ramp from full gain at saturation 0 down to identity at the
-			// threshold. Synthesize the equivalent two-stop curve so an
-			// existing config keeps behaving exactly as before until it is
-			// resaved through the new staged editor.
-			GrayAxisTrimStop base;
-			base.saturationUpTo = 0.0;
-			base.gainRed   = t["gainRed"].toDouble(1.0);
-			base.gainGreen = t["gainGreen"].toDouble(1.0);
-			base.gainBlue  = t["gainBlue"].toDouble(1.0);
-
-			GrayAxisTrimStop edge;
-			edge.saturationUpTo = t["saturationThreshold"].toDouble(0.12);
-			edge.gainRed = edge.gainGreen = edge.gainBlue = 1.0;
-
-			stops = { base, edge };
-		}
-
-		std::sort(stops.begin(), stops.end(), [](const GrayAxisTrimStop & a, const GrayAxisTrimStop & b) {
-			return a.saturationUpTo < b.saturationUpTo;
-		});
-
-		trim.stops = stops;
-		return trim;
-	}
-
 	/// Fork extension: parse the "grayCurve" object (brightness-dependent channel factors for
 	/// grays). Points are sorted by level so the transform can rely on the order.
 	static GrayCurve createGrayCurve(const QJsonObject& adjustmentConfig)
@@ -208,30 +158,15 @@ namespace hyperion {
 		adjustment->_rgbYellowAdjustment  = createRgbChannelAdjustment(adjustmentConfig, "yellow" , ColorRgb::YELLOW);
 		adjustment->_rgbTransform         = createRgbTransform(adjustmentConfig);
 		adjustment->_okhsvTransform       = createOkhsvTransform(adjustmentConfig);
-		adjustment->_grayAxisTrim         = createGrayAxisTrim(adjustmentConfig);
 		adjustment->_grayCurve            = createGrayCurve(adjustmentConfig);
 
 		return adjustment;
-	}
-
-	/// Fork extension: parse the "edgeTransitionBoost" object (whole-strip,
-	/// not per profile -- see MultiColorAdjustment::_edgeTransitionBoost).
-	static EdgeTransitionBoost createEdgeTransitionBoost(const QJsonObject& colorConfig)
-	{
-		EdgeTransitionBoost boost;
-		const QJsonObject b = colorConfig["edgeTransitionBoost"].toObject();
-		boost.enabled         = b["enabled"].toBool(false);
-		boost.ledWidth         = b["ledWidth"].toInt(2);
-		boost.edgeSensitivity  = b["edgeSensitivity"].toInt(60);
-		boost.boostStrength    = b["boostStrength"].toDouble(1.0);
-		return boost;
 	}
 
 	static MultiColorAdjustment * createLedColorsAdjustment(int ledCnt, const QJsonObject & colorConfig)
 	{
 		// Create the result, the transforms are added to this
 		MultiColorAdjustment * adjustment = new MultiColorAdjustment(ledCnt);
-		adjustment->_edgeTransitionBoost = createEdgeTransitionBoost(colorConfig);
 
 		const QJsonValue adjustmentConfig = colorConfig["channelAdjustment"];
 		const QRegularExpression overallExp("([0-9]+(\\-[0-9]+)?)(,[ ]*([0-9]+(\\-[0-9]+)?))*");

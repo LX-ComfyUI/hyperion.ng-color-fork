@@ -8,7 +8,6 @@
 // Hyperion includes
 #include <utils/ColorRgb.h>
 #include <utils/ColorRgb16.h>
-#include <utils/EdgeTransitionBoost.h>
 #include <hyperion/ColorAdjustment.h>
 
 ///
@@ -55,8 +54,7 @@ public:
 	/// @param ledColors The list with raw colors
 	///
 	/// @param preciseColors Fork extension (16-bit HD108 output): when given, it is filled with the
-	///                      same colors computed without rounding to 8 bit (ColorRgb16). It is left
-	///                      empty when a step without a precise version is active (edge boost).
+	///                      same colors computed without rounding to 8 bit (ColorRgb16).
 	///
 	/// @param ledMeans Fork extension, optional: the input colors with fractions (mean per LED
 	///                 area, see ImageToLedsMap). The precise path starts from them instead of
@@ -64,12 +62,6 @@ public:
 	///
 	void applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors = nullptr,
 	                     const QVector<ColorRgbFloat>* ledMeans = nullptr);
-
-	/// Fork extension: settings for the whole-strip edge-transition boost
-	/// pass, applied at the end of applyAdjustment(). Not per-LED like
-	/// ColorAdjustment's fields -- this needs neighbor access along the
-	/// strip, so it lives here rather than on an individual profile.
-	EdgeTransitionBoost _edgeTransitionBoost;
 
 private:
 	/// precise (16-bit) version of the per-LED calculation, see applyAdjustment()

@@ -1079,12 +1079,11 @@ $(document).ready(function () {
     };
     conf_editor.getEditor("root.generalOptions").setValue(values_general);
 
-    // Fork-Erweiterung: Info-Symbole fuer den Stoerlicht-Filter, gleiches
-    // Muster wie bei den Farbkalibrierungs-Feldern auf der Farbe-Seite
-    // (content_colors.js) -- das schema-eigene "options.infoText" wird von
-    // dieser JSONEditor-Version fuer Objekt-/Zahlen-/Checkbox-Felder nicht
-    // gerendert, daher haengt dieser Helper die Symbole per Hand an.
-    (function addStrayLedSuppressorInfoIcons(editor) {
+    // Fork-Erweiterung: Info-Symbole fuer die Schwarzschwelle, gleiches Muster wie bei den
+    // Farbkalibrierungs-Feldern auf der Farbe-Seite (content_colors.js) -- das schema-eigene
+    // "options.infoText" wird von dieser JSONEditor-Version fuer Objekt-/Zahlen-/Checkbox-Felder
+    // nicht gerendert, daher haengt dieser Helper die Symbole per Hand an.
+    (function addForkInfoIcons(editor) {
       function attachInfoIcon(path, explKey) {
         var fieldEditor;
         try {
@@ -1101,25 +1100,7 @@ $(document).ready(function () {
         $label.data('forkInfoIconAdded', true);
       }
 
-      var BASE = 'root.generalOptions.strayLedSuppressor.';
-      attachInfoIcon('root.generalOptions.strayLedSuppressor', 'edt_dev_general_strayLedSuppressor_expl');
-      var fields = {
-        'enabled': 'edt_dev_general_strayLedSuppressor_enabled_expl',
-        'judgeOn': 'edt_dev_general_strayLedSuppressor_judgeOn_expl',
-        'targetColor': 'edt_dev_general_strayLedSuppressor_targetColor_expl',
-        'brightnessThreshold': 'edt_dev_general_strayLedSuppressor_brightnessThreshold_expl',
-        'brightnessSoftZone': 'edt_dev_general_strayLedSuppressor_brightnessSoftZone_expl',
-        'hueToleranceDegrees': 'edt_dev_general_strayLedSuppressor_hueToleranceDegrees_expl',
-        'saturationThreshold': 'edt_dev_general_strayLedSuppressor_saturationThreshold_expl',
-        'maxAffectedRatioPercent': 'edt_dev_general_strayLedSuppressor_maxAffectedRatioPercent_expl',
-        'debounceFrames': 'edt_dev_general_strayLedSuppressor_debounceFrames_expl',
-        'fadeFrames': 'edt_dev_general_strayLedSuppressor_fadeFrames_expl'
-      };
-      Object.keys(fields).forEach(function (key) {
-        attachInfoIcon(BASE + key, fields[key]);
-      });
-
-      // Fork-Erweiterung: Schwarzschwelle fuer die 16-Bit-Ausgabe, gleiches Muster
+      // Schwarzschwelle fuer die 16-Bit-Ausgabe
       attachInfoIcon('root.generalOptions.blackThreshold', 'edt_dev_general_blackThreshold_expl');
       attachInfoIcon('root.generalOptions.blackThreshold.enabled', 'edt_dev_general_blackThreshold_enabled_expl');
       attachInfoIcon('root.generalOptions.blackThreshold.threshold', 'edt_dev_general_blackThreshold_threshold_expl');

@@ -252,12 +252,6 @@ bool LedDevice::init(const QJsonObject& deviceConfig)
 	std::chrono::seconds(deviceConfig[CONFIG_ENABLE_ATTEMPTS_INTERVALL].toInt(DEFAULT_ENABLE_ATTEMPTS_INTERVAL.count()))
 	);
 
-	// fork: in "grabber" mode Hyperion runs the stray LED filter before smoothing, here it only
-	// runs when it judges the LED output
-	StrayLedSuppressorSettings straySettings = createStrayLedSuppressorSettings(deviceConfig);
-	straySettings.enabled = straySettings.enabled && !straySettings.judgeGrabberColors;
-	_strayLedSuppressor.configure(straySettings);
-
 	// Fork extension: black threshold for the 16-bit output, in 8-bit steps in the config
 	const QJsonObject blackThreshold = deviceConfig["blackThreshold"].toObject();
 	const bool blackThresholdEnabled = blackThreshold["enabled"].toBool(true);
@@ -378,8 +372,6 @@ int LedDevice::updateLedsPrecise(const QVector<ColorRgb>& ledValues, const QVect
 		{
 			_ledUpdateBufferPrecise.clear();
 		}
-		// one suppressor step per frame, applied to both versions of the frame
-		_strayLedSuppressor.apply(_ledUpdateBuffer, _ledUpdateBufferPrecise.isEmpty() ? nullptr : &_ledUpdateBufferPrecise);
 	}
 
 	// If a frame processing is NOT already scheduled, schedule one.

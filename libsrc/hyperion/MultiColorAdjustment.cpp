@@ -5,8 +5,6 @@
 // Hyperion includes
 
 #include <utils/Logger.h>
-#include <utils/GrayAxisTrimTransform.h>
-#include <utils/EdgeTransitionBoostTransform.h>
 #include <hyperion/MultiColorAdjustment.h>
 
 MultiColorAdjustment::MultiColorAdjustment(int ledCnt)
@@ -180,8 +178,7 @@ bool meanMatches(float mean, uint8_t color)
 void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector<ColorRgb16>* preciseColors,
                                            const QVector<ColorRgbFloat>* ledMeans)
 {
-	// The edge boost has no precise version: the LED device then gets the 8-bit values only
-	const bool precise = preciseColors != nullptr && !_edgeTransitionBoost.enabled;
+	const bool precise = preciseColors != nullptr;
 	if (preciseColors != nullptr)
 	{
 		preciseColors->clear();
@@ -213,9 +210,9 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		uint8_t oblue  = color.blue;
 
 		// Fork extension: the precise path starts from the mean with its fractions when there is one
-		// and no 8-bit-only step (Okhsv, gray axis trim) changes the color before it
+		// and no 8-bit-only step (Okhsv) changes the color before it
 		const ColorRgbFloat* mean = nullptr;
-		if (useMeans && adjustment->_okhsvTransform.isIdentity() && !adjustment->_grayAxisTrim.enabled)
+		if (useMeans && adjustment->_okhsvTransform.isIdentity())
 		{
 			const ColorRgbFloat& m = (*ledMeans)[i];
 			if (meanMatches(m.red, ored) && meanMatches(m.green, ogreen) && meanMatches(m.blue, oblue))
@@ -243,11 +240,6 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 		if (!adjustment->_okhsvTransform.isIdentity())
 		{
 			adjustment->_okhsvTransform.transform(ored, ogreen, oblue);
-		}
-
-		if (adjustment->_grayAxisTrim.enabled)
-		{
-			GrayAxisTrimTransform::apply(ored, ogreen, oblue, adjustment->_grayAxisTrim);
 		}
 
 		if (precise)
@@ -305,10 +297,5 @@ void MultiColorAdjustment::applyAdjustment(QVector<ColorRgb>& ledColors, QVector
 			color.blue  = static_cast<uint8_t>(qMin(std::lround(color.blue  * gainBlue),  255L));
 		}
 		adjustment->_rgbTransform.applyBacklight(color.red, color.green, color.blue);
-	}
-
-	if (_edgeTransitionBoost.enabled)
-	{
-		EdgeTransitionBoostTransform::apply(ledColors, _edgeTransitionBoost);
 	}
 }

@@ -45,19 +45,9 @@ add_library(hyperion-utils
 	# Color transformation (saturation/value) of Okhsv colors
 	${CMAKE_SOURCE_DIR}/include/utils/OkhsvTransform.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/OkhsvTransform.cpp
-	# Fork: gray-axis trim (see DESIGN.md)
-	${CMAKE_SOURCE_DIR}/include/utils/GrayAxisTrim.h
-	${CMAKE_SOURCE_DIR}/include/utils/GrayAxisTrimTransform.h
-	${CMAKE_SOURCE_DIR}/libsrc/utils/GrayAxisTrimTransform.cpp
+	# Fork: gray curve (brightness-dependent channel factors for grays)
 	${CMAKE_SOURCE_DIR}/include/utils/GrayCurve.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/GrayCurve.cpp
-	# Fork: edge-transition boost (see DESIGN.md)
-	${CMAKE_SOURCE_DIR}/include/utils/EdgeTransitionBoost.h
-	${CMAKE_SOURCE_DIR}/include/utils/EdgeTransitionBoostTransform.h
-	${CMAKE_SOURCE_DIR}/libsrc/utils/EdgeTransitionBoostTransform.cpp
-	# Fork: stray LED suppressor (see DESIGN.md)
-	${CMAKE_SOURCE_DIR}/include/utils/StrayLedSuppressor.h
-	${CMAKE_SOURCE_DIR}/libsrc/utils/StrayLedSuppressor.cpp
 	# Signal handler
 	${CMAKE_SOURCE_DIR}/include/utils/DefaultSignalHandler.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/DefaultSignalHandler.cpp
