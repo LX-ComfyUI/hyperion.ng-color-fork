@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 
 import { layoutRuns, offsetsFromAnswers, composeOffsets, correctedLeds, sameLayout, MAX_ANSWER } from "./public/layoutfix.js";
 
@@ -627,22 +628,60 @@ function stepLabel(step) {
   return `${t[step.group] ?? step.group} ${level}`;
 }
 
-// --- grabber color correction (global setting grabberTest.correction, computed by the report) ---
-// state for the switches on the control page; the WebUI can change it too, so it is read again
-// every few seconds and broadcast when it changed
-let grabberCorrection = { available: false, enable: false, basedOn: null };
+// --- grabber color correction: calibrations per grabber model (global setting grabberTest.grabbers,
+// see grabbertest-report.js). Hyperion corrects the frames of the connected grabber with the active
+// slot of that grabber. Every few seconds the server asks Hyperion which grabber delivers frames
+// (fork command "grabbertest" with peek) and broadcasts the state for the switches, the memory
+// slots and the bell; the WebUI can change the setting too, so it is read again each time.
+let grabberDevice = null; // name of the grabber that delivers frames, kept while none arrive
+let peekSupported = null; // false: this Hyperion knows no per-grabber calibrations yet
+let grabberCorrection = { available: false, enable: false, basedOn: null, device: null, slot: -1, name: "", stamp: "", notifications: [] };
+
+async function peekGrabber() {
+  if (!monitor) return;
+  try {
+    const reply = await monitor.call({ command: "grabbertest", peek: true });
+    peekSupported = !!reply.success;
+    if (reply.success && reply.info?.device) grabberDevice = reply.info.device;
+  } catch {}
+}
 
 function readGrabberCorrection() {
   try {
-    const c = readGlobalSetting("grabberTest")?.correction ?? {};
-    const available = Array.isArray(c.matrix) && c.matrix.length === 9;
-    return { available, enable: available && c.enable === true, basedOn: c.basedOn ?? null };
+    const gt = readGlobalSetting("grabberTest") ?? {};
+    const device = grabberDevice;
+    const c = Report.currentCorrection(gt, device);
+    const g = Report.grabberEntry(gt, device);
+    const basic = gt.basic?.steps?.length ? gt.basic : null;
+    const canFit = !!(basic && Report.sameGrabber(Report.testDevice(basic), device) && !Report.fitCorrection(basic).error);
+    const available = !!(c.matrix || g?.slots?.some(Boolean) || canFit);
+    // changes whenever the slots or the last test change, so the page reloads them
+    const stamp = createHash("sha1").update(JSON.stringify(Report.migrated(gt).grabbers ?? {}) + "|" + (basic?.date ?? "")).digest("hex").slice(0, 12);
+    const notifications = Report.notifications(gt, device).map(({ id, kind, device: d, name }) => ({ id, kind, device: d, name }));
+    return { available, enable: c.enable === true, basedOn: c.basedOn ?? null, device, deviceName: device ? Report.displayName(device) : null, filled: (g?.slots ?? []).filter(Boolean).length, slot: c.slot ?? -1, name: c.name ?? "", perGrabber: peekSupported === true, stamp, notifications };
   } catch {
     return grabberCorrection;
   }
 }
 
-function refreshGrabberCorrection() {
+// Settings from before the calibrations per grabber hold one correction for every grabber; they
+// are converted once this Hyperion knows the new form (it answers "peek")
+async function migrateGrabberCalibrations() {
+  // the device is needed: Hyperion looks the calibration up by the grabber's full name
+  if (peekSupported !== true || !grabberDevice) return;
+  const gt = readGlobalSetting("grabberTest");
+  if (!gt || gt.grabbers || !gt.correction) return;
+  await exclusive(async () => {
+    const current = readGlobalSetting("grabberTest");
+    if (!current || current.grabbers || !current.correction) return;
+    await writeGlobalSetting("grabberTest", Report.migrated(current, grabberDevice));
+    console.log("grabberTest: correction converted to the calibrations per grabber");
+  });
+}
+
+async function refreshGrabberCorrection() {
+  await peekGrabber();
+  try { await migrateGrabberCalibrations(); } catch (err) { console.warn("grabberTest migration:", err.message); }
   const next = readGrabberCorrection();
   if (JSON.stringify(next) === JSON.stringify(grabberCorrection)) return;
   grabberCorrection = next;
@@ -651,28 +690,15 @@ function refreshGrabberCorrection() {
 grabberCorrection = readGrabberCorrection();
 setInterval(refreshGrabberCorrection, 4000);
 
-// same limits as Hyperion (GrabberColorCorrection::configure): 9 numbers, row absolute sum <= 2
-function validMatrix(m) {
-  if (!Array.isArray(m) || m.length !== 9 || !m.every((v) => typeof v === "number" && Number.isFinite(v))) return false;
-  for (let r = 0; r < 3; r++) if (Math.abs(m[3 * r]) + Math.abs(m[3 * r + 1]) + Math.abs(m[3 * r + 2]) > 2) return false;
-  return true;
-}
-
-// enable: true/false switches the stored matrix; a full correction object (from the report) replaces it
-async function setGrabberCorrection({ enable, correction }) {
+// Changes the calibrations of the connected grabber (ops of GrabberTestReport.applyOp)
+async function changeGrabberCalibration(op, args) {
+  if (peekSupported !== true) throw new Error("Diese Hyperion-Version kennt noch keine Kalibrierungen je Grabber. Bitte die Hyperion-Version des Forks aktualisieren.");
   await exclusive(async () => {
     const current = readGlobalSetting("grabberTest") ?? { basic: {}, custom: {} };
-    let next;
-    if (correction && typeof correction === "object") {
-      if (correction.enable && !validMatrix(correction.matrix)) throw new Error("Ungültige Korrekturmatrix");
-      next = { ...correction, enable: correction.enable === true };
-    } else {
-      if (enable && !validMatrix(current.correction?.matrix)) throw new Error("Noch keine Korrektur berechnet. Zuerst einen Grundtest machen und die Korrektur unter Grabber-Farberkennung kalibrieren einschalten.");
-      next = { ...(current.correction ?? {}), enable: enable === true };
-    }
-    await writeGlobalSetting("grabberTest", { ...current, basic: current.basic ?? {}, custom: current.custom ?? {}, correction: next });
+    const next = Report.applyOp(current, grabberDevice, op, args ?? {}, "de");
+    await writeGlobalSetting("grabberTest", { ...next, basic: next.basic ?? {}, custom: next.custom ?? {} });
   });
-  refreshGrabberCorrection();
+  await refreshGrabberCorrection();
 }
 
 function setRun(patch) {
@@ -702,6 +728,7 @@ async function runGrabberTest(kind) {
     : state.grabberColors.map((c) => ({ group: "custom", name: c, sent: hexRgb(c) }));
   const results = [];
   let frame = null;
+  let device = null;
   try {
     for (let i = 0; i < steps.length; i++) {
       if (grabberAbort) break;
@@ -715,6 +742,7 @@ async function runGrabberTest(kind) {
       const s = await probeGrabber(false);
       if (!s.avg?.n) throw new Error("Der Grabber liefert keine Bilder mehr");
       frame = { width: s.width, height: s.height };
+      if (s.device) device = s.device;
       // got is always the uncorrected frame, corr the same frames after the grabber color correction (if on)
       results.push({ ...step, got: s.avg.mean, ...(s.avg.corrected ? { corr: s.avg.corrected } : {}), noise: s.avg.noise, spread: s.avg.spread, n: s.avg.n, ...(settled ? {} : { unstable: true }) });
     }
@@ -726,8 +754,11 @@ async function runGrabberTest(kind) {
     // correction (switched in the WebUI) stays as it is, the result notes whether it was on
     await exclusive(async () => {
       const current = readGlobalSetting("grabberTest") ?? { basic: {}, custom: {} };
-      const correction = current.correction?.enable ? { correction: current.correction } : {};
-      const result = { version: 1, date: new Date().toISOString(), grabber: grabberSnapshot(), frame, ...correction, steps: results };
+      const grabber = grabberSnapshot();
+      if (device) grabber.name = device;
+      const used = Report.currentCorrection(current, grabber.name);
+      const correction = used.enable ? { correction: used } : {};
+      const result = { version: 1, date: new Date().toISOString(), grabber, frame, ...correction, steps: results };
       await writeGlobalSetting("grabberTest", { ...current, basic: current.basic ?? {}, custom: current.custom ?? {}, [kind]: result });
     });
     setRun({ running: false, color: null, finishedAt: Date.now() });
@@ -1473,12 +1504,16 @@ const server = http.createServer(async (req, res) => {
 
     // grabber test: the stored results (Hyperion's global setting), start and stop
     if (req.method === "GET" && p === "/api/grabbertest") {
-      return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2") });
+      return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2"), device: grabberDevice });
     }
     if (req.method === "POST" && p === "/api/grabbertest") {
-      const { action, kind, enable, correction } = await readBody(req);
+      const { action, kind, enable, op, args } = await readBody(req);
       if (action === "correction") {
-        await setGrabberCorrection({ enable, correction });
+        await changeGrabberCalibration("enable", { on: enable === true });
+        return sendJson(res, 200, { grabberCorrection });
+      }
+      if (action === "slot") {
+        await changeGrabberCalibration(op, args);
         return sendJson(res, 200, { grabberCorrection });
       }
       if (action === "stop") {

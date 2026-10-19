@@ -384,6 +384,12 @@
   .gx-bar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
   #gx-colors { margin-top: 4px; }
   #gx-report { margin-top: 4px; }
+  #gx-slots { margin: 8px 0 4px; }
+  /* guide card: one line per tool, the name opens its card */
+  .guide { margin: 0 0 12px; padding-left: 22px; font-size: 14px; color: var(--muted); }
+  ul.guide { list-style: disc; }
+  .guide li { display: list-item; padding: 0; border: none; margin: 0 0 8px; }
+  .guide li::marker { color: var(--text); font-weight: 600; }
   .gx-start { margin-top: 0; }
   #gx-note:empty { display: none; }
   #gx-note + .help { margin-top: 12px; }
@@ -420,6 +426,18 @@
   .tb-pop button { display: block; width: 100%; text-align: left; border: none; border-radius: 0; background: none; padding: 9px 16px; font-size: 14px; color: var(--text); }
   .tb-pop button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
   .tb-pop hr { border: none; border-top: 1px solid var(--btn-line); margin: 6px 0; }
+  /* bell: count of new messages on the icon, the messages in its menu */
+  .tb-bell { position: relative; }
+  .tb-count { position: absolute; top: 1px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px;
+              background: var(--danger); color: #fff; font: 600 11px/16px system-ui, sans-serif; text-align: center; pointer-events: none; }
+  .tb-notes { width: min(360px, calc(100vw - 16px)); padding: 0; }
+  .tb-notes h4 { margin: 0; padding: 10px 16px; font-size: 14px; border-bottom: 1px solid var(--btn-line); }
+  .tb-note { padding: 10px 16px; border-bottom: 1px solid var(--btn-line); font-size: 14px; }
+  .tb-note:last-child { border-bottom: none; }
+  .tb-note p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+  .tb-note-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .tb-pop .tb-note-actions button, .tb-note-actions a { display: inline-block; width: auto; padding: 5px 12px; border-radius: 4px; border: 1px solid var(--btn-line); background: var(--btn); color: var(--btn-text); font-size: 13px; text-decoration: none; }
+  .tb-notes .tb-none { padding: 10px 16px; font-size: 13px; color: var(--muted); }
   @media (max-width: 767.98px) { .tb-pop { position: fixed; top: calc(var(--bar-h) + 4px); right: 8px; } }
   .logo-dark { display: none; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
@@ -480,6 +498,10 @@
     <span class="tb-title">TV-Testseite</span>
   </div>
   <div class="tb-icons">
+    <div class="tb-drop">
+      <button type="button" class="tb-icon tb-bell" id="tb-bell" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="tb-count" id="tb-bell-count" hidden></span></button>
+      <div class="tb-pop tb-notes" id="tb-bell-menu" hidden></div>
+    </div>
     <button type="button" class="tb-icon" id="tb-fold"></button>
     <button type="button" class="tb-icon" id="tb-preview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
     <button type="button" class="tb-icon" id="tb-lang"></button>
@@ -517,10 +539,27 @@
   </header>
 
   <section class="card" id="card-intro">
-    <h2>So funktioniert's</h2>
+    <h2>Anleitung</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
-    <label class="check" style="margin-top:10px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Störlicht-Filter, Signalerkennung des Grabbers, beim Erfassungstiefe-Test die Kantenverstärkung und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
-    <p class="help" style="margin:10px 0 0">Unter <a class="jump" href="#card-backup"><b>Hyperion Backup</b></a> (unten) sicherst du die komplette Hyperion-Konfiguration auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du später zu diesem Stand zurück. Ein Tipp auf <b>Hyperion Backup</b> springt dorthin.</p>
+    <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Die Karten mit „(Hyperion)“ im Namen enthalten die passenden Einstellungen in Hyperion. Sie werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
+    <h3>Vor dem Start</h3>
+    <ul class="guide">
+      <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere die Konfiguration, bevor du etwas änderst. Mit Wiederherstellen kommst du jederzeit zu diesem Stand zurück.</li>
+      <li><b>Grabber-Vorschau</b> (Bildschirm-Symbol oben): Prüfe, ob der Grabber wirklich das TV-Bild zeigt und nicht seine „No Signal“-Seite oder ein schwarzes Bild. Sonst ist jedes Testergebnis falsch.</li>
+      <li><a class="jump" href="#card-ts"><b>Testserver</b></a>: Der Testschutz schaltet während eines Tests Hyperion-Funktionen aus, die das Ergebnis verfälschen würden, und danach wieder ein. Lass ihn an.</li>
+    </ul>
+    <h3>Empfohlene Reihenfolge</h3>
+    <ol class="guide">
+      <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Nur bei der Ersteinrichtung oder nach einem Wechsel der LED-Hardware nötig.</li>
+      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung kalibrieren</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Mach diesen Schritt vor der Farbkalibrierung, sonst gleichst du dort Fehler des Grabbers aus.</li>
+      <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position Kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout.</li>
+      <li><a class="jump" href="#card-dt"><b>Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
+      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Weiß wirkt bläulich oder gelblich, oder einzelne Farben passen nicht zum TV. Du vergleichst TV und LEDs direkt und stellst die Farbwerte in Hyperion ein.</li>
+      <li><a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit.</li>
+      <li><a class="jump" href="#card-ft"><b>Nachkommastellen Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen.</li>
+      <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen.</li>
+      <li><a class="jump" href="#card-gs"><b>Graues Standbild Test</b></a> und <a class="jump" href="#card-gsd"><b>Graues-Standbild-Erkennung</b></a>: Manche Player blenden ein pausiertes Video zu einem grauen Standbild ab, und die LEDs leuchten dann lange grau. Die Erkennung friert die LEDs in diesem Fall ein oder schaltet sie aus.</li>
+    </ol>
   </section>
 
   <!-- ===== grabber test ===== -->
@@ -545,6 +584,7 @@
     </div>
 
     <label class="check gx-corr"><input type="checkbox" id="gx-corr"><span>Grabber-Farbkorrektur aktiv<small id="gx-corr-note"></small></span></label>
+    <div id="gx-slots" data-i18n-skip></div>
 
     <h3>Ergebnis</h3>
     <div id="gx-report">Lade Ergebnis …</div>
@@ -1054,6 +1094,7 @@
   <!-- ===== test server: status and test guard ===== -->
   <section class="card" id="card-ts">
     <h2>Testserver</h2>
+    <label class="check" style="margin:0 0 14px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Störlicht-Filter, Signalerkennung des Grabbers, beim Erfassungstiefe-Test die Kantenverstärkung und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
     <p class="help">Zustand der Testseite, der Verbindung zu Hyperion, der Funktionen in Hyperion, die Tests beeinflussen, und der Tests selbst. Unten legst du fest, was der Testschutz während eines Tests ausschaltet.</p>
     <h3>Status</h3>
     <ul class="ts-list" id="ts-status"></ul>
@@ -1065,7 +1106,6 @@
     <p class="help">Haken: Diese Funktion wird während des Tests vorübergehend ausgeschaltet und danach wieder wie vorher eingestellt. <b>geprüft</b>: Um diese Funktion geht es im Test, sie bleibt an. Zum Ändern das Schloss gedrückt halten.</p>
     <div class="ts-guard-head">
       <button type="button" class="ts-lock" id="ts-lock" aria-label="Zum Entsperren gedrückt halten" title="Zum Entsperren gedrückt halten"></button>
-      <label class="check" style="margin:0"><input type="checkbox" id="ts-guard-enabled"><span>Testschutz an</span></label>
       <button type="button" id="ts-reset">Zurücksetzen</button>
     </div>
     <div class="ts-matrix-wrap"><table class="ts-matrix" id="ts-matrix"></table></div>
@@ -2756,8 +2796,6 @@ function renderTestServer() {
   $("ts-lock").innerHTML = unlocked ? TS_LOCK.open : TS_LOCK.closed;
   $("ts-lock").classList.toggle("open", unlocked);
   $("ts-lock").title = $("ts-lock").ariaLabel = unlocked ? tr("Entsperrt, antippen zum Sperren") : tr("Zum Entsperren gedrückt halten");
-  $("ts-guard-enabled").checked = state.testGuard !== false;
-  $("ts-guard-enabled").disabled = !unlocked;
   $("ts-reset").disabled = !unlocked;
   const rules = state.guardRules ?? {};
   const key = JSON.stringify([rules, unlocked, run, I18N.lang]);
@@ -2781,7 +2819,6 @@ $("ts-matrix").addEventListener("change", (ev) => {
   send({ guardRules: { [t]: [...list] } });
   tsUnlockedUntil = Date.now() + TS_UNLOCK_MS;
 });
-$("ts-guard-enabled").addEventListener("change", (ev) => { state = { ...state, testGuard: ev.target.checked }; send({ testGuard: ev.target.checked }); });
 $("ts-reset").addEventListener("click", () => {
   if (Date.now() >= tsUnlockedUntil) return;
   if (!confirm(tr("Testschutz-Regeln auf den Standard zurücksetzen?"))) return;
@@ -3795,7 +3832,6 @@ async function setGrabberCorrection(body) {
 }
 
 let gcShown = null; // correction state the report was last drawn with
-let gxBasic = null; // last basic test, for the switch above the result
 function renderGrabberCorrection() {
   const c = state?.grabberCorrection ?? { available: false, enable: false };
   document.querySelectorAll("[data-gc]").forEach((b) => {
@@ -3803,59 +3839,89 @@ function renderGrabberCorrection() {
     b.disabled = !c.available;
   });
   $("gc-note").textContent = c.available
-    ? "Gleicht den Farbfehler von Grabber oder Splitter aus (berechnet aus dem Grundtest). Wirkt sofort auf die LEDs."
-    : "Noch keine Korrektur berechnet. Zuerst einen Grundtest machen und die Korrektur unter Grabber-Farberkennung kalibrieren einschalten.";
+    ? tr("Gleicht den Farbfehler von Grabber oder Splitter aus (Kalibrierung des angeschlossenen Grabbers). Wirkt sofort auf die LEDs.")
+    : tr("Für den angeschlossenen Grabber ist noch keine Kalibrierung gespeichert. Zuerst unter Grabber-Farberkennung kalibrieren einen Grundtest machen.");
   renderCorrectionSwitch();
+  renderBell();
   const key = JSON.stringify(c);
   if (gcShown !== null && key !== gcShown) loadGrabberReport();
   gcShown = key;
 }
 
-// the big switch above the result: switches the stored matrix, without one the correction
-// computed from the last basic test (same rule as the switch in the WebUI's report)
-function gxFreshCorrection() {
-  if (!gxBasic?.steps?.length) return null;
-  const fit = GrabberTestReport.fitCorrection(gxBasic);
-  if (fit.error || !fit.before || fit.before.max <= 4) return null;
-  return { enable: true, matrix: fit.matrix, basedOn: gxBasic.date, before: fit.before, after: fit.after };
-}
+// the big switch above the result: the correction of the connected grabber (its active slot; without
+// one the first filled slot, without any the last basic test, see GrabberTestReport.applyOp)
 function renderCorrectionSwitch() {
   const c = state?.grabberCorrection ?? { available: false, enable: false };
-  const fresh = c.available ? null : gxFreshCorrection();
-  const usable = c.available || !!fresh;
+  const slotText = c.slot >= 0 ? tr("Platz {n}", { n: c.slot + 1 }) + (c.name ? ` (${c.name})` : "") : "";
   $("gx-corr").checked = !!c.enable;
-  $("gx-corr").disabled = !usable;
+  $("gx-corr").disabled = !c.available;
   $("gx-corr").closest("label").classList.toggle("on", !!c.enable);
-  $("gx-corr").closest("label").classList.toggle("off-limits", !usable);
-  $("gx-corr-note").textContent = c.available
-    ? tr("Gleicht den Farbfehler von Grabber oder Splitter aus (berechnet aus dem Grundtest). Wirkt sofort auf die LEDs.")
-    : fresh ? tr("Schaltet die aus dem letzten Grundtest berechnete Korrektur ein. Wirkt sofort auf die LEDs.")
-    : gxBasic?.steps?.length ? tr("Der letzte Grundtest zeigt keinen Farbfehler, der sich mit einer Korrektur ausgleichen lässt.")
-    : tr("Zuerst einen Grundtest machen, daraus wird die Korrektur berechnet.");
+  $("gx-corr").closest("label").classList.toggle("off-limits", !c.available);
+  $("gx-corr-note").textContent = !c.device ? tr("Kein Grabber erkannt. Sobald der Grabber Bilder liefert, erscheint hier sein Name.")
+    : c.enable ? tr("{name}: {slot}. Gleicht den Farbfehler von Grabber oder Splitter aus und wirkt sofort auf die LEDs.", { name: c.deviceName, slot: slotText })
+    : c.available && c.filled ? tr("{name}: Korrektur aus. Der Haken schaltet die Kalibrierung dieses Grabbers ein.", { name: c.deviceName })
+    : c.available ? tr("{name}: Noch keine Kalibrierung gespeichert. Der Haken legt den letzten Grundtest in Platz 1 ab und schaltet die Korrektur ein.", { name: c.deviceName })
+    : tr("{name}: Noch keine Kalibrierung. Zuerst einen Grundtest mit diesem Grabber machen.", { name: c.deviceName });
 }
-$("gx-corr").addEventListener("change", (ev) => {
-  const c = state?.grabberCorrection ?? {};
-  if (!ev.target.checked) return setGrabberCorrection({ enable: false });
-  if (c.available) return setGrabberCorrection({ enable: true });
-  const fresh = gxFreshCorrection();
-  if (fresh) setGrabberCorrection({ correction: fresh });
-  else renderCorrectionSwitch();
-});
-document.querySelectorAll("[data-gc]").forEach((b) => b.addEventListener("click", () => {
-  const c = state?.grabberCorrection;
-  if (!c?.available || (b.dataset.gc === "on") === c.enable) return;
-  setGrabberCorrection({ enable: b.dataset.gc === "on" });
-}));
+$("gx-corr").addEventListener("change", (ev) => setGrabberCorrection({ enable: ev.target.checked }));
+
+// changes of the memory slots (ops of GrabberTestReport.applyOp); the server applies them to the connected grabber
+async function grabberSlotAction(op, args) {
+  try {
+    const res = await fetch("/api/grabbertest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "slot", op, args }) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error);
+    state = { ...state, grabberCorrection: out.grabberCorrection };
+    renderGrabberCorrection();
+  } catch (e) {
+    showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
+    loadGrabberReport();
+  }
+}
+
+// ---------- bell: messages of the test server (new grabber) ----------
+function renderBell() {
+  const notes = state?.grabberCorrection?.notifications ?? [];
+  const t = GrabberTestReport.make(I18N.lang).t;
+  const count = $("tb-bell-count");
+  count.hidden = !notes.length;
+  count.textContent = String(notes.length);
+  const btn = $("tb-bell");
+  btn.dataset.tip = notes.length ? t.ntTitle + ": " + notes.length : t.ntTitle;
+  btn.setAttribute("aria-label", btn.dataset.tip);
+  const key = JSON.stringify(notes) + I18N.lang;
+  const menu = $("tb-bell-menu");
+  if (menu.dataset.key === key) return;
+  menu.dataset.key = key;
+  menu.innerHTML = `<h4>${escHtml(t.ntTitle)}</h4>` + (notes.length ? notes.map((n) => n.kind === "newGrabber"
+    ? `<div class="tb-note"><b>${escHtml(t.ntNewGrabber.replace("{name}", n.name ?? n.device))}</b><p>${escHtml(t.ntNewGrabberText)}</p>`
+      + `<div class="tb-note-actions"><a href="#card-gx" data-close>${escHtml(tr("Kalibrieren"))}</a><button type="button" data-seen>${escHtml(t.ntSeen)}</button></div></div>`
+    : "").join("") : `<div class="tb-none">${escHtml(t.ntNone)}</div>`);
+  menu.querySelectorAll("[data-seen]").forEach((b) => b.addEventListener("click", () => grabberSlotAction("acknowledge", {})));
+  menu.querySelectorAll("[data-close]").forEach((a) => a.addEventListener("click", () => { menu.hidden = true; $("tb-bell").setAttribute("aria-expanded", "false"); }));
+}
+(function () {
+  const btn = $("tb-bell");
+  const menu = $("tb-bell-menu");
+  menu.setAttribute("data-i18n-skip", "");
+  btn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    menu.hidden = !menu.hidden;
+    btn.setAttribute("aria-expanded", String(!menu.hidden));
+  });
+  document.addEventListener("click", (ev) => { if (!menu.hidden && !menu.contains(ev.target) && !btn.contains(ev.target)) { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
+})();
 
 async function loadGrabberReport() {
   try {
     const res = await fetch("/api/grabbertest");
     const r = await res.json();
     if (!res.ok) throw new Error(r.error);
-    gxBasic = r.basic ?? null;
     GrabberTestReport.render($("gx-report"), {
-      basic: r.basic, custom: r.custom, current: r.current, correction: r.correction, lang: I18N.lang,
-      onAction: (action, correction) => setGrabberCorrection({ correction }), toggle: false,
+      basic: r.basic, custom: r.custom, current: r.current, correction: GrabberTestReport.currentCorrection(r, r.device), lang: I18N.lang,
+    });
+    GrabberTestReport.renderSlots($("gx-slots"), {
+      grabberTest: r, device: r.device, lang: I18N.lang, onAction: grabberSlotAction,
     });
     renderCorrectionSwitch();
   } catch (e) {
