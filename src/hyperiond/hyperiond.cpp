@@ -889,8 +889,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 	}
 	else if (settingsType == settings::GRABBERTEST)
 	{
-		// fork: grabber color correction computed by the grabber test
-		GrabberColorCorrection::configure(config.object().value("correction").toObject());
+		// fork: grabber color correction computed by the grabber test, per grabber model
+		GrabberColorCorrection::configure(config.object());
 	}
 }
 

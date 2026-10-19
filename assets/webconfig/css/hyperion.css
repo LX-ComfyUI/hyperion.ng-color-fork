@@ -1129,6 +1129,12 @@ input[type="radio"] .styled:checked + label::after {
    (sticky), das Logo ist auf die Breite der Seitenleiste verkleinert; die Seitenleiste steht fest
    darunter und scrollt bei Bedarf in sich. Auf dem Smartphone eine kompakte Zeile mit kleinem Logo,
    den Symbolen und dem Menüknopf. */
+/* Die Seitenleiste klebt am linken Fensterrand; die alte Begrenzung des body auf 2000 px (mittig)
+   schob den Inhalt auf sehr breiten Bildschirmen von ihr weg in die Mitte. Volle Breite wie die
+   TV-Testseite. */
+body {
+  max-width: none;
+}
 @media (min-width: 768px) {
   nav.navbar-static-top {
     position: sticky;
@@ -1450,4 +1456,56 @@ nav.navbar-static-top .navbar-toggle {
 .gc-points-count {
   font-weight: normal;
   opacity: .7;
+}
+
+/* Fork-Erweiterung: Glocke mit Meldungen (content_index.js); Zahl als roter Punkt am Symbol */
+#btn_notifications > a {
+  position: relative;
+}
+#btn_notifications .nt-count {
+  position: absolute;
+  top: 8px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #d93025;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+#nt_menu {
+  width: min(360px, calc(100vw - 16px));
+  padding: 0;
+}
+#nt_menu > li {
+  padding: 10px 15px;
+  border-bottom: 1px solid rgba(128, 128, 128, .25);
+  white-space: normal;
+}
+#nt_menu > li:last-child {
+  border-bottom: none;
+}
+#nt_menu .nt-head {
+  font-weight: 600;
+}
+#nt_menu .nt-none,
+#nt_menu .nt-item p {
+  opacity: .75;
+  font-size: 13px;
+}
+#nt_menu .nt-item p {
+  margin: 4px 0 8px;
+}
+#nt_menu .nt-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#nt_menu .nt-actions .btn {
+  padding: 4px 10px;
 }

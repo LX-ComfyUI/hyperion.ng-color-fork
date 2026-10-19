@@ -110,9 +110,44 @@
       corrStaleBad: "Die eingeschaltete Korrektur passt nicht mehr zu diesem Grundtest. Berechne sie neu.",
       corrLost: "Nicht korrigierbar, weil der Grabber diese Werte schon abschneidet: {list}. Sie werden so gut wie möglich angenähert.",
       corrHow: "Die Korrektur ist eine 3×3-Farbmatrix, die Hyperion direkt auf das Grabber-Bild anwendet, vor allen anderen Einstellungen. Grau bleibt dabei unverändert, Gamma, Weißpunkt und Graukurve bleiben also gültig. Prüfe nach dem Einschalten aber die Farbkalibrierung (Rot, Grün, Blau, Cyan, Magenta, Gelb).",
-      corrWhere: "Ein- und ausschalten lässt sich die Korrektur auf der TV-Testseite oder im Hyperion-WebUI unter Konfiguration → Aufnahme Hardware → Grabber-Test (Expertenmodus).",
+      corrWhere: "Ein- und ausschalten und zwischen den Speicherplätzen wechseln kannst du oben bei den Kalibrierungen dieses Grabbers (im Hyperion-WebUI im Expertenmodus).",
       corrMatrix: "Matrix aus dem Grundtest vom {date}",
       corrSwitch: "Grabber-Farbkorrektur aktiv",
+      slTitle: "Kalibrierungen dieses Grabbers",
+      slGrabber: "Grabber: {name}",
+      slNoDevice: "Kein Grabber erkannt. Sobald der Grabber Bilder liefert, erscheint hier sein Name.",
+      slIntro: "Jedes Grabber-Modell hat drei Speicherplätze. Verwendet wird der aktive Platz des Grabbers, der gerade angeschlossen ist. Nach einem Grabberwechsel gilt automatisch dessen Kalibrierung, für einen Grabber ohne Kalibrierung bleibt die Korrektur aus.",
+      slSlot: "Platz {n}",
+      slEmpty: "leer",
+      slActive: "aktiv",
+      slInUse: "wird verwendet",
+      slNamePh: "Name, z. B. mit Splitter",
+      slInfo: "Grundtest vom {date} · Abweichung {before} → {after} Stufen im Mittel",
+      slUse: "Verwenden",
+      slSave: "Letzten Grundtest hier speichern",
+      slOverwrite: "Mit letztem Grundtest überschreiben",
+      slClear: "Löschen",
+      slConfirmOverwrite: "{slot} mit dem Grundtest vom {date} überschreiben?",
+      slConfirmClear: "{slot} löschen?",
+      slSaveHint: "Speichern legt die aus dem letzten Grundtest ({date}) berechnete Korrektur im Platz ab und verwendet sie.",
+      slOtherTest: "Der letzte Grundtest stammt vom Grabber {name}. Mach zuerst einen Grundtest mit diesem Grabber, um hier zu speichern.",
+      slNoTest: "Noch kein Grundtest. Nach dem ersten Grundtest kannst du ihn hier speichern.",
+      slOthers: "Andere Grabber ({n})",
+      slOtherLine: "{used} von 3 Plätzen belegt · {state}",
+      slOtherOn: "Korrektur an: {slot}",
+      slOtherOff: "Korrektur aus",
+      slForget: "Entfernen",
+      slConfirmForget: "Alle Kalibrierungen von {name} entfernen?",
+      errNoDevice: "Kein Grabber erkannt",
+      errNoTest: "Noch kein Grundtest gespeichert",
+      errOtherTest: "Der letzte Grundtest stammt von einem anderen Grabber",
+      errFit: "Aus dem letzten Grundtest lässt sich keine Korrektur berechnen",
+      errNoSlot: "Dieser Speicherplatz ist leer",
+      ntTitle: "Benachrichtigungen",
+      ntNone: "Keine neuen Meldungen.",
+      ntNewGrabber: "Neuer Grabber erkannt: {name}",
+      ntNewGrabberText: "Für diesen Grabber ist noch keine Farbkalibrierung gespeichert, die Grabber-Farbkorrektur bleibt für ihn deshalb aus. Kalibrieren kannst du ihn auf der TV-Testseite unter „Grabber-Farberkennung kalibrieren“.",
+      ntSeen: "Gesehen",
       cmpTitle: "Ohne und mit Korrektur",
       cmpMeasured: "Ausgewählte Testfarben, mit Korrektur über Hyperion gemessen.",
       cmpCalc: "Ausgewählte Testfarben, mit Korrektur berechnet. Ein Grundtest bei eingeschalteter Korrektur misst die Werte.",
@@ -192,9 +227,44 @@
       corrStaleBad: "The active correction no longer fits this basic test. Compute it again.",
       corrLost: "Cannot be corrected because the grabber already clips these values: {list}. They are approximated as well as possible.",
       corrHow: "The correction is a 3×3 color matrix that Hyperion applies directly to the grabber picture, before all other settings. Gray stays unchanged, so gamma, white point and gray curve stay valid. After switching it on, check the color calibration though (red, green, blue, cyan, magenta, yellow).",
-      corrWhere: "The correction is switched on and off on the TV test page or in the Hyperion WebUI under Configuration → Capturing Hardware → Grabber test (expert mode).",
+      corrWhere: "You switch the correction on and off and change between the memory slots above at the calibrations of this grabber (in the Hyperion WebUI in expert mode).",
       corrMatrix: "Matrix from the basic test of {date}",
       corrSwitch: "Grabber color correction active",
+      slTitle: "Calibrations of this grabber",
+      slGrabber: "Grabber: {name}",
+      slNoDevice: "No grabber detected. As soon as the grabber delivers frames, its name appears here.",
+      slIntro: "Every grabber model has three memory slots. The active slot of the grabber connected right now is used. After a grabber change its own calibration applies automatically, for a grabber without calibration the correction stays off.",
+      slSlot: "Slot {n}",
+      slEmpty: "empty",
+      slActive: "active",
+      slInUse: "in use",
+      slNamePh: "Name, e.g. with splitter",
+      slInfo: "Basic test of {date} · deviation {before} → {after} levels on average",
+      slUse: "Use",
+      slSave: "Save last basic test here",
+      slOverwrite: "Overwrite with last basic test",
+      slClear: "Delete",
+      slConfirmOverwrite: "Overwrite {slot} with the basic test of {date}?",
+      slConfirmClear: "Delete {slot}?",
+      slSaveHint: "Saving stores the correction computed from the last basic test ({date}) in the slot and uses it.",
+      slOtherTest: "The last basic test comes from the grabber {name}. Run a basic test with this grabber first to save here.",
+      slNoTest: "No basic test yet. After the first basic test you can save it here.",
+      slOthers: "Other grabbers ({n})",
+      slOtherLine: "{used} of 3 slots used · {state}",
+      slOtherOn: "correction on: {slot}",
+      slOtherOff: "correction off",
+      slForget: "Remove",
+      slConfirmForget: "Remove all calibrations of {name}?",
+      errNoDevice: "No grabber detected",
+      errNoTest: "No basic test saved yet",
+      errOtherTest: "The last basic test comes from another grabber",
+      errFit: "No correction can be computed from the last basic test",
+      errNoSlot: "This memory slot is empty",
+      ntTitle: "Notifications",
+      ntNone: "No new messages.",
+      ntNewGrabber: "New grabber detected: {name}",
+      ntNewGrabberText: "No color calibration is saved for this grabber yet, so the grabber color correction stays off for it. You can calibrate it on the TV test page under “Calibrate grabber color detection”.",
+      ntSeen: "Got it",
       cmpTitle: "Without and with correction",
       cmpMeasured: "Selected test colors, measured with the correction through Hyperion.",
       cmpCalc: "Selected test colors, computed with the correction. A basic test with the correction switched on measures the values.",
@@ -679,7 +749,7 @@
       return `<h4>${t.customTitle}</h4><p class="gtr-meta">${fill(t.customMeasured, { date: dateText(custom.date) })}</p>${valuesTable(steps)}`;
     }
 
-    return { t, basicHtml, customHtml, valuesTable, findingText, correctionHtml };
+    return { t, num, fill, dateText, basicHtml, customHtml, valuesTable, findingText, correctionHtml };
   }
 
   // onAction(action, correction) makes the correction switchable (WebUI): "enable" passes the
@@ -710,5 +780,255 @@
     });
   }
 
-  global.GrabberTestReport = { basicSteps, analyze, changedKeys, fitCorrection, evaluateCorrection, render, make, GRABBER_KEYS, TEXT };
+  // --- calibrations per grabber model ---
+  // grabberTest.grabbers = { "<device name>": { enable, active: slot or -1, seen, slots: [slot | null, x3] } }
+  // slot = { name, matrix, basedOn, before, after, savedAt, basic }
+  // Hyperion corrects the frames of a device with the active slot of that device (VideoProbe.cpp).
+  // Older settings have one "correction" for every device; they read as the grabber of the basic
+  // test with that correction in slot 1.
+
+  const SLOT_COUNT = 3;
+  const NAME_MAX = 40;
+  const validMatrix = (m) => Array.isArray(m) && m.length === 9 && m.every((v) => Number.isFinite(v));
+  // name of the grabber a test result was measured with
+  const testDevice = (result) => (result && result.grabber && result.grabber.name) || null;
+  // Hyperion names a grabber like the kernel ("UGREEN-25854: UGREEN-25854"); older tests kept only
+  // the part before the colon
+  const shortName = (name) => String(name ?? "").split(": ")[0].trim();
+  const sameGrabber = (a, b) => !!a && !!b && (a === b || shortName(a) === shortName(b));
+  function displayName(name) {
+    const parts = String(name ?? "").split(": ");
+    return parts.length === 2 && parts[0].trim() === parts[1].trim() ? parts[0].trim() : String(name ?? "");
+  }
+
+  // device: the grabber delivering frames now; an older correction is filed under its full name
+  function migrated(gt, device = null) {
+    const g = gt ?? {};
+    if (g.grabbers && typeof g.grabbers === "object") return g;
+    const out = { ...g, grabbers: {} };
+    delete out.correction;
+    const c = g.correction;
+    const tested = testDevice(g.basic);
+    const name = tested && sameGrabber(tested, device) ? device : tested;
+    if (name && c && validMatrix(c.matrix)) {
+      const slot = { name: "", matrix: c.matrix, basedOn: c.basedOn ?? null, before: c.before ?? null, after: c.after ?? null, savedAt: c.basedOn ?? null };
+      if (g.basic && g.basic.date === c.basedOn) slot.basic = g.basic;
+      out.grabbers[name] = { enable: c.enable === true, active: 0, seen: c.basedOn ?? null, slots: [slot, null, null] };
+    }
+    return out;
+  }
+
+  function grabberEntry(gt, device) {
+    return (device && migrated(gt, device).grabbers[device]) || null;
+  }
+
+  // the correction Hyperion uses for this device, shaped like the older single correction
+  function currentCorrection(gt, device) {
+    const g = grabberEntry(gt, device);
+    const slot = g && g.active >= 0 ? (g.slots ?? [])[g.active] : null;
+    if (!slot || !validMatrix(slot.matrix)) return { enable: false };
+    return { enable: g.enable === true, matrix: slot.matrix, basedOn: slot.basedOn, before: slot.before, after: slot.after, slot: g.active, name: slot.name ?? "" };
+  }
+
+  // Applies a change and returns the new setting (always in the per-grabber form); throws with a
+  // text in lang when the change is not possible. ops: enable {on}, use {slot}, save {slot},
+  // rename {slot, name}, clear {slot}, forget {device}, acknowledge
+  function applyOp(gt, device, op, args = {}, lang = "de", now = new Date().toISOString()) {
+    const t = TEXT[lang] ?? TEXT.de;
+    const next = structuredClone(migrated(gt, device));
+    const fail = (key) => { throw new Error(t[key]); };
+    const entry = () => {
+      if (!device) fail("errNoDevice");
+      const g = next.grabbers[device] ?? (next.grabbers[device] = { enable: false, active: -1, seen: now, slots: [] });
+      g.slots = Array.from({ length: SLOT_COUNT }, (_, i) => (g.slots ?? [])[i] ?? null);
+      return g;
+    };
+    const slotIndex = () => {
+      const i = Number(args.slot);
+      if (!Number.isInteger(i) || i < 0 || i >= SLOT_COUNT) throw new Error("slot");
+      return i;
+    };
+    const firstFilled = (g) => g.slots.findIndex((x) => x && validMatrix(x.matrix));
+    const fromBasic = (g, i) => {
+      const basic = next.basic;
+      if (!basic || !Array.isArray(basic.steps) || !basic.steps.length) fail("errNoTest");
+      if (!sameGrabber(testDevice(basic), device)) fail("errOtherTest");
+      const fit = fitCorrection(basic);
+      if (fit.error) fail("errFit");
+      const old = g.slots[i];
+      g.slots[i] = { name: old?.name ?? "", matrix: fit.matrix, basedOn: basic.date, before: fit.before, after: fit.after, savedAt: now, basic };
+      g.active = i;
+      g.enable = true;
+    };
+
+    switch (op) {
+      case "acknowledge":
+        entry();
+        break;
+      case "enable": {
+        const g = entry();
+        if (args.on) {
+          if (!(g.active >= 0 && g.slots[g.active])) {
+            const i = firstFilled(g);
+            if (i >= 0) g.active = i;
+            else fromBasic(g, 0);
+          }
+          g.enable = true;
+        } else {
+          g.enable = false;
+        }
+        break;
+      }
+      case "use": {
+        const g = entry();
+        const i = slotIndex();
+        if (!g.slots[i]) fail("errNoSlot");
+        g.active = i;
+        g.enable = true;
+        break;
+      }
+      case "save": {
+        const g = entry();
+        fromBasic(g, slotIndex());
+        break;
+      }
+      case "rename": {
+        const g = entry();
+        const i = slotIndex();
+        if (!g.slots[i]) fail("errNoSlot");
+        g.slots[i].name = String(args.name ?? "").trim().slice(0, NAME_MAX);
+        break;
+      }
+      case "clear": {
+        const g = entry();
+        const i = slotIndex();
+        g.slots[i] = null;
+        if (g.active === i) {
+          g.active = firstFilled(g);
+          if (g.active < 0) g.enable = false;
+        }
+        break;
+      }
+      case "forget":
+        delete next.grabbers[String(args.device ?? "")];
+        break;
+      default:
+        throw new Error("op");
+    }
+    return next;
+  }
+
+  // messages for the bell: a grabber delivers frames that has no entry yet
+  function notifications(gt, device, lang = "de") {
+    const t = TEXT[lang] ?? TEXT.de;
+    if (!device || grabberEntry(gt, device)) return [];
+    return [{ id: "newGrabber:" + device, kind: "newGrabber", device, name: displayName(device), title: t.ntNewGrabber.replace("{name}", displayName(device)), text: t.ntNewGrabberText }];
+  }
+
+  const SLOT_CSS = `
+    .gtr-slots { margin: 0 0 6px; }
+    .gtr-slot { border: 1px solid rgba(128, 128, 128, .35); border-radius: 6px; padding: 8px 10px; margin: 6px 0; }
+    .gtr-slot.on { border-color: #2b93ef; box-shadow: inset 3px 0 0 #2b93ef; }
+    .gtr-slot-head { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+    .gtr-slot-head b { min-width: 52px; }
+    .gtr-slot-head input { flex: 1 1 160px; min-width: 0; max-width: 320px; font: inherit; font-size: 14px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(128, 128, 128, .45); background: transparent; color: inherit; }
+    .gtr-badge { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #2b93ef; color: #fff; white-space: nowrap; }
+    .gtr-badge.idle { background: rgba(128, 128, 128, .35); color: inherit; }
+    .gtr-slot-info { font-size: 13px; opacity: .75; margin: 4px 0 0; }
+    .gtr-slot-actions { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 0; }
+    .gtr-slot-actions button { width: auto; margin: 0; }
+    .gtr-others { margin: 10px 0 0; }
+    .gtr-other { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid rgba(128, 128, 128, .25); }
+  `;
+
+  // Memory slots of the connected grabber and the other known grabbers. onAction(op, args) makes
+  // them editable (null: read only); toggle adds the on/off switch for the correction.
+  function renderSlots(element, { grabberTest, device, lang = "de", onAction = null, toggle = false, buttonClass = "" } = {}) {
+    if (!element) return;
+    ensureStyle(element.ownerDocument);
+    const doc = element.ownerDocument;
+    if (!doc.getElementById("gtr-slot-style")) {
+      const style = doc.createElement("style");
+      style.id = "gtr-slot-style";
+      style.textContent = SLOT_CSS;
+      doc.head.appendChild(style);
+    }
+    const r = make(lang);
+    const t = r.t;
+    const gt = migrated(grabberTest, device);
+    const g = device ? gt.grabbers[device] : null;
+    const slots = Array.from({ length: SLOT_COUNT }, (_, i) => (g?.slots ?? [])[i] ?? null);
+    const basic = gt.basic && Array.isArray(gt.basic.steps) && gt.basic.steps.length ? gt.basic : null;
+    const basicHere = !!(basic && sameGrabber(testDevice(basic), device));
+    const canSave = !!(onAction && basicHere && !fitCorrection(basic).error);
+    const slotName = (i) => t.slSlot.replace("{n}", i + 1);
+    const btn = (action, i, label) => `<button type="button" class="${buttonClass}" data-sl="${action}" data-slot="${i}">${esc(label)}</button>`;
+
+    let out = `<div class="gtr gtr-slots"><h4 style="margin-top:0">${esc(t.slTitle)}</h4>`;
+    out += `<p class="gtr-meta">${device ? r.fill(esc(t.slGrabber), { name: `<b>${esc(displayName(device))}</b>` }) : esc(t.slNoDevice)}</p>`;
+    if (device) {
+      out += `<p class="gtr-hint">${esc(t.slIntro)}</p>`;
+      if (toggle && onAction) {
+        const on = !!(g && g.enable && g.active >= 0 && slots[g.active]);
+        out += `<label class="gtr-switch" style="margin:4px 0 6px"><input type="checkbox" data-sl="enable"${on ? " checked" : ""}${!on && !slots.some(Boolean) && !canSave ? " disabled" : ""}> ${esc(t.corrSwitch)}</label>`;
+      }
+      slots.forEach((s, i) => {
+        const active = !!(g && g.active === i && s);
+        const used = active && g.enable;
+        out += `<div class="gtr-slot${used ? " on" : ""}"><div class="gtr-slot-head"><b>${esc(slotName(i))}</b>`;
+        if (s) {
+          out += onAction ? `<input type="text" maxlength="${NAME_MAX}" data-sl="rename" data-slot="${i}" value="${esc(s.name ?? "")}" placeholder="${esc(t.slNamePh)}">` : s.name ? `<span>${esc(s.name)}</span>` : "";
+          if (active) out += `<span class="gtr-badge${used ? "" : " idle"}">${esc(used ? t.slInUse : t.slActive)}</span>`;
+        } else {
+          out += `<span class="gtr-slot-info" style="margin:0">${esc(t.slEmpty)}</span>`;
+        }
+        out += `</div>`;
+        if (s) {
+          out += `<p class="gtr-slot-info">${esc(r.fill(t.slInfo, { date: r.dateText(s.basedOn), before: s.before ? r.num(s.before.mean) : "–", after: s.after ? r.num(s.after.mean) : "–" }))}</p>`;
+        }
+        if (onAction) {
+          const acts = [];
+          if (s && !used) acts.push(btn("use", i, t.slUse));
+          if (canSave) acts.push(btn("save", i, s ? t.slOverwrite : t.slSave));
+          if (s) acts.push(btn("clear", i, t.slClear));
+          if (acts.length) out += `<div class="gtr-slot-actions">${acts.join("")}</div>`;
+        }
+        out += `</div>`;
+      });
+      if (onAction) {
+        out += `<p class="gtr-hint">${esc(canSave ? r.fill(t.slSaveHint, { date: r.dateText(basic.date) }) : basic && !basicHere ? r.fill(t.slOtherTest, { name: displayName(testDevice(basic) ?? "?") }) : basic ? r.fill(t.corrFitNone, { why: t.corrWhyData }) : t.slNoTest)}</p>`;
+      }
+    }
+    const others = Object.keys(gt.grabbers).filter((n) => n !== device).sort();
+    if (others.length) {
+      out += `<details class="gtr-others"><summary>${esc(t.slOthers.replace("{n}", others.length))}</summary>`;
+      for (const n of others) {
+        const o = gt.grabbers[n];
+        const filled = (o.slots ?? []).filter(Boolean).length;
+        const on = o.enable && o.active >= 0 && (o.slots ?? [])[o.active];
+        const state = on ? t.slOtherOn.replace("{slot}", slotName(o.active) + (o.slots[o.active].name ? ` (${o.slots[o.active].name})` : "")) : t.slOtherOff;
+        out += `<div class="gtr-other"><span><b>${esc(displayName(n))}</b><br><span class="gtr-slot-info">${esc(r.fill(t.slOtherLine, { used: filled, state }))}</span></span>`
+          + (onAction ? `<button type="button" class="${buttonClass}" data-sl="forget" data-device="${esc(n)}">${esc(t.slForget)}</button>` : "") + `</div>`;
+      }
+      out += `</details>`;
+    }
+    out += `</div>`;
+    element.innerHTML = out;
+    if (!onAction) return;
+
+    const ask = (text) => (typeof global.confirm === "function" ? global.confirm(text) : true);
+    element.querySelectorAll("button[data-sl]").forEach((b) => b.addEventListener("click", () => {
+      const op = b.dataset.sl;
+      const i = Number(b.dataset.slot);
+      if (op === "save" && slots[i] && !ask(r.fill(t.slConfirmOverwrite, { slot: slotName(i), date: r.dateText(basic.date) }))) return;
+      if (op === "clear" && !ask(r.fill(t.slConfirmClear, { slot: slotName(i) }))) return;
+      if (op === "forget" && !ask(r.fill(t.slConfirmForget, { name: displayName(b.dataset.device) }))) return;
+      onAction(op, op === "forget" ? { device: b.dataset.device } : { slot: i });
+    }));
+    element.querySelectorAll('input[data-sl="rename"]').forEach((inp) => inp.addEventListener("change", () => onAction("rename", { slot: Number(inp.dataset.slot), name: inp.value })));
+    element.querySelector('input[data-sl="enable"]')?.addEventListener("change", (ev) => onAction("enable", { on: ev.target.checked }));
+  }
+
+  global.GrabberTestReport = { basicSteps, analyze, changedKeys, fitCorrection, evaluateCorrection, render, make, GRABBER_KEYS, TEXT,
+    migrated, grabberEntry, currentCorrection, applyOp, notifications, renderSlots, testDevice, sameGrabber, displayName, SLOT_COUNT };
 })(typeof window !== "undefined" ? window : globalThis);

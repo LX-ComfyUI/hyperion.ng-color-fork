@@ -3,6 +3,7 @@
 #include <utils/Logger.h>
 
 #include <QDateTime>
+#include <QHash>
 #include <QJsonArray>
 #include <QMutex>
 #include <QMutexLocker>
@@ -55,6 +56,11 @@ std::atomic<qint64> activeUntilMs { 0 };
 QMutex mutex;
 State state;
 
+// the device of the newest frame, kept also while no measurement runs
+QMutex seenMutex;
+QString seenDevice;
+std::atomic<qint64> seenMs { 0 };
+
 // the middle half of the frame in both directions: away from overscan and noisy borders
 FrameStats measure(const Image<ColorRgb>& image)
 {
@@ -101,6 +107,14 @@ QJsonArray toJson(const Rgb& v)
 void VideoProbe::offer(const Image<ColorRgb>& image, const QString& device, const Image<ColorRgb>* corrected)
 {
 	const qint64 now = QDateTime::currentMSecsSinceEpoch();
+	seenMs.store(now, std::memory_order_relaxed);
+	{
+		const QMutexLocker locker(&seenMutex);
+		if (seenDevice != device)
+		{
+			seenDevice = device;
+		}
+	}
 	if (now > activeUntilMs.load(std::memory_order_relaxed) || image.width() < 4 || image.height() < 4)
 	{
 		return;
@@ -213,6 +227,20 @@ QJsonObject VideoProbe::sample(bool reset)
 	return result;
 }
 
+QJsonObject VideoProbe::current()
+{
+	const qint64 now = QDateTime::currentMSecsSinceEpoch();
+	const qint64 seen = seenMs.load(std::memory_order_relaxed);
+	QJsonObject result;
+	{
+		const QMutexLocker locker(&seenMutex);
+		result["device"] = seenDevice;
+	}
+	result["ageMs"] = seen > 0 ? double(now - seen) : -1.0;
+	result["correctionActive"] = GrabberColorCorrection::isActive();
+	return result;
+}
+
 // --- grabber color correction ---
 
 namespace {
@@ -221,9 +249,18 @@ namespace {
 // sum of the NEON path inside int16
 constexpr double MAX_ROW_ABS_SUM = 2.0;
 
+struct DeviceCorrection
+{
+	std::array<int16_t, 9> q14 {};
+	int slot = -1; // -1: the older single correction for every device
+};
+
+std::atomic<bool> anyCorrection { false };
 std::atomic<bool> correctionActive { false };
 QMutex correctionMutex;
-std::array<int16_t, 9> correctionQ14 {};
+// key = device name; the empty key holds the older single correction that applies to every device
+QHash<QString, DeviceCorrection> correctionByDevice;
+QString lastLogged; // device and slot of the last log line, logged again on a change
 
 void applyQ14(const uint8_t* src, uint8_t* dst, int pixels, const std::array<int16_t, 9>& k)
 {
@@ -270,49 +307,96 @@ void applyQ14(const uint8_t* src, uint8_t* dst, int pixels, const std::array<int
 
 } // namespace
 
-void GrabberColorCorrection::configure(const QJsonObject& correction)
+namespace {
+
+// Converts a matrix to Q14. Returns false for an invalid matrix; identity is set for a matrix that
+// changes nothing (then no correction is needed).
+bool toQ14(const QJsonArray& matrix, std::array<int16_t, 9>& q14, bool& identity)
+{
+	identity = true;
+	if (matrix.size() != 9)
+	{
+		return false;
+	}
+	for (int row = 0; row < 3; ++row)
+	{
+		double absSum = 0.0;
+		for (int col = 0; col < 3; ++col)
+		{
+			const double v = matrix[3 * row + col].toDouble(NAN);
+			if (!std::isfinite(v))
+			{
+				return false;
+			}
+			absSum += std::abs(v);
+			q14[3 * row + col] = static_cast<int16_t>(std::lround(v * 16384.0));
+			identity = identity && q14[3 * row + col] == (row == col ? 16384 : 0);
+		}
+		if (absSum > MAX_ROW_ABS_SUM)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+} // namespace
+
+void GrabberColorCorrection::configure(const QJsonObject& grabberTest)
 {
 	QSharedPointer<Logger> log = Logger::getInstance("V4L2");
-	const QJsonArray matrix = correction["matrix"].toArray();
-	bool enable = correction["enable"].toBool(false);
-	std::array<int16_t, 9> q14 {};
-	bool identity = true;
-
-	if (enable)
-	{
-		bool valid = matrix.size() == 9;
-		for (int row = 0; valid && row < 3; ++row)
+	QHash<QString, DeviceCorrection> next;
+	const auto add = [&](const QString& device, const QJsonObject& entry, int slot) {
+		DeviceCorrection c;
+		c.slot = slot;
+		bool identity = true;
+		if (!toQ14(entry["matrix"].toArray(), c.q14, identity))
 		{
-			double absSum = 0.0;
-			for (int col = 0; col < 3; ++col)
-			{
-				const double v = matrix[3 * row + col].toDouble(NAN);
-				valid = valid && std::isfinite(v);
-				absSum += std::abs(v);
-				if (valid)
-				{
-					q14[3 * row + col] = static_cast<int16_t>(std::lround(v * 16384.0));
-					identity = identity && q14[3 * row + col] == (row == col ? 16384 : 0);
-				}
-			}
-			valid = valid && absSum <= MAX_ROW_ABS_SUM;
+			Warning(log, "Grabber color correction%s ignored: the matrix needs 9 numbers and at most %.1f as absolute sum per row",
+				device.isEmpty() ? "" : QSTRING_CSTR(QString(" for %1").arg(device)), MAX_ROW_ABS_SUM);
+			return;
 		}
-		if (!valid)
+		if (!identity)
 		{
-			Warning(log, "Grabber color correction ignored: the matrix needs 9 numbers and at most %.1f as absolute sum per row", MAX_ROW_ABS_SUM);
-			enable = false;
+			next.insert(device, c);
+		}
+	};
+
+	const QJsonValue grabbers = grabberTest["grabbers"];
+	if (grabbers.isObject())
+	{
+		const QJsonObject all = grabbers.toObject();
+		for (auto it = all.begin(); it != all.end(); ++it)
+		{
+			const QJsonObject g = it.value().toObject();
+			const int slot = g["active"].toInt(-1);
+			const QJsonArray slotList = g["slots"].toArray();
+			if (!it.key().isEmpty() && g["enable"].toBool(false) && slot >= 0 && slot < slotList.size() && slotList[slot].isObject())
+			{
+				add(it.key(), slotList[slot].toObject(), slot);
+			}
+		}
+	}
+	else
+	{
+		const QJsonObject correction = grabberTest["correction"].toObject();
+		if (correction["enable"].toBool(false))
+		{
+			add(QString(), correction, -1);
 		}
 	}
 
-	const bool active = enable && !identity;
 	{
 		const QMutexLocker locker(&correctionMutex);
-		correctionQ14 = q14;
+		correctionByDevice = next;
+		lastLogged.clear();
 	}
-	if (active != correctionActive.exchange(active))
+	anyCorrection.store(!next.isEmpty(), std::memory_order_relaxed);
+	if (next.isEmpty())
 	{
-		Info(log, "Grabber color correction %s", active ? "on" : "off");
+		correctionActive.store(false, std::memory_order_relaxed);
 	}
+	Info(log, "Grabber color correction: %d calibration(s) active", static_cast<int>(next.size()));
 }
 
 bool GrabberColorCorrection::isActive()
@@ -320,16 +404,45 @@ bool GrabberColorCorrection::isActive()
 	return correctionActive.load(std::memory_order_relaxed);
 }
 
-bool GrabberColorCorrection::apply(const Image<ColorRgb>& in, Image<ColorRgb>& out)
+bool GrabberColorCorrection::apply(const Image<ColorRgb>& in, Image<ColorRgb>& out, const QString& device)
 {
-	if (!isActive() || in.width() <= 0 || in.height() <= 0)
+	if (!anyCorrection.load(std::memory_order_relaxed) || in.width() <= 0 || in.height() <= 0)
 	{
+		correctionActive.store(false, std::memory_order_relaxed);
 		return false;
 	}
-	std::array<int16_t, 9> k;
+	std::array<int16_t, 9> k {};
+	bool found = false;
+	QString logLine;
 	{
 		const QMutexLocker locker(&correctionMutex);
-		k = correctionQ14;
+		auto it = correctionByDevice.constFind(device);
+		if (it == correctionByDevice.constEnd())
+		{
+			it = correctionByDevice.constFind(QString());
+		}
+		found = it != correctionByDevice.constEnd();
+		if (found)
+		{
+			k = it->q14;
+		}
+		const QString key = device + '\n' + (found ? QString::number(it->slot) : QString("off"));
+		if (key != lastLogged)
+		{
+			lastLogged = key;
+			logLine = !found ? QString("Grabber color correction off for %1 (no active calibration)").arg(device)
+				: it->slot < 0 ? QString("Grabber color correction on for %1").arg(device)
+				: QString("Grabber color correction on for %1 (slot %2)").arg(device).arg(it->slot + 1);
+		}
+	}
+	if (!logLine.isEmpty())
+	{
+		Info(Logger::getInstance("V4L2"), "%s", QSTRING_CSTR(logLine));
+	}
+	correctionActive.store(found, std::memory_order_relaxed);
+	if (!found)
+	{
+		return false;
 	}
 	out = Image<ColorRgb>(in.width(), in.height());
 	applyQ14(reinterpret_cast<const uint8_t*>(in.memptr()), reinterpret_cast<uint8_t*>(out.memptr()), in.width() * in.height(), k);

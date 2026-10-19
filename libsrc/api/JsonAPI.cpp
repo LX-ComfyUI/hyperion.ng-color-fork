@@ -790,7 +790,8 @@ void JsonAPI::handleForkDebugCommand(const QJsonObject & /*unused*/, const JsonA
 
 void JsonAPI::handleGrabberTestCommand(const QJsonObject &message, const JsonApiCommand& cmd)
 {
-	sendSuccessDataReply(VideoProbe::sample(message["reset"].toBool(false)), cmd);
+	// peek: only which grabber delivers frames, without starting a measurement
+	sendSuccessDataReply(message["peek"].toBool(false) ? VideoProbe::current() : VideoProbe::sample(message["reset"].toBool(false)), cmd);
 }
 
 void JsonAPI::handleSysInfoCommand(const QJsonObject & /*unused*/, const JsonApiCommand& cmd)

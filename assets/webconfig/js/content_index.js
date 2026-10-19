@@ -500,3 +500,78 @@ function SwitchToMenuItem(target, item) {
     scrollTo(0);
   }
 };
+
+// Fork-Erweiterung: Glocke mit Meldungen. Zurzeit eine Art: Ein Grabber liefert Bilder, für den es
+// noch keinen Eintrag mit Farbkalibrierungen gibt (globale Einstellung grabberTest.grabbers, siehe
+// js/grabbertest-report.js). Welcher Grabber gerade Bilder liefert, fragt der Fork-Befehl
+// "grabbertest" mit "peek" ab, ohne eine Messung zu starten. "Gesehen" legt den Eintrag ohne
+// Kalibrierung an; die TV-Testseite zeigt dieselbe Meldung.
+(function () {
+  const POLL_MS = 15000;
+  let device = null;
+  let started = false;
+
+  const lang = () => (storedLang === 'de' ? 'de' : 'en');
+
+  function render() {
+    if (typeof GrabberTestReport === 'undefined') return;
+    const grabberTest = (globalThis.serverConfig && globalThis.serverConfig.grabberTest) || {};
+    const notes = GrabberTestReport.notifications(grabberTest, device, lang());
+    const t = GrabberTestReport.make(lang()).t;
+    const count = document.getElementById('nt_count');
+    const menu = document.getElementById('nt_menu');
+    if (!count || !menu) return;
+    count.textContent = String(notes.length);
+    count.style.display = notes.length ? '' : 'none';
+    const key = JSON.stringify(notes) + lang();
+    if (menu.dataset.key === key) return;
+    menu.dataset.key = key;
+    const esc = (s) => $('<div>').text(s).html();
+    let html = '<li class="nt-head">' + esc(t.ntTitle) + '</li>';
+    if (!notes.length) {
+      html += '<li class="nt-none">' + esc(t.ntNone) + '</li>';
+    }
+    for (const n of notes) {
+      html += '<li class="nt-item"><b>' + esc(n.title) + '</b><p>' + esc(n.text) + '</p><div class="nt-actions">'
+        + '<a class="btn btn-default btn-sm" href="#conf_grabber" data-nt-goto>' + esc($.i18n('edt_conf_grabbertest_heading_title')) + '</a>'
+        + '<button type="button" class="btn btn-primary btn-sm" data-nt-seen>' + esc(t.ntSeen) + '</button></div></li>';
+    }
+    menu.innerHTML = html;
+    $(menu).find('[data-nt-seen]').on('click', function () {
+      const current = globalThis.serverConfig.grabberTest || {};
+      requestWriteConfig({ grabberTest: GrabberTestReport.applyOp(current, device, 'acknowledge', {}, lang()) });
+      render();
+    });
+    // der Link lädt die Seite wie ein Eintrag im Seitenmenü (nativer Klick, den hört loadContent)
+    $(menu).find('[data-nt-goto]').on('click', function (ev) {
+      ev.preventDefault();
+      const item = document.getElementById('MenuItemGrabber');
+      if (item) item.click();
+    });
+  }
+
+  async function poll() {
+    try {
+      const reply = await sendAsyncToHyperion('grabbertest', '', { peek: true });
+      if (reply && reply.success && reply.info && reply.info.device) device = reply.info.device;
+    } catch (e) {
+      // ohne Verbindung bleibt der letzte Stand
+    }
+    render();
+  }
+
+  $(globalThis.hyperion).on('ready', function () {
+    if (started) return;
+    started = true;
+    poll();
+    setInterval(poll, POLL_MS);
+  });
+  // Änderungen der Einstellung (Testseite, Grabber-Seite, Gesehen) wirken sofort
+  $(globalThis.hyperion).on('cmd-settings-update', function (event) {
+    const data = event.response && event.response.data;
+    if (data && data.grabberTest && globalThis.serverConfig) {
+      globalThis.serverConfig.grabberTest = data.grabberTest;
+      render();
+    }
+  });
+})();

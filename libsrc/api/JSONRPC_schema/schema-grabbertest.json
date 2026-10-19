@@ -10,6 +10,9 @@
 		"reset" : {
 			"type" : "boolean"
 		},
+		"peek" : {
+			"type" : "boolean"
+		},
 		"tan" : {
 			"type" : "integer"
 		}

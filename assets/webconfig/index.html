@@ -135,6 +135,13 @@
       <!-- /.navbar-header -->
 
       <ul class="nav navbar-top-links navbar-right" id="top-navbar">
+        <!-- Fork-Erweiterung: Glocke mit Meldungen, z. B. neuer Grabber ohne Farbkalibrierung (content_index.js) -->
+        <li class="dropdown" id="btn_notifications">
+          <a class="dropdown-toggle" data-toggle="dropdown" href="#" data-tip-key="general_tip_notifications">
+            <i class="fa fa-bell fa-fw"></i><span class="nt-count" id="nt_count" style="display:none"></span> <i class="fa fa-caret-down"></i>
+          </a>
+          <ul class="dropdown-menu dropdown-alerts nt-menu" id="nt_menu"></ul>
+        </li>
         <!-- Fork-Erweiterung: alle Erklärungstabellen der Seite auf-/zuklappen (helpFold in ui_utils.js) -->
         <li class="dropdown" id="btn_help_fold_all" style="display:none">
           <a data-tip-key="general_btn_help_fold_all">
@@ -414,6 +421,7 @@
   <!-- Custom Theme JavaScript -->
   <script src="js/lib/sb-admin-2.js"></script>
 
+  <script src="js/grabbertest-report.js"></script>
   <script src="js/content_index.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/streamer.js"></script>

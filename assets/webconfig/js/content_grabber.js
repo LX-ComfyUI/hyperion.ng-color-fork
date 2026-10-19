@@ -52,24 +52,48 @@ $(document).ready(function () {
       $('#grabbertest_container').append(
         '<div class="bs-callout bs-callout-primary" style="margin-top:0px"><h4>' + $.i18n('conf_helptable_expl') + '</h4>'
         + $.i18n('conf_grabber_test_intro', testPageLink('/tv'), testPageLink('/')) + '</div>'
+        + '<div id="grabbertest_slots"></div>'
         + '<div id="grabbertest_report"></div>');
-      // Grabber-Farbkorrektur: im Expertenmodus aus dem Grundtest berechnen, ein- und ausschalten
-      const switchCorrection = function (action, correction) {
+      // Grabber-Farbkorrektur je Grabber-Modell mit drei Speicherplätzen (grabberTest.grabbers);
+      // im Expertenmodus wählen, speichern, umbenennen und löschen. Welcher Grabber gerade Bilder
+      // liefert, fragt der Fork-Befehl "grabbertest" mit "peek" ab.
+      let grabberDevice = null;
+      const lang = storedLang === 'de' ? 'de' : 'en';
+      const changeSlots = function (op, args) {
         const current = globalThis.serverConfig.grabberTest || {};
-        requestWriteConfig({ grabberTest: { ...current, basic: current.basic || {}, custom: current.custom || {}, correction } });
+        try {
+          const next = GrabberTestReport.applyOp(current, grabberDevice, op, args, lang);
+          requestWriteConfig({ grabberTest: { ...next, basic: next.basic || {}, custom: next.custom || {} } });
+        } catch (e) {
+          showInfoDialog('error', '', e.message);
+        }
+        renderGrabberTest();
       };
       const renderGrabberTest = function () {
         const result = globalThis.serverConfig.grabberTest || {};
+        GrabberTestReport.renderSlots(document.getElementById('grabbertest_slots'), {
+          grabberTest: result,
+          device: grabberDevice,
+          lang,
+          onAction: storedAccess === 'expert' ? changeSlots : null,
+          toggle: true,
+          buttonClass: 'btn btn-default btn-sm'
+        });
         GrabberTestReport.render(document.getElementById('grabbertest_report'), {
           basic: result.basic,
           custom: result.custom,
           current: globalThis.serverConfig.grabberV4L2,
-          correction: result.correction,
-          lang: storedLang === 'de' ? 'de' : 'en',
-          onAction: storedAccess === 'expert' ? switchCorrection : null
+          correction: GrabberTestReport.currentCorrection(result, grabberDevice),
+          lang
         });
       };
       renderGrabberTest();
+      sendAsyncToHyperion('grabbertest', '', { peek: true }).then(function (reply) {
+        if (reply && reply.success && reply.info && reply.info.device) {
+          grabberDevice = reply.info.device;
+          if (document.getElementById('grabbertest_report')) renderGrabberTest();
+        }
+      });
       // ein neuer Test von der Testseite (oder geänderte Grabber-Einstellungen) zeigt sich sofort;
       // der Handler bleibt nach einem Seitenwechsel am globalen Objekt hängen, daher nur einmal
       // anmelden und abmelden, sobald der Bericht nicht mehr auf der Seite ist
