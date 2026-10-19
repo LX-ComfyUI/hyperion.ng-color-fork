@@ -257,7 +257,11 @@
   .hy-reset { width: 32px; height: 32px; flex: none; }
   .hy-reset svg { width: 17px; height: 17px; }
   .card-reset { display: flex; justify-content: flex-end; margin-top: 8px; }
-  .card-reset button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 13px; }
+  /* hint on the standard values and the reset button in one row */
+  .std-row { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; margin-top: 6px; }
+  .std-row .note { margin: 0; min-height: 0; }
+  .note-collapse:empty { display: none; }
+  .card-reset button, .std-row button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 13px; }
   .card-reset button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   input::placeholder { color: var(--muted); opacity: .75; }
   /* test server card: status lists with colored symbols (like the grabber test) and the guard table */
@@ -563,7 +567,7 @@
     <ol class="guide">
       <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Nur bei der Ersteinrichtung oder nach einem Wechsel der LED-Hardware nötig.</li>
       <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung kalibrieren</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Mach diesen Schritt vor der Farbkalibrierung, sonst gleichst du dort Fehler des Grabbers aus.</li>
-      <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position Kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout.</li>
+      <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout.</li>
       <li><a class="jump" href="#card-dt"><b>Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
       <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Weiß wirkt bläulich oder gelblich, oder einzelne Farben passen nicht zum TV. Du vergleichst TV und LEDs direkt und stellst die Farbwerte in Hyperion ein.</li>
       <li><a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit.</li>
@@ -647,18 +651,6 @@
             <div class="frow"><label>Gamma Grün</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaGreen" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
             <div class="frow"><label>Gamma Blau</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaBlue" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
             <div class="frow"><label>Farbtemperatur (K)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="temperature" min="1000" max="40000" step="100" inputmode="numeric"></span></div>
-          </div>
-          <div class="hy-block">
-            <h4 class="hy-h" data-hy-group="edge"><span>Kantenverstärkung (Fork-Erweiterung)</span></h4>
-            <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="edgeTransitionBoost.enabled"><span>Aktiviert</span></label>
-            <div class="frow"><label>Übergangsbreite (LEDs, 1–3)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.ledWidth" min="1" max="3" step="1" inputmode="numeric"></span></div>
-            <div class="frow"><label>Kanten-Empfindlichkeit (5–255)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.edgeSensitivity" min="5" max="255" step="1" inputmode="numeric"></span></div>
-            <div class="frow"><label>Verstärkungsfaktor (0–2)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="edgeTransitionBoost.boostStrength" min="0" max="2" step="0.05" inputmode="decimal"></span></div>
-          </div>
-          <div class="hy-block">
-            <h4 class="hy-h" data-hy-group="axis"><span>Grauachsen-Korrektur (Fork-Erweiterung)</span></h4>
-            <label class="check" style="margin-top:0"><input type="checkbox" data-cfield="grayAxisTrim.enabled"><span>Aktiviert</span></label>
-            <div id="hy-stops"></div>
           </div>
           </div>
           <p class="note" id="hy-note"></p>
@@ -925,10 +917,9 @@
         </div>
         <input type="range" id="dp-lr" min="0" max="50" step="0.5">
       </div>
-      <p class="note" style="margin-top:4px">Unterstrichen: Standardwert.</p>
+      <div class="std-row"><p class="note">Unterstrichen: Standardwert.</p><button type="button" data-card-reset="dtd">Auf Standard zurücksetzen</button></div>
       <p class="warn" id="dp-skip-warn" hidden></p>
-      <div class="card-reset"><button type="button" data-card-reset="dtd">Auf Standard zurücksetzen</button></div>
-      <p class="note" id="dp-cfg-note"></p>
+      <p class="note note-collapse" id="dp-cfg-note"></p>
 
       <div class="sub">
         <h3>Anzeige beim Testen</h3>
@@ -1071,7 +1062,7 @@
       </div>
     </div>
     <div class="pair-col" id="card-lg">
-      <h3 class="pair-ttl">LED-Position Kalibrieren</h3>
+      <h3 class="pair-ttl">LED-Position kalibrieren</h3>
       <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
       <p class="note guard-note" hidden></p>
       <div class="status" id="lg-layout"></div>
@@ -1106,21 +1097,11 @@
     </div>
   </section>
 
-  <!-- ===== backup ===== -->
-  <section class="card" id="card-backup">
-    <h2>Hyperion Backup</h2>
-    <p class="help">Sichert die komplette Hyperion-Konfiguration (LEDs, Farben, Grabber) auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du zu einem gesicherten Stand zurück. Dabei wird vorher automatisch der aktuelle Stand gesichert, und Hyperion startet neu.</p>
-    <div id="conn">Verbindung zu Hyperion wird geprüft …</div>
-    <button class="wide" id="connect" hidden>Mit Hyperion verbinden</button>
-    <button class="wide primary" id="backup">Backup erstellen</button>
-    <ul id="backups"></ul>
-    <div id="status" role="status"></div>
-  </section>
 
   <!-- ===== test server: status and test guard ===== -->
   <section class="card" id="card-ts">
     <h2>Testserver</h2>
-    <label class="check" style="margin:0 0 14px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Störlicht-Filter, Signalerkennung des Grabbers, beim Erfassungstiefe-Test die Kantenverstärkung und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
+    <label class="check" style="margin:0 0 14px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Signalerkennung des Grabbers und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
     <p class="help">Zustand der Testseite, der Verbindung zu Hyperion, der Funktionen in Hyperion, die Tests beeinflussen, und der Tests selbst. Unten legst du fest, was der Testschutz während eines Tests ausschaltet.</p>
     <h3>Status</h3>
     <ul class="ts-list" id="ts-status"></ul>
@@ -1136,6 +1117,17 @@
     </div>
     <div class="ts-matrix-wrap"><table class="ts-matrix" id="ts-matrix"></table></div>
     <p class="note" id="ts-note"></p>
+  </section>
+
+  <!-- ===== backup ===== -->
+  <section class="card" id="card-backup">
+    <h2>Hyperion Backup</h2>
+    <p class="help">Sichert die komplette Hyperion-Konfiguration (LEDs, Farben, Grabber) auf dem Hyperion-Server. Mit <b>Wiederherstellen</b> kehrst du zu einem gesicherten Stand zurück. Dabei wird vorher automatisch der aktuelle Stand gesichert, und Hyperion startet neu.</p>
+    <div id="conn">Verbindung zu Hyperion wird geprüft …</div>
+    <button class="wide" id="connect" hidden>Mit Hyperion verbinden</button>
+    <button class="wide primary" id="backup">Backup erstellen</button>
+    <ul id="backups"></ul>
+    <div id="status" role="status"></div>
   </section>
 </main>
 
@@ -1487,7 +1479,6 @@ let bbConfig = null;           // Hyperion's blackborderdetector settings
 let colorConfig = null;        // Hyperion's color settings
 let ledAreas = null;           // LED sampling areas from Hyperion's layout (what the gray still detector sees)
 let colorIndex = 0;            // which channelAdjustment entry the right column edits
-let stopsBuiltFor = -1;        // number of gray-axis stops currently built in the editor
 let curveBuiltFor = -1;        // number of gray curve points currently built in the editor
 let deviceBlack = null;        // black threshold of the LED device, drawn in the gray curve graph
 let listKey = "";              // changes when the list of colors has to be rebuilt
@@ -1941,9 +1932,6 @@ async function removeCustom(color) {
 // current value of one editable field, same paths as COLOR_FIELDS on the server
 function readField(entry, field, stop) {
   if (!entry) return undefined;
-  if (field.startsWith("edgeTransitionBoost.")) return colorConfig?.edgeTransitionBoost?.[field.split(".")[1]];
-  if (field.startsWith("grayAxisTrim.stop.")) return entry.grayAxisTrim?.stops?.[stop]?.[field.split(".")[2]];
-  if (field === "grayAxisTrim.enabled") return entry.grayAxisTrim?.enabled;
   if (field.startsWith("grayCurve.point.")) return entry.grayCurve?.points?.[stop]?.[field.split(".")[2]];
   if (field.startsWith("grayCurve.")) return entry.grayCurve?.[field.split(".")[1]];
   return entry[field];
@@ -1982,21 +1970,6 @@ function pasteRgb(ev, field) {
   inputs.forEach((inp, ch) => { inp.value = rgb[ch]; });
   ev.target.blur();
   saveRgbRow(field).then(ok => { if (ok) flashRgbRow(field); });
-}
-
-// stop rows are built for the number of stops Hyperion has
-function buildStops(n) {
-  $("hy-stops").innerHTML = Array.from({ length: n }, (_, i) => `
-    <div class="stoprow">
-      <small>Stufe ${i + 1}</small>
-      <div class="frow" style="margin:0"><label>Sättigung bis</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayAxisTrim.stop.saturationUpTo" data-stop="${i}" min="0" max="1" step="0.01" inputmode="decimal"></span></div>
-      <div class="frow" style="margin:0"><label>Verstärkung Rot / Grün / Blau</label><span class="inputs">
-        <input type="number" data-cfield="grayAxisTrim.stop.gainRed" data-stop="${i}" min="0" max="4" step="0.05" inputmode="decimal" aria-label="Verstärkung Rot Stufe ${i + 1}">
-        <input type="number" data-cfield="grayAxisTrim.stop.gainGreen" data-stop="${i}" min="0" max="4" step="0.05" inputmode="decimal" aria-label="Verstärkung Grün Stufe ${i + 1}">
-        <input type="number" data-cfield="grayAxisTrim.stop.gainBlue" data-stop="${i}" min="0" max="4" step="0.05" inputmode="decimal" aria-label="Verstärkung Blau Stufe ${i + 1}">
-      </span></div>
-    </div>`).join("");
-  stopsBuiltFor = n;
 }
 
 // gray curve rows, one per point Hyperion has (the server sorts them by brightness)
@@ -2078,8 +2051,6 @@ function renderColorEditor() {
   });
   sel.value = String(colorIndex);
 
-  const stops = entry?.grayAxisTrim?.stops?.length ?? 0;
-  if (stops !== stopsBuiltFor) buildStops(stops);
   const points = entry?.grayCurve?.points?.length ?? 0;
   if (points !== curveBuiltFor) buildCurve(points);
   curveGraph.update({ entry, blackThreshold: deviceBlack, writable });
@@ -2757,7 +2728,7 @@ $("lp-color").addEventListener("change", (ev) => sendPosTest({ color: ev.target.
 // ---------- test server card: status, tests, test guard rules ----------
 const TS_FEATURE_LABELS = {
   grayStill: "Graues-Standbild-Erkennung", blackborder: "Schwarzbalken-Erkennung", backlight: "Hintergrundbeleuchtung",
-  stray: "Störlicht-Filter", signal: "Signalerkennung des Grabbers", edgeBoost: "Kantenverstärkung", depth: "Erfassungstiefe 3 % / 2 %",
+  signal: "Signalerkennung des Grabbers", depth: "Erfassungstiefe 3 % / 2 %",
 };
 const TS_TESTS = [["color", "Testfarben"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "Erfassungstiefe"], ["frac", "Nachkommastellen"], ["pos", "LED-Position"]];
 const TS_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
@@ -2817,7 +2788,7 @@ function renderTestServer() {
   const run = tsRunning();
   const tests = [
     ...TS_TESTS.map(([k, label]) => [label, k === "pos" ? !!state.posTest?.active && !state.posGuide?.active : run[k]]),
-    ["LED-Position Kalibrieren", !!state.posGuide?.active],
+    ["LED-Position kalibrieren", !!state.posGuide?.active],
     ["Grabber-Farberkennung kalibrieren", !!state.grabberRun?.running],
   ];
   $("ts-tests").innerHTML = tests.map(([label, on]) => tsItem(on ? "run" : "off", on ? "▶" : "–", tr(label), on ? tr("läuft") : tr("aus"))).join("");
@@ -3266,11 +3237,10 @@ function fracBlockers() {
   if (!c) return [];
   const out = [];
   if (["dominant_color", "unicolor_dominant"].includes(c.imageToLedMappingType)) out.push("Der Zuordnungstyp „Dominante Farbe“ liefert immer die Farbe eines einzelnen Bildpunkts, also eine ganze Zahl.");
-  if (c.edgeTransitionBoost?.enabled) out.push("Die Bereichsübergangsverstärkung ist an. Sie rechnet nur mit ganzen Zahlen.");
-  const entries = (c.channelAdjustment ?? []).filter(a => a.grayAxisTrim?.enabled || Number(a.saturationGain ?? 1) !== 1 || Number(a.brightnessGain ?? 1) !== 1);
+  const entries = (c.channelAdjustment ?? []).filter(a => Number(a.saturationGain ?? 1) !== 1 || Number(a.brightnessGain ?? 1) !== 1);
   if (entries.length) {
     const names = entries.map(a => `„${a.id ?? "?"}“`).join(", ");
-    out.push(tr("Farbeintrag {a}: Grauachsen-Korrektur oder Sättigungs-/Helligkeitsverstärkung ungleich 1 ist aktiv. Für diese LEDs gilt der ganzzahlige Wert.", { a: names }));
+    out.push(tr("Farbeintrag {a}: Sättigungs- oder Helligkeitsverstärkung ungleich 1 ist aktiv. Für diese LEDs gilt der ganzzahlige Wert.", { a: names }));
   }
   return out;
 }
@@ -3331,8 +3301,6 @@ const HY_GROUP_FIELDS = {
   colors: ["white", "red", "green", "blue", "cyan", "magenta", "yellow"],
   light: ["brightness", "saturationGain", "backlightThreshold", "backlightColored"],
   gamma: ["gammaRed", "gammaGreen", "gammaBlue", "temperature"],
-  edge: ["edgeTransitionBoost.enabled", "edgeTransitionBoost.ledWidth", "edgeTransitionBoost.edgeSensitivity", "edgeTransitionBoost.boostStrength"],
-  axis: ["grayAxisTrim.enabled", "grayAxisTrim.stops"],
   curve: ["grayCurve.enabled", "grayCurve.saturationLimit", "grayCurve.points"],
 };
 const BB_RESET_KEYS = ["enable", "mode", "threshold", "unknownFrameCnt", "borderFrameCnt", "maxInconsistentCnt", "blurRemoveCnt"];

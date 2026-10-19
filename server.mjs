@@ -36,15 +36,15 @@ const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 // Test guard rules: which Hyperion features each kind of test switches off while it runs. Features a
 // test is about stay on and cannot be chosen (black bars: black border detection, gray still image:
 // gray still detection, capture depth: capture depth).
-const GUARD_FEATURES = ["grayStill", "blackborder", "backlight", "stray", "signal", "edgeBoost", "depth"];
+const GUARD_FEATURES = ["grayStill", "blackborder", "backlight", "signal", "depth"];
 const GUARD_TESTS = ["color", "bars", "gray", "depth", "frac", "pos"];
 const GUARD_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
 const DEFAULT_GUARD_RULES = {
-  color: ["grayStill", "blackborder", "backlight", "stray", "signal"],
+  color: ["grayStill", "blackborder", "backlight", "signal"],
   bars: ["grayStill", "backlight"],
   gray: ["backlight", "signal"],
-  depth: ["grayStill", "blackborder", "backlight", "signal", "edgeBoost"],
-  frac: ["grayStill", "blackborder", "backlight", "stray", "signal"],
+  depth: ["grayStill", "blackborder", "backlight", "signal"],
+  frac: ["grayStill", "blackborder", "backlight", "signal"],
   pos: ["grayStill", "blackborder", "backlight", "depth", "signal"],
 };
 
@@ -960,8 +960,7 @@ function saveBlackborder(patch) {
 }
 
 // Fields the page may change, with the ranges of schema-color.json (fork extensions included).
-// Paths: plain = channelAdjustment entry, "edgeTransitionBoost.*" = top level, "grayAxisTrim.stop.*" = one stop (patch.stop),
-// "grayCurve.point.*" = one point of the gray curve (patch.stop is its index), "grayCurve.points" = all points
+// Paths: plain = channelAdjustment entry, "grayCurve.point.*" = one point of the gray curve (patch.stop is its index), "grayCurve.points" = all points
 // at once (the graph: one drag or a new/removed point is one save)
 const COLOR_FIELDS = {
   white: ["rgb"], red: ["rgb"], green: ["rgb"], blue: ["rgb"], cyan: ["rgb"], magenta: ["rgb"], yellow: ["rgb"],
@@ -973,11 +972,6 @@ const COLOR_FIELDS = {
   gammaGreen: ["num", 0.1, 100, 0.05],
   gammaBlue: ["num", 0.1, 100, 0.05],
   temperature: ["num", 1000, 40000, 100],
-  "grayAxisTrim.enabled": ["bool"],
-  "grayAxisTrim.stop.saturationUpTo": ["num", 0, 1, 0.01],
-  "grayAxisTrim.stop.gainRed": ["num", 0, 4, 0.05],
-  "grayAxisTrim.stop.gainGreen": ["num", 0, 4, 0.05],
-  "grayAxisTrim.stop.gainBlue": ["num", 0, 4, 0.05],
   "grayCurve.enabled": ["bool"],
   "grayCurve.saturationLimit": ["num", 0.01, 1, 0.01],
   "grayCurve.point.level": ["num", 0, 100, 1],
@@ -985,11 +979,6 @@ const COLOR_FIELDS = {
   "grayCurve.point.gainGreen": ["num", 0, 2, 0.01],
   "grayCurve.point.gainBlue": ["num", 0, 2, 0.01],
   "grayCurve.points": ["points"],
-  "grayAxisTrim.stops": ["stops"],
-  "edgeTransitionBoost.enabled": ["bool"],
-  "edgeTransitionBoost.ledWidth": ["num", 1, 3, 1],
-  "edgeTransitionBoost.edgeSensitivity": ["num", 5, 255, 1],
-  "edgeTransitionBoost.boostStrength": ["num", 0, 2, 0.05],
   // fork: LED means with fractions for the 16-bit output (top level of the color settings)
   fractionalMean: ["bool"],
   // fork: capture depth of the LED areas in percent, 0 = the layout
@@ -1010,24 +999,10 @@ function mergeColor(current, patch) {
   if (field === "fractionalMean") {
     if (!("fractionalMean" in next)) throw new Error("Der Mittelwert mit Nachkommastellen braucht die neue Hyperion-Version");
     target = next;
-  } else if (field.startsWith("edgeTransitionBoost.")) {
-    target = next.edgeTransitionBoost;
-    key = field.split(".")[1];
   } else if (field.startsWith("ledAreaDepth.")) {
     if (!next.ledAreaDepth) throw new Error("Die Erfassungstiefe braucht die neue Hyperion-Version");
     target = next.ledAreaDepth;
     key = field.split(".")[1];
-  } else if (field.startsWith("grayAxisTrim.stop.")) {
-    const stop = entry.grayAxisTrim?.stops?.[Number(patch.stop)];
-    if (!stop) throw new Error("Stufe nicht gefunden");
-    target = stop;
-    key = field.split(".")[2];
-  } else if (field === "grayAxisTrim.stops") {
-    target = entry.grayAxisTrim;
-    key = "stops";
-  } else if (field === "grayAxisTrim.enabled") {
-    target = entry.grayAxisTrim;
-    key = "enabled";
   } else if (field.startsWith("grayCurve.point.")) {
     const point = entry.grayCurve?.points?.[Number(patch.stop)];
     if (!point) throw new Error("Punkt nicht gefunden");
@@ -1046,17 +1021,6 @@ function mergeColor(current, patch) {
     target[key] = rgb;
   } else if (kind === "bool") {
     target[key] = value === true;
-  } else if (kind === "stops") {
-    // reset of the gray axis correction: the stops as a whole
-    if (!Array.isArray(value) || value.length < 1 || value.length > 12) throw new Error("Die Grauachsen-Korrektur braucht 1 bis 12 Stufen");
-    const stops = value.map((p) => ({
-      saturationUpTo: num(p?.saturationUpTo, 0, 1, NaN, 0.01),
-      gainRed: num(p?.gainRed, 0, 4, NaN, 0.05),
-      gainGreen: num(p?.gainGreen, 0, 4, NaN, 0.05),
-      gainBlue: num(p?.gainBlue, 0, 4, NaN, 0.05),
-    }));
-    if (stops.some((p) => Object.values(p).some((v) => !Number.isFinite(v)))) throw new Error("Ungültige Stufe");
-    target[key] = stops;
   } else if (kind === "points") {
     // 1-12 points like in the graph, two points never share a brightness (Hyperion sorts them)
     if (!Array.isArray(value) || value.length < 1 || value.length > 12) throw new Error("Die Graukurve braucht 1 bis 12 Punkte");
@@ -1101,11 +1065,9 @@ async function readHyperionDefaults() {
     const [head, mid, last] = field.split(".");
     let node;
     if (field === "fractionalMean") node = c.fractionalMean;
-    else if (head === "edgeTransitionBoost" || head === "ledAreaDepth") node = sub(c[head], mid);
-    else if (field === "grayAxisTrim.stops") node = sub(entry.grayAxisTrim, "stops");
-    else if (mid === "stop") node = sub(sub(entry.grayAxisTrim, "stops")?.items, last);
+    else if (head === "ledAreaDepth") node = sub(c[head], mid);
     else if (mid === "point") node = sub(sub(entry.grayCurve, "points")?.items, last);
-    else if (head === "grayAxisTrim" || head === "grayCurve") node = sub(entry[head], mid);
+    else if (head === "grayCurve") node = sub(entry[head], mid);
     else node = entry[field];
     if (node && "default" in node) color[field] = node.default;
   }
@@ -1127,7 +1089,6 @@ async function testServerStatus() {
   const safe = (f) => { try { return f(); } catch { return null; } };
   const bb = safe(() => readInstanceSetting("blackborderdetector"));
   const color = safe(() => readInstanceSetting("color"));
-  const device = safe(() => readInstanceSetting("device"));
   const smoothing = safe(() => readInstanceSetting("smoothing"));
   const v4l = safe(() => readGlobalSetting("grabberV4L2"));
   const entry = color?.channelAdjustment?.[0];
@@ -1143,14 +1104,11 @@ async function testServerStatus() {
       feature("blackborder", "Schwarzbalken-Erkennung", bb.enable === true),
       feature("grayStill", "Graues-Standbild-Erkennung", bb.grayStillImageDetector?.enabled === true),
       feature("backlight", "Hintergrundbeleuchtung", (color.channelAdjustment ?? []).some((a) => Number(a.backlightThreshold) > 0), entry ? String(entry.backlightThreshold) : null),
-      feature("stray", "Störlicht-Filter", device?.strayLedSuppressor?.enabled === true),
       feature("signal", "Signalerkennung des Grabbers", v4l?.signalDetection === true),
-      feature("edgeBoost", "Kantenverstärkung", color.edgeTransitionBoost?.enabled === true),
       feature("depth", "Erfassungstiefe", !!depth && (Number(depth.topBottom) > 0 || Number(depth.leftRight) > 0), depth ? `${depth.topBottom} % / ${depth.leftRight} %` : null),
       feature("smoothing", "Glättung", smoothing?.enable === true, smoothing ? `${smoothing.time_ms} ms` : null),
       feature("correction", "Grabber-Farbkorrektur", grabberCorrection.enable),
       feature("fractional", "LED-Mittelwert mit Nachkommastellen", color.fractionalMean === true),
-      feature("grayAxis", "Grauachsen-Korrektur", entry?.grayAxisTrim?.enabled === true),
       feature("grayCurve", "Graukurve", entry?.grayCurve?.enabled === true),
       feature("layoutFix", "LED-Layout-Korrektur", layoutFixInfo.corrected),
     ] : [],
@@ -1162,9 +1120,9 @@ async function testServerStatus() {
 // While a test runs, Hyperion features that would falsify it are switched off for the time of the
 // test and restored afterwards: the gray still detection would dim or freeze the LEDs on a still test
 // picture, the black border detection takes dark test pictures or the frame of the position test for
-// bars, a backlight lights LEDs that should stay dark, the stray LED filter darkens dim red LEDs,
-// a deep capture depth lets the position marker reach neighbouring LEDs, the grabber's signal
-// detection takes a dark test picture for "no signal" and the edge boost changes the depth frame. A feature a running test
+// bars, a backlight lights LEDs that should stay dark, a deep capture depth lets the position marker
+// reach neighbouring LEDs and the grabber's signal detection takes a dark test picture for "no
+// signal". A feature a running test
 // is about stays as it is (black bars test: black border detection, gray still test: gray still
 // detection, depth test: capture depth). testguard.json keeps the original values, so a restart
 // of this server still restores them; a value changed by hand during the test is left as it is.
@@ -1197,8 +1155,6 @@ function guardWanted(entries = {}) {
   if (off.has("grayStill")) want.grayStill = { type: "blackborderdetector", path: ["grayStillImageDetector", "enabled"], value: false, label: "Graues-Standbild-Erkennung" };
   // a black or dark test picture would count as "no signal" and switch the LEDs off
   if (off.has("signal")) want.signal = { type: "grabberV4L2", global: true, path: ["signalDetection"], value: false, label: "Signalerkennung des Grabbers" };
-  if (off.has("edgeBoost")) want.edgeBoost = { type: "color", path: ["edgeTransitionBoost", "enabled"], value: false, label: "Kantenverstärkung" };
-  if (off.has("stray")) want.stray = { type: "device", path: ["strayLedSuppressor", "enabled"], value: false, label: "Störlicht-Filter" };
   if (off.has("backlight")) (color?.channelAdjustment ?? []).forEach((_, i) => {
     want["backlight" + i] = { type: "color", path: ["channelAdjustment", i, "backlightThreshold"], value: 0, label: "Hintergrundbeleuchtung" };
   });
