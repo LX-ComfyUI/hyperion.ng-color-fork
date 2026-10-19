@@ -646,10 +646,22 @@ async function peekGrabber() {
   } catch {}
 }
 
+// The grabber chosen in Hyperion (WebUI "Gerät gefunden", global setting grabberV4L2): Hyperion only
+// opens a device with exactly this name and corrects its frames by it, so the memory slots belong to
+// it; without one, the grabber that delivers frames
+function selectedGrabber() {
+  try {
+    const v = readGlobalSetting("grabberV4L2") ?? {};
+    const name = String(v.available_devices ?? "");
+    if (v.enable && name && !["NONE", "SELECT", "none"].includes(name)) return name;
+  } catch {}
+  return grabberDevice;
+}
+
 function readGrabberCorrection() {
   try {
     const gt = readGlobalSetting("grabberTest") ?? {};
-    const device = grabberDevice;
+    const device = selectedGrabber();
     const c = Report.currentCorrection(gt, device);
     const g = Report.grabberEntry(gt, device);
     const basic = gt.basic?.steps?.length ? gt.basic : null;
@@ -668,13 +680,14 @@ function readGrabberCorrection() {
 // are converted once this Hyperion knows the new form (it answers "peek")
 async function migrateGrabberCalibrations() {
   // the device is needed: Hyperion looks the calibration up by the grabber's full name
-  if (peekSupported !== true || !grabberDevice) return;
+  const device = selectedGrabber();
+  if (peekSupported !== true || !device) return;
   const gt = readGlobalSetting("grabberTest");
   if (!gt || gt.grabbers || !gt.correction) return;
   await exclusive(async () => {
     const current = readGlobalSetting("grabberTest");
     if (!current || current.grabbers || !current.correction) return;
-    await writeGlobalSetting("grabberTest", Report.migrated(current, grabberDevice));
+    await writeGlobalSetting("grabberTest", Report.migrated(current, device));
     console.log("grabberTest: correction converted to the calibrations per grabber");
   });
 }
@@ -695,8 +708,79 @@ async function changeGrabberCalibration(op, args) {
   if (peekSupported !== true) throw new Error("Diese Hyperion-Version kennt noch keine Kalibrierungen je Grabber. Bitte die Hyperion-Version des Forks aktualisieren.");
   await exclusive(async () => {
     const current = readGlobalSetting("grabberTest") ?? { basic: {}, custom: {} };
-    const next = Report.applyOp(current, grabberDevice, op, args ?? {}, "de");
+    const next = Report.applyOp(current, selectedGrabber(), op, args ?? {}, "de");
     await writeGlobalSetting("grabberTest", { ...next, basic: next.basic ?? {}, custom: next.custom ?? {} });
+  });
+  await refreshGrabberCorrection();
+}
+
+// --- choosing the grabber like the WebUI (Aufnahme Hardware → USB-Aufnahme → Gerät gefunden) ---
+
+// the video grabbers Hyperion finds (fork JSON API "inputsource discover")
+async function discoverGrabbers() {
+  if (!monitor) throw new Error("Keine Verbindung zu Hyperion");
+  const reply = await monitor.call({ command: "inputsource", subcommand: "discover", sourceType: "video" }, 10_000);
+  if (!reply.success) throw new Error(`Hyperion: ${reply.error ?? "Grabbersuche fehlgeschlagen"}`);
+  return reply.info?.video_sources ?? [];
+}
+
+async function grabberList() {
+  const v = readGlobalSetting("grabberV4L2") ?? {};
+  const sources = await discoverGrabbers();
+  const devices = sources.map((d) => ({ name: d.device_name, path: d.device, label: Report.displayName(d.device_name) }));
+  const selected = String(v.available_devices ?? "");
+  if (selected && !["NONE", "SELECT", "none"].includes(selected) && !devices.some((d) => d.name === selected)) {
+    devices.push({ name: selected, path: v.device ?? null, label: Report.displayName(selected), missing: true });
+  }
+  return { enable: v.enable === true, selected, devices };
+}
+
+// Settings for another grabber, chosen like the WebUI does: the configured values where the new
+// device supports them, otherwise its first input and format, the largest resolution and the
+// highest frame rate; picture controls from its defaults
+function grabberSettingsFor(current, source) {
+  const next = { ...current, available_devices: source.device_name, device: source.device };
+  const inputs = source.video_inputs ?? [];
+  const input = inputs.find((i) => i.inputIdx === current.input) ?? inputs[0];
+  if (input) {
+    next.input = input.inputIdx;
+    next.device_inputs = String(input.inputIdx);
+    const formats = input.formats ?? [];
+    const format = formats.find((f) => String(f.format ?? "").toUpperCase() === String(current.encoding ?? "").toUpperCase()) ?? formats[0];
+    if (format?.format) {
+      next.encoding = String(format.format).toUpperCase();
+      const res = format.resolutions ?? [];
+      const keep = res.find((r) => r.width === current.width && r.height === current.height);
+      const pick = keep ?? [...res].sort((a, b) => b.width * b.height - a.width * a.height)[0];
+      if (pick) {
+        next.width = pick.width;
+        next.height = pick.height;
+        next.resolutions = String(res.indexOf(pick));
+        const rates = (pick.fps ?? []).map(Number).filter(Number.isFinite);
+        if (rates.length) {
+          next.fps = rates.includes(current.fps) ? current.fps : Math.max(...rates);
+          next.framerates = String(next.fps);
+        }
+      }
+    }
+    if (Array.isArray(input.standards) && input.standards.length) next.standard = input.standards.includes(current.standard) ? current.standard : input.standards[0];
+  }
+  const defaults = source.default?.properties ?? {};
+  for (const [prop, key] of [["brightness", "hardware_brightness"], ["contrast", "hardware_contrast"], ["saturation", "hardware_saturation"], ["hue", "hardware_hue"]]) {
+    next[key] = Number.isFinite(defaults[prop]) ? defaults[prop] : 0;
+  }
+  return next;
+}
+
+async function selectGrabber(name) {
+  const sources = await discoverGrabbers();
+  const source = sources.find((d) => d.device_name === name);
+  if (!source) throw new Error("Dieser Grabber ist nicht angeschlossen");
+  await exclusive(async () => {
+    const current = readGlobalSetting("grabberV4L2") ?? {};
+    if (current.available_devices === name && current.enable) return;
+    makeBackup();
+    await writeGlobalSetting("grabberV4L2", { ...grabberSettingsFor(current, source), enable: true });
   });
   await refreshGrabberCorrection();
 }
@@ -1504,7 +1588,13 @@ const server = http.createServer(async (req, res) => {
 
     // grabber test: the stored results (Hyperion's global setting), start and stop
     if (req.method === "GET" && p === "/api/grabbertest") {
-      return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2"), device: grabberDevice });
+      return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2"), device: selectedGrabber() });
+    }
+    if (req.method === "GET" && p === "/api/grabbers") return sendJson(res, 200, await grabberList());
+    if (req.method === "POST" && p === "/api/grabbers") {
+      const { name } = await readBody(req);
+      await selectGrabber(String(name ?? ""));
+      return sendJson(res, 200, { ...(await grabberList()), grabberCorrection });
     }
     if (req.method === "POST" && p === "/api/grabbertest") {
       const { action, kind, enable, op, args } = await readBody(req);

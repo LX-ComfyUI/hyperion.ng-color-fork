@@ -273,6 +273,8 @@ window.I18N_EN = {
  "Der letzte Grundtest stammt von einem anderen Grabber": "The last basic test comes from another grabber",
  "Aus dem letzten Grundtest lässt sich keine Korrektur berechnen": "No correction can be computed from the last basic test",
  "Dieser Speicherplatz ist leer": "This memory slot is empty",
+ "Dieser Grabber ist nicht angeschlossen": "This grabber is not connected",
+ "Grabbersuche fehlgeschlagen": "Grabber search failed",
  "Grabber-Farbkorrektur aktiv": "Grabber color correction active",
  "<b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.": "<b>Before the test:</b> check in the grabber preview that the grabber shows the TV picture and not its “No Signal” page. If the preview is closed at the start, it opens automatically.",
  "Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.": "The <b>basic test</b> automatically goes through gray levels, color ladders from very dark to bright and two mixed colors and takes about 2½ minutes. Leave the TV and the source device alone meanwhile. The phone may turn off, the test keeps running on the Hyperion server.",

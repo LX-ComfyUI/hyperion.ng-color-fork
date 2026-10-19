@@ -3879,6 +3879,20 @@ async function grabberSlotAction(op, args) {
   }
 }
 
+// switches Hyperion to another grabber, like "Gerät gefunden" in the WebUI
+async function selectGrabber(name) {
+  try {
+    const res = await fetch("/api/grabbers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error);
+    if (out.grabberCorrection) state = { ...state, grabberCorrection: out.grabberCorrection };
+    renderGrabberCorrection();
+  } catch (e) {
+    showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
+  }
+  loadGrabberReport();
+}
+
 // ---------- bell: messages of the test server (new grabber) ----------
 function renderBell() {
   const notes = state?.grabberCorrection?.notifications ?? [];
@@ -3920,8 +3934,15 @@ async function loadGrabberReport() {
     GrabberTestReport.render($("gx-report"), {
       basic: r.basic, custom: r.custom, current: r.current, correction: GrabberTestReport.currentCorrection(r, r.device), lang: I18N.lang,
     });
+    // the grabbers Hyperion finds, for the dropdown; without them the name only
+    let devices = null;
+    try {
+      const g = await fetch("/api/grabbers");
+      if (g.ok) devices = (await g.json()).devices;
+    } catch {}
     GrabberTestReport.renderSlots($("gx-slots"), {
       grabberTest: r, device: r.device, lang: I18N.lang, onAction: grabberSlotAction,
+      devices, onSelectDevice: selectGrabber,
     });
     renderCorrectionSwitch();
   } catch (e) {
