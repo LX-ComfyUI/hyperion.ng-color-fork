@@ -577,8 +577,9 @@
       return out + "</tbody></table>";
     }
 
-    // the correction block; actions = buttons for the WebUI, null on the test page
-    function correctionHtml(basic, correction, controls) {
+    // the correction block; controls = switch and buttons (WebUI), toggle = false leaves the switch
+    // out (the page shows its own)
+    function correctionHtml(basic, correction, controls, toggle = true) {
       const steps = validSteps(basic).filter((s) => s.group !== "custom");
       const on = matrixOn(correction);
       const fit = fitCorrection(basic);
@@ -628,9 +629,10 @@
 
       if (shownMatrix) {
         out += `<div class="gtr-matrix-row"><div><p class="gtr-hint">${fill(t.corrMatrix, { date: dateText(shownDate) })}</p>${matrixTable(shownMatrix)}</div>`;
-        if (controls) {
-          out += `<div class="gtr-actions"><label class="gtr-switch"><input type="checkbox" data-gtr-toggle${on ? " checked" : ""}> ${t.corrSwitch}</label>`;
-          if (useful && stored && !sameTest) out += `<button type="button" class="btn btn-primary btn-sm" data-gtr-action="recompute">${t.corrRecompute}</button>`;
+        const recompute = useful && stored && !sameTest;
+        if (controls && (toggle || recompute)) {
+          out += `<div class="gtr-actions">${toggle ? `<label class="gtr-switch"><input type="checkbox" data-gtr-toggle${on ? " checked" : ""}> ${t.corrSwitch}</label>` : ""}`;
+          if (recompute) out += `<button type="button" class="btn btn-primary btn-sm" data-gtr-action="recompute">${t.corrRecompute}</button>`;
           out += "</div>";
         }
         out += "</div>";
@@ -639,14 +641,14 @@
       return out;
     }
 
-    function basicHtml(basic, current, correction, controls) {
+    function basicHtml(basic, current, correction, controls, toggle = true) {
       const a = analyze(basic);
       if (!a) return `<p>${t.none}</p>`;
       let out = `<p class="gtr-meta">${metaLine(basic)}</p>`;
       const changed = changedKeys(basic, current);
       if (changed.length) out += `<p class="gtr-stale">${fill(t.stale, { keys: changed.map((k) => t.keys[k] ?? k).join(", ") })}</p>`;
       out += `<ul class="gtr-findings">${a.findings.map((f) => `<li class="gtr-${f.level}"><span class="ico">${f.level === "ok" ? "✓" : f.level === "warn" ? "!" : "✕"}</span><span>${findingText(f)}</span></li>`).join("")}</ul>`;
-      out += correctionHtml(basic, correction, controls);
+      out += correctionHtml(basic, correction, controls, toggle);
 
       const steps = validSteps(basic);
       const grays = [{ level: 0, got: a.black }, ...steps.filter((s) => s.group === "gray").map((s) => ({ level: s.sent[0], got: s.got }))].sort((p, q) => p.level - q.level);
@@ -681,12 +683,13 @@
   }
 
   // onAction(action, correction) makes the correction switchable (WebUI): "enable" passes the
-  // correction computed from the basic test, "disable" the current one switched off
-  function render(element, { basic, custom, current, correction, lang = "de", onAction = null } = {}) {
+  // correction computed from the basic test, "disable" the current one switched off; toggle: false
+  // leaves the on/off switch out when the page has its own
+  function render(element, { basic, custom, current, correction, lang = "de", onAction = null, toggle = true } = {}) {
     if (!element) return;
     ensureStyle(element.ownerDocument);
     const r = make(lang);
-    element.innerHTML = `<div class="gtr">${basic && validSteps(basic).length ? r.basicHtml(basic, current, correction, !!onAction) : `<p>${r.t.none}</p>`}${custom ? r.customHtml(custom) : ""}</div>`;
+    element.innerHTML = `<div class="gtr">${basic && validSteps(basic).length ? r.basicHtml(basic, current, correction, !!onAction, toggle) : `<p>${r.t.none}</p>`}${custom ? r.customHtml(custom) : ""}</div>`;
     if (!onAction) return;
     const fresh = () => {
       const fit = fitCorrection(basic);

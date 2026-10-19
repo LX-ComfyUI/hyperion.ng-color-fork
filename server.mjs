@@ -667,7 +667,7 @@ async function setGrabberCorrection({ enable, correction }) {
       if (correction.enable && !validMatrix(correction.matrix)) throw new Error("Ungültige Korrekturmatrix");
       next = { ...correction, enable: correction.enable === true };
     } else {
-      if (enable && !validMatrix(current.correction?.matrix)) throw new Error("Noch keine Korrektur berechnet. Zuerst einen Grundtest machen und die Korrektur im Grabber-Test einschalten.");
+      if (enable && !validMatrix(current.correction?.matrix)) throw new Error("Noch keine Korrektur berechnet. Zuerst einen Grundtest machen und die Korrektur unter Grabber-Farberkennung kalibrieren einschalten.");
       next = { ...(current.correction ?? {}), enable: enable === true };
     }
     await writeGlobalSetting("grabberTest", { ...current, basic: current.basic ?? {}, custom: current.custom ?? {}, correction: next });
@@ -737,7 +737,7 @@ async function runGrabberTest(kind) {
 }
 
 async function startGrabberTest(kind) {
-  if (grabberRun.running) throw new Error("Der Grabber-Test läuft schon");
+  if (grabberRun.running) throw new Error("Die Kalibrierung der Grabber-Farberkennung läuft schon");
   if (kind !== "basic" && kind !== "custom") throw new Error("Unbekannter Test");
   if (kind === "custom" && !state.grabberColors.length) throw new Error("Zuerst eigene Farben anlegen");
   if (![...clients.values()].includes("tv")) throw new Error("Die TV-Seite ist nicht geöffnet. Öffne sie zuerst auf dem Gerät, das dem TV das Bild liefert.");
