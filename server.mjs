@@ -109,10 +109,20 @@ const PRESETS = [
 ];
 const PRESET_IDS = PRESETS.map((p) => p.id);
 
-// Tests whose settings can be saved as presets; the settings are the test's state without the run state
-const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest"];
+// Tests whose settings can be saved as presets; the settings are the test's state without the run state.
+// "grayCurve" is no test: its slots hold the gray curve of Hyperion (enabled, saturation limit, points).
+const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest", "grayCurve"];
 const MAX_TEST_PRESETS = 50;
+const MAX_PRESETS = { grayCurve: 10 };
+const maxPresets = (test) => MAX_PRESETS[test] ?? MAX_TEST_PRESETS;
+function grayCurveSettings(input) {
+  const gain = (v) => num(v, 0, 2, 1, 0.01);
+  const points = (Array.isArray(input?.points) ? input.points : []).filter((p) => p && typeof p === "object").slice(0, 12)
+    .map((p) => ({ gainBlue: gain(p.gainBlue), gainGreen: gain(p.gainGreen), gainRed: gain(p.gainRed), level: num(p.level, 0, 100, 50) }));
+  return { enabled: input?.enabled === true, saturationLimit: num(input?.saturationLimit, 0.01, 1, 0.15, 0.01), points };
+}
 function presetSettings(test, settings) {
+  if (test === "grayCurve") return grayCurveSettings(settings);
   if (test === "bars") return sanitize({ bars: settings }).bars;
   const { active, startedAt, ...rest } = sanitize({ [test]: { ...settings, active: false } })[test];
   return rest;
@@ -125,14 +135,14 @@ function applyPresetOp(op, presets) {
   const name = typeof op.name === "string" ? op.name.trim().slice(0, 60) : "";
   if (op.op === "save") {
     if (!name) throw new Error("Bitte einen Namen eingeben");
-    if (list.length >= MAX_TEST_PRESETS) throw new Error(`Maximal ${MAX_TEST_PRESETS} Vorlagen je Test`);
-    list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, fav: false, settings: op.settings ?? {}, savedAt: Date.now() });
+    if (list.length >= maxPresets(test)) throw new Error(test === "grayCurve" ? `Maximal ${maxPresets(test)} Speicherplätze` : `Maximal ${maxPresets(test)} Vorlagen je Test`);
+    list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, fav: false, settings: presetSettings(test, op.settings ?? {}), savedAt: Date.now() });
   } else {
     if (at < 0) throw new Error("Vorlage nicht gefunden");
     if (op.op === "delete") list.splice(at, 1);
     else if (op.op === "fav") list[at] = { ...list[at], fav: !list[at].fav };
     else if (op.op === "rename") { if (!name) throw new Error("Bitte einen Namen eingeben"); list[at] = { ...list[at], name }; }
-    else if (op.op === "update") list[at] = { ...list[at], settings: op.settings ?? {}, savedAt: Date.now() };
+    else if (op.op === "update") list[at] = { ...list[at], settings: presetSettings(test, op.settings ?? {}), savedAt: Date.now() };
     else throw new Error("Unbekannte Aktion");
   }
   return { ...presets, [test]: list };
@@ -242,7 +252,7 @@ function sanitize(input) {
   for (const test of PRESET_TESTS) {
     const list = Array.isArray(input.testPresets?.[test]) ? input.testPresets[test] : [];
     const clean = list.filter((p) => p && typeof p.id === "string" && typeof p.name === "string" && p.settings && typeof p.settings === "object")
-      .slice(0, MAX_TEST_PRESETS)
+      .slice(0, maxPresets(test))
       .map((p) => ({ id: p.id.slice(0, 40), name: p.name.trim().slice(0, 60) || "?", fav: p.fav === true, settings: presetSettings(test, p.settings), savedAt: num(p.savedAt, 0, Number.MAX_SAFE_INTEGER, 0) }));
     if (clean.length) out.testPresets[test] = clean;
   }
