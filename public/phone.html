@@ -300,10 +300,17 @@
   .tp-favs button[aria-pressed="true"], .tp-name[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
   .tp-form { display: flex; gap: 6px; margin-top: 8px; }
   .tp-form input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 6px 8px; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; }
-  .tp-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
-  .tp-list li { display: flex; align-items: center; gap: 2px; }
+  .tp-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .tp-list li { display: flex; align-items: center; gap: 2px; min-width: 0; }
   .tp-list .tp-name { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tp-list .tp-name small { color: inherit; opacity: .7; margin-left: 6px; }
+  .tp-list .tp-name { display: flex; align-items: center; gap: 6px; }
+  .tp-list .tp-name .tp-label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .tp-list .tp-name small { flex: none; margin-left: 0; }
+  .tp-badge { margin-left: auto; flex: none; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #2b93ef; color: #fff; }
+  .tp-badge.idle { background: rgba(128, 128, 128, .35); color: inherit; }
+  .tp-name[aria-pressed="true"] .tp-badge { background: var(--accent-text); color: var(--accent); }
+  .tp-name[aria-pressed="true"] .tp-badge.idle { background: rgba(255, 255, 255, .3); color: inherit; }
   .tp-list .tp-std-gap { flex: none; width: 108px; } /* where the three icons of a slot sit */
   .tp .ibtn { width: 34px; height: 34px; flex: none; }
   .tp .ibtn svg { width: 18px; height: 18px; }
@@ -669,8 +676,8 @@
 
     <h4 class="hy-h" data-hy-group="curve" style="margin-top:0"><span>Graukurve (Hyperion)</span></h4>
     <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. Ein Punkt im Graphen (oder „Am TV zeigen“) legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
+    <label class="check"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Graukurve aktiviert<small>Gilt für die ganze Funktion. Ein Speicherplatz wechselt nur die Kurve, nicht diesen Schalter.</small></span></label>
     <div class="tp" data-test="grayCurve"></div>
-    <label class="check"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Aktiviert</span></label>
     <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
     <div class="gcc-lock" id="gcc-lock-row">
       <button type="button" class="ts-lock" id="gcc-lock"></button>
@@ -2987,7 +2994,7 @@ const tpEditing = {};          // test -> preset id being renamed, or "new" for 
 function tpCurrent(test) {
   if (test === "grayCurve") {
     const c = colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve;
-    return c ? { enabled: c.enabled === true, saturationLimit: c.saturationLimit, points: c.points ?? [] } : null;
+    return c ? { saturationLimit: c.saturationLimit, points: c.points ?? [] } : null;
   }
   const src = state?.[test] ?? {};
   if (test === "bars") return { ...src };
@@ -2997,7 +3004,7 @@ function tpCurrent(test) {
 function tpDefaults(test) {
   if (test === "grayCurve") {
     const d = hyDefaults?.color;
-    return d && "grayCurve.points" in d ? { enabled: d["grayCurve.enabled"] === true, saturationLimit: d["grayCurve.saturationLimit"], points: d["grayCurve.points"] } : null;
+    return d && "grayCurve.points" in d ? { saturationLimit: d["grayCurve.saturationLimit"], points: d["grayCurve.points"] } : null;
   }
   if (!testDefaults) return null;
   const src = testDefaults[test] ?? {};
@@ -3026,7 +3033,10 @@ function renderTestPresets(force = false) {
     const open = slots || tpOpen.has(test);
     const full = list.length >= (TP_MAX[test] ?? Infinity);
     const off = slots && (!hyperionConnected || !cur);
-    const key = JSON.stringify([list, cur, editing, open, !!testDefaults, !!hyDefaults, off, I18N.lang]);
+    // the slot in use gets a badge like the grabber slots: "läuft" while the curve is on, else "aus"
+    const curveOn = slots && colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.enabled === true;
+    const badge = (inUse) => (slots && inUse ? `<span class="tp-badge${curveOn ? "" : " idle"}">${tr(curveOn ? "läuft" : "aus")}</span>` : "");
+    const key = JSON.stringify([list, cur, editing, open, !!testDefaults, !!hyDefaults, off, curveOn, I18N.lang]);
     if (box.dataset.key === key) return;
     // do not rebuild under a name being typed
     if (!force && box.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
@@ -3043,13 +3053,13 @@ function renderTestPresets(force = false) {
     if (favs.length && !open) html += `<div class="tp-favs">${favs.map((p) => `<button type="button" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}">★ ${tpEsc(p.name)}</button>`).join("")}</div>`;
     if (editing === "new") html += `<div class="tp-form"><input type="text" maxlength="60" placeholder="${tr("Name der Einstellungen")}" aria-label="${tr("Name der Einstellungen")}"><button type="button" class="primary" data-tp="save-new">${tr("Speichern")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></div>`;
     if (open) {
-      const std = slots ? `<li><button type="button" class="tp-name" data-tp="default" aria-pressed="${!!def && tpSame(cur, def)}" title="${tr("Laden")}"${def && !off ? "" : " disabled"}>${tr("Standard")}<small>${tr("aus, alle Faktoren 1")}</small></button><span class="tp-std-gap"></span></li>` : "";
+      const std = slots ? `<li><button type="button" class="tp-name" data-tp="default" aria-pressed="${!!def && tpSame(cur, def)}" title="${tr("Laden")}"${def && !off ? "" : " disabled"}><span class="tp-label">${tr("Standard")}</span><small>${tr("alle Faktoren 1")}</small>${badge(!!def && tpSame(cur, def))}</button><span class="tp-std-gap"></span></li>` : "";
       html += `<ul class="tp-list">${std}${list.map((p) => {
         const star = slots ? "" : `<button type="button" class="ibtn${p.fav ? " fav" : ""}" data-tp="fav" data-id="${p.id}" title="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-label="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-pressed="${p.fav}">${TP_ICON.star}</button>`;
         if (editing === p.id) return `<li>${star}<span class="tp-form" style="flex:1;margin:0"><input type="text" maxlength="60" value="${tpEsc(p.name)}" aria-label="${tr("Neuer Name")}"><button type="button" class="primary" data-tp="save-name" data-id="${p.id}">${tr("OK")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></span></li>`;
         const when = new Date(p.savedAt).toLocaleDateString(I18N.locale, { day: "2-digit", month: "2-digit" });
         const dis = off ? " disabled" : "";
-        return `<li>${star}<button type="button" class="tp-name" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}" title="${tr("Laden")}"${dis}>${tpEsc(p.name)}<small>${when}</small></button>` +
+        return `<li>${star}<button type="button" class="tp-name" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}" title="${tr("Laden")}"${dis}><span class="tp-label">${tpEsc(p.name)}</span><small>${when}</small>${badge(tpSame(cur, p.settings))}</button>` +
           `<button type="button" class="ibtn" data-tp="rename" data-id="${p.id}" title="${tr("Umbenennen")}" aria-label="${tr("Umbenennen")}">${TP_ICON.pencil}</button>` +
           `<button type="button" class="ibtn" data-tp="update" data-id="${p.id}" title="${tr("Mit den aktuellen Einstellungen überschreiben")}" aria-label="${tr("Mit den aktuellen Einstellungen überschreiben")}"${dis}>${TP_ICON.save}</button>` +
           `<button type="button" class="ibtn" data-tp="delete" data-id="${p.id}" title="${tr("Löschen")}" aria-label="${tr("Löschen")}">${ICON.trash}</button></li>`;
@@ -3462,8 +3472,8 @@ async function saveColorBatch(fields, note) {
 }
 
 // a saved gray curve (slot or standard) goes to Hyperion in one write
+// the switch "Graukurve aktiviert" stays as it is, a slot only holds the curve
 const saveGrayCurve = (s) => saveColorValues([
-  { field: "grayCurve.enabled", value: s.enabled === true },
   { field: "grayCurve.saturationLimit", value: s.saturationLimit },
   { field: "grayCurve.points", value: s.points },
 ], $("gcc-note"), tr("Graukurve geladen, wirkt sofort auf die LEDs."));

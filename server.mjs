@@ -110,7 +110,8 @@ const PRESETS = [
 const PRESET_IDS = PRESETS.map((p) => p.id);
 
 // Tests whose settings can be saved as presets; the settings are the test's state without the run state.
-// "grayCurve" is no test: its slots hold the gray curve of Hyperion (enabled, saturation limit, points).
+// "grayCurve" is no test: its slots hold the gray curve of Hyperion (saturation limit, points). Whether the
+// curve is on belongs to the whole function, not to a slot (old slots lose their "enabled" on load).
 const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest", "grayCurve"];
 const MAX_TEST_PRESETS = 50;
 const MAX_PRESETS = { grayCurve: 10 };
@@ -119,7 +120,7 @@ function grayCurveSettings(input) {
   const gain = (v) => num(v, 0, 2, 1, 0.01);
   const points = (Array.isArray(input?.points) ? input.points : []).filter((p) => p && typeof p === "object").slice(0, 12)
     .map((p) => ({ gainBlue: gain(p.gainBlue), gainGreen: gain(p.gainGreen), gainRed: gain(p.gainRed), level: num(p.level, 0, 100, 50) }));
-  return { enabled: input?.enabled === true, saturationLimit: num(input?.saturationLimit, 0.01, 1, 0.15, 0.01), points };
+  return { saturationLimit: num(input?.saturationLimit, 0.01, 1, 0.15, 0.01), points };
 }
 function presetSettings(test, settings) {
   if (test === "grayCurve") return grayCurveSettings(settings);
