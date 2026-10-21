@@ -123,8 +123,8 @@
       slIntro: "Jedes Grabber-Modell hat drei Speicherplätze. Verwendet wird der aktive Platz des Grabbers, der gerade angeschlossen ist. Nach einem Grabberwechsel gilt automatisch dessen Kalibrierung, für einen Grabber ohne Kalibrierung bleibt die Korrektur aus.",
       slSlot: "Platz {n}",
       slEmpty: "leer",
-      slActive: "aktiv",
-      slInUse: "wird verwendet",
+      slActive: "aus",
+      slInUse: "läuft",
       slNamePh: "Name, z. B. mit Splitter",
       slInfo: "Grundtest vom {date} · Abweichung {before} → {after} Stufen im Mittel",
       slUse: "Verwenden",
@@ -244,8 +244,8 @@
       slIntro: "Every grabber model has three memory slots. The active slot of the grabber connected right now is used. After a grabber change its own calibration applies automatically, for a grabber without calibration the correction stays off.",
       slSlot: "Slot {n}",
       slEmpty: "empty",
-      slActive: "active",
-      slInUse: "in use",
+      slActive: "off",
+      slInUse: "running",
       slNamePh: "Name, e.g. with splitter",
       slInfo: "Basic test of {date} · deviation {before} → {after} levels on average",
       slUse: "Use",
@@ -995,7 +995,8 @@
       slots.forEach((s, i) => {
         const active = !!(g && g.active === i && s);
         const used = active && g.enable;
-        out += `<div class="gtr-slot${used ? " on" : ""}"><div class="gtr-slot-head"><b>${esc(slotName(i))}</b>`;
+        // like all slots: the chosen one is blue, its badge says whether the function runs
+        out += `<div class="gtr-slot${active ? " on" : ""}"><div class="gtr-slot-head"><b>${esc(slotName(i))}</b>`;
         if (s) {
           out += onAction ? `<input type="text" maxlength="${NAME_MAX}" data-sl="rename" data-slot="${i}" value="${esc(s.name ?? "")}" placeholder="${esc(t.slNamePh)}">` : s.name ? `<span>${esc(s.name)}</span>` : "";
           if (active) out += `<span class="gtr-badge${used ? "" : " idle"}">${esc(used ? t.slInUse : t.slActive)}</span>`;
