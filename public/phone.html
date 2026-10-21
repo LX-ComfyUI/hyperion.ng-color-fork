@@ -671,7 +671,7 @@
     <div class="tp" data-test="grayCurve"></div>
     <label class="check"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Aktiviert</span></label>
     <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
-    <div class="gcc-lock" id="gcc-lock-row" hidden>
+    <div class="gcc-lock" id="gcc-lock-row">
       <button type="button" class="ts-lock" id="gcc-lock"></button>
       <span id="gcc-lock-text"></span>
     </div>
@@ -2015,24 +2015,24 @@ $("hy-curve").addEventListener("click", (ev) => {
 // points wait and replace older waiting ones, so the LEDs follow without piling up writes.
 let curveSaving = false;
 let curvePending = null;
-async function saveCurvePoints(points) {
-  curvePending = points;
+// step = id of the drag, so the server keeps all its saves as one undo step
+async function saveCurvePoints(points, step) {
+  curvePending = { points, step };
   if (curveSaving) return;
   curveSaving = true;
   while (curvePending) {
     const next = curvePending;
     curvePending = null;
-    await saveColor("grayCurve.points", next);
+    await saveColor("grayCurve.points", next.points, undefined, next.step);
   }
   curveSaving = false;
 }
-// On touch screens the points sit where the finger scrolls, so the graph is locked: a tap on the
-// lock opens it, it closes again on a tap or after 2 minutes without a change.
-const CURVE_LOCK = matchMedia("(pointer: coarse)").matches;
+// The points sit where the finger scrolls and a stray click drags them, so the graph is locked on
+// every device: the lock opens it, it closes again on a click or after 2 minutes without a change.
 const CURVE_UNLOCK_MS = 120000;
 let curveUnlockedUntil = 0;
 let curveLockTimer = null;
-const curveUnlocked = () => !CURVE_LOCK || Date.now() < curveUnlockedUntil;
+const curveUnlocked = () => Date.now() < curveUnlockedUntil;
 function setCurveUnlocked(on) {
   curveUnlockedUntil = on ? Date.now() + CURVE_UNLOCK_MS : 0;
   clearTimeout(curveLockTimer);
@@ -2040,14 +2040,12 @@ function setCurveUnlocked(on) {
   renderColorEditor();
 }
 function renderCurveLock() {
-  $("gcc-lock-row").hidden = !CURVE_LOCK;
-  if (!CURVE_LOCK) return;
   const open = curveUnlocked();
   const lock = $("gcc-lock");
   lock.innerHTML = open ? TS_LOCK.open : TS_LOCK.closed;
   lock.classList.toggle("open", open);
-  lock.title = lock.ariaLabel = open ? tr("Entsperrt, antippen zum Sperren") : tr("Antippen zum Entsperren");
-  $("gcc-lock-text").textContent = open ? tr("Punkte verschiebbar. Sperrt sich nach 2 Minuten ohne Änderung.") : tr("Punkte gesperrt, damit Scrollen nichts verstellt. Zum Verschieben das Schloss antippen.");
+  lock.title = lock.ariaLabel = open ? tr("Entsperrt, zum Sperren das Schloss wählen") : tr("Gesperrt, zum Entsperren das Schloss wählen");
+  $("gcc-lock-text").textContent = open ? tr("Punkte verschiebbar. Sperrt sich nach 2 Minuten ohne Änderung.") : tr("Punkte gesperrt, damit nichts aus Versehen verschoben wird. Zum Verschieben das Schloss öffnen.");
 }
 $("gcc-lock").addEventListener("click", () => setCurveUnlocked(!curveUnlocked()));
 // a drag extends the open time without redrawing the graph under the finger
@@ -2063,10 +2061,55 @@ const curveGraph = GrayCurveGraph.create($("hy-curve-graph"), {
     point: "Point", remove: "Delete point", off: "The gray curve is off. The graph shows what it would do with these factors.",
     hint: "Tap a point and drag it up/down (1 pixel = 0.01), sideways moves the brightness. Tapping a free spot adds a point.",
     blackThreshold: "Black threshold", withoutCurve: "dashed = without gray curve",
+    undo: "Undo last change", redo: "Redo undone change",
   } : undefined,
-  onChange: (points) => { if (CURVE_LOCK) setCurveUnlockedQuiet(); saveCurvePoints(points); },
+  onChange: (points, final) => {
+    setCurveUnlockedQuiet();
+    curveStep ??= `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    saveCurvePoints(points, curveStep);
+    if (final) curveStep = null;
+  },
   onSelect: (i, point) => showGray(point.level),
+  onUndo: () => moveCurveHistory("undo"),
+  onRedo: () => moveCurveHistory("redo"),
 });
+let curveStep = null;
+
+// Back/forward of the gray curve points. The server keeps the steps (one per drag, new point, deleted
+// point or loaded slot), so they survive a reload and are the same on every device.
+let curveHistory = { undo: 0, redo: 0 };
+let curveHistoryBusy = false;
+function renderCurveHistory() {
+  const ok = hyperionConnected && !!colorConfig?.channelAdjustment?.[colorIndex] && !curveHistoryBusy;
+  curveGraph.setHistory({ undo: ok && curveHistory.undo > 0, redo: ok && curveHistory.redo > 0 });
+}
+async function loadCurveHistory() {
+  try {
+    const res = await fetch(`/api/hyperion/graycurve/history?index=${colorIndex}`);
+    if (res.ok) curveHistory = await res.json();
+  } catch {}
+  renderCurveHistory();
+}
+async function moveCurveHistory(dir) {
+  if (curveHistoryBusy || curveSaving) return;
+  curveHistoryBusy = true;
+  renderCurveHistory();
+  const note = $("gcc-note");
+  note.textContent = "Speichere in Hyperion …";
+  try {
+    const res = await fetch("/api/hyperion/graycurve/history", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, dir }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    colorConfig = body.color;
+    curveHistory = body.history;
+    note.textContent = dir === "undo" ? tr("Letzte Änderung zurückgenommen, wirkt sofort auf die LEDs.") : tr("Änderung wiederhergestellt, wirkt sofort auf die LEDs.");
+  } catch (e) {
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
+    await loadCurveHistory();
+  }
+  curveHistoryBusy = false;
+  renderColorEditor();
+}
 
 // notes that describe a state of the editor, as opposed to the result of a save
 // status notes are recognized by their start, in German and in English (the page may be translated)
@@ -2093,6 +2136,7 @@ function renderColorEditor() {
   if (points !== curveBuiltFor) buildCurve(points);
   curveGraph.update({ entry, blackThreshold: deviceBlack, writable: writable && curveUnlocked() });
   renderCurveLock();
+  renderCurveHistory();
   document.querySelectorAll("#hy-curve button.showgray").forEach(b => { b.disabled = !writable; });
 
   document.querySelectorAll("#hy-rgb input").forEach(inp => {
@@ -2136,6 +2180,7 @@ async function loadColorConfig() {
     colorConfig = await res.json();
     deviceBlack = await fetch("/api/hyperion/blackthreshold").then((r) => (r.ok ? r.json() : null)).catch(() => null);
     loadHyDefaults();
+    loadCurveHistory();
   } catch (e) {
     colorConfig = null;
     $("hy-note").textContent = "Farbwerte nicht lesbar: " + e.message;
@@ -2147,15 +2192,16 @@ async function loadColorConfig() {
 // one save per field: { index, field, value, stop }
 // the gray curve has its own card and note
 const colorNote = (field) => $(String(field).startsWith("grayCurve") ? "gcc-note" : "hy-note");
-async function saveColor(field, value, stop) {
+async function saveColor(field, value, stop, step) {
   const note = colorNote(field);
   note.textContent = "Speichere in Hyperion …";
   try {
-    const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, field, value, stop }) });
+    const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, field, value, stop, step }) });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error);
     colorConfig = body;
     note.textContent = "Gespeichert, wirkt sofort auf die LEDs.";
+    if (String(field).startsWith("grayCurve")) loadCurveHistory();
   } catch (e) {
     note.textContent = "Speichern fehlgeschlagen: " + e.message;
     await loadColorConfig();
@@ -3426,6 +3472,7 @@ async function saveColorValues(batch, note, doneText) {
     if (!res.ok) throw new Error(body.error);
     colorConfig = body;
     note.textContent = doneText;
+    if (batch.some((f) => f.field.startsWith("grayCurve"))) loadCurveHistory();
   } catch (e) {
     note.textContent = "Speichern fehlgeschlagen: " + e.message;
     await loadColorConfig();

@@ -10,8 +10,9 @@
 // RgbChannelAdjustment::applyPrecise, MultiColorAdjustment::computePrecise,
 // GrayCurveTransform::gains and LedDevice::applyBlackThreshold.
 //
-//   const graph = GrayCurveGraph.create(element, { onChange(points, final), onSelect(index, point) });
+//   const graph = GrayCurveGraph.create(element, { onChange(points, final), onSelect(index, point), onUndo(), onRedo() });
 //   graph.update({ entry, blackThreshold, writable });
+//   graph.setHistory({ undo, redo }); // back/forward buttons, only with onUndo/onRedo
 (function (global) {
   "use strict";
 
@@ -44,7 +45,12 @@
     hint: "Punkt antippen und hoch/runter ziehen (1 Pixel = 0,01), seitlich verschiebt die Helligkeit. Tippen auf eine freie Stelle legt einen Punkt an.",
     blackThreshold: "Schwarzschwelle",
     withoutCurve: "gestrichelt = ohne Graukurve",
+    undo: "Letzte Änderung zurücknehmen",
+    redo: "Zurückgenommene Änderung wiederherstellen",
   };
+
+  const ICON_UNDO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+  const ICON_REDO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>';
 
   // ---------------------------------------------------------------- Hyperion math
 
@@ -210,6 +216,9 @@
       .gcg-seg button { all: unset; cursor: pointer; padding: 6px 11px; font-size: 14px; line-height: 1.2; color: inherit; }
       .gcg-seg button + button { border-left: 1px solid var(--btn-line, rgba(127,127,127,.5)); }
       .gcg-seg button[aria-pressed="true"] { background: var(--accent, #0a74e8); color: var(--accent-text, #fff); }
+      .gcg-seg button:disabled { cursor: default; opacity: .35; }
+      .gcg-seg[data-role="history"] button { padding: 6px 9px; }
+      .gcg-seg button svg { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
       .gcg-seg button .gcg-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
       .gcg svg { display: block; width: 100%; touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
       .gcg svg text { font: 11px system-ui, sans-serif; fill: currentColor; opacity: .7; }
@@ -254,11 +263,15 @@
           <button type="button" data-v="log">${text.log}</button>
           <button type="button" data-v="linear">${text.linear}</button>
         </span>
+        ${options.onUndo ? `<span class="gcg-seg" data-role="history">
+          <button type="button" data-v="undo" title="${text.undo}" aria-label="${text.undo}" disabled>${ICON_UNDO}</button>
+          <button type="button" data-v="redo" title="${text.redo}" aria-label="${text.redo}" disabled>${ICON_REDO}</button>
+        </span>` : ""}
       </div>
       <svg></svg>
       <div class="gcg-info"></div>
       <p class="gcg-note"></p>`;
-    const svg = container.querySelector("svg");
+    const svg = container.querySelector(":scope > svg");
     const info = container.querySelector(".gcg-info");
     const note = container.querySelector(".gcg-note");
 
@@ -269,6 +282,12 @@
     container.querySelector('[data-role="scale"]').addEventListener("click", (ev) => {
       const b = ev.target.closest("button");
       if (b) { state.scale = b.dataset.v; render(); }
+    });
+    container.querySelector('[data-role="history"]')?.addEventListener("click", (ev) => {
+      const b = ev.target.closest("button");
+      if (!b || b.disabled || (state.drag && !state.drag.tap)) return;
+      if (b.dataset.v === "undo") options.onUndo?.();
+      else options.onRedo?.();
     });
     info.addEventListener("click", (ev) => {
       if (!ev.target.closest("button[data-role=remove]")) return;
@@ -582,6 +601,10 @@
         render();
       },
       select(i) { state.selected = i; render(); },
+      setHistory({ undo, redo }) {
+        const buttons = container.querySelectorAll('[data-role="history"] button');
+        buttons.forEach((b) => { b.disabled = !(b.dataset.v === "undo" ? undo : redo); });
+      },
       get dragging() { return !!state.drag && !state.drag.tap; },
     };
   }

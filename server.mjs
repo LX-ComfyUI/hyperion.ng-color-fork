@@ -1050,13 +1050,79 @@ function mergeColor(current, patch) {
 }
 
 // patch.batch = several fields in one write (reset of a group to the standard values)
+// patch.step = id of a graph drag: all live saves of one drag are one undo step of the gray curve
 function saveColor(patch) {
-  return exclusive(() => {
+  return exclusive(async () => {
     const current = readInstanceSetting("color");
     const next = Array.isArray(patch.batch)
       ? patch.batch.reduce((cfg, f) => mergeColor(cfg, { ...f, index: patch.index }), current)
       : mergeColor(current, patch);
-    return writeInstanceSetting("color", next);
+    const index = Number(patch.index ?? 0);
+    const before = curvePointsOf(current, index);
+    const written = await writeInstanceSetting("color", next);
+    recordCurveStep(index, before, curvePointsOf(written, index), patch.step);
+    return written;
+  });
+}
+
+// Undo/redo of the gray curve points, per color entry: every write from this page that changes the
+// points keeps the points before it. In its own file, so it survives a restart and every device
+// undoes the same steps (a point moved by accident on the phone can be undone at the PC).
+const CURVE_HISTORY_FILE = path.join(DATA_DIR, "graycurve-history.json");
+const CURVE_HISTORY_MAX = 50;
+let curveHistory = loadCurveHistory();
+
+function loadCurveHistory() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(CURVE_HISTORY_FILE, "utf8"));
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCurveHistory() {
+  const tmp = CURVE_HISTORY_FILE + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(curveHistory));
+  fs.renameSync(tmp, CURVE_HISTORY_FILE);
+}
+
+const curvePointsOf = (color, index) => structuredClone(color?.channelAdjustment?.[index]?.grayCurve?.points ?? null);
+const curveHistoryOf = (index) => (curveHistory[index] ??= { undo: [], redo: [], step: null });
+const curveHistoryInfo = (index) => ({ undo: curveHistory[index]?.undo.length ?? 0, redo: curveHistory[index]?.redo.length ?? 0 });
+
+function recordCurveStep(index, before, after, step) {
+  if (!before || JSON.stringify(before) === JSON.stringify(after)) return;
+  const h = curveHistoryOf(index);
+  const id = step ? String(step) : null;
+  // the following saves of the same drag only move the points further, the step keeps its start
+  if (!id || id !== h.step) {
+    h.undo.push(before);
+    if (h.undo.length > CURVE_HISTORY_MAX) h.undo.shift();
+  }
+  h.step = id;
+  h.redo = [];
+  saveCurveHistory();
+}
+
+// dir "undo" or "redo": writes the points of that step, the current points go onto the other stack
+function curveHistoryMove(index, dir) {
+  return exclusive(async () => {
+    const h = curveHistoryOf(index);
+    const [from, to] = dir === "undo" ? [h.undo, h.redo] : [h.redo, h.undo];
+    if (!from.length) throw new Error(dir === "undo" ? "Nichts zum Zurücknehmen" : "Nichts zum Wiederherstellen");
+    const current = readInstanceSetting("color");
+    const entry = current.channelAdjustment?.[index];
+    if (!entry?.grayCurve) throw new Error("Graukurve fehlt in Hyperion");
+    const now = curvePointsOf(current, index);
+    const next = structuredClone(current);
+    next.channelAdjustment[index].grayCurve.points = structuredClone(from.at(-1));
+    const written = await writeInstanceSetting("color", next);
+    from.pop();
+    if (now) to.push(now);
+    h.step = null;
+    saveCurveHistory();
+    return { color: written, history: curveHistoryInfo(index) };
   });
 }
 
@@ -1460,6 +1526,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && p === "/api/hyperion/color") {
       const patch = await readBody(req);
       return sendJson(res, 200, await saveColor(patch));
+    }
+    if (req.method === "GET" && p === "/api/hyperion/graycurve/history") {
+      return sendJson(res, 200, curveHistoryInfo(Number(url.searchParams.get("index") ?? 0)));
+    }
+    if (req.method === "POST" && p === "/api/hyperion/graycurve/history") {
+      const { index, dir } = await readBody(req);
+      if (dir !== "undo" && dir !== "redo") throw new Error("Unbekannte Richtung");
+      return sendJson(res, 200, await curveHistoryMove(Number(index ?? 0), dir));
     }
 
     // QR code with the phone URL, built from the address the TV used to reach the Pi
