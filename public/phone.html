@@ -680,7 +680,7 @@
     <h2>Graukurve</h2>
     <div class="hy-scope" id="gcc">
 
-    <h4 class="hy-h" data-hy-group="curve" style="margin-top:0"><span>Graukurve (Hyperion)</span></h4>
+    <h4 class="hy-h" style="margin-top:0"><span>Graukurve (Hyperion)</span></h4>
     <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. Ein Punkt im Graphen (oder „Am TV zeigen“) legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
     <label class="check"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Graukurve aktiviert<small>Gilt für die ganze Funktion. Ein Speicherplatz wechselt nur die Kurve, nicht diesen Schalter.</small></span></label>
     <div class="tp" data-test="grayCurve"></div>
@@ -3428,7 +3428,6 @@ const HY_GROUP_FIELDS = {
   colors: ["white", "red", "green", "blue", "cyan", "magenta", "yellow"],
   light: ["brightness", "saturationGain", "backlightThreshold", "backlightColored"],
   gamma: ["gammaRed", "gammaGreen", "gammaBlue", "temperature"],
-  curve: ["grayCurve.enabled", "grayCurve.saturationLimit", "grayCurve.points"],
 };
 const BB_RESET_KEYS = ["enable", "mode", "threshold", "unknownFrameCnt", "borderFrameCnt", "maxInconsistentCnt", "blurRemoveCnt"];
 const hyDefault = (field) => hyDefaults?.color?.[field];
@@ -3507,7 +3506,7 @@ document.addEventListener("click", (ev) => {
   const g = ev.target.closest("[data-hy-reset]");
   if (g) {
     const name = g.closest(".hy-h")?.querySelector("span")?.textContent ?? "";
-    if (confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: name }))) saveColorBatch(HY_GROUP_FIELDS[g.dataset.hyReset], g.dataset.hyReset === "curve" ? $("gcc-note") : $("hy-note"));
+    if (confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: name }))) saveColorBatch(HY_GROUP_FIELDS[g.dataset.hyReset], $("hy-note"));
     return;
   }
   const c = ev.target.closest("[data-card-reset]");
