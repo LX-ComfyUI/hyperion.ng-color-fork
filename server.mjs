@@ -303,12 +303,12 @@ function qrSvg(text) {
   return qr.createSvgTag({ cellSize: 8, margin: 32, scalable: true });
 }
 
-function readBody(req) {
+function readBody(req, limit = 10_000) {
   return new Promise((resolve, reject) => {
     let data = "";
     req.on("data", (chunk) => {
       data += chunk;
-      if (data.length > 10_000) reject(new Error("body too large"));
+      if (data.length > limit) reject(new Error("body too large"));
     });
     req.on("end", () => {
       try {
@@ -571,6 +571,8 @@ connectMonitor();
 // it goes on when the phone's screen turns off.
 
 require("./public/grabbertest-report.js");
+require("./public/nosignal-ui.js");
+const NoSignal = globalThis.NoSignalUI;
 const Report = globalThis.GrabberTestReport;
 
 const GT_POLL_MS = 100;
@@ -713,6 +715,37 @@ async function refreshGrabberCorrection() {
 }
 grabberCorrection = readGrabberCorrection();
 setInterval(refreshGrabberCorrection, 4000);
+
+// --- "No Signal" still image detection (card of the same name, nosignal-ui.js like the WebUI) ---
+// The setting grabberTest.noSignal for the page, without the calibration data of the slots
+function noSignalConfig() {
+  const ns = readGlobalSetting("grabberTest")?.noSignal ?? {};
+  const grabbers = Object.fromEntries(Object.entries(ns.grabbers ?? {}).map(([device, g]) => [device, {
+    active: g?.active ?? -1,
+    slots: (g?.slots ?? []).map((s) => (s ? { name: s.name ?? "", savedAt: s.savedAt ?? null, featureCells: s.featureCells ?? null, unstableCells: s.unstableCells ?? null } : null)),
+  }]));
+  return { noSignal: { ...ns, grabbers } };
+}
+
+// only the detection's own parameters of the fork command "grabbertest" pass
+async function noSignalCommand(params) {
+  const cmd = { command: "grabbertest", nosignal: String(params?.nosignal ?? "") };
+  if (!["status", "calibrate", "calibration"].includes(cmd.nosignal)) throw new Error("Unbekannter Befehl");
+  if (params.image === true) cmd.image = true;
+  if (Number.isInteger(params.duration)) cmd.duration = Math.min(10000, Math.max(1000, params.duration));
+  const reply = await hyperionCommand(cmd);
+  return { info: reply.info ?? {}, config: cmd.nosignal === "status" ? noSignalConfig() : undefined };
+}
+
+// op of NoSignalUI.applyOp for the grabber that delivers frames now
+async function noSignalOp(op, args) {
+  const status = await hyperionCommand({ command: "grabbertest", nosignal: "status" });
+  await exclusive(async () => {
+    const current = readGlobalSetting("grabberTest") ?? {};
+    await writeGlobalSetting("grabberTest", NoSignal.applyOp(current, status.info?.device || null, op, args ?? {}, "de"));
+  });
+  return { config: noSignalConfig() };
+}
 
 // Changes the calibrations of the connected grabber (ops of GrabberTestReport.applyOp)
 async function changeGrabberCalibration(op, args) {
@@ -1167,7 +1200,7 @@ async function testServerStatus() {
   const bb = safe(() => readInstanceSetting("blackborderdetector"));
   const color = safe(() => readInstanceSetting("color"));
   const smoothing = safe(() => readInstanceSetting("smoothing"));
-  const v4l = safe(() => readGlobalSetting("grabberV4L2"));
+  const grabberTestSetting = safe(() => readGlobalSetting("grabberTest"));
   const entry = color?.channelAdjustment?.[0];
   const guarded = new Set(Object.keys(loadGuard().entries).map((k) => k.replace(/\d+$/, "").replace(/^depth(topBottom|leftRight)$/, "depth")));
   const depth = color?.ledAreaDepth;
@@ -1181,7 +1214,7 @@ async function testServerStatus() {
       feature("blackborder", "Schwarzbalken-Erkennung", bb.enable === true),
       feature("grayStill", "Graues-Standbild-Erkennung", bb.grayStillImageDetector?.enabled === true),
       feature("backlight", "Hintergrundbeleuchtung", (color.channelAdjustment ?? []).some((a) => Number(a.backlightThreshold) > 0), entry ? String(entry.backlightThreshold) : null),
-      feature("signal", "Signalerkennung des Grabbers", v4l?.signalDetection === true),
+      feature("signal", "No-Signal-Erkennung des Grabbers", grabberTestSetting?.noSignal?.enable === true),
       feature("depth", "Erfassungstiefe", !!depth && (Number(depth.topBottom) > 0 || Number(depth.leftRight) > 0), depth ? `${depth.topBottom} % / ${depth.leftRight} %` : null),
       feature("smoothing", "Glättung", smoothing?.enable === true, smoothing ? `${smoothing.time_ms} ms` : null),
       feature("correction", "Grabber-Farbkorrektur", grabberCorrection.enable),
@@ -1230,8 +1263,8 @@ function guardWanted(entries = {}) {
   try { color = readInstanceSetting("color"); } catch {}
   if (off.has("blackborder")) want.blackborder = { type: "blackborderdetector", path: ["enable"], value: false, label: "Schwarzbalken-Erkennung" };
   if (off.has("grayStill")) want.grayStill = { type: "blackborderdetector", path: ["grayStillImageDetector", "enabled"], value: false, label: "Graues-Standbild-Erkennung" };
-  // a black or dark test picture would count as "no signal" and switch the LEDs off
-  if (off.has("signal")) want.signal = { type: "grabberV4L2", global: true, path: ["signalDetection"], value: false, label: "Signalerkennung des Grabbers" };
+  // a test picture must never count as "no signal" and switch the LEDs off
+  if (off.has("signal")) want.signal = { type: "grabberTest", global: true, path: ["noSignal", "enable"], value: false, label: "No-Signal-Erkennung des Grabbers" };
   if (off.has("backlight")) (color?.channelAdjustment ?? []).forEach((_, i) => {
     want["backlight" + i] = { type: "color", path: ["channelAdjustment", i, "backlightThreshold"], value: 0, label: "Hintergrundbeleuchtung" };
   });
@@ -1527,6 +1560,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && p === "/api/hyperion/color") {
       const patch = await readBody(req);
       return sendJson(res, 200, await saveColor(patch));
+    }
+    if (req.method === "POST" && p === "/api/nosignal/command") return sendJson(res, 200, await noSignalCommand(await readBody(req)));
+    if (req.method === "POST" && p === "/api/nosignal/op") {
+      // a calibration (grid of the no-signal picture) is about 13 kB
+      const { op, args } = await readBody(req, 100_000);
+      return sendJson(res, 200, await noSignalOp(op, args));
     }
     if (req.method === "GET" && p === "/api/hyperion/graycurve/history") {
       return sendJson(res, 200, curveHistoryInfo(Number(url.searchParams.get("index") ?? 0)));

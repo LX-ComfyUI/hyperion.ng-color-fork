@@ -615,6 +615,12 @@
     <div id="gx-report">Lade Ergebnis …</div>
   </section>
 
+  <!-- ===== "No Signal" still image detection, the same section as in the WebUI (nosignal-ui.js) ===== -->
+  <section class="card" id="card-ns">
+    <h2>„No Signal“-Standbild-Erkennung</h2>
+    <div id="ns-ui" data-i18n-skip></div>
+  </section>
+
   <!-- ===== test colors ===== -->
   <section class="card" id="card-color">
     <h2>Testfarben</h2>
@@ -1116,7 +1122,7 @@
   <!-- ===== test server: status and test guard ===== -->
   <section class="card" id="card-ts">
     <h2>Testserver</h2>
-    <label class="check" style="margin:0 0 14px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, Signalerkennung des Grabbers und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
+    <label class="check" style="margin:0 0 14px"><input type="checkbox" id="guard-enabled"><span>Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, „No Signal“-Erkennung des Grabbers und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small></span></label>
     <p class="help">Zustand der Testseite, der Verbindung zu Hyperion, der Funktionen in Hyperion, die Tests beeinflussen, und der Tests selbst. Unten legst du fest, was der Testschutz während eines Tests ausschaltet.</p>
     <h3>Status</h3>
     <ul class="ts-list" id="ts-status"></ul>
@@ -1438,6 +1444,7 @@
 </script>
 <script src="/static/graycurve-graph.js"></script>
 <script src="/static/grabbertest-report.js"></script>
+<script src="/static/nosignal-ui.js"></script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, ledSegments, posTestIndices, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 import { guidePoints, runSummary, MAX_ANSWER } from "/static/layoutfix.js";
@@ -2822,7 +2829,7 @@ $("lp-color").addEventListener("change", (ev) => sendPosTest({ color: ev.target.
 // ---------- test server card: status, tests, test guard rules ----------
 const TS_FEATURE_LABELS = {
   grayStill: "Graues-Standbild-Erkennung", blackborder: "Schwarzbalken-Erkennung", backlight: "Hintergrundbeleuchtung",
-  signal: "Signalerkennung des Grabbers", depth: "Erfassungstiefe 3 % / 2 %",
+  signal: "No-Signal-Erkennung des Grabbers", depth: "Erfassungstiefe 3 % / 2 %",
 };
 const TS_TESTS = [["color", "Testfarben"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "Erfassungstiefe"], ["frac", "Nachkommastellen"], ["pos", "LED-Position"]];
 const TS_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
@@ -4056,6 +4063,25 @@ function renderBell() {
   });
   document.addEventListener("click", (ev) => { if (!menu.hidden && !menu.contains(ev.target) && !btn.contains(ev.target)) { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
 })();
+
+// "No Signal" still image detection: the shared section of the WebUI. The server passes the commands
+// to Hyperion and applies the changes to grabberTest.noSignal; its replies carry that setting.
+let nsConfig = {};
+async function nsPost(url, body) {
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const reply = await res.json();
+  if (!res.ok) throw new Error(reply.error);
+  if (reply.config) nsConfig = reply.config;
+  return reply;
+}
+NoSignalUI.render($("ns-ui"), {
+  lang: I18N.lang === "en" ? "en" : "de",
+  heading: false,
+  getConfig: () => nsConfig,
+  command: async (params) => (await nsPost("/api/nosignal/command", params)).info,
+  change: (op, args) => nsPost("/api/nosignal/op", { op, args }),
+  primaryClass: "primary",
+});
 
 async function loadGrabberReport() {
   try {
