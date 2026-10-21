@@ -85,8 +85,9 @@ that move are ignored) and checks every frame against it. A frame matches when
 the share of matching cells reaches the minimum both over all cells and over
 the "feature" cells that are not black (text, logo, colored areas; compared per
 color channel); a dark film scene matches the black background but not the text, so it does not count. After the delay the
-detection releases the capture input (next source or LEDs off), sends black,
-or only reports. Settings and up to three calibrations per grabber model live
+detection releases the capture input (next source or LEDs off, like the old
+detection) or sends black.
+Settings and up to three calibrations per grabber model live
 in `grabberTest.noSignal`; the WebUI (USB capture panel) and the TV test page
 share `nosignal-ui.js`. JSON-API: `grabbertest` with `nosignal` =
 `status` | `calibrate` | `calibration`.

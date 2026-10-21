@@ -30,7 +30,7 @@ constexpr qint64 SNAPSHOT_EVERY_MS = 200;
 constexpr qint64 SNAPSHOT_WANTED_MS = 10000;
 constexpr int MIN_CALIBRATION_FRAMES = 5;
 
-enum class Action { Release, Black, Report };
+enum class Action { Release, Black };
 
 struct Config
 {
@@ -89,7 +89,6 @@ QString actionName(Action a)
 	switch (a)
 	{
 	case Action::Black: return QStringLiteral("black");
-	case Action::Report: return QStringLiteral("report");
 	default: return QStringLiteral("release");
 	}
 }
@@ -285,7 +284,7 @@ void NoSignalDetector::configure(const QJsonObject& grabberTest)
 	Config next;
 	next.enable = ns["enable"].toBool(false);
 	const QString action = ns["action"].toString("release");
-	next.action = action == "black" ? Action::Black : action == "report" ? Action::Report : Action::Release;
+	next.action = action == "black" ? Action::Black : Action::Release;
 	next.delayMs = qint64(std::lround(std::clamp(ns["delay"].toDouble(3.0), 0.5, 120.0) * 1000.0));
 	next.tolerance = std::clamp(ns["tolerance"].toInt(24), 4, 100);
 	next.match = std::clamp(ns["match"].toDouble(95.0), 50.0, 100.0) / 100.0;
@@ -434,7 +433,7 @@ QJsonObject NoSignalDetector::status(bool withImage)
 	result["calibrating"] = calib.running;
 	result["noSignal"] = state.noSignal;
 	// what the LEDs get now: the detection only acts while it is on
-	result["acting"] = state.noSignal && config.enable && config.action != Action::Report;
+	result["acting"] = state.noSignal && config.enable;
 	result["changedMs"] = double(state.changedMs);
 	result["matchSinceMs"] = double(state.matchSinceMs);
 	result["match"] = state.calibrated ? std::round(state.last.score() * 1000.0) / 10.0 : -1.0;
