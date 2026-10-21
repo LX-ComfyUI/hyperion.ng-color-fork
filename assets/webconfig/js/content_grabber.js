@@ -35,7 +35,15 @@ $(document).ready(function () {
     }
 
     if (globalThis.showOptHelp) {
-      $('#conf_cont_video').append(createHelpTable(globalThis.schema.grabberV4L2.properties, $.i18n("edt_conf_v4l2_heading_title"), "videograbberHelpPanelId"));
+      // Fork-Erweiterung: die „No Signal“-Standbild-Erkennung (eigener Abschnitt unter den
+      // Einstellungen, kein Schema-Feld) bekommt eigene Zeilen am Ende der Erklärung
+      const videoHelp = { ...globalThis.schema.grabberV4L2.properties };
+      if (typeof NoSignalUI !== 'undefined') {
+        ['nosignal', 'nosignalCalibration', 'nosignalEnable', 'nosignalAction', 'nosignalDelay', 'nosignalTolerance', 'nosignalMatch', 'nosignalSlots'].forEach(function (key, i) {
+          videoHelp['fork_' + key] = { title: 'edt_conf_v4l2_' + key + '_title', propertyOrder: 1000 + i };
+        });
+      }
+      $('#conf_cont_video').append(createHelpTable(videoHelp, $.i18n("edt_conf_v4l2_heading_title"), "videograbberHelpPanelId"));
     }
 
     // Fork-Erweiterung: „No Signal“-Standbild-Erkennung (ersetzt die alte Signal-Erkennung), im
