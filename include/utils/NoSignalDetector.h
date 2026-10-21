@@ -4,8 +4,9 @@
 // picture while no HDMI signal arrives (a logo, "No Signal" text, a counter) instead of a black
 // frame. The user calibrates that picture once: the detector stores it as a coarse grid of cell
 // means and later compares every decoded frame (before the grabber color correction) with it.
-// A frame matches when nearly all cells are within the tolerance, the bright "feature" cells (the
-// text) included, so a dark film scene does not count as "no signal".
+// A frame matches when nearly all cells are within the tolerance per color channel, the "feature"
+// cells that are not black (text, logo, colored areas) included, so a dark film scene does not
+// count as "no signal".
 //
 // Settings live in the global setting grabberTest:
 //   noSignal: { enable, action: "release" | "black" | "report", delay (s), tolerance (0-255),
@@ -72,6 +73,6 @@ public:
 	};
 	static Match compare(const std::vector<uint8_t>& grid, const Reference& reference, int tolerance);
 
-	/// a cell whose reference is this bright in any channel is a feature (text, logo)
+	/// a cell whose reference is this bright in any channel is a feature (text, logo, colored area)
 	static constexpr int FEATURE_LEVEL = 24;
 };

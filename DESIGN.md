@@ -83,8 +83,8 @@ LED preview overlay; its code in `V4L2Grabber` stays only for the standalone
 (calibration over 3 s, grid of 64x36 cell means of the frame as decoded, cells
 that move are ignored) and checks every frame against it. A frame matches when
 the share of matching cells reaches the minimum both over all cells and over
-the bright "feature" cells (the text); a dark film scene matches the black
-background but not the text, so it does not count. After the delay the
+the "feature" cells that are not black (text, logo, colored areas; compared per
+color channel); a dark film scene matches the black background but not the text, so it does not count. After the delay the
 detection releases the capture input (next source or LEDs off), sends black,
 or only reports. Settings and up to three calibrations per grabber model live
 in `grabberTest.noSignal`; the WebUI (USB capture panel) and the TV test page

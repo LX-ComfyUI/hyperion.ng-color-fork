@@ -62,7 +62,8 @@ $(document).ready(function () {
         },
         command: nsCommand,
         buttonClass: 'btn btn-default btn-sm',
-        primaryClass: 'btn btn-primary btn-sm'
+        primaryClass: 'btn btn-primary btn-sm',
+        inputClass: 'form-control'
       });
     }
 
