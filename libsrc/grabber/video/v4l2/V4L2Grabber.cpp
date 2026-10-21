@@ -28,6 +28,7 @@
 #include "grabber/video/v4l2/V4L2Grabber.h"
 #include "grabber/video/v4l2/V4L2GrabberDebug.h"
 #include <utils/VideoProbe.h>
+#include <utils/NoSignalDetector.h>
 
 using namespace V4L2GrabberDebug;
 
@@ -133,7 +134,9 @@ V4L2Grabber::V4L2Grabber()
 	, _noSignalCounterThreshold(40)
 	, _noSignalThresholdColor(ColorRgb{0,0,0})
 	, _standbyActivated(false)
-	, _signalDetectionEnabled(true)
+	// fork: off in hyperiond, which uses the "No Signal" still image detection instead; only the
+	// hyperion-v4l2 command line tool switches this threshold detection on
+	, _signalDetectionEnabled(false)
 	, _signalDetected(false)
 	, _noSignalCounter(0)
 	, _brightness(0)
@@ -1200,12 +1203,31 @@ void V4L2Grabber::newThreadFrame(const Image<ColorRgb>& rawImage)
 	if (_standbyActivated)
 		return;
 
+	// fork: "No Signal" still image detection, on the frame as decoded so a later change of the
+	// color correction does not spoil the calibration
+	const NoSignalDetector::Verdict verdict = NoSignalDetector::check(rawImage, _currentDeviceName);
+
 	// fork: grabber color correction from the grabber test; the probe sees the frame as decoded
 	// and after the correction, also while the signal detection drops it
 	Image<ColorRgb> corrected;
 	const bool isCorrected = GrabberColorCorrection::apply(rawImage, corrected, _currentDeviceName);
 	VideoProbe::offer(rawImage, _currentDeviceName, isCorrected ? &corrected : nullptr);
 	const Image<ColorRgb>& image = isCorrected ? corrected : rawImage;
+
+	if (verdict == NoSignalDetector::Verdict::Drop)
+	{
+		// no frames: the capture input turns inactive and the next source (or nothing) takes over
+		return;
+	}
+	if (verdict == NoSignalDetector::Verdict::Black)
+	{
+		if (_blackFrame.width() != image.width() || _blackFrame.height() != image.height())
+		{
+			_blackFrame = Image<ColorRgb>(image.width(), image.height(), ColorRgb::BLACK);
+		}
+		emit newFrame(_blackFrame);
+		return;
+	}
 
 	if (_signalDetectionEnabled)
 	{

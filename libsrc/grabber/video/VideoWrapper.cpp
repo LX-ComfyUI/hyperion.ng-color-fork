@@ -108,18 +108,9 @@ void VideoWrapper::handleSettingsUpdate(settings::type type, const QJsonDocument
 			// Software frame skipping
 			_grabber.setFpsSoftwareDecimation(obj["fpsSoftwareDecimation"].toInt(1));
 
-			// Signal detection
-			_grabber.setSignalDetectionEnable(obj["signalDetection"].toBool(true));
-			_grabber.setSignalDetectionOffset(
-				obj["sDHOffsetMin"].toDouble(0.25),
-				obj["sDVOffsetMin"].toDouble(0.25),
-				obj["sDHOffsetMax"].toDouble(0.75),
-				obj["sDVOffsetMax"].toDouble(0.75));
-			_grabber.setSignalThreshold(
-				obj["redSignalThreshold"].toDouble(0.0)/100.0,
-				obj["greenSignalThreshold"].toDouble(0.0)/100.0,
-				obj["blueSignalThreshold"].toDouble(0.0)/100.0,
-				obj["noSignalCounterThreshold"].toInt(50));
+			// fork: the threshold signal detection is replaced by the "No Signal" still image
+			// detection (NoSignalDetector, setting grabberTest.noSignal)
+			_grabber.setSignalDetectionEnable(false);
 
 			// Device framerate
 			_grabber.setFramerate(obj["fps"].toInt(15));

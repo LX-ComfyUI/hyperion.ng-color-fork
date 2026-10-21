@@ -39,6 +39,8 @@ add_library(hyperion-utils
 	# fork: grabber test, measures the raw video grabber frames
 	${CMAKE_SOURCE_DIR}/include/utils/VideoProbe.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/VideoProbe.cpp
+	${CMAKE_SOURCE_DIR}/include/utils/NoSignalDetector.h
+	${CMAKE_SOURCE_DIR}/libsrc/utils/NoSignalDetector.cpp
 	# Color transformation (saturation/luminance) of RGB colors
 	${CMAKE_SOURCE_DIR}/include/utils/ColorSys.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/ColorSys.cpp

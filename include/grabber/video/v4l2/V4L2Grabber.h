@@ -163,6 +163,8 @@ private:
 	bool _signalDetectionEnabled;
 	bool _signalDetected;
 	int      _noSignalCounter;
+	// fork: sent instead of the frames while the "No Signal" detection asks for black
+	Image<ColorRgb> _blackFrame;
 	int	_brightness;
 	int _contrast;
 	int _saturation;

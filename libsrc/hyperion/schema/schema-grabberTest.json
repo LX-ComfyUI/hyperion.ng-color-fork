@@ -21,6 +21,12 @@
       "title": "edt_conf_grabbertest_correction_title",
       "default": {},
       "propertyOrder": 3
+    },
+    "noSignal": {
+      "type": "object",
+      "title": "edt_conf_grabbertest_nosignal_title",
+      "default": {},
+      "propertyOrder": 4
     }
   },
   "additionalProperties": true

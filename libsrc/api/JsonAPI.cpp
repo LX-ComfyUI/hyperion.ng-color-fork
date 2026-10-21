@@ -34,6 +34,7 @@
 #include <utils/KelvinToRgb.h>
 #include <utils/Process.h>
 #include <utils/JsonUtils.h>
+#include <utils/NoSignalDetector.h>
 #include <utils/VideoProbe.h>
 #include <effectengine/EffectFileHandler.h>
 
@@ -790,6 +791,24 @@ void JsonAPI::handleForkDebugCommand(const QJsonObject & /*unused*/, const JsonA
 
 void JsonAPI::handleGrabberTestCommand(const QJsonObject &message, const JsonApiCommand& cmd)
 {
+	// fork: "No Signal" still image detection: state (with a small picture of the newest frame),
+	// start of a calibration and its progress or result
+	const QString noSignal = message["nosignal"].toString();
+	if (noSignal == "status")
+	{
+		sendSuccessDataReply(NoSignalDetector::status(message["image"].toBool(false)), cmd);
+		return;
+	}
+	if (noSignal == "calibrate")
+	{
+		sendSuccessDataReply(NoSignalDetector::startCalibration(message["duration"].toInt(3000)), cmd);
+		return;
+	}
+	if (noSignal == "calibration")
+	{
+		sendSuccessDataReply(NoSignalDetector::calibration(), cmd);
+		return;
+	}
 	// peek: only which grabber delivers frames, without starting a measurement
 	sendSuccessDataReply(message["peek"].toBool(false) ? VideoProbe::current() : VideoProbe::sample(message["reset"].toBool(false)), cmd);
 }

@@ -13,6 +13,18 @@
 		"peek" : {
 			"type" : "boolean"
 		},
+		"nosignal" : {
+			"type" : "string",
+			"enum" : ["status", "calibrate", "calibration"]
+		},
+		"image" : {
+			"type" : "boolean"
+		},
+		"duration" : {
+			"type" : "integer",
+			"minimum" : 1000,
+			"maximum" : 10000
+		},
 		"tan" : {
 			"type" : "integer"
 		}

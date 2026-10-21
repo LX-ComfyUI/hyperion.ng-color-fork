@@ -78,6 +78,7 @@
 #include <utils/NetOrigin.h>
 // fork: grabber color correction (grabber test)
 #include <utils/VideoProbe.h>
+#include <utils/NoSignalDetector.h>
 
 // InstanceManager Hyperion
 #include <hyperion/HyperionIManager.h>
@@ -891,6 +892,8 @@ void HyperionDaemon::handleSettingsUpdate(settings::type settingsType, const QJs
 	{
 		// fork: grabber color correction computed by the grabber test, per grabber model
 		GrabberColorCorrection::configure(config.object());
+		// fork: "No Signal" still image detection, per grabber model
+		NoSignalDetector::configure(config.object());
 	}
 }
 

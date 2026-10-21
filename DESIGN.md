@@ -72,6 +72,25 @@ last commit that still contains them is `21e9211d`; restoring one means
 bringing back its files and schema entries from there (see
 [[hyperion-fork-schema-change-gotcha]] for the stored settings).
 
+**Replaced 2026-10-21: "No Signal" still image detection.** The upstream
+threshold signal detection (`grabberV4L2.signalDetection`, color thresholds,
+area offsets, frame counter) only recognized a dark area and failed with
+capture cards that show their own "No Signal" picture (text, logo, serial
+number). It is gone from the schema, defaults, stored settings, i18n and the
+LED preview overlay; its code in `V4L2Grabber` stays only for the standalone
+`hyperion-v4l2` tool (off in `hyperiond`). Its replacement, `NoSignalDetector`
+(`include/utils/NoSignalDetector.h`), learns the card's no-signal picture once
+(calibration over 3 s, grid of 64x36 cell means of the frame as decoded, cells
+that move are ignored) and checks every frame against it. A frame matches when
+the share of matching cells reaches the minimum both over all cells and over
+the bright "feature" cells (the text); a dark film scene matches the black
+background but not the text, so it does not count. After the delay the
+detection releases the capture input (next source or LEDs off), sends black,
+or only reports. Settings and up to three calibrations per grabber model live
+in `grabberTest.noSignal`; the WebUI (USB capture panel) and the TV test page
+share `nosignal-ui.js`. JSON-API: `grabbertest` with `nosignal` =
+`status` | `calibrate` | `calibration`.
+
 ## Flicker safety (critical constraint)
 
 This Hyperion install has hard-won flicker fixes (star grounding, SPI clock

@@ -38,6 +38,34 @@ $(document).ready(function () {
       $('#conf_cont_video').append(createHelpTable(globalThis.schema.grabberV4L2.properties, $.i18n("edt_conf_v4l2_heading_title"), "videograbberHelpPanelId"));
     }
 
+    // Fork-Erweiterung: „No Signal“-Standbild-Erkennung (ersetzt die alte Signal-Erkennung), im
+    // USB-Aufnahme-Panel unter den Einstellungen. js/nosignal-ui.js zeigt Anleitung, Grabber-Bild,
+    // Kalibrierung, Speicherplätze je Grabber und Optionen; gespeichert in grabberTest.noSignal,
+    // Hyperion prüft die Bilder im Fork-Befehl "grabbertest" (NoSignalDetector).
+    if (typeof NoSignalUI !== 'undefined') {
+      $('#editor_container_videograbber').after('<div id="nosignal_container" style="padding: 0 15px 10px"></div>');
+      const nsLang = storedLang === 'de' ? 'de' : 'en';
+      const nsCommand = async function (params) {
+        const reply = await sendAsyncToHyperion('grabbertest', '', params);
+        if (!reply || !reply.success) {
+          throw new Error((reply && reply.error) || 'Hyperion');
+        }
+        return reply.info;
+      };
+      NoSignalUI.render(document.getElementById('nosignal_container'), {
+        lang: nsLang,
+        getConfig: () => globalThis.serverConfig.grabberTest || {},
+        change: async function (op, args) {
+          const status = await nsCommand({ nosignal: 'status' });
+          const next = NoSignalUI.applyOp(globalThis.serverConfig.grabberTest || {}, status.device || null, op, args, nsLang);
+          requestWriteConfig({ grabberTest: { ...next, basic: next.basic || {}, custom: next.custom || {} } });
+        },
+        command: nsCommand,
+        buttonClass: 'btn btn-default btn-sm',
+        primaryClass: 'btn btn-primary btn-sm'
+      });
+    }
+
     // Fork-Erweiterung: Grabber-Test. Die TV-Testseite misst, wie der Grabber feste und eigene
     // Testfarben sieht, und speichert das Ergebnis in der globalen Einstellung "grabberTest";
     // hier wird es nur angezeigt (js/grabbertest-report.js wertet aus).

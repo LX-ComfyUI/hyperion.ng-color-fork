@@ -22,13 +22,11 @@ $(document).ready(function () {
   var lC = false;
   var imageCanvasNodeCtx = document.getElementById("image_preview_canv").getContext("2d", { willReadFrequently: false});
   var ledsCanvasNodeCtx = document.getElementById("leds_preview_canv").getContext("2d", { willReadFrequently: false});
-  var sigDetectAreaCanvasNodeCtx = document.getElementById("grab_preview_canv").getContext("2d", { willReadFrequently: false});
   var canvas_height;
   var canvas_width;
   var twoDPaths = [];
   var toggleLeds = true;
   var toggleLedsNum = false;
-  var toggleSigDetectArea = false;
 
   var activeComponent = "";
 
@@ -170,16 +168,6 @@ $(document).ready(function () {
 
   function printLedsToCanvas(colors) {
 
-    if (grabberConfig.enable && grabberConfig.signalDetection && toggleSigDetectArea && storedAccess === 'expert') {
-
-      sigDetectAreaCanvasNodeCtx.setLineDash([5, 5]);
-      sigDetectAreaCanvasNodeCtx.stroke(build2DPath(grabberConfig.sDHOffsetMin * canvas_width,
-        grabberConfig.sDVOffsetMin * canvas_height,
-        (grabberConfig.sDHOffsetMax - grabberConfig.sDHOffsetMin) * canvas_width,
-        (grabberConfig.sDVOffsetMax - grabberConfig.sDVOffsetMin) * canvas_height,
-        5));
-    }
-
     // toggle leds, do not print
     if (!toggleLeds)
       return;
@@ -254,12 +242,6 @@ $(document).ready(function () {
   }
 
   function updateLedLayout() {
-    if (grabberConfig.enable && grabberConfig.signalDetection && storedAccess === 'expert') {
-      $("#sigDetectArea_toggle").show();
-    } else {
-      $("#sigDetectArea_toggle").hide();
-    }
-
     //calculate body size
     // Fork-Erweiterung: das Bild füllt den Inhaltsbereich, dessen Höhe fitHeight() setzt
     canvas_width = Math.round($('#ledsim_dialog > [data-role=body]').width());
@@ -312,12 +294,6 @@ $(document).ready(function () {
     else {
       requestLedImageStart();
     }
-  });
-
-  $('#sigDetectArea_toggle').off().on("click", function () {
-    toggleSigDetectArea = !toggleSigDetectArea
-    sigDetectAreaCanvasNodeCtx.clear();
-    toggleClass('#sigDetectArea_toggle', "btn-success", "btn-danger");
   });
 
   // ------------------------------------------------------------------
