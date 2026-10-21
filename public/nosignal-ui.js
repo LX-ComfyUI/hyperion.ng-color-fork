@@ -6,10 +6,11 @@
 //   { enable, action, delay, tolerance, match, grabbers: { "<device>": { active, slots: [slot | null] } } }
 //
 //   NoSignalUI.applyOp(grabberTest, device, op, args, lang)   new grabberTest; ops: options, save, use, rename, clear, forget
-//   NoSignalUI.render(element, { lang, getConfig, change, command, buttonClass, primaryClass, heading })
+//   NoSignalUI.render(element, { lang, getConfig, change, command, buttonClass, primaryClass, inputClass, heading })
 //     getConfig()        the grabberTest setting (or just { noSignal })
 //     change(op, args)   applies an op and stores it, returns a promise
 //     command(params)    sends the fork command "grabbertest" with params, returns a promise of its info
+//     inputClass         class of the text, number and select fields (the WebUI's form-control, for its themes)
 //     heading            false leaves out the rule and the title (the test page card has its own)
 (function (global) {
   "use strict";
@@ -25,7 +26,7 @@
     de: {
       title: "„No Signal“-Standbild-Erkennung",
       guideTitle: "Anleitung",
-      guideIntro: "Viele Grabber zeigen ohne HDMI-Signal ein eigenes Bild, zum Beispiel den Text „No Signal“, statt schwarz zu bleiben. Hyperion würde dieses Bild auf die LEDs geben. Die Erkennung lernt das Bild einmal und reagiert, sobald es wieder erscheint. Eine dunkle Filmszene zählt nicht, weil ihr die Merkmale des Bildes (Text, Logo) fehlen.",
+      guideIntro: "Viele Grabber zeigen ohne HDMI-Signal ein eigenes Bild, statt schwarz zu bleiben, zum Beispiel den Text „No Signal“, ein Logo, ein Blaubild oder Farbbalken. Hyperion würde dieses Bild auf die LEDs geben. Die Erkennung lernt das Bild einmal und reagiert, sobald es wieder erscheint. Verglichen wird Helligkeit und Farbe. Eine dunkle Filmszene zählt nicht, weil ihr die Merkmale des Bildes fehlen (Text, Logo, Farbflächen).",
       guideSteps: [
         "Sorge dafür, dass am Grabber kein Signal anliegt: Zuspieler ausschalten oder das HDMI-Kabel am Grabber abziehen.",
         "Warte, bis unten das No-Signal-Bild des Grabbers zu sehen ist.",
@@ -55,9 +56,9 @@
       calFailFrames: "Der Grabber hat zu wenige Bilder geliefert. Ist die USB-Aufnahme eingeschaltet?",
       calFail: "Kalibrierung fehlgeschlagen: {msg}",
       resTitle: "Ergebnis der Kalibrierung",
-      resStats: "{frames} Bilder aufgenommen. Merkmale (Text, Logo): {features} von {cells} Feldern. Unruhige Felder, die ignoriert werden: {unstable}.",
-      warnNoFeatures: "Das Bild hat keine hellen Merkmale wie Text oder Logo. Dann gilt auch ein schwarzes Bild als „kein Signal“, etwa eine dunkle Filmszene nach der Wartezeit. Eine längere Wartezeit hilft.",
-      warnBusy: "Das Bild sieht sehr hell und detailreich aus, eher nach normalem Bildinhalt als nach einem No-Signal-Bild. Bitte prüfen.",
+      resStats: "{frames} Bilder aufgenommen. Merkmale (Text, Logo, Farbflächen): {features} von {cells} Feldern. Unruhige Felder, die ignoriert werden: {unstable}.",
+      warnNoFeatures: "Das Bild hat keine Merkmale wie Text, Logo oder Farbflächen, es ist ganz schwarz. Dann gilt auch ein schwarzes Bild als „kein Signal“, etwa eine dunkle Filmszene nach der Wartezeit. Eine längere Wartezeit hilft.",
+      warnBusy: "Das Bild ist großflächig hell oder farbig, zum Beispiel ein Blaubild oder Farbbalken. Es wird an Farbe und Helligkeit erkannt. Prüfe im Vorschaubild, dass es wirklich das No-Signal-Bild ist und kein angehaltenes Video.",
       warnUnstable: "Das Bild hat sich während der Aufnahme stark verändert. Läuft vielleicht doch etwas? Bitte erneut kalibrieren.",
       resName: "Name",
       resSaveTo: "In Platz {slot} speichern",
@@ -88,7 +89,7 @@
       tolerance: "Toleranz (0–100)",
       toleranceHint: "Wie weit ein Feld (1/64 Bildbreite × 1/36 Bildhöhe) vom kalibrierten Bild abweichen darf, je Farbkanal von 0 bis 255. Größer = unempfindlicher gegen Bildrauschen.",
       match: "Mindest-Übereinstimmung (%)",
-      matchHint: "So viele Felder müssen passen, die Merkmal-Felder (Text, Logo) zusätzlich für sich.",
+      matchHint: "So viele Felder müssen passen, die Merkmal-Felder (Text, Logo, Farbflächen) zusätzlich für sich.",
       dateLocale: "de-DE",
       errNoDevice: "Kein Grabber erkannt. Ist die USB-Aufnahme eingeschaltet?",
       errResult: "Kein Kalibrierergebnis vorhanden.",
@@ -96,7 +97,7 @@
     en: {
       title: "\"No Signal\" still image detection",
       guideTitle: "Instructions",
-      guideIntro: "Many grabbers show a picture of their own while no HDMI signal arrives, for example the text \"No Signal\", instead of staying black. Hyperion would put that picture on the LEDs. The detection learns the picture once and reacts as soon as it appears again. A dark film scene does not count, because it lacks the picture's features (text, logo).",
+      guideIntro: "Many grabbers show a picture of their own while no HDMI signal arrives, instead of staying black, for example the text \"No Signal\", a logo, a blue screen or color bars. Hyperion would put that picture on the LEDs. The detection learns the picture once and reacts as soon as it appears again. Brightness and color are compared. A dark film scene does not count, because it lacks the picture's features (text, logo, colored areas).",
       guideSteps: [
         "Make sure no signal reaches the grabber: switch the source off or unplug the HDMI cable at the grabber.",
         "Wait until the grabber's no-signal picture shows below.",
@@ -126,9 +127,9 @@
       calFailFrames: "The grabber delivered too few pictures. Is the USB capture switched on?",
       calFail: "Calibration failed: {msg}",
       resTitle: "Calibration result",
-      resStats: "{frames} pictures recorded. Features (text, logo): {features} of {cells} cells. Restless cells that are ignored: {unstable}.",
-      warnNoFeatures: "The picture has no bright features like text or a logo. Then a black picture counts as \"no signal\" as well, for example a dark film scene after the delay. A longer delay helps.",
-      warnBusy: "The picture looks very bright and detailed, more like normal content than a no-signal picture. Please check.",
+      resStats: "{frames} pictures recorded. Features (text, logo, colored areas): {features} of {cells} cells. Restless cells that are ignored: {unstable}.",
+      warnNoFeatures: "The picture has no features like text, a logo or colored areas, it is all black. Then a black picture counts as \"no signal\" as well, for example a dark film scene after the delay. A longer delay helps.",
+      warnBusy: "The picture is bright or colored over large areas, for example a blue screen or color bars. It is recognized by color and brightness. Check in the preview that it really is the no-signal picture and not a paused video.",
       warnUnstable: "The picture changed a lot during the recording. Is something playing after all? Please calibrate again.",
       resName: "Name",
       resSaveTo: "Save to slot {slot}",
@@ -159,7 +160,7 @@
       tolerance: "Tolerance (0–100)",
       toleranceHint: "How far a cell (1/64 picture width × 1/36 picture height) may differ from the calibrated picture, per color channel from 0 to 255. Larger = less sensitive to picture noise.",
       match: "Minimum match (%)",
-      matchHint: "This many cells have to match, the feature cells (text, logo) on their own as well.",
+      matchHint: "This many cells have to match, the feature cells (text, logo, colored areas) on their own as well.",
       dateLocale: "en-GB",
       errNoDevice: "No grabber found. Is the USB capture switched on?",
       errResult: "There is no calibration result.",
@@ -301,6 +302,7 @@
     const t = TEXT[lang];
     const btn = opts.buttonClass || "";
     const primary = opts.primaryClass || btn;
+    const field = opts.inputClass ? ` class="${opts.inputClass}"` : "";
     const view = { status: null, calib: null, result: null, error: "", confirming: false, configKey: "", busy: false };
 
     element.classList.add("nsd");
@@ -383,11 +385,11 @@
           + (r.image ? `<div class="nsd-live" style="margin-top:6px"><img alt="" src="${esc(r.image)}"></div>` : "")
           + `<p class="nsd-muted" style="margin-top:6px">${esc(fill(t.resStats, { frames: r.frames, features: r.featureCells, cells: r.cells || CELLS, unstable: r.unstableCells }))}</p>`
           + (r.featureCells === 0 ? `<p class="nsd-warn">${esc(t.warnNoFeatures)}</p>` : "")
-          + (r.featureCells > 0.6 * (r.cells || CELLS) ? `<p class="nsd-warn">${esc(t.warnBusy)}</p>` : "")
+          + (r.featureCells > 0.6 * (r.cells || CELLS) ? `<p class="nsd-muted">${esc(t.warnBusy)}</p>` : "")
           + (unstableShare > 0.3 ? `<p class="${tooRestless ? "nsd-err" : "nsd-warn"}">${esc(t.warnUnstable)}</p>` : "");
         if (!tooRestless) {
           const e = entry(opts.getConfig(), device());
-          html += `<div class="nsd-opt"><label>${esc(t.resName)}</label><input type="text" maxlength="60" data-ns-name value="${esc(view.resultName || "")}"></div><div class="nsd-actions">`
+          html += `<div class="nsd-opt"><label>${esc(t.resName)}</label><input type="text"${field} maxlength="60" data-ns-name value="${esc(view.resultName || "")}"></div><div class="nsd-actions">`
             + e.slots.map((s, i) => `<button type="button" class="${s ? btn : primary}" data-ns-act="save" data-slot="${i}">${esc(fill(t.resSaveTo, { slot: i + 1 }))}</button>`).join("");
         } else {
           html += `<div class="nsd-actions">`;
@@ -455,7 +457,7 @@
         const active = e.active === i && !!s;
         html += `<div class="nsd-slot${active ? " on" : ""}"><span>${esc(label)}</span>`;
         if (s) {
-          html += `<input type="text" maxlength="60" value="${esc(s.name)}" placeholder="${esc(label)}" aria-label="${esc(fill(t.rename, { slot: label }))}" data-ns-rename="${i}">`;
+          html += `<input type="text"${field} maxlength="60" value="${esc(s.name)}" placeholder="${esc(label)}" aria-label="${esc(fill(t.rename, { slot: label }))}" data-ns-rename="${i}">`;
           if (active) html += `<span class="nsd-badge${o.enable ? "" : " idle"}">${esc(o.enable ? t.inUse : t.chosen)}</span>`;
           else html += `<button type="button" class="${btn}" data-ns-op="use" data-slot="${i}">${esc(t.use)}</button>`;
           html += `<button type="button" class="${btn}" data-ns-op="clear" data-slot="${i}">${esc(t.clear)}</button>`;
@@ -475,12 +477,12 @@
       html += `<h5>${esc(t.optTitle)}</h5><div class="nsd-box">`
         + `<label class="nsd-switch"><input type="checkbox" data-ns-opt="enable"${o.enable ? " checked" : ""}> ${esc(t.enable)}</label>`
         + `<p class="nsd-muted" style="margin:4px 0 0">${esc(t.enableHint)}</p>`
-        + `<div class="nsd-opt"><label>${esc(t.action)}</label><select data-ns-opt="action">`
+        + `<div class="nsd-opt"><label>${esc(t.action)}</label><select${field} data-ns-opt="action">`
         + [["release", t.actionRelease], ["black", t.actionBlack], ["report", t.actionReport]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
         + `</select></div>`
-        + `<div class="nsd-opt"><label>${esc(t.delay)}</label><input type="number" min="0.5" max="120" step="0.5" value="${o.delay}" data-ns-opt="delay"><p class="nsd-muted">${esc(t.delayHint)}</p></div>`
-        + `<div class="nsd-opt"><label>${esc(t.tolerance)}</label><input type="number" min="4" max="100" step="1" value="${o.tolerance}" data-ns-opt="tolerance"><p class="nsd-muted">${esc(t.toleranceHint)}</p></div>`
-        + `<div class="nsd-opt"><label>${esc(t.match)}</label><input type="number" min="50" max="100" step="1" value="${o.match}" data-ns-opt="match"><p class="nsd-muted">${esc(t.matchHint)}</p></div>`
+        + `<div class="nsd-opt"><label>${esc(t.delay)}</label><input type="number"${field} min="0.5" max="120" step="0.5" value="${o.delay}" data-ns-opt="delay"><p class="nsd-muted">${esc(t.delayHint)}</p></div>`
+        + `<div class="nsd-opt"><label>${esc(t.tolerance)}</label><input type="number"${field} min="4" max="100" step="1" value="${o.tolerance}" data-ns-opt="tolerance"><p class="nsd-muted">${esc(t.toleranceHint)}</p></div>`
+        + `<div class="nsd-opt"><label>${esc(t.match)}</label><input type="number"${field} min="50" max="100" step="1" value="${o.match}" data-ns-opt="match"><p class="nsd-muted">${esc(t.matchHint)}</p></div>`
         + `</div>`;
       box.innerHTML = html;
 
