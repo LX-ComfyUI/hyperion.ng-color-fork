@@ -18,7 +18,7 @@
   const SLOT_COUNT = 3;
   const CELLS = 64 * 36;
   const DEFAULTS = { enable: false, action: "release", delay: 3, tolerance: 24, match: 95 };
-  const ACTIONS = ["release", "black", "report"];
+  const ACTIONS = ["release", "black"];
   const POLL_MS = 1000;
   const CALIBRATION_MS = 3000;
 
@@ -44,9 +44,8 @@
       stPending: "No-Signal-Bild erkannt ({match} %), Reaktion in {left} s …",
       stNoSignal: "Kein Signal seit {time} ({match} %). {what}",
       stCalibrating: "Kalibrierung läuft …",
-      whatRelease: "Die USB-Aufnahme ist als Quelle freigegeben.",
+      whatRelease: "Die USB-Aufnahme ist als Quelle freigegeben: LEDs aus oder „Hintergrund Effekt/Farbe“.",
       whatBlack: "Die LEDs bekommen Schwarz.",
-      whatReport: "Nur angezeigt, die LEDs bleiben unverändert.",
       whatOff: "Die Erkennung ist aus, die LEDs bleiben unverändert.",
       calStart: "Kalibrierung starten",
       calConfirm: "Liegt am Grabber gerade kein Signal an? Der Zuspieler muss aus sein oder das HDMI-Kabel am Grabber abgezogen. Das Bild oben muss das No-Signal-Bild des Grabbers zeigen.",
@@ -79,11 +78,10 @@
       confirmForget: "Alle Kalibrierungen von {name} entfernen?",
       optTitle: "Einstellungen",
       enable: "Erkennung aktiviert",
-      enableHint: "Gilt für alle Grabber. Ohne Kalibrierung für den angeschlossenen Grabber ruht die Erkennung.",
+      enableHint: "Gilt für alle Grabber. Ohne Kalibrierung für den angeschlossenen Grabber ruht die Erkennung. Auch ausgeschaltet zeigt das Grabber-Bild oben, ob das No-Signal-Bild erkannt würde, so lässt sie sich gefahrlos ausprobieren.",
       action: "Reaktion bei „kein Signal“",
-      actionRelease: "Quelle freigeben: LEDs aus, oder der Hintergrund-Effekt, falls eingeschaltet (empfohlen)",
-      actionBlack: "LEDs schwarz, die USB-Aufnahme bleibt aktive Quelle",
-      actionReport: "Nur anzeigen, die LEDs bleiben unverändert (zum Testen)",
+      actionRelease: "Quelle freigeben: LEDs aus oder „Hintergrund Effekt/Farbe“ an, falls eingeschaltet (wie die frühere Signalerkennung, empfohlen)",
+      actionBlack: "LEDs schwarz: auch „Hintergrund Effekt/Farbe“ bleibt aus, die USB-Aufnahme bleibt aktive Quelle",
       delay: "Wartezeit (Sekunden)",
       delayHint: "So lange muss das No-Signal-Bild ununterbrochen zu sehen sein, bevor Hyperion reagiert. Kommt wieder ein normales Bild, ist das Signal sofort zurück.",
       tolerance: "Toleranz (0–100)",
@@ -115,9 +113,8 @@
       stPending: "No-signal picture detected ({match} %), reacting in {left} s …",
       stNoSignal: "No signal since {time} ({match} %). {what}",
       stCalibrating: "Calibration running …",
-      whatRelease: "The USB capture is released as source.",
+      whatRelease: "The USB capture is released as source: LEDs off or \"Background Effect/Color\".",
       whatBlack: "The LEDs get black.",
-      whatReport: "Only shown, the LEDs stay as they are.",
       whatOff: "The detection is off, the LEDs stay as they are.",
       calStart: "Start calibration",
       calConfirm: "Is there no signal at the grabber right now? The source must be off or the HDMI cable unplugged at the grabber. The picture above must show the grabber's no-signal picture.",
@@ -150,11 +147,10 @@
       confirmForget: "Remove all calibrations of {name}?",
       optTitle: "Settings",
       enable: "Detection enabled",
-      enableHint: "Applies to all grabbers. Without a calibration for the connected grabber the detection rests.",
+      enableHint: "Applies to all grabbers. Without a calibration for the connected grabber the detection rests. Even while it is off, the grabber picture above shows whether the no-signal picture would be detected, so it can be tried out safely.",
       action: "Reaction to \"no signal\"",
-      actionRelease: "Release the source: LEDs off, or the background effect if it is on (recommended)",
-      actionBlack: "LEDs black, the USB capture stays the active source",
-      actionReport: "Only show, the LEDs stay as they are (for testing)",
+      actionRelease: "Release the source: LEDs off or \"Background Effect/Color\" on, if switched on (like the former signal detection, recommended)",
+      actionBlack: "LEDs black: \"Background Effect/Color\" stays off as well, the USB capture stays the active source",
       delay: "Delay (seconds)",
       delayHint: "The no-signal picture has to show this long without a break before Hyperion reacts. As soon as a normal picture comes back, the signal is back.",
       tolerance: "Tolerance (0–100)",
@@ -359,7 +355,7 @@
       else if (s.ageMs < 0 || s.ageMs > 3000) { el.textContent = t.stNoFrames; el.classList.add("bad"); }
       else if (!s.calibrated) el.textContent = t.stUncalibrated;
       else if (s.noSignal) {
-        const what = !o.enable ? t.whatOff : s.action === "black" ? t.whatBlack : s.action === "report" ? t.whatReport : t.whatRelease;
+        const what = !o.enable ? t.whatOff : s.action === "black" ? t.whatBlack : t.whatRelease;
         el.textContent = fill(t.stNoSignal, { time: fmtTime(s.changedMs), match: pct(s.match), what });
         el.classList.add("bad");
       } else if (s.matchSinceMs > 0) {
@@ -461,7 +457,7 @@
         + `<label class="nsd-switch"><input type="checkbox" data-ns-opt="enable"${o.enable ? " checked" : ""}> ${esc(t.enable)}</label>`
         + `<p class="nsd-muted" style="margin:4px 0 0">${esc(t.enableHint)}</p>`
         + `<div class="nsd-opt"><label>${esc(t.action)}</label><select${field} data-ns-opt="action">`
-        + [["release", t.actionRelease], ["black", t.actionBlack], ["report", t.actionReport]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
+        + [["release", t.actionRelease], ["black", t.actionBlack]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
         + `</select></div>`
         + `<div class="nsd-opt"><label>${esc(t.delay)}</label><input type="number"${field} min="0.5" max="120" step="0.5" value="${o.delay}" data-ns-opt="delay"><p class="nsd-muted">${esc(t.delayHint)}</p></div>`
         + `<div class="nsd-opt"><label>${esc(t.tolerance)}</label><input type="number"${field} min="4" max="100" step="1" value="${o.tolerance}" data-ns-opt="tolerance"><p class="nsd-muted">${esc(t.toleranceHint)}</p></div>`
