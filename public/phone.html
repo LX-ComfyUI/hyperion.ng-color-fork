@@ -401,6 +401,9 @@
   /* cards with a test for the TV and the matching Hyperion setting: side by side on wide windows,
      one below the other on narrow ones; each column keeps the id of its former card */
   .pair { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  /* a test the server paused because no control page was connected for a while */
+  .paused { outline: 3px solid var(--warn); outline-offset: 4px; border-radius: 8px; }
+  .paused::before { content: attr(data-paused-text); display: block; margin: 0 0 10px; padding: 8px 10px; border-radius: 6px; background: var(--inset); color: var(--warn); font-size: 14px; font-weight: 600; }
   .pair-col { min-width: 0; scroll-margin-top: calc(var(--bar-h, 0px) + 8px); }
   .pair-col + .pair-col { border-top: 1px solid var(--btn-line); padding-top: 16px; }
   h3.pair-ttl { margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--text); }
@@ -690,8 +693,18 @@
       <span id="gcc-lock-text"></span>
     </div>
     <div id="hy-curve-graph"></div>
-    <div id="hy-curve"></div>
+    <details class="more" id="more-curve">
+      <summary>Punkte einzeln einstellen</summary>
+      <div id="hy-curve" style="margin-top:12px"></div>
+    </details>
       <p class="note" id="gcc-note"></p>
+
+    <h4 class="hy-h" style="margin-top:18px"><span>Schwarzschwelle 16 Bit</span></h4>
+    <p class="help">Eine LED bleibt aus, solange Rot, Grün und Blau alle unter der Schwelle liegen, gemessen in 8-Bit-Stufen der LED-Ausgabe (0 bis 255; 0,5 entspricht dem Runden auf 8 Bit). Erhöhen, wenn die LEDs bei schwarzem Bild noch glimmen oder sehr dunkles Grau rötlich wirkt, senken, wenn sehr dunkle Szenen noch Licht bekommen sollen. Im Graphen zeigt die gestrichelte Linie, wie weit die Schwelle ins Bild reicht. Gilt nur für LED-Geräte mit 16-Bit-Ausgabe und für das ganze Gerät, nicht nur für eine Farbe.</p>
+    <label class="check"><input type="checkbox" id="bt-enabled"><span>Schwarzschwelle aktiviert<small>Gilt für die ganze Funktion. Ein Speicherplatz wechselt nur den Wert, nicht diesen Schalter.</small></span></label>
+    <div class="frow"><label for="bt-threshold">Schwelle (0–10)</label><span class="inputs"><input type="number" class="wide-in" id="bt-threshold" min="0" max="10" step="0.05" placeholder="0,5" inputmode="decimal"></span></div>
+    <div class="tp" data-test="blackThreshold"></div>
+    <p class="note" id="bt-note"></p>
     </div>
   </section>
 
@@ -1566,8 +1579,21 @@ function showError(text) {
   toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
 }
 
+// test -> its card
+const PAUSED_CARDS = { grayTest: "card-gs", bars: "card-bars", depthTest: "card-dt", fracTest: "card-ft", posTest: "card-lp", posGuide: "card-lg", color: "card-color" };
+function renderPaused() {
+  for (const [test, id] of Object.entries(PAUSED_CARDS)) {
+    const card = $(id);
+    const on = !!state.paused?.[test];
+    card.classList.toggle("paused", on);
+    if (on) card.dataset.pausedText = tr(test === "posGuide" ? "Abgebrochen, weil keine Testseite mehr verbunden war. Zum Weitermachen neu starten." : "Pausiert, weil keine Testseite mehr verbunden war. Zum Weitermachen neu starten.");
+    else delete card.dataset.pausedText;
+  }
+}
+
 function renderState() {
   if (!state) return;
+  renderPaused();
   const key = JSON.stringify([state.presetColors ?? {}, state.customColors ?? []]);
   // rows are updated in place; a rebuild (rows removed) waits until an open picker is closed,
   // removing its input would close the picker on iOS
@@ -2060,7 +2086,7 @@ function renderCurveLock() {
   lock.innerHTML = open ? TS_LOCK.open : TS_LOCK.closed;
   lock.classList.toggle("open", open);
   lock.title = lock.ariaLabel = open ? tr("Entsperrt, zum Sperren das Schloss wählen") : tr("Gesperrt, zum Entsperren das Schloss wählen");
-  $("gcc-lock-text").textContent = open ? tr("Punkte verschiebbar. Sperrt sich nach 2 Minuten ohne Änderung.") : tr("Punkte gesperrt, damit nichts aus Versehen verschoben wird. Zum Verschieben das Schloss öffnen.");
+  $("gcc-lock-text").textContent = open ? tr("Punkte verschiebbar. Sperrt sich nach 2 Minuten ohne Änderung.") : tr("Punkte gesperrt, damit nichts aus Versehen verschoben wird. Zum Verschieben und für Zurück/Vor das Schloss öffnen.");
 }
 $("gcc-lock").addEventListener("click", () => setCurveUnlocked(!curveUnlocked()));
 // a drag extends the open time without redrawing the graph under the finger
@@ -2095,7 +2121,8 @@ let curveStep = null;
 let curveHistory = { undo: 0, redo: 0 };
 let curveHistoryBusy = false;
 function renderCurveHistory() {
-  const ok = hyperionConnected && !!colorConfig?.channelAdjustment?.[colorIndex] && !curveHistoryBusy;
+  // like moving a point, going back and forward needs the lock to be open
+  const ok = hyperionConnected && !!colorConfig?.channelAdjustment?.[colorIndex] && !curveHistoryBusy && curveUnlocked();
   curveGraph.setHistory({ undo: ok && curveHistory.undo > 0, redo: ok && curveHistory.redo > 0 });
 }
 async function loadCurveHistory() {
@@ -2150,6 +2177,7 @@ function renderColorEditor() {
   const points = entry?.grayCurve?.points?.length ?? 0;
   if (points !== curveBuiltFor) buildCurve(points);
   curveGraph.update({ entry, blackThreshold: deviceBlack, writable: writable && curveUnlocked() });
+  renderBlackThreshold();
   renderCurveLock();
   renderCurveHistory();
   document.querySelectorAll("#hy-curve button.showgray").forEach(b => { b.disabled = !writable; });
@@ -2309,6 +2337,8 @@ $("collapse-bars").addEventListener("click", () => {
 });
 $("more-bars").addEventListener("toggle", () => store.set("tvtest-more-bars", $("more-bars").open ? "1" : "0"));
 $("more-bars").open = store.get("tvtest-more-bars") === "1";
+$("more-curve").addEventListener("toggle", () => store.set("tvtest-more-curve", $("more-curve").open ? "1" : "0"));
+$("more-curve").open = store.get("tvtest-more-curve") === "1";
 
 // ---------- overlay switches (shared, the TV reads them too) ----------
 
@@ -2985,6 +3015,7 @@ const TP_ICON = {
   save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
 };
 const TP_SEND = {
+  blackThreshold: (s) => saveBlackThreshold({ threshold: s.threshold }),
   bars: (s) => setBars(s),
   grayTest: (s) => sendGrayTest(s),
   depthTest: (s) => sendDepthTest(s),
@@ -2993,12 +3024,14 @@ const TP_SEND = {
   grayCurve: (s) => saveGrayCurve(s),
 };
 // the gray curve slots hold Hyperion settings, not a test: always unfolded, no stars, at most 10
-const TP_MAX = { grayCurve: 10 };
+const TP_MAX = { grayCurve: 10, blackThreshold: 10 };
+const TP_SLOTS = ["grayCurve", "blackThreshold"];
 let testDefaults = null;
 const tpOpen = new Set();      // tests whose list is unfolded
 const tpEditing = {};          // test -> preset id being renamed, or "new" for the save form
 
 function tpCurrent(test) {
+  if (test === "blackThreshold") return deviceBlack ? { threshold: deviceBlack.threshold } : null;
   if (test === "grayCurve") {
     const c = colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve;
     return c ? { saturationLimit: c.saturationLimit, points: c.points ?? [] } : null;
@@ -3009,6 +3042,7 @@ function tpCurrent(test) {
   return rest;
 }
 function tpDefaults(test) {
+  if (test === "blackThreshold") return { threshold: BT_DEFAULT };
   if (test === "grayCurve") {
     const d = hyDefaults?.color;
     return d && "grayCurve.points" in d ? { saturationLimit: d["grayCurve.saturationLimit"], points: d["grayCurve.points"] } : null;
@@ -3036,12 +3070,13 @@ function renderTestPresets(force = false) {
     const list = [...(state.testPresets?.[test] ?? [])].sort((a, b) => (b.fav - a.fav) || a.name.localeCompare(b.name, I18N.locale));
     const cur = tpCurrent(test);
     const editing = tpEditing[test];
-    const slots = test === "grayCurve";
+    const slots = TP_SLOTS.includes(test);
     const open = slots || tpOpen.has(test);
     const full = list.length >= (TP_MAX[test] ?? Infinity);
     const off = slots && (!hyperionConnected || !cur);
     // the slot in use gets a badge like the grabber slots: "läuft" while the curve is on, else "aus"
-    const curveOn = slots && colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.enabled === true;
+    const curveOn = test === "blackThreshold" ? deviceBlack?.enabled !== false && !!deviceBlack
+      : slots && colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.enabled === true;
     const badge = (inUse) => (slots && inUse ? `<span class="tp-badge${curveOn ? "" : " idle"}">${tr(curveOn ? "läuft" : "aus")}</span>` : "");
     const key = JSON.stringify([list, cur, editing, open, !!testDefaults, !!hyDefaults, off, curveOn, I18N.lang]);
     if (box.dataset.key === key) return;
@@ -3051,7 +3086,7 @@ function renderTestPresets(force = false) {
     const def = tpDefaults(test);
     const favs = list.filter((p) => p.fav);
     // the gray curve shows the standard as the first slot, so it can be switched with the others
-    let html = `<div class="tp-head"><span class="tp-title">${tr(slots ? "Gespeicherte Graukurven" : "Gespeicherte Einstellungen")}</span>` +
+    let html = `<div class="tp-head"><span class="tp-title">${tr(test === "blackThreshold" ? "Gespeicherte Schwellen" : slots ? "Gespeicherte Graukurven" : "Gespeicherte Einstellungen")}</span>` +
       (slots ? "" : `<button type="button" data-tp="default"${def && tpSame(cur, def) ? ' aria-pressed="true"' : ""}${def && !off ? "" : " disabled"}>${tr("Standard")}</button>`) +
       `<button type="button" data-tp="new"${full || off ? " disabled" : ""}>${tr("Speichern …")}</button>` +
       (list.length && !slots ? `<button type="button" data-tp="toggle" aria-expanded="${open}">${open ? tr("Liste zu") : tr("Alle ({a})", { a: list.length })}</button>` : "") +
@@ -3060,13 +3095,13 @@ function renderTestPresets(force = false) {
     if (favs.length && !open) html += `<div class="tp-favs">${favs.map((p) => `<button type="button" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}">★ ${tpEsc(p.name)}</button>`).join("")}</div>`;
     if (editing === "new") html += `<div class="tp-form"><input type="text" maxlength="60" placeholder="${tr("Name der Einstellungen")}" aria-label="${tr("Name der Einstellungen")}"><button type="button" class="primary" data-tp="save-new">${tr("Speichern")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></div>`;
     if (open) {
-      const std = slots ? `<li><button type="button" class="tp-name" data-tp="default" aria-pressed="${!!def && tpSame(cur, def)}" title="${tr("Laden")}"${def && !off ? "" : " disabled"}><span class="tp-label">${tr("Standard")}</span><small>${tr("alle Faktoren 1")}</small>${badge(!!def && tpSame(cur, def))}</button><span class="tp-std-gap"></span></li>` : "";
+      const std = slots ? `<li><button type="button" class="tp-name" data-tp="default" aria-pressed="${!!def && tpSame(cur, def)}" title="${tr("Laden")}"${def && !off ? "" : " disabled"}><span class="tp-label">${tr("Standard")}</span><small>${test === "blackThreshold" ? fmtDefault(BT_DEFAULT) : tr("alle Faktoren 1")}</small>${badge(!!def && tpSame(cur, def))}</button><span class="tp-std-gap"></span></li>` : "";
       html += `<ul class="tp-list">${std}${list.map((p) => {
         const star = slots ? "" : `<button type="button" class="ibtn${p.fav ? " fav" : ""}" data-tp="fav" data-id="${p.id}" title="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-label="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-pressed="${p.fav}">${TP_ICON.star}</button>`;
         if (editing === p.id) return `<li>${star}<span class="tp-form" style="flex:1;margin:0"><input type="text" maxlength="60" value="${tpEsc(p.name)}" aria-label="${tr("Neuer Name")}"><button type="button" class="primary" data-tp="save-name" data-id="${p.id}">${tr("OK")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></span></li>`;
         const when = new Date(p.savedAt).toLocaleDateString(I18N.locale, { day: "2-digit", month: "2-digit" });
         const dis = off ? " disabled" : "";
-        return `<li>${star}<button type="button" class="tp-name" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}" title="${tr("Laden")}"${dis}><span class="tp-label">${tpEsc(p.name)}</span><small>${when}</small>${badge(tpSame(cur, p.settings))}</button>` +
+        return `<li>${star}<button type="button" class="tp-name" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}" title="${tr("Laden")}"${dis}><span class="tp-label">${tpEsc(p.name)}</span><small>${test === "blackThreshold" ? fmtDefault(p.settings.threshold) : when}</small>${badge(tpSame(cur, p.settings))}</button>` +
           `<button type="button" class="ibtn" data-tp="rename" data-id="${p.id}" title="${tr("Umbenennen")}" aria-label="${tr("Umbenennen")}">${TP_ICON.pencil}</button>` +
           `<button type="button" class="ibtn" data-tp="update" data-id="${p.id}" title="${tr("Mit den aktuellen Einstellungen überschreiben")}" aria-label="${tr("Mit den aktuellen Einstellungen überschreiben")}"${dis}>${TP_ICON.save}</button>` +
           `<button type="button" class="ibtn" data-tp="delete" data-id="${p.id}" title="${tr("Löschen")}" aria-label="${tr("Löschen")}">${ICON.trash}</button></li>`;
@@ -3419,6 +3454,48 @@ const saveFractional = async (ev, note) => {
 $("fm-enabled").addEventListener("change", (ev) => saveFractional(ev, $("fm-cfg-note")));
 $("ft-fm-enabled").addEventListener("change", (ev) => saveFractional(ev, $("ft-fm-note")));
 
+
+// ---------- black threshold of the LED device (device setting, fork extension) ----------
+// The switch and the value are written to Hyperion's device settings (the LED device restarts briefly,
+// like in the WebUI), the slots below hold only the value. deviceBlack = { enabled, threshold }.
+const BT_DEFAULT = 0.5;
+let btSaving = false;
+function renderBlackThreshold() {
+  const ready = hyperionConnected && !!deviceBlack && !btSaving;
+  const on = $("bt-enabled");
+  const inp = $("bt-threshold");
+  on.checked = !!deviceBlack && deviceBlack.enabled !== false;
+  on.disabled = !ready;
+  inp.disabled = !ready;
+  if (document.activeElement !== inp) inp.value = deviceBlack ? String(deviceBlack.threshold) : "";
+  const note = $("bt-note");
+  if (!deviceBlack && !note.textContent) note.textContent = hyperionConnected ? tr("Schwarzschwelle nicht lesbar.") : tr("Zum Ändern zuerst unten bei Hyperion Backup „Mit Hyperion verbinden“.");
+  renderTestPresets();
+}
+async function saveBlackThreshold(patch) {
+  if (btSaving) return;
+  btSaving = true;
+  renderBlackThreshold();
+  const note = $("bt-note");
+  note.textContent = tr("Speichere in Hyperion …");
+  try {
+    const res = await fetch("/api/hyperion/blackthreshold", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    deviceBlack = body;
+    note.textContent = tr("Gespeichert, wirkt sofort auf die LEDs.");
+  } catch (e) {
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
+    deviceBlack = await fetch("/api/hyperion/blackthreshold").then((r) => (r.ok ? r.json() : null)).catch(() => deviceBlack);
+  }
+  btSaving = false;
+  renderColorEditor();
+}
+$("bt-enabled").addEventListener("change", (ev) => saveBlackThreshold({ enabled: ev.target.checked }));
+$("bt-threshold").addEventListener("change", (ev) => {
+  const raw = ev.target.value.trim();
+  saveBlackThreshold({ threshold: raw === "" ? BT_DEFAULT : Number(raw) });
+});
 
 // ---------- standard values of Hyperion's settings ----------
 // From Hyperion's own schema: shown as placeholder in empty number fields (like in the WebUI), an

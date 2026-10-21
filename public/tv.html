@@ -56,6 +56,18 @@
   #connect p { font-size: 2.6vh; line-height: 1.45; margin: 0 0 1.6vh; max-width: 80vh; }
   #connect .url { font-size: 3vh; font-weight: 700; color: #fff; }
 
+  /* connection lost: same place as the connect hint, orange frame */
+  #grace {
+    position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0 auto;
+    width: max-content; max-width: 70vw; box-sizing: border-box; text-align: center;
+    padding: 3.6vh 4.6vh; border-radius: 2vh; background: rgba(20, 20, 24, .96); color: #eee;
+    border: .6vh solid #ffb020;
+  }
+  #grace[hidden] { display: none; }
+  #grace h1 { font-size: 4vh; margin: 0 0 1.6vh; color: #ffb020; }
+  #grace p { font-size: 2.4vh; line-height: 1.45; margin: 0 0 1vh; color: #ddd; }
+  #grace .count { font-size: 3.2vh; font-weight: 700; color: #fff; }
+
   /* idle hint: a control page is connected, but nothing is on the TV; same place as the connect hint */
   #idle {
     position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0 auto;
@@ -109,11 +121,18 @@
   <div id="qr" role="img" aria-label="QR-Code zur Steuerung"></div>
   <div>
     <img class="logo" src="/static/hyperion-logo.png" alt="Hyperion">
-    <h1>Mit dem Smartphone steuern</h1>
-    <p>Der Test wird über dein Telefon gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser:</p>
+    <h1>Mit Smartphone, Tablet, PC oder Laptop steuern</h1>
+    <p>Der Test wird über ein Smartphone, Tablet, einen PC oder Laptop gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser des Geräts:</p>
     <p class="url" id="url"></p>
-    <p>Sobald das Telefon verbunden ist, verschwindet dieser Hinweis und das Testbild ist frei.</p>
+    <p>Sobald ein Gerät verbunden ist, verschwindet dieser Hinweis und das Testbild ist frei.</p>
   </div>
+</div>
+
+<!-- the control page is gone while a test is shown: countdown instead of the QR code, then the tests pause -->
+<div id="grace" hidden>
+  <h1>Keine Verbindung zur Testseite</h1>
+  <p class="count" id="grace-count"></p>
+  <p>Zum Verbinden die Testseite auf dem Smartphone, Tablet, PC oder Laptop wieder öffnen. Der Testserver läuft weiter.</p>
 </div>
 
 <div id="idle" hidden>
@@ -408,9 +427,16 @@ function nothingShown() {
 // the connect hint while no control page is connected, otherwise the idle hint while nothing is shown
 function renderHints() {
   const connected = phones > 0;
-  connectEl.hidden = connected || grabberTestRunning();
+  // the QR code only while nothing is shown, so it never lands in a test picture (and the LEDs)
+  const shown = !nothingShown();
+  const left = (state.graceUntil ?? 0) - (Date.now() + clockOffset);
+  const warn = !connected && shown && state.graceUntil > 0 && !grabberTestRunning();
+  connectEl.hidden = connected || shown || grabberTestRunning();
+  $("grace").hidden = !warn;
+  if (warn) $("grace-count").textContent = I18N.tr("Der Test wird in {a} s pausiert, wenn sich kein Gerät verbindet.", { a: Math.max(0, Math.ceil(left / 1000)) });
   $("idle").hidden = !connected || !nothingShown();
 }
+setInterval(() => { if (!$("grace").hidden) renderHints(); }, 500);
 
 function render() {
   renderGrabberTest();

@@ -112,9 +112,11 @@ const PRESET_IDS = PRESETS.map((p) => p.id);
 // Tests whose settings can be saved as presets; the settings are the test's state without the run state.
 // "grayCurve" is no test: its slots hold the gray curve of Hyperion (saturation limit, points). Whether the
 // curve is on belongs to the whole function, not to a slot (old slots lose their "enabled" on load).
-const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest", "grayCurve"];
+// "blackThreshold" likewise: its slots hold the threshold of the LED device (the switch stays global).
+const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest", "grayCurve", "blackThreshold"];
 const MAX_TEST_PRESETS = 50;
-const MAX_PRESETS = { grayCurve: 10 };
+const MAX_PRESETS = { grayCurve: 10, blackThreshold: 10 };
+const SLOT_TESTS = ["grayCurve", "blackThreshold"];
 const maxPresets = (test) => MAX_PRESETS[test] ?? MAX_TEST_PRESETS;
 function grayCurveSettings(input) {
   const gain = (v) => num(v, 0, 2, 1, 0.01);
@@ -122,8 +124,11 @@ function grayCurveSettings(input) {
     .map((p) => ({ gainBlue: gain(p.gainBlue), gainGreen: gain(p.gainGreen), gainRed: gain(p.gainRed), level: num(p.level, 0, 100, 50) }));
   return { saturationLimit: num(input?.saturationLimit, 0.01, 1, 0.15, 0.01), points };
 }
+// schema-device.json: blackThreshold.threshold 0 to 10 in steps of 0.05, default 0.5
+const blackThresholdSettings = (input) => ({ threshold: num(input?.threshold, 0, 10, 0.5, 0.05) });
 function presetSettings(test, settings) {
   if (test === "grayCurve") return grayCurveSettings(settings);
+  if (test === "blackThreshold") return blackThresholdSettings(settings);
   if (test === "bars") return sanitize({ bars: settings }).bars;
   const { active, startedAt, ...rest } = sanitize({ [test]: { ...settings, active: false } })[test];
   return rest;
@@ -136,7 +141,7 @@ function applyPresetOp(op, presets) {
   const name = typeof op.name === "string" ? op.name.trim().slice(0, 60) : "";
   if (op.op === "save") {
     if (!name) throw new Error("Bitte einen Namen eingeben");
-    if (list.length >= maxPresets(test)) throw new Error(test === "grayCurve" ? `Maximal ${maxPresets(test)} Speicherplätze` : `Maximal ${maxPresets(test)} Vorlagen je Test`);
+    if (list.length >= maxPresets(test)) throw new Error(SLOT_TESTS.includes(test) ? `Maximal ${maxPresets(test)} Speicherplätze` : `Maximal ${maxPresets(test)} Vorlagen je Test`);
     list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, fav: false, settings: presetSettings(test, op.settings ?? {}), savedAt: Date.now() });
   } else {
     if (at < 0) throw new Error("Vorlage nicht gefunden");
@@ -282,10 +287,15 @@ function phoneCount() {
   return n;
 }
 
+// the state with everything the pages show besides it
+function publicState() {
+  return { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil };
+}
+
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
 function broadcast() {
   // serverNow lets the TV time the gray test against the Pi's clock, not its own
-  const payload = `data: ${JSON.stringify({ ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, phones: phoneCount(), serverNow: Date.now() })}\n\n`;
+  const payload = `data: ${JSON.stringify({ ...publicState(), phones: phoneCount(), serverNow: Date.now() })}\n\n`;
   for (const res of clients.keys()) res.write(payload);
 }
 
@@ -722,7 +732,7 @@ function noSignalConfig() {
   const ns = readGlobalSetting("grabberTest")?.noSignal ?? {};
   const grabbers = Object.fromEntries(Object.entries(ns.grabbers ?? {}).map(([device, g]) => [device, {
     active: g?.active ?? -1,
-    slots: (g?.slots ?? []).map((s) => (s ? { name: s.name ?? "", savedAt: s.savedAt ?? null, featureCells: s.featureCells ?? null, unstableCells: s.unstableCells ?? null } : null)),
+    slots: (g?.slots ?? []).map((s) => (s ? { name: s.name ?? "", savedAt: s.savedAt ?? null, featureCells: s.featureCells ?? null, unstableCells: s.unstableCells ?? null, settings: s.settings ?? null } : null)),
   }]));
   return { noSignal: { ...ns, grabbers } };
 }
@@ -984,6 +994,20 @@ async function hyperionCommand(cmd) {
 }
 
 // Writes one whole settings block of instance 0 and returns what Hyperion stored
+// The black threshold of the LED device: only its own fields are changed in the freshly read device setting
+async function saveBlackThreshold(patch) {
+  return exclusive(async () => {
+    const device = readInstanceSetting("device");
+    const current = device.blackThreshold ?? { enabled: true, threshold: 0.5 };
+    const next = {
+      enabled: patch?.enabled === undefined ? current.enabled !== false : patch.enabled === true,
+      threshold: patch?.threshold === undefined ? num(current.threshold, 0, 10, 0.5, 0.05) : num(patch.threshold, 0, 10, 0.5, 0.05),
+    };
+    if (next.enabled === (current.enabled !== false) && next.threshold === current.threshold) return current;
+    return (await writeInstanceSetting("device", { ...device, blackThreshold: next })).blackThreshold;
+  });
+}
+
 async function writeInstanceSetting(type, next) {
   const api = await openHyperion();
   try {
@@ -1344,6 +1368,67 @@ function scheduleGuard() {
   }, 400);
 }
 
+// --- connection loss ---
+// When the last control page is gone while something is shown on the TV, the TV warns with a
+// countdown. If no page comes back in time, the tests are paused: the TV shows nothing, the settings
+// the tests switched off in Hyperion are restored, the guided calibration is dropped. The test
+// server itself keeps running, so a page can always connect again (the QR code on the TV).
+// The basic grabber test is no reason: it runs on the server while the phone is off.
+const GRACE_MS = Number(process.env.GRACE_MS) || 30000;
+let graceUntil = 0;
+let graceTimer = null;
+let paused = {}; // test -> true: paused by a connection loss, the control page marks its card
+
+function shownTests() {
+  const keys = [];
+  for (const k of ["grayTest", "depthTest", "fracTest", "posTest"]) if (state[k]?.active) keys.push(k);
+  if (state.posGuide?.active) keys.push("posGuide");
+  if (state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000") keys.push("color");
+  if (Object.values(state.bars ?? {}).some((v) => v > 0)) keys.push("bars");
+  return keys;
+}
+const overlaysOnTv = () => ["bbTv", "gsTv", "dpTv"].some((k) => state.overlays?.[k]);
+
+function updateGrace() {
+  clearTimeout(graceTimer);
+  graceTimer = null;
+  const shown = shownTests().length > 0 || overlaysOnTv();
+  if (phoneCount() > 0 || !shown) {
+    if (graceUntil) { graceUntil = 0; broadcast(); }
+    return;
+  }
+  if (grabberRun.running) {
+    if (graceUntil) { graceUntil = 0; broadcast(); }
+    graceTimer = setTimeout(updateGrace, 5000);
+    return;
+  }
+  if (!graceUntil) { graceUntil = Date.now() + GRACE_MS; broadcast(); }
+  graceTimer = setTimeout(pauseTests, Math.max(0, graceUntil - Date.now()) + 50);
+}
+
+function pauseTests() {
+  graceTimer = null;
+  if (phoneCount() > 0 || grabberRun.running) return updateGrace();
+  const keys = shownTests();
+  graceUntil = 0;
+  paused = Object.fromEntries(keys.map((k) => [k, true]));
+  const off = (t) => ({ ...state[t], active: false });
+  state = sanitize({
+    ...state,
+    grayTest: off("grayTest"), depthTest: off("depthTest"), fracTest: off("fracTest"), posTest: off("posTest"),
+    posGuide: { active: false, round: "measure", points: [], step: 0, answers: {}, done: false, cursor: 0 },
+    colorActive: false,
+    bars: { top: 0, bottom: 0, left: 0, right: 0 },
+    overlays: { ...state.overlays, bbTv: false, gsTv: false, dpTv: false },
+  });
+  saveState();
+  console.log(`No control page for ${GRACE_MS / 1000} s: paused ${keys.join(", ") || "overlays"}`);
+  // a color of the RGB wizard stays on the LEDs without the page that alternates it
+  hyperionCommand({ command: "clear", priority: RGB_WIZARD_PRIORITY }).catch(() => {});
+  broadcast();
+  scheduleGuard();
+}
+
 // --- LED layout correction (guided position test) ---
 // layoutfix.json keeps the layout as it was before the first correction (base), the offsets now
 // applied to it, the ones before (one step back) and the layout written, to notice changes made
@@ -1468,18 +1553,20 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/tv") return serveStatic(res, "tv.html");
     if (req.method === "GET" && p.startsWith("/static/")) return serveStatic(res, p.slice("/static/".length));
 
-    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo });
+    if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, publicState());
     if (req.method === "GET" && p === "/api/presets") return sendJson(res, 200, PRESETS);
 
     if (req.method === "GET" && p === "/api/events") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
       clients.set(res, url.searchParams.get("role") === "phone" ? "phone" : "tv");
+      updateGrace();
       broadcast(); // also tells the TV that a phone joined
       if (lastDebug) res.write(`event: debug\ndata: ${JSON.stringify(lastDebug)}\n\n`);
       const ping = setInterval(() => res.write(": ping\n\n"), 15000);
       req.on("close", () => {
         clearInterval(ping);
         clients.delete(res);
+        updateGrace();
         broadcast();
       });
       return;
@@ -1557,6 +1644,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/hyperion/leds") return sendJson(res, 200, readInstanceSetting("leds").map((l) => [l.hmin, l.hmax, l.vmin, l.vmax]));
     // black threshold of the LED device (fork extension), drawn in the gray curve graph
     if (req.method === "GET" && p === "/api/hyperion/blackthreshold") return sendJson(res, 200, readInstanceSetting("device").blackThreshold ?? null);
+    if (req.method === "POST" && p === "/api/hyperion/blackthreshold") return sendJson(res, 200, await saveBlackThreshold(await readBody(req)));
     if (req.method === "POST" && p === "/api/hyperion/color") {
       const patch = await readBody(req);
       return sendJson(res, 200, await saveColor(patch));
@@ -1661,9 +1749,14 @@ const server = http.createServer(async (req, res) => {
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
       state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules });
       saveState();
+      // a test that is touched again is no longer "paused"
+      for (const key of ["grayTest", "depthTest", "fracTest", "posTest", "posGuide", "bars"]) if (patch[key]) delete paused[key];
+      if (typeof patch.color === "string" || typeof patch.colorActive === "boolean") delete paused.color;
+      if (patch.posTest) delete paused.posGuide;
+      updateGrace();
       broadcast();
       scheduleGuard();
-      return sendJson(res, 200, { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo });
+      return sendJson(res, 200, publicState());
     }
 
     // grabber test: the stored results (Hyperion's global setting), start and stop
@@ -1732,6 +1825,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 refreshLayoutFixInfo();
+updateGrace();
 // restore what a test switched off before a restart, or switch off again for a test still running
 scheduleGuard();
 
