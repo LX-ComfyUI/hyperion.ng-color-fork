@@ -664,7 +664,7 @@
   "edt_conf_v4l2_framerate_title": "Frames per second",
   "edt_conf_v4l2_greenSignalThreshold_expl": "Darkens low green values (recognized as black)",
   "edt_conf_v4l2_greenSignalThreshold_title": "Green signal threshold",
-  "edt_conf_v4l2_heading_title": "USB Capture",
+  "edt_conf_v4l2_heading_title": "USB Capture (Video Grabber)",
   "edt_conf_v4l2_input_expl": "Select the video input of your device. 'Automatic' keeps the value chosen by the v4l2 interface.",
   "edt_conf_v4l2_input_title": "Input",
   "edt_conf_v4l2_redSignalThreshold_expl": "Darkens low red values (recognized as black)",
