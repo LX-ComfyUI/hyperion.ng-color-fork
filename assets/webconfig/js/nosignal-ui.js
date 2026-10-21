@@ -69,7 +69,7 @@
       slotEmpty: "leer",
       slotInfo: "gespeichert {date}, {features} Merkmal-Felder",
       inUse: "läuft",
-      chosen: "gewählt, Erkennung aus",
+      chosen: "aus",
       use: "Verwenden",
       clear: "Löschen",
       confirmClear: "{slot} löschen?",
@@ -140,7 +140,7 @@
       slotEmpty: "empty",
       slotInfo: "saved {date}, {features} feature cells",
       inUse: "running",
-      chosen: "chosen, detection off",
+      chosen: "off",
       use: "Use",
       clear: "Delete",
       confirmClear: "Delete {slot}?",
@@ -278,14 +278,19 @@
       .nsd-bar > span { display: block; height: 100%; background: #2b93ef; width: 0; transition: width .25s linear; }
       .nsd-warn { color: #d08a00; margin: 6px 0; }
       .nsd-err { color: #d93025; margin: 6px 0; }
-      .nsd-slot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 0; border-top: 1px solid var(--nsd-line, rgba(127,127,127,.25)); }
-      .nsd-slot:first-of-type { border-top: 0; }
-      .nsd-slot.on { font-weight: 600; }
-      .nsd-slot input[type=text] { flex: 1 1 140px; min-width: 0; max-width: 260px; font: inherit; font-weight: normal; padding: 3px 6px; }
-      .nsd-slot .nsd-info { flex: 1 1 100%; font-weight: normal; }
+      /* the slots look and mark the chosen one like the other slots (grabber color correction,
+         gray curve): chosen = blue, badge "läuft" while the function is on, "aus" while it is off */
+      .nsd-slot { border: 1px solid rgba(128,128,128,.35); border-radius: 6px; padding: 8px 10px; margin: 6px 0; }
+      .nsd-slot.on { border-color: #2b93ef; box-shadow: inset 3px 0 0 #2b93ef; }
+      .nsd-slot-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+      .nsd-slot-head b { min-width: 52px; }
+      .nsd-slot-head input[type=text] { flex: 1 1 160px; min-width: 0; max-width: 320px; font: inherit; padding: 4px 8px; }
+      .nsd-slot .nsd-info { margin: 4px 0 0; }
+      .nsd-slot-actions { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 0; }
+      .nsd-other { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 4px 0; }
       .nsd-badge { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #2b93ef; color: #fff; white-space: nowrap; font-weight: normal; }
       .nsd-badge.idle { background: rgba(128,128,128,.35); color: inherit; }
-      .nsd-slot button { width: auto; margin: 0; }
+      .nsd-slot button, .nsd-other button { width: auto; margin: 0; }
       .nsd-opt { margin: 10px 0; }
       .nsd-opt label { display: block; font-weight: 600; margin-bottom: 4px; }
       .nsd-opt select, .nsd-opt input[type=number] { font: inherit; padding: 4px 6px; max-width: 100%; }
@@ -451,26 +456,25 @@
       if (!force && box.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
       view.configKey = light;
 
-      let html = `<h5>${esc(t.slotsTitle)}</h5><div class="nsd-box">`;
+      let html = `<h5>${esc(t.slotsTitle)}</h5>`;
       e.slots.forEach((s, i) => {
         const label = fill(t.slot, { n: i + 1 });
         const active = e.active === i && !!s;
-        html += `<div class="nsd-slot${active ? " on" : ""}"><span>${esc(label)}</span>`;
+        html += `<div class="nsd-slot${active ? " on" : ""}"><div class="nsd-slot-head"><b>${esc(label)}</b>`;
         if (s) {
           html += `<input type="text"${field} maxlength="60" value="${esc(s.name)}" placeholder="${esc(label)}" aria-label="${esc(fill(t.rename, { slot: label }))}" data-ns-rename="${i}">`;
           if (active) html += `<span class="nsd-badge${o.enable ? "" : " idle"}">${esc(o.enable ? t.inUse : t.chosen)}</span>`;
-          else html += `<button type="button" class="${btn}" data-ns-op="use" data-slot="${i}">${esc(t.use)}</button>`;
-          html += `<button type="button" class="${btn}" data-ns-op="clear" data-slot="${i}">${esc(t.clear)}</button>`;
-          html += `<span class="nsd-info nsd-muted">${esc(fill(t.slotInfo, { date: fmtDate(s.savedAt), features: s.featureCells ?? "–" }))}</span>`;
+          html += `</div><p class="nsd-info nsd-muted">${esc(fill(t.slotInfo, { date: fmtDate(s.savedAt), features: s.featureCells ?? "–" }))}</p><div class="nsd-slot-actions">`;
+          if (!active) html += `<button type="button" class="${btn}" data-ns-op="use" data-slot="${i}">${esc(t.use)}</button>`;
+          html += `<button type="button" class="${btn}" data-ns-op="clear" data-slot="${i}">${esc(t.clear)}</button></div>`;
         } else {
-          html += `<span class="nsd-muted">${esc(t.slotEmpty)}</span>`;
+          html += `<span class="nsd-muted">${esc(t.slotEmpty)}</span></div>`;
         }
         html += `</div>`;
       });
-      html += `</div>`;
       if (others.length) {
-        html += `<p class="nsd-muted" style="margin:4px 0 0">${esc(t.others)}:</p><div class="nsd-box">`
-          + others.map((d) => `<div class="nsd-slot"><span>${esc(displayName(d))}</span><button type="button" class="${btn}" data-ns-forget="${esc(d)}">${esc(t.forget)}</button></div>`).join("")
+        html += `<p class="nsd-muted" style="margin:8px 0 0">${esc(t.others)}:</p><div class="nsd-box">`
+          + others.map((d) => `<div class="nsd-other"><span>${esc(displayName(d))}</span><button type="button" class="${btn}" data-ns-forget="${esc(d)}">${esc(t.forget)}</button></div>`).join("")
           + `</div>`;
       }
 
