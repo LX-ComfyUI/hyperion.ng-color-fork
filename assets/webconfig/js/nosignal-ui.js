@@ -456,7 +456,18 @@
       if (!force && box.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
       view.configKey = light;
 
-      let html = `<h5>${esc(t.slotsTitle)}</h5>`;
+      // settings first, the slots at the end: set up, then save
+      let html = `<h5>${esc(t.optTitle)}</h5><div class="nsd-box">`
+        + `<label class="nsd-switch"><input type="checkbox" data-ns-opt="enable"${o.enable ? " checked" : ""}> ${esc(t.enable)}</label>`
+        + `<p class="nsd-muted" style="margin:4px 0 0">${esc(t.enableHint)}</p>`
+        + `<div class="nsd-opt"><label>${esc(t.action)}</label><select${field} data-ns-opt="action">`
+        + [["release", t.actionRelease], ["black", t.actionBlack], ["report", t.actionReport]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
+        + `</select></div>`
+        + `<div class="nsd-opt"><label>${esc(t.delay)}</label><input type="number"${field} min="0.5" max="120" step="0.5" value="${o.delay}" data-ns-opt="delay"><p class="nsd-muted">${esc(t.delayHint)}</p></div>`
+        + `<div class="nsd-opt"><label>${esc(t.tolerance)}</label><input type="number"${field} min="4" max="100" step="1" value="${o.tolerance}" data-ns-opt="tolerance"><p class="nsd-muted">${esc(t.toleranceHint)}</p></div>`
+        + `<div class="nsd-opt"><label>${esc(t.match)}</label><input type="number"${field} min="50" max="100" step="1" value="${o.match}" data-ns-opt="match"><p class="nsd-muted">${esc(t.matchHint)}</p></div>`
+        + `</div>`;
+      html += `<h5>${esc(t.slotsTitle)}</h5>`;
       e.slots.forEach((s, i) => {
         const label = fill(t.slot, { n: i + 1 });
         const active = e.active === i && !!s;
@@ -478,16 +489,6 @@
           + `</div>`;
       }
 
-      html += `<h5>${esc(t.optTitle)}</h5><div class="nsd-box">`
-        + `<label class="nsd-switch"><input type="checkbox" data-ns-opt="enable"${o.enable ? " checked" : ""}> ${esc(t.enable)}</label>`
-        + `<p class="nsd-muted" style="margin:4px 0 0">${esc(t.enableHint)}</p>`
-        + `<div class="nsd-opt"><label>${esc(t.action)}</label><select${field} data-ns-opt="action">`
-        + [["release", t.actionRelease], ["black", t.actionBlack], ["report", t.actionReport]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
-        + `</select></div>`
-        + `<div class="nsd-opt"><label>${esc(t.delay)}</label><input type="number"${field} min="0.5" max="120" step="0.5" value="${o.delay}" data-ns-opt="delay"><p class="nsd-muted">${esc(t.delayHint)}</p></div>`
-        + `<div class="nsd-opt"><label>${esc(t.tolerance)}</label><input type="number"${field} min="4" max="100" step="1" value="${o.tolerance}" data-ns-opt="tolerance"><p class="nsd-muted">${esc(t.toleranceHint)}</p></div>`
-        + `<div class="nsd-opt"><label>${esc(t.match)}</label><input type="number"${field} min="50" max="100" step="1" value="${o.match}" data-ns-opt="match"><p class="nsd-muted">${esc(t.matchHint)}</p></div>`
-        + `</div>`;
       box.innerHTML = html;
 
       box.querySelectorAll("[data-ns-op]").forEach((b) => b.addEventListener("click", () => {
