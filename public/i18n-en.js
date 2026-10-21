@@ -92,6 +92,7 @@ window.I18N_EN = {
  "Punkte gesperrt, damit nichts aus Versehen verschoben wird. Zum Verschieben das Schloss öffnen.": "Points locked so nothing gets moved by accident. Open the lock to move them.",
  "Entsperrt, zum Sperren das Schloss wählen": "Unlocked, choose the lock to lock",
  "Gesperrt, zum Entsperren das Schloss wählen": "Locked, choose the lock to unlock",
+ "aus, alle Faktoren 1": "off, all factors 1",
  "Letzte Änderung zurückgenommen, wirkt sofort auf die LEDs.": "Last change undone, applies to the LEDs right away.",
  "Änderung wiederhergestellt, wirkt sofort auf die LEDs.": "Change restored, applies to the LEDs right away.",
  "Speichern …": "Save …",

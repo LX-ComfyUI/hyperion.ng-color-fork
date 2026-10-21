@@ -304,6 +304,7 @@
   .tp-list li { display: flex; align-items: center; gap: 2px; }
   .tp-list .tp-name { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tp-list .tp-name small { color: inherit; opacity: .7; margin-left: 6px; }
+  .tp-list .tp-std-gap { flex: none; width: 108px; } /* where the three icons of a slot sit */
   .tp .ibtn { width: 34px; height: 34px; flex: none; }
   .tp .ibtn svg { width: 18px; height: 18px; }
   .tp .ibtn.fav { color: #f5b301; }
@@ -3004,7 +3005,9 @@ function tpDefaults(test) {
   const { active, startedAt, ...rest } = src;
   return rest;
 }
-const tpSame = (a, b) => !!a && !!b && Object.keys(b).every((k) => JSON.stringify(a[k]) === JSON.stringify(b[k]));
+// key order does not count (Hyperion stores the keys of a gray curve point sorted)
+const tpJson = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((key) => [key, x[key]])) : x));
+const tpSame = (a, b) => !!a && !!b && Object.keys(b).every((k) => tpJson(a[k]) === tpJson(b[k]));
 const tpEsc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 async function tpOp(op) {
@@ -3030,8 +3033,9 @@ function renderTestPresets(force = false) {
     box.dataset.key = key;
     const def = tpDefaults(test);
     const favs = list.filter((p) => p.fav);
+    // the gray curve shows the standard as the first slot, so it can be switched with the others
     let html = `<div class="tp-head"><span class="tp-title">${tr(slots ? "Gespeicherte Graukurven" : "Gespeicherte Einstellungen")}</span>` +
-      `<button type="button" data-tp="default"${def && tpSame(cur, def) ? ' aria-pressed="true"' : ""}${def && !off ? "" : " disabled"}>${tr("Standard")}</button>` +
+      (slots ? "" : `<button type="button" data-tp="default"${def && tpSame(cur, def) ? ' aria-pressed="true"' : ""}${def && !off ? "" : " disabled"}>${tr("Standard")}</button>`) +
       `<button type="button" data-tp="new"${full || off ? " disabled" : ""}>${tr("Speichern …")}</button>` +
       (list.length && !slots ? `<button type="button" data-tp="toggle" aria-expanded="${open}">${open ? tr("Liste zu") : tr("Alle ({a})", { a: list.length })}</button>` : "") +
       `</div>`;
@@ -3039,7 +3043,8 @@ function renderTestPresets(force = false) {
     if (favs.length && !open) html += `<div class="tp-favs">${favs.map((p) => `<button type="button" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}">★ ${tpEsc(p.name)}</button>`).join("")}</div>`;
     if (editing === "new") html += `<div class="tp-form"><input type="text" maxlength="60" placeholder="${tr("Name der Einstellungen")}" aria-label="${tr("Name der Einstellungen")}"><button type="button" class="primary" data-tp="save-new">${tr("Speichern")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></div>`;
     if (open) {
-      html += `<ul class="tp-list">${list.map((p) => {
+      const std = slots ? `<li><button type="button" class="tp-name" data-tp="default" aria-pressed="${!!def && tpSame(cur, def)}" title="${tr("Laden")}"${def && !off ? "" : " disabled"}>${tr("Standard")}<small>${tr("aus, alle Faktoren 1")}</small></button><span class="tp-std-gap"></span></li>` : "";
+      html += `<ul class="tp-list">${std}${list.map((p) => {
         const star = slots ? "" : `<button type="button" class="ibtn${p.fav ? " fav" : ""}" data-tp="fav" data-id="${p.id}" title="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-label="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-pressed="${p.fav}">${TP_ICON.star}</button>`;
         if (editing === p.id) return `<li>${star}<span class="tp-form" style="flex:1;margin:0"><input type="text" maxlength="60" value="${tpEsc(p.name)}" aria-label="${tr("Neuer Name")}"><button type="button" class="primary" data-tp="save-name" data-id="${p.id}">${tr("OK")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></span></li>`;
         const when = new Date(p.savedAt).toLocaleDateString(I18N.locale, { day: "2-digit", month: "2-digit" });
