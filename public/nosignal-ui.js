@@ -19,7 +19,7 @@
 
   const SLOT_COUNT = 3;
   const CELLS = 64 * 36;
-  const DEFAULTS = { enable: false, action: "release", delay: 3, tolerance: 24, match: 95 };
+  const DEFAULTS = { enable: false, action: "black", delay: 3, tolerance: 24, match: 95 };
   const ACTIONS = ["release", "black"];
   const POLL_MS = 1000;
   const CALIBRATION_MS = 3000;
@@ -84,9 +84,9 @@
       enable: "Erkennung aktiviert",
       enableHint: "Gilt für alle Grabber. Ohne Kalibrierung für den angeschlossenen Grabber ruht die Erkennung. Auch ausgeschaltet zeigt das Grabber-Bild oben, ob das No-Signal-Bild erkannt würde, so lässt sie sich gefahrlos ausprobieren.",
       action: "Reaktion bei „kein Signal“",
-      actionRelease: "Quelle freigeben (empfohlen)",
-      actionBlack: "LEDs schwarz",
-      actionHint: "Quelle freigeben: LEDs aus oder „Hintergrund Effekt/Farbe“, falls eingeschaltet. So hat sich auch die frühere Signalerkennung verhalten. LEDs schwarz: auch „Hintergrund Effekt/Farbe“ bleibt aus.",
+      actionRelease: "Hintergrund Effekt/Farbe, falls eingestellt",
+      actionBlack: "LEDs aus (Standard)",
+      actionHint: "LEDs aus: Die LEDs bekommen Schwarz, auch „Hintergrund Effekt/Farbe“ bleibt aus. Hintergrund Effekt/Farbe: Die USB-Aufnahme wird als Quelle freigegeben, es läuft „Hintergrund Effekt/Farbe“, falls eingeschaltet, sonst sind die LEDs aus. So hat sich auch die frühere Signalerkennung verhalten.",
       delay: "Wartezeit (Sekunden)",
       delayHint: "So lange muss das No-Signal-Bild ununterbrochen zu sehen sein, bevor Hyperion reagiert. Kommt wieder ein normales Bild, ist das Signal sofort zurück.",
       tolerance: "Toleranz (0–100)",
@@ -156,9 +156,9 @@
       enable: "Detection enabled",
       enableHint: "Applies to all grabbers. Without a calibration for the connected grabber the detection rests. Even while it is off, the grabber picture above shows whether the no-signal picture would be detected, so it can be tried out safely.",
       action: "Reaction to \"no signal\"",
-      actionRelease: "Release the source (recommended)",
-      actionBlack: "LEDs black",
-      actionHint: "Release the source: LEDs off, or \"Background Effect/Color\" if it is switched on. The former signal detection behaved the same way. LEDs black: \"Background Effect/Color\" stays off as well.",
+      actionRelease: "Background Effect/Color, if set",
+      actionBlack: "LEDs off (default)",
+      actionHint: "LEDs off: the LEDs get black, \"Background Effect/Color\" stays off as well. Background Effect/Color: the USB capture is released as source and \"Background Effect/Color\" runs if it is switched on, otherwise the LEDs are off. The former signal detection behaved the same way.",
       delay: "Delay (seconds)",
       delayHint: "The no-signal picture has to show this long without a break before Hyperion reacts. As soon as a normal picture comes back, the signal is back.",
       tolerance: "Tolerance (0–100)",
@@ -483,7 +483,7 @@
         + `<label class="nsd-switch"><input type="checkbox" data-ns-opt="enable"${o.enable ? " checked" : ""}> ${esc(t.enable)}</label>`
         + `<p class="nsd-muted" style="margin:4px 0 0">${esc(t.enableHint)}</p>`
         + `<div class="nsd-opt"><label>${esc(t.action)}</label><select${field} data-ns-opt="action">`
-        + [["release", t.actionRelease], ["black", t.actionBlack]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
+        + [["black", t.actionBlack], ["release", t.actionRelease]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
         + `</select><p class="nsd-muted">${esc(t.actionHint)}</p></div>`
         + `<div class="nsd-opt"><label>${esc(t.delay)}</label><input type="number"${field} min="0.5" max="120" step="0.5" value="${o.delay}" data-ns-opt="delay"><p class="nsd-muted">${esc(t.delayHint)}</p></div>`
         + `<div class="nsd-opt"><label>${esc(t.tolerance)}</label><input type="number"${field} min="4" max="100" step="1" value="${o.tolerance}" data-ns-opt="tolerance"><p class="nsd-muted">${esc(t.toleranceHint)}</p></div>`
