@@ -90,7 +90,8 @@ $(document).ready(function () {
         '<div class="bs-callout bs-callout-primary" style="margin-top:0px"><h4>' + $.i18n('conf_helptable_expl') + '</h4>'
         + $.i18n('conf_grabber_test_intro', testPageLink('/tv'), testPageLink('/')) + '</div>'
         + '<div id="grabbertest_slots"></div>'
-        + '<div id="grabbertest_report"></div>');
+        + '<div id="grabbertest_report"></div>'
+        + '<div id="grabbertest_compare"></div>');
       // Grabber-Farbkorrektur je Grabber-Modell mit drei Speicherplätzen (grabberTest.grabbers);
       // im Expertenmodus wählen, speichern, umbenennen und löschen. Welcher Grabber gerade Bilder
       // liefert, fragt der Fork-Befehl "grabbertest" mit "peek" ab.
@@ -122,6 +123,13 @@ $(document).ready(function () {
           current: globalThis.serverConfig.grabberV4L2,
           correction: GrabberTestReport.currentCorrection(result, grabberDevice),
           lang
+        });
+        // Fork-Erweiterung: zwei gespeicherte Messungen im Detail vergleichen
+        GrabberTestReport.renderCompare(document.getElementById('grabbertest_compare'), {
+          grabberTest: result,
+          device: grabberDevice,
+          lang,
+          buttonClass: 'btn btn-primary btn-sm'
         });
       };
       renderGrabberTest();
