@@ -457,6 +457,7 @@ async function loadQr() {
 
 function connectEvents() {
   const es = new EventSource("/api/events?role=tv");
+  es.addEventListener("reload", () => location.reload());
   es.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     // the TV page shows the language chosen last on a control page

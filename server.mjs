@@ -3,6 +3,7 @@
 // shared state, syncs both via Server-Sent Events and writes DB backups.
 import http from "node:http";
 import net from "node:net";
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1711,6 +1712,24 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/hyperion/color") return sendJson(res, 200, readInstanceSetting("color"));
 
     // Hyperion system commands like the power menu of the WebUI
+    // test page and Pi commands of the power menu: reload the TV page, restart this server (systemd starts
+    // it again after a failure exit), reboot or power off the Pi
+    if (req.method === "POST" && p === "/api/testpage/system") {
+      const { action } = await readBody(req);
+      if (!["reloadTv", "restartServer", "rebootPi", "poweroffPi"].includes(action)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      sendJson(res, 200, { ok: true });
+      if (action === "reloadTv") {
+        for (const [client, role] of clients) if (role === "tv") client.write("event: reload\ndata: {}\n\n");
+      } else if (action === "restartServer") {
+        console.log("Restart requested from the control page");
+        setTimeout(() => process.exit(1), 300);
+      } else {
+        console.log(`Pi ${action === "rebootPi" ? "reboot" : "power off"} requested from the control page`);
+        setTimeout(() => execFile("sudo", ["-n", "systemctl", action === "rebootPi" ? "reboot" : "poweroff"], () => {}), 500);
+      }
+      return;
+    }
+
     if (req.method === "POST" && p === "/api/hyperion/system") {
       const { subcommand } = await readBody(req);
       if (!["suspend", "resume", "restart", "usbResetRestart"].includes(subcommand)) return sendJson(res, 400, { error: "Unbekannter Befehl" });

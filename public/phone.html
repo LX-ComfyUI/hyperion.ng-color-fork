@@ -453,6 +453,7 @@
             background: var(--card); border: 1px solid var(--btn-line); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
   .tb-pop button { display: block; width: 100%; text-align: left; border: none; border-radius: 0; background: none; padding: 9px 16px; font-size: 14px; color: var(--text); }
   .tb-pop button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .tb-group { padding: 6px 16px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
   .tb-pop hr { border: none; border-top: 1px solid var(--btn-line); margin: 6px 0; }
   /* bell: count of new messages on the icon, the messages in its menu */
   .tb-bell { position: relative; }
@@ -472,9 +473,8 @@
   .tb-hy.warn { background: #f2c200; box-shadow: 0 0 0 3px color-mix(in srgb, #f2c200 28%, transparent); }
   .tb-hy.bad { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 25%, transparent); }
   .tb-tv .ico { display: inline-flex; }
-  .tb-tv { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 10px; border: 1px solid var(--btn-line); border-radius: 4px;
-           font-size: 13px; color: var(--text); white-space: nowrap; background: color-mix(in srgb, var(--text) 4%, transparent); }
-  @media (max-width: 767.98px) { .tb-tv .txt { display: none; } .tb-tv { padding: 4px 6px; } }
+  .tb-tv { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 2px; font-size: 14px; color: var(--text); white-space: nowrap; }
+  @media (max-width: 767.98px) { .tb-tv .txt { display: none; } }
   /* grabber without signal: yellow "!" at the TV preview icon, red without a grabber */
   .tb-icon.alert::after { content: "!"; position: absolute; top: 5px; right: 6px; width: 14px; height: 14px; border-radius: 50%; background: #f2c200; color: #222;
                           font: 700 11px/14px system-ui, sans-serif; text-align: center; pointer-events: none; }
@@ -498,6 +498,15 @@
            box-shadow: 0 6px 18px rgba(0, 0, 0, .3); font-size: 14px; cursor: pointer; }
   .note-toast.crit { border-left-color: var(--danger); }
   .note-toast p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+  /* the basic test start and the unsaved result stand out in the accent color */
+  .gx-start button { color: var(--accent); border: 2px solid var(--accent); font-weight: 600; }
+  .gx-save { margin: 12px 0; padding: 12px 14px; border: 2px solid var(--accent); border-radius: 4px; }
+  .gx-save b { color: var(--accent); }
+  .gx-save p { margin: 6px 0; font-size: 14px; }
+  .gx-save input[type=text] { width: 100%; max-width: 320px; box-sizing: border-box; margin: 4px 0 8px; }
+  .gx-save .gx-save-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gx-save .gx-save-actions button { width: auto; }
+  .tp-unsaved { margin: 6px 0; padding: 8px 10px; border: 2px solid var(--accent); border-radius: 4px; font-size: 13px; }
   .logo-dark { display: none; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
   :root[data-theme="dark"] .logo-dark { display: block; }
@@ -570,11 +579,19 @@
     <div class="tb-drop">
       <button type="button" class="tb-icon" id="tb-power" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></button>
       <div class="tb-pop" id="tb-power-menu" hidden>
+        <div class="tb-group">Hyperion</div>
         <button type="button" data-system="suspend">Ruhezustand</button>
         <button type="button" data-system="resume">Aktivieren</button>
-        <hr>
         <button type="button" data-system="restart">Neustart</button>
         <button type="button" data-system="usbResetRestart">USB-Reset + Neustart</button>
+        <hr>
+        <div class="tb-group">Testseite</div>
+        <button type="button" data-page="reloadTv">TV-Seite neu laden</button>
+        <button type="button" data-page="restartServer">Testserver neu starten</button>
+        <hr>
+        <div class="tb-group">Raspberry Pi</div>
+        <button type="button" data-page="rebootPi">Pi neu starten</button>
+        <button type="button" data-page="poweroffPi">Pi ausschalten</button>
       </div>
     </div>
   </div>
@@ -632,6 +649,7 @@
     <div class="status" id="gx-progress" hidden></div>
     <p class="warn" id="gx-error" hidden></p>
     <p class="note" id="gx-note"></p>
+    <div class="gx-save" id="gx-save" data-i18n-skip hidden></div>
     <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
     <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
     <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.</p>
@@ -3112,7 +3130,10 @@ function renderTestPresets(force = false) {
     const curveOn = test === "blackThreshold" ? deviceBlack?.enabled !== false && !!deviceBlack
       : slots && colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.enabled === true;
     const badge = (inUse) => (slots && inUse ? `<span class="tp-badge${curveOn ? "" : " idle"}">${tr(curveOn ? "läuft" : "aus")}</span>` : "");
-    const key = JSON.stringify([list, cur, editing, open, !!testDefaults, !!hyDefaults, off, curveOn, I18N.lang]);
+    // a value in use that is in no slot would be lost when another slot is loaded: say so, and stress the save button
+    const defSettings = slots ? tpDefaults(test) : null;
+    const unsaved = slots && !off && !!cur && !(defSettings && tpSame(cur, defSettings)) && !list.some((p) => tpSame(cur, p.settings));
+    const key = JSON.stringify([list, cur, editing, open, !!testDefaults, !!hyDefaults, off, curveOn, unsaved, I18N.lang]);
     if (box.dataset.key === key) return;
     // do not rebuild under a name being typed
     if (!force && box.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
@@ -3122,9 +3143,10 @@ function renderTestPresets(force = false) {
     // the gray curve shows the standard as the first slot, so it can be switched with the others
     let html = `<div class="tp-head"><span class="tp-title">${tr(test === "blackThreshold" ? "Gespeicherte Schwellen" : slots ? "Gespeicherte Graukurven" : "Gespeicherte Einstellungen")}</span>` +
       (slots ? "" : `<button type="button" data-tp="default"${def && tpSame(cur, def) ? ' aria-pressed="true"' : ""}${def && !off ? "" : " disabled"}>${tr("Standard")}</button>`) +
-      `<button type="button" data-tp="new"${full || off ? " disabled" : ""}>${tr("Speichern …")}</button>` +
+      `<button type="button"${unsaved && !full ? ' class="primary"' : ""} data-tp="new"${full || off ? " disabled" : ""}>${tr("Speichern …")}</button>` +
       (list.length && !slots ? `<button type="button" data-tp="toggle" aria-expanded="${open}">${open ? tr("Liste zu") : tr("Alle ({a})", { a: list.length })}</button>` : "") +
       `</div>`;
+    if (unsaved) html += `<div class="tp-unsaved">${tr("Diese Einstellung ist in keinem Speicherplatz gesichert. Mit „Speichern …“ ablegen, sonst geht sie beim Laden eines anderen Platzes verloren.")}</div>`;
     if (slots && full) html += `<div class="tp-empty">${tr("Alle {a} Speicherplätze belegt. Zum Speichern einen Platz überschreiben oder löschen.", { a: TP_MAX[test] })}</div>`;
     if (favs.length && !open) html += `<div class="tp-favs">${favs.map((p) => `<button type="button" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}">★ ${tpEsc(p.name)}</button>`).join("")}</div>`;
     if (editing === "new") html += `<div class="tp-form"><input type="text" maxlength="60" placeholder="${tr("Name der Einstellungen")}" aria-label="${tr("Name der Einstellungen")}"><button type="button" class="primary" data-tp="save-new">${tr("Speichern")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></div>`;
@@ -4167,7 +4189,7 @@ function noteInfo(n) {
   switch (n.kind) {
     case "tvConnected": return { title: tr("TV-Seite verbunden"), text: tr("Die TV-Seite ist wieder mit der Testseite verbunden.") };
     case "tvLost": return { title: tr("TV-Seite getrennt"), text: tr("Die TV-Seite ist nicht mehr verbunden. Tests und Kalibrierungen brauchen sie, bitte auf dem TV-Gerät neu öffnen.") };
-    case "gtDone": return { title: tr("Grabber-Kalibrierung fertig"), text: tr("Das Ergebnis steht in der Karte.") };
+    case "gtDone": return { title: tr("Grabber-Kalibrierung fertig"), text: tr("Noch in einen Speicherplatz speichern, sonst wirkt die Korrektur nicht.") };
     case "gtAborted": return { title: tr("Grabber-Kalibrierung abgebrochen"), text: tr("Es wurde nichts gespeichert.") };
     case "gtError": return { title: tr("Grabber-Kalibrierung fehlgeschlagen"), text: p.error ?? "" };
     case "guideDone": return { title: tr("LED-Position-Kalibrierung fertig"), text: tr("Die Messung ist abgeschlossen.") };
@@ -4304,8 +4326,8 @@ function renderBar() {
   const pill = $("tb-tv");
   pill.querySelector(".txt").textContent = on ? tr("TV-Testseite verbunden") : tr("TV-Testseite nicht verbunden");
   pill.querySelector(".ico").innerHTML = on
-    ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect width="20" height="20" rx="4" fill="#2fa36b"/><polyline points="5,10.5 8.5,14 15,6.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    : '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect width="20" height="20" rx="4" fill="#d93025"/><path d="M6 6l8 8M14 6l-8 8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>';
+    ? '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><polyline points="3.5,10.5 8,15 16.5,5" fill="none" stroke="#2fa36b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.5 4.5l11 11M15.5 4.5l-11 11" fill="none" stroke="#d93025" stroke-width="3" stroke-linecap="round"/></svg>';
   pill.dataset.tip = pill.querySelector(".txt").textContent;
   // Hyperion health: red = not reachable / no grabber, yellow = running with a limit, green = fine
   const h = state?.health ?? {};
@@ -4313,7 +4335,7 @@ function renderBar() {
   const bad = serverDown ? tr("Testserver nicht erreichbar")
     : h.hyperionUp === false ? tr("Hyperion nicht erreichbar")
     : (h.noGrabber || h.grabberStuck) ? tr("Kein Grabber erkannt") : "";
-  const warn = h.noSignal ? tr("Kein Signal am Grabber") : pausedAny ? tr("Tests pausiert") : "";
+  const warn = pausedAny ? tr("Tests pausiert") : ""; // no signal has its own mark at the TV icon
   const hy = $("tb-hy");
   hy.classList.toggle("bad", !!bad);
   hy.classList.toggle("warn", !bad && !!warn);
@@ -4377,9 +4399,49 @@ async function loadGrabberReport() {
       devices, onSelectDevice: selectGrabber,
     });
     renderCorrectionSwitch();
+    renderGxSave(r);
   } catch (e) {
     $("gx-report").textContent = "Ergebnis nicht lesbar: " + e.message;
   }
+}
+
+// a finished basic test that is in no memory slot of the connected grabber yet: asks for the slot, like
+// the "No Signal" calibration does; the correction only works once it is in a slot
+function renderGxSave(r) {
+  const box = $("gx-save");
+  const basic = r?.basic;
+  const device = r?.device;
+  let dismissed = null;
+  try { dismissed = localStorage.getItem("tvtest-gx-dismissed"); } catch {}
+  const entry = device ? GrabberTestReport.grabberEntry(r, device) : null;
+  const slots = Array.from({ length: GrabberTestReport.SLOT_COUNT }, (_, i) => entry?.slots?.[i] ?? null);
+  const pending = !!basic?.steps?.length && !!device && GrabberTestReport.sameGrabber(GrabberTestReport.testDevice(basic), device)
+    && !slots.some((sl) => sl && sl.basedOn === basic.date) && dismissed !== basic.date;
+  if (!pending) { box.hidden = true; box.innerHTML = ""; delete box.dataset.key; return; }
+  const key = JSON.stringify([basic.date, slots.map((sl) => !!sl), I18N.lang]);
+  box.hidden = false;
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  const when = new Date(basic.date).toLocaleString(I18N.locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const firstEmpty = slots.findIndex((sl) => !sl);
+  box.innerHTML = `<b>${escHtml(tr("Grundtest fertig: Ergebnis speichern"))}</b>`
+    + `<p>${escHtml(tr("Das Ergebnis vom {date} ist noch in keinem Speicherplatz dieses Grabbers. Erst nach dem Speichern wirkt die Korrektur.", { date: when }))}</p>`
+    + `<input type="text" maxlength="40" placeholder="${escHtml(tr("Name des Platzes (optional)"))}" aria-label="${escHtml(tr("Name des Platzes (optional)"))}">`
+    + `<div class="gx-save-actions">`
+    + slots.map((sl, i) => `<button type="button" class="${i === (firstEmpty < 0 ? 0 : firstEmpty) ? "primary" : ""}" data-gxs="${i}">${escHtml(tr("In Platz {n} speichern", { n: i + 1 }))}</button>`).join("")
+    + `<button type="button" data-gxs="discard">${escHtml(tr("Nicht speichern"))}</button></div>`;
+  box.querySelectorAll("[data-gxs]").forEach((b) => b.addEventListener("click", async () => {
+    if (b.dataset.gxs === "discard") {
+      try { localStorage.setItem("tvtest-gx-dismissed", basic.date); } catch {}
+      renderGxSave(r);
+      return;
+    }
+    const slot = Number(b.dataset.gxs);
+    if (slots[slot] && !confirm(tr("Platz {n} mit diesem Ergebnis überschreiben?", { n: slot + 1 }))) return;
+    const name = box.querySelector("input").value.trim();
+    await grabberSlotAction("save", { slot });
+    if (name) await grabberSlotAction("rename", { slot, name });
+  }));
 }
 
 async function grabberTestAction(kind) {
@@ -4405,7 +4467,7 @@ $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
 (function () {
   const btn = $("tb-power");
   const menu = $("tb-power-menu");
-  btn.dataset.tip = I18N.t("System: Ruhezustand, Neustart");
+  btn.dataset.tip = I18N.t("System: Hyperion, Testseite, Raspberry Pi");
   btn.setAttribute("aria-label", btn.dataset.tip);
   const close = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); };
   btn.addEventListener("click", (ev) => {
@@ -4418,6 +4480,23 @@ $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
     restart: "Hyperion jetzt neu starten? Die LEDs sind dabei kurz aus.",
     usbResetRestart: "Grabber per USB zurücksetzen und Hyperion neu starten? Die LEDs sind dabei kurz aus.",
   };
+  const ASK_PAGE = {
+    restartServer: "Den Testserver jetzt neu starten? Laufende Tests und Kalibrierungen werden abgebrochen, die Seite ist einige Sekunden nicht erreichbar.",
+    rebootPi: "Den Raspberry Pi jetzt neu starten? Hyperion, die LEDs und diese Seite sind danach etwa eine Minute weg.",
+    poweroffPi: "Den Raspberry Pi jetzt ausschalten? Er startet erst wieder, wenn du den Strom trennst und wieder anschließt.",
+  };
+  menu.querySelectorAll("[data-page]").forEach((b) => b.addEventListener("click", async () => {
+    close();
+    const action = b.dataset.page;
+    if (ASK_PAGE[action] && !confirm(I18N.t(ASK_PAGE[action]))) return;
+    try {
+      const res = await fetch("/api/testpage/system", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error);
+    } catch (e) {
+      showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
+    }
+  }));
   menu.querySelectorAll("[data-system]").forEach((b) => b.addEventListener("click", async () => {
     close();
     const sub = b.dataset.system;
