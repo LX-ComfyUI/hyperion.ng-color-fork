@@ -4181,6 +4181,12 @@ function noteInfo(n) {
     case "grabberStuck": return { title: tr("Grabber hängt"), text: tr("Der Grabber liefert keine Bilder mehr. USB-Aufnahme und Kabel prüfen.") };
     case "grabberOk": return { title: tr("Grabber liefert wieder Bilder"), text: "" };
     case "noSignal": return { title: tr("Kein Signal"), text: tr("Der Grabber zeigt ein No-Signal-Bild. Die LEDs folgen der eingestellten Reaktion.") };
+    case "grabberKnown": return { title: tr("Bekannter Grabber: {name}", { name: p.name }),
+      text: tr("Er läuft mit seinen zuletzt benutzten Einstellungen. No-Signal-Erkennung: {ns}. Farbkorrektur: {color}.", { ns: p.nsSlot || tr("Platz aktiv"), color: p.colorSlot || tr("Platz aktiv") }) };
+    case "grabberNew": {
+      const what = (p.missing ?? []).map((m) => m === "ns" ? tr("No-Signal-Erkennung") : tr("Farbkorrektur")).join(" + ");
+      return { title: tr("Neuer Grabber: {name}", { name: p.name }), text: tr("Für diesen Grabber fehlt die Kalibrierung: {what}. Das bleibt für ihn aus, bis er kalibriert ist.", { what }) };
+    }
     case "signalBack": return { title: tr("Signal wieder da"), text: "" };
     default: return { title: n.kind, text: "" };
   }

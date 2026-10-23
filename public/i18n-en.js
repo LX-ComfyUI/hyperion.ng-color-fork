@@ -2,6 +2,13 @@
 // normalized text of a text node or attribute, or the innerHTML of an element that holds only text and
 // inline markup, or the template of an I18N.tr() call with its {placeholders}.
 window.I18N_EN = {
+ "Bekannter Grabber: {name}": "Known grabber: {name}",
+ "Er läuft mit seinen zuletzt benutzten Einstellungen. No-Signal-Erkennung: {ns}. Farbkorrektur: {color}.": "It runs with the settings it used last. No-signal detection: {ns}. Color correction: {color}.",
+ "Platz aktiv": "active slot",
+ "No-Signal-Erkennung": "No-signal detection",
+ "Farbkorrektur": "Color correction",
+ "Neuer Grabber: {name}": "New grabber: {name}",
+ "Für diesen Grabber fehlt die Kalibrierung: {what}. Das bleibt für ihn aus, bis er kalibriert ist.": "This grabber is not calibrated: {what}. That stays off for it until it is calibrated.",
  "TV-Seite verbunden": "TV page connected",
  "TV-Seite nicht verbunden": "TV page not connected",
  "Die TV-Seite ist wieder mit der Testseite verbunden.": "The TV page is connected to the test page again.",

@@ -769,6 +769,19 @@ let hyperionDownReported = false;
 let stuckPolls = 0;
 let healthKnown = false;
 let wasCalibrating = false;
+let lastDevice = null; // grabber that delivered frames at the last poll
+
+// a grabber change: a known one runs with the slots it had last, a new one has no calibration, so
+// its "No Signal" detection and color correction stay off until it is calibrated
+async function announceGrabber(info) {
+  await refreshGrabberCorrection().catch(() => {});
+  const name = Report.displayName(info.device);
+  const missing = [];
+  if (info.calibrated !== true) missing.push("ns");
+  if (!grabberCorrection.available || grabberCorrection.slot < 0) missing.push("color");
+  if (missing.length) addNotice("grabberNew", "critical", { name, missing }, missing[0] === "ns" ? "card-ns" : "card-gx");
+  else addNotice("grabberKnown", "info", { name, nsSlot: info.slotName || "", colorSlot: grabberCorrection.name || "" }, "card-ns");
+}
 
 async function pollHealth() {
   const next = { ...health };
@@ -788,6 +801,11 @@ async function pollHealth() {
     stuckPolls = stuck ? stuckPolls + 1 : 0;
     const nowStuck = stuckPolls >= 2;
     const nowNoSignal = info.noSignal === true && !nowStuck;
+    if (info.device && info.device !== lastDevice) {
+      const first = lastDevice === null;
+      lastDevice = info.device;
+      if (!first) await announceGrabber(info);
+    }
     if (healthKnown) {
       if (nowStuck !== next.grabberStuck) addNotice(nowStuck ? "grabberStuck" : "grabberOk", nowStuck ? "critical" : "info", {}, "card-ns");
       if (nowNoSignal !== next.noSignal) addNotice(nowNoSignal ? "noSignal" : "signalBack", nowNoSignal ? "critical" : "info", {}, "card-ns");
