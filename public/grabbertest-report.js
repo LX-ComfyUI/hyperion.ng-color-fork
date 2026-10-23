@@ -152,20 +152,20 @@
       ntNewGrabber: "Neuer Grabber erkannt: {name}",
       ntNewGrabberText: "Für diesen Grabber ist noch keine Farbkalibrierung gespeichert, die Grabber-Farbkorrektur bleibt für ihn deshalb aus. Kalibrieren kannst du ihn auf der TV-Testseite unter „Grabber-Farberkennung kalibrieren“.",
       ntSeen: "Gesehen",
-      cmpTitle: "Messungen vergleichen",
-      cmpIntro: "Vergleicht zwei gespeicherte Grundtests im Detail, vom selben oder von verschiedenen Grabbern: Kennzahlen, jeden Messschritt und die Korrekturmatrix.",
-      cmpNeedTwo: "Zum Vergleichen sind mindestens zwei gespeicherte Messungen nötig. Messungen entstehen mit dem Grundtest und liegen in den Speicherplätzen.",
-      cmpA: "Messung A", cmpB: "Messung B", cmpGrabber: "Grabber", cmpPick: "Messung",
-      cmpLast: "Letzter Grundtest · {date}", cmpSlot: "Platz {n}{name} · {date}", cmpNoMeasure: "ohne gespeicherte Messung",
-      cmpGo: "Vergleichen", cmpSame: "Beide Seiten sind dieselbe Messung, es gibt nichts zu vergleichen.",
-      cmpSummary: "{k} von {n} Messschritten weichen um mehr als {x} Stufen voneinander ab, am meisten {name} ({v} Stufen).",
-      cmpSummaryNone: "Alle {n} Messschritte liegen höchstens {x} Stufen auseinander.",
-      cmpMetrics: "Kennzahlen", cmpMetric: "Kennzahl", cmpDelta: "Unterschied (B − A)",
+      vgTitle: "Messungen vergleichen",
+      vgIntro: "Vergleicht zwei gespeicherte Grundtests im Detail, vom selben oder von verschiedenen Grabbern: Kennzahlen, jeden Messschritt und die Korrekturmatrix.",
+      vgNeedTwo: "Zum Vergleichen sind mindestens zwei gespeicherte Messungen nötig. Messungen entstehen mit dem Grundtest und liegen in den Speicherplätzen.",
+      vgA: "Messung A", vgB: "Messung B", vgGrabber: "Grabber", vgPick: "Messung",
+      vgLast: "Letzter Grundtest · {date}", vgSlot: "Platz {n}{name} · {date}", vgNoMeasure: "ohne gespeicherte Messung",
+      vgGo: "Vergleichen", vgSame: "Beide Seiten sind dieselbe Messung, es gibt nichts zu vergleichen.",
+      vgSummary: "{k} von {n} Messschritten weichen um mehr als {x} Stufen voneinander ab, am meisten {name} ({v} Stufen).",
+      vgSummaryNone: "Alle {n} Messschritte liegen höchstens {x} Stufen auseinander.",
+      vgMetrics: "Kennzahlen", vgMetric: "Kennzahl", vgDelta: "Unterschied (B − A)",
       mBlack: "Schwarzwert", mWhite: "Weißwert", mGain: "Spreizung Weiß − Schwarz", mDarkLost: "Dunkle Stufen wie Schwarz bis", mLightLost: "Helle Stufen wie Weiß ab",
       mTint: "Farbstich der Grautöne", mNoise: "Rauschen bei 128", mDrift: "Schwarz-Drift",
-      cmpSteps: "Alle Messschritte im Vergleich ({n}, {k} mit Abweichung)", cmpOnlyOne: "nur in einer Messung",
-      cmpChart: "Graustufen im Vergleich", cmpChartHint: "Durchgezogen: Messung A, gestrichelt: Messung B.",
-      cmpMatrix: "Korrekturmatrix", cmpNoMatrix: "keine Korrektur berechenbar", cmpMatrixDelta: "Größter Unterschied der Matrixwerte: {v}.",
+      vgSteps: "Alle Messschritte im Vergleich ({n}, {k} mit Abweichung)", vgOnlyOne: "nur in einer Messung",
+      vgChart: "Graustufen im Vergleich", vgChartHint: "Durchgezogen: Messung A, gestrichelt: Messung B.",
+      vgMatrix: "Korrekturmatrix", vgNoMatrix: "keine Korrektur berechenbar", vgMatrixDelta: "Größter Unterschied der Matrixwerte: {v}.",
       cmpTitle: "Ohne und mit Korrektur",
       cmpMeasured: "Ausgewählte Testfarben, mit Korrektur über Hyperion gemessen.",
       cmpCalc: "Ausgewählte Testfarben, mit Korrektur berechnet. Ein Grundtest bei eingeschalteter Korrektur misst die Werte.",
@@ -287,20 +287,20 @@
       ntNewGrabber: "New grabber detected: {name}",
       ntNewGrabberText: "No color calibration is saved for this grabber yet, so the grabber color correction stays off for it. You can calibrate it on the TV test page under “Calibrate grabber color detection”.",
       ntSeen: "Got it",
-      cmpTitle: "Compare measurements",
-      cmpIntro: "Compares two saved basic tests in detail, from the same or from different grabbers: key figures, every measuring step and the correction matrix.",
-      cmpNeedTwo: "At least two saved measurements are needed to compare. Measurements come from the basic test and are kept in the memory slots.",
-      cmpA: "Measurement A", cmpB: "Measurement B", cmpGrabber: "Grabber", cmpPick: "Measurement",
-      cmpLast: "Last basic test · {date}", cmpSlot: "Slot {n}{name} · {date}", cmpNoMeasure: "no saved measurement",
-      cmpGo: "Compare", cmpSame: "Both sides are the same measurement, there is nothing to compare.",
-      cmpSummary: "{k} of {n} measuring steps differ by more than {x} levels, most at {name} ({v} levels).",
-      cmpSummaryNone: "All {n} measuring steps are at most {x} levels apart.",
-      cmpMetrics: "Key figures", cmpMetric: "Figure", cmpDelta: "Difference (B − A)",
+      vgTitle: "Compare measurements",
+      vgIntro: "Compares two saved basic tests in detail, from the same or from different grabbers: key figures, every measuring step and the correction matrix.",
+      vgNeedTwo: "At least two saved measurements are needed to compare. Measurements come from the basic test and are kept in the memory slots.",
+      vgA: "Measurement A", vgB: "Measurement B", vgGrabber: "Grabber", vgPick: "Measurement",
+      vgLast: "Last basic test · {date}", vgSlot: "Slot {n}{name} · {date}", vgNoMeasure: "no saved measurement",
+      vgGo: "Compare", vgSame: "Both sides are the same measurement, there is nothing to compare.",
+      vgSummary: "{k} of {n} measuring steps differ by more than {x} levels, most at {name} ({v} levels).",
+      vgSummaryNone: "All {n} measuring steps are at most {x} levels apart.",
+      vgMetrics: "Key figures", vgMetric: "Figure", vgDelta: "Difference (B − A)",
       mBlack: "Black level", mWhite: "White level", mGain: "Span white − black", mDarkLost: "Dark levels like black up to", mLightLost: "Light levels like white from",
       mTint: "Tint of the grays", mNoise: "Noise at 128", mDrift: "Black drift",
-      cmpSteps: "All measuring steps compared ({n}, {k} deviating)", cmpOnlyOne: "in one measurement only",
-      cmpChart: "Gray levels compared", cmpChartHint: "Solid: measurement A, dashed: measurement B.",
-      cmpMatrix: "Correction matrix", cmpNoMatrix: "no correction can be computed", cmpMatrixDelta: "Largest difference of the matrix values: {v}.",
+      vgSteps: "All measuring steps compared ({n}, {k} deviating)", vgOnlyOne: "in one measurement only",
+      vgChart: "Gray levels compared", vgChartHint: "Solid: measurement A, dashed: measurement B.",
+      vgMatrix: "Correction matrix", vgNoMatrix: "no correction can be computed", vgMatrixDelta: "Largest difference of the matrix values: {v}.",
       cmpTitle: "Without and with correction",
       cmpMeasured: "Selected test colors, measured with the correction through Hyperion.",
       cmpCalc: "Selected test colors, computed with the correction. A basic test with the correction switched on measures the values.",
@@ -815,7 +815,7 @@
       const a = analyze(A.result);
       const b = analyze(B.result);
       if (!a || !b) return `<p>${t.none}</p>`;
-      const head = [["A", A, t.cmpA], ["B", B, t.cmpB]].map(([tag, side, name]) =>
+      const head = [["A", A, t.vgA], ["B", B, t.vgB]].map(([tag, side, name]) =>
         `<div class="gtr-cmp-side"><span class="gtr-cmp-tag ${tag.toLowerCase()}">${tag}</span> <b>${esc(side.label)}</b><p class="gtr-meta">${metaLine(side.result)}</p></div>`).join("");
       let out = `<div class="gtr-cmp-head">${head}</div>`;
 
@@ -834,7 +834,7 @@
       const off = both.filter((p) => p.max > THRESHOLD);
       if (both.length) {
         const top = both.reduce((m, p) => (p.max > m.max ? p : m), both[0]);
-        out += `<p class="gtr-cmp-summary">${off.length ? fill(t.cmpSummary, { k: off.length, n: both.length, x: THRESHOLD, name: esc(stepLevelName(top.a)), v: num(top.max, 0) }) : fill(t.cmpSummaryNone, { n: both.length, x: THRESHOLD })}</p>`;
+        out += `<p class="gtr-cmp-summary">${off.length ? fill(t.vgSummary, { k: off.length, n: both.length, x: THRESHOLD, name: esc(stepLevelName(top.a)), v: num(top.max, 0) }) : fill(t.vgSummaryNone, { n: both.length, x: THRESHOLD })}</p>`;
       }
 
       // key figures
@@ -867,21 +867,21 @@
         rows += numRow(label(t.colStrength), x?.strength, y?.strength, { d: 0, unit: " %", warn: 5, bad: 15 });
         rows += numRow(label(t.colPurity), x?.crosstalk, y?.crosstalk, { d: 0, unit: " %", warn: 5, bad: 15 });
       }
-      out += `<h4>${t.cmpMetrics}</h4><div class="gtr-scroll"><table class="gtr-table gtr-cmp-table"><thead><tr><th>${t.cmpMetric}</th><th>A</th><th>B</th><th>${t.cmpDelta}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      out += `<h4>${t.vgMetrics}</h4><div class="gtr-scroll"><table class="gtr-table gtr-cmp-table"><thead><tr><th>${t.vgMetric}</th><th>A</th><th>B</th><th>${t.vgDelta}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 
       // gray levels of both over each other
       const grayRows = (an, result) => [{ level: 0, got: an.black }, ...validSteps(result).filter((s) => s.group === "gray").map((s) => ({ level: s.sent[0], got: s.got }))].sort((p, q) => p.level - q.level);
-      out += `<h4>${t.cmpChart}</h4><p class="gtr-hint">${t.cmpChartHint}</p><div class="gtr-chart">${chartSvg(grayRows(a, A.result), [0, 1, 2], [], {}, grayRows(b, B.result))}</div>`;
+      out += `<h4>${t.vgChart}</h4><p class="gtr-hint">${t.vgChartHint}</p><div class="gtr-chart">${chartSvg(grayRows(a, A.result), [0, 1, 2], [], {}, grayRows(b, B.result))}</div>`;
 
       // every step
       let body = "";
       for (const p of pairs) {
         const s = p.a ?? p.b;
-        const cell = (st) => (st ? rgbText(st.got) : `<span class="gtr-muted">${t.cmpOnlyOne}</span>`);
+        const cell = (st) => (st ? rgbText(st.got) : `<span class="gtr-muted">${t.vgOnlyOne}</span>`);
         body += `<tr><td><span class="gtr-sw" style="background:${hex(s.sent)}"></span> ${esc(stepLevelName(s))}</td><td>${s.sent.join(" / ")}</td><td>${cell(p.a)}</td><td>${cell(p.b)}</td>`
           + `<td class="${p.delta ? levelClass(p.max, THRESHOLD, 8) : ""}">${p.delta ? p.delta.map((x) => sign(x)).join(" / ") : "–"}</td></tr>`;
       }
-      out += `<details class="gtr-cmp-steps"><summary>${fill(t.cmpSteps, { n: pairs.length, k: off.length })}</summary><div class="gtr-scroll"><table class="gtr-table gtr-cmp-table"><thead><tr><th>${t.colColor}</th><th>${t.colSent}</th><th>A</th><th>B</th><th>${t.cmpDelta}</th></tr></thead><tbody>${body}</tbody></table></div></details>`;
+      out += `<details class="gtr-cmp-steps"><summary>${fill(t.vgSteps, { n: pairs.length, k: off.length })}</summary><div class="gtr-scroll"><table class="gtr-table gtr-cmp-table"><thead><tr><th>${t.colColor}</th><th>${t.colSent}</th><th>A</th><th>B</th><th>${t.vgDelta}</th></tr></thead><tbody>${body}</tbody></table></div></details>`;
 
       // correction matrices
       const matrixOf = (side) => {
@@ -891,8 +891,8 @@
       };
       const ma = matrixOf(A);
       const mb = matrixOf(B);
-      out += `<h4>${t.cmpMatrix}</h4><div class="gtr-matrix-row"><div><b>A</b>${ma ? matrixTable(ma) : `<p class="gtr-hint">${t.cmpNoMatrix}</p>`}</div><div><b>B</b>${mb ? matrixTable(mb) : `<p class="gtr-hint">${t.cmpNoMatrix}</p>`}</div></div>`;
-      if (ma && mb) out += `<p class="gtr-hint">${fill(t.cmpMatrixDelta, { v: num(Math.max(...ma.map((v, i) => Math.abs(mb[i] - v))), 3) })}</p>`;
+      out += `<h4>${t.vgMatrix}</h4><div class="gtr-matrix-row"><div><b>A</b>${ma ? matrixTable(ma) : `<p class="gtr-hint">${t.vgNoMatrix}</p>`}</div><div><b>B</b>${mb ? matrixTable(mb) : `<p class="gtr-hint">${t.vgNoMatrix}</p>`}</div></div>`;
+      if (ma && mb) out += `<p class="gtr-hint">${fill(t.vgMatrixDelta, { v: num(Math.max(...ma.map((v, i) => Math.abs(mb[i] - v))), 3) })}</p>`;
       return out;
     }
 
@@ -1122,11 +1122,11 @@
     const idOf = (x) => `${x.device}\u0001${x.key}`;
     const find = (id) => sources.find((x) => idOf(x) === id) ?? null;
     const slotLabel = (x) => (x.key === "last"
-      ? r.fill(t.cmpLast, { date: x.date ? r.dateText(x.date) : "–" })
-      : r.fill(t.cmpSlot, { n: x.slot + 1, name: x.name ? ` (${x.name})` : "", date: x.date ? r.dateText(x.date) : "–" }) + (x.result ? "" : ` · ${t.cmpNoMeasure}`));
-    let html = `<h4>${esc(t.cmpTitle)}</h4><p class="gtr-hint">${esc(t.cmpIntro)}</p>`;
+      ? r.fill(t.vgLast, { date: x.date ? r.dateText(x.date) : "–" })
+      : r.fill(t.vgSlot, { n: x.slot + 1, name: x.name ? ` (${x.name})` : "", date: x.date ? r.dateText(x.date) : "–" }) + (x.result ? "" : ` · ${t.vgNoMeasure}`));
+    let html = `<h4>${esc(t.vgTitle)}</h4><p class="gtr-hint">${esc(t.vgIntro)}</p>`;
     if (usable.length < 2) {
-      element.innerHTML = `<div class="gtr">${html}<p>${esc(t.cmpNeedTwo)}</p></div>`;
+      element.innerHTML = `<div class="gtr">${html}<p>${esc(t.vgNeedTwo)}</p></div>`;
       return;
     }
     // defaults: A = measurement of the grabber in use (active slot first), B = the next other one
@@ -1146,18 +1146,18 @@
       const cur = find(id);
       const inDevice = sources.filter((x) => x.device === cur.device);
       return `<div><span class="gtr-cmp-tag ${tag.toLowerCase()}">${tag}</span> <b>${esc(name)}</b>`
-        + `<label>${esc(t.cmpGrabber)}</label><select data-cmp-device="${tag}">${devices.map((d) => `<option value="${esc(d)}"${d === cur.device ? " selected" : ""}>${esc(displayName(d))}</option>`).join("")}</select>`
-        + `<label>${esc(t.cmpPick)}</label><select data-cmp-pick="${tag}">${inDevice.map((x) => `<option value="${esc(idOf(x))}"${idOf(x) === id ? " selected" : ""}${x.result ? "" : " disabled"}>${esc(slotLabel(x))}</option>`).join("")}</select></div>`;
+        + `<label>${esc(t.vgGrabber)}</label><select data-cmp-device="${tag}">${devices.map((d) => `<option value="${esc(d)}"${d === cur.device ? " selected" : ""}>${esc(displayName(d))}</option>`).join("")}</select>`
+        + `<label>${esc(t.vgPick)}</label><select data-cmp-pick="${tag}">${inDevice.map((x) => `<option value="${esc(idOf(x))}"${idOf(x) === id ? " selected" : ""}${x.result ? "" : " disabled"}>${esc(slotLabel(x))}</option>`).join("")}</select></div>`;
     };
-    html += `<div class="gtr-cmp-sel">${side("A", t.cmpA, st.a)}${side("B", t.cmpB, st.b)}</div>`
-      + `<div class="gtr-cmp-go"><button type="button" data-cmp-go>${esc(t.cmpGo)}</button></div><div data-cmp-result></div>`;
+    html += `<div class="gtr-cmp-sel">${side("A", t.vgA, st.a)}${side("B", t.vgB, st.b)}</div>`
+      + `<div class="gtr-cmp-go"><button type="button" data-cmp-go>${esc(t.vgGo)}</button></div><div data-cmp-result></div>`;
     element.innerHTML = `<div class="gtr">${html}</div>`;
     const show = () => {
       const box = element.querySelector("[data-cmp-result]");
       const A = find(st.a);
       const B = find(st.b);
       if (!st.shown || !A || !B) { box.innerHTML = ""; return; }
-      if (idOf(A) === idOf(B)) { box.innerHTML = `<p>${esc(t.cmpSame)}</p>`; return; }
+      if (idOf(A) === idOf(B)) { box.innerHTML = `<p>${esc(t.vgSame)}</p>`; return; }
       const label = (x) => `${displayName(x.device)} · ${slotLabel(x).split(" · ")[0]}`;
       box.innerHTML = r.compareHtml({ label: label(A), result: A.result, matrix: A.matrix }, { label: label(B), result: B.result, matrix: B.matrix });
     };
