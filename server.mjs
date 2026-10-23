@@ -294,7 +294,7 @@ const NOTICES_FILE = path.join(DATA_DIR, "notices.json");
 const NOTICE_MAX = 60;
 let notices = [];
 try { notices = JSON.parse(fs.readFileSync(NOTICES_FILE, "utf8")).filter((n) => n && Number.isInteger(n.id)).slice(-NOTICE_MAX); } catch {}
-let health = { hyperionUp: true, noSignal: false, grabberStuck: false }; // shown in the bar of the control page
+let health = { hyperionUp: true, noSignal: false, grabberStuck: false, noGrabber: false }; // shown in the bar of the control page
 
 function addNotice(kind, level, params = {}, target = "") {
   const id = (notices.at(-1)?.id ?? 0) + 1;
@@ -813,6 +813,7 @@ async function pollHealth() {
     }
     wasCalibrating = info.calibrating === true;
     next.grabberStuck = nowStuck;
+    next.noGrabber = !info.device;
     next.noSignal = nowNoSignal;
     healthKnown = true;
   }

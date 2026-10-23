@@ -473,10 +473,10 @@
   .tb-tv.on i { background: #2fa36b; }
   .tb-tv.on { color: var(--text); }
   @media (max-width: 767.98px) { .tb-tv span { display: none; } }
-  /* grabber without signal: the TV preview icon gets a yellow frame and a "!" */
-  .tb-icon.alert { outline: 2px solid #f2c200; outline-offset: -2px; }
-  .tb-icon.alert::after { content: "!"; position: absolute; top: -3px; right: -3px; width: 16px; height: 16px; border-radius: 50%; background: #f2c200; color: #222;
-                          font: 700 12px/16px system-ui, sans-serif; text-align: center; pointer-events: none; }
+  /* grabber without signal: yellow "!" at the TV preview icon, red without a grabber */
+  .tb-icon.alert::after { content: "!"; position: absolute; top: 5px; right: 6px; width: 14px; height: 14px; border-radius: 50%; background: #f2c200; color: #222;
+                          font: 700 11px/14px system-ui, sans-serif; text-align: center; pointer-events: none; }
+  .tb-icon.alert.red::after { background: var(--danger); color: #fff; }
   /* bell menu: mode choice, scrolling list, entries that jump to their card */
   .tb-notes h4 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .tb-modes { display: flex; gap: 2px; }
@@ -4180,7 +4180,7 @@ function noteInfo(n) {
     case "hyperionUp": return { title: tr("Hyperion wieder erreichbar"), text: "" };
     case "grabberStuck": return { title: tr("Grabber hängt"), text: tr("Der Grabber liefert keine Bilder mehr. USB-Aufnahme und Kabel prüfen.") };
     case "grabberOk": return { title: tr("Grabber liefert wieder Bilder"), text: "" };
-    case "noSignal": return { title: tr("Kein Signal"), text: tr("Der Grabber zeigt ein No-Signal-Bild. Die LEDs folgen der eingestellten Reaktion.") };
+    case "noSignal": return { title: tr("Kein Signal"), text: "" };
     case "grabberKnown": return { title: tr("Bekannter Grabber: {name}", { name: p.name }),
       text: tr("Er läuft mit seinen zuletzt benutzten Einstellungen. No-Signal-Erkennung: {ns}. Farbkorrektur: {color}.", { ns: p.nsSlot || tr("Platz aktiv"), color: p.colorSlot || tr("Platz aktiv") }) };
     case "grabberNew": {
@@ -4231,7 +4231,7 @@ function renderBell() {
   if (lastId < noteSeen) noteSeen = lastId; // list was cleared
   if (lastId < noteToasted) noteToasted = lastId;
   // announce what is new: a short message below the bar, if the mode allows it
-  for (const n of all) if (n.id > noteToasted) { if (noteShown(n)) showToast(n); noteToasted = n.id; }
+  for (const n of all) if (n.id > noteToasted) { if (noteShown(n) && n.kind !== "noSignal" && n.kind !== "signalBack") showToast(n); noteToasted = n.id; }
 
   const grabberNotes = state?.grabberCorrection?.notifications ?? [];
   const fresh = all.filter((n) => n.id > noteSeen && noteShown(n)).length + (noteMode === "off" ? 0 : grabberNotes.length);
@@ -4303,9 +4303,12 @@ function renderBar() {
   pill.lastElementChild.textContent = on ? tr("TV-Seite verbunden") : tr("TV-Seite nicht verbunden");
   pill.dataset.tip = pill.lastElementChild.textContent;
   const prev = $("tb-preview");
-  const alert = state?.health?.noSignal === true;
+  const h = state?.health ?? {};
+  const red = h.noGrabber === true || h.grabberStuck === true;
+  const alert = red || h.noSignal === true;
   prev.classList.toggle("alert", alert);
-  prev.dataset.tip = alert ? tr("Kein Signal am Grabber") + " · " + tr("Grabber-Vorschau") : tr("Grabber-Vorschau");
+  prev.classList.toggle("red", red);
+  prev.dataset.tip = !alert ? tr("Grabber-Vorschau") : (red ? tr("Kein Grabber erkannt") : tr("Kein Signal am Grabber")) + " · " + tr("Grabber-Vorschau");
 }
 (function () {
   const btn = $("tb-bell");
