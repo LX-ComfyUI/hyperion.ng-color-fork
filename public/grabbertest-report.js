@@ -164,7 +164,7 @@
       mBlack: "Schwarzwert", mWhite: "Weißwert", mGain: "Spreizung Weiß − Schwarz", mDarkLost: "Dunkle Stufen wie Schwarz bis", mLightLost: "Helle Stufen wie Weiß ab",
       mTint: "Farbstich der Grautöne", mNoise: "Rauschen bei 128", mDrift: "Schwarz-Drift",
       vgSteps: "Alle Messschritte im Vergleich ({n}, {k} mit Abweichung)", vgOnlyOne: "nur in einer Messung",
-      vgChart: "Graustufen im Vergleich", vgChartHint: "Durchgezogen: Messung A, gestrichelt: Messung B.",
+      vgChart: "Graustufen im Vergleich", vgChartHint: "Blau durchgezogen: Messung A, orange gestrichelt: Messung B. Je ein Diagramm für Rot, Grün und Blau.",
       vgMatrix: "Korrekturmatrix", vgNoMatrix: "keine Korrektur berechenbar", vgMatrixDelta: "Größter Unterschied der Matrixwerte: {v}.",
       cmpTitle: "Ohne und mit Korrektur",
       cmpMeasured: "Ausgewählte Testfarben, mit Korrektur über Hyperion gemessen.",
@@ -299,7 +299,7 @@
       mBlack: "Black level", mWhite: "White level", mGain: "Span white − black", mDarkLost: "Dark levels like black up to", mLightLost: "Light levels like white from",
       mTint: "Tint of the grays", mNoise: "Noise at 128", mDrift: "Black drift",
       vgSteps: "All measuring steps compared ({n}, {k} deviating)", vgOnlyOne: "in one measurement only",
-      vgChart: "Gray levels compared", vgChartHint: "Solid: measurement A, dashed: measurement B.",
+      vgChart: "Gray levels compared", vgChartHint: "Blue solid: measurement A, orange dashed: measurement B. One chart each for red, green and blue.",
       vgMatrix: "Correction matrix", vgNoMatrix: "no correction can be computed", vgMatrixDelta: "Largest difference of the matrix values: {v}.",
       cmpTitle: "Without and with correction",
       cmpMeasured: "Selected test colors, measured with the correction through Hyperion.",
@@ -581,6 +581,7 @@
     .gtr-cbad { color: #d93025; font-weight: 600; }
     .gtr-muted { opacity: .6; }
     .gtr-cmp-go { margin: 8px 0; }
+    .gtr-cmp-charts { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
   `;
 
   function ensureStyle(doc) {
@@ -595,7 +596,7 @@
   const sq = (v) => Math.sqrt(Math.max(0, Math.min(255, v)) / 255);
 
   // rows: [{ level, got }], channels: indices drawn solid, dashed: indices drawn dashed
-  function chartSvg(rows, solid, dashed, { width = 320, height = 200, small = false } = {}, overlay = null) {
+  function chartSvg(rows, solid, dashed, { width = 320, height = 200, small = false, color = null, overlayColor = null, overlayChannels = [0, 1, 2] } = {}, overlay = null) {
     const pad = small ? { l: 22, r: 6, t: 6, b: 16 } : { l: 30, r: 8, t: 8, b: 22 };
     const w = width - pad.l - pad.r;
     const h = height - pad.t - pad.b;
@@ -612,16 +613,19 @@
     out += `<line x1="${x(0)}" y1="${y(0)}" x2="${x(255)}" y2="${y(255)}" stroke="currentColor" stroke-opacity=".45" stroke-dasharray="1 3"/>`;
     const line = (i, dash) => {
       const pts = rows.map((r) => `${x(r.level).toFixed(1)},${y(r.got[i]).toFixed(1)}`).join(" ");
-      const dots = rows.map((r) => `<circle cx="${x(r.level).toFixed(1)}" cy="${y(r.got[i]).toFixed(1)}" r="${small ? 1.6 : 2.2}" fill="${CHANNEL_COLORS[i]}"/>`).join("");
-      return `<polyline points="${pts}" fill="none" stroke="${CHANNEL_COLORS[i]}" stroke-width="${small ? 1.4 : 1.8}"${dash ? ' stroke-dasharray="4 3"' : ""}/>${dots}`;
+      const col = color ?? CHANNEL_COLORS[i];
+      const dots = rows.map((r) => `<circle cx="${x(r.level).toFixed(1)}" cy="${y(r.got[i]).toFixed(1)}" r="${small ? 1.6 : 2.2}" fill="${col}"/>`).join("");
+      return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="${small ? 1.4 : 1.8}"${dash ? ' stroke-dasharray="4 3"' : ""}/>${dots}`;
     };
     for (const i of dashed) out += line(i, true);
     for (const i of solid) out += line(i, false);
     // a second measurement drawn dashed over the first (comparison)
     if (overlay) {
-      for (const i of [0, 1, 2]) {
+      for (const i of overlayChannels) {
+        const col = overlayColor ?? CHANNEL_COLORS[i];
         const pts = overlay.map((r) => `${x(r.level).toFixed(1)},${y(r.got[i]).toFixed(1)}`).join(" ");
-        out += `<polyline points="${pts}" fill="none" stroke="${CHANNEL_COLORS[i]}" stroke-width="1.8" stroke-dasharray="4 3"/>`;
+        out += `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="${small ? 1.4 : 1.8}" stroke-dasharray="4 3"/>`
+          + overlay.map((r) => `<circle cx="${x(r.level).toFixed(1)}" cy="${y(r.got[i]).toFixed(1)}" r="${small ? 1.6 : 2.2}" fill="${col}"/>`).join("");
       }
     }
     return out + "</svg>";
@@ -871,7 +875,12 @@
 
       // gray levels of both over each other
       const grayRows = (an, result) => [{ level: 0, got: an.black }, ...validSteps(result).filter((s) => s.group === "gray").map((s) => ({ level: s.sent[0], got: s.got }))].sort((p, q) => p.level - q.level);
-      out += `<h4>${t.vgChart}</h4><p class="gtr-hint">${t.vgChartHint}</p><div class="gtr-chart">${chartSvg(grayRows(a, A.result), [0, 1, 2], [], {}, grayRows(b, B.result))}</div>`;
+      // one small chart per channel: A in the blue and B in the orange of the selection above
+      const rowsA = grayRows(a, A.result);
+      const rowsB = grayRows(b, B.result);
+      out += `<h4>${t.vgChart}</h4><p class="gtr-hint">${t.vgChartHint}</p><div class="gtr-grid gtr-cmp-charts">`
+        + [0, 1, 2].map((i) => `<div><div class="cap"><span class="gtr-sw" style="background:${CHANNEL_COLORS[i]}"></span>${channelName(i)}</div>${chartSvg(rowsA, [i], [], { width: 220, height: 150, small: true, color: "#2b93ef", overlayColor: "#d08a00", overlayChannels: [i] }, rowsB)}</div>`).join("")
+        + `</div>`;
 
       // every step
       let body = "";
