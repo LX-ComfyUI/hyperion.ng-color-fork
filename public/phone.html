@@ -673,6 +673,7 @@
     <details class="gx-fold" id="gx-result" open>
       <summary>Ergebnis</summary>
       <div id="gx-report">Lade Ergebnis …</div>
+      <div id="gx-compare" data-i18n-skip></div>
     </details>
   </section>
 
@@ -4375,6 +4376,7 @@ async function loadGrabberReport() {
     });
     renderCorrectionSwitch();
     renderGxSave(r);
+    GrabberTestReport.renderCompare($("gx-compare"), { grabberTest: r, device: r.device, lang: I18N.lang });
   } catch (e) {
     $("gx-report").textContent = "Ergebnis nicht lesbar: " + e.message;
   }
