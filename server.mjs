@@ -287,9 +287,28 @@ function phoneCount() {
   return n;
 }
 
+// --- notices of the bell: every change of state the control page should tell about (kind, level
+// "info" | "critical", params for the text, target = id of the card to jump to). The pages write the
+// texts, so they follow the language of each page. Kept in notices.json, the newest last.
+const NOTICES_FILE = path.join(DATA_DIR, "notices.json");
+const NOTICE_MAX = 60;
+let notices = [];
+try { notices = JSON.parse(fs.readFileSync(NOTICES_FILE, "utf8")).filter((n) => n && Number.isInteger(n.id)).slice(-NOTICE_MAX); } catch {}
+let health = { hyperionUp: true, noSignal: false, grabberStuck: false }; // shown in the bar of the control page
+
+function addNotice(kind, level, params = {}, target = "") {
+  const id = (notices.at(-1)?.id ?? 0) + 1;
+  notices.push({ id, ts: Date.now(), kind, level, params, target });
+  notices = notices.slice(-NOTICE_MAX);
+  try { fs.writeFileSync(NOTICES_FILE, JSON.stringify(notices)); } catch {}
+  broadcast();
+}
+
+const hasTv = () => [...clients.values()].includes("tv");
+
 // the state with everything the pages show besides it
 function publicState() {
-  return { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil };
+  return { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
 }
 
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
@@ -726,6 +745,63 @@ async function refreshGrabberCorrection() {
 grabberCorrection = readGrabberCorrection();
 setInterval(refreshGrabberCorrection, 4000);
 
+// --- watched states for the bell and the bar: TV page, Hyperion, grabber frames, "No Signal" ---
+let tvReported = null;
+let tvTimer = null;
+function checkTv() {
+  clearTimeout(tvTimer);
+  const now = hasTv();
+  if (tvReported === null) { tvReported = now; return; } // the first state is no change
+  if (now === tvReported) return;
+  const apply = () => {
+    if (hasTv() === tvReported) return;
+    tvReported = hasTv();
+    addNotice(tvReported ? "tvConnected" : "tvLost", tvReported ? "info" : "critical");
+  };
+  if (now) apply(); else tvTimer = setTimeout(apply, 5000); // a reloading TV page is no loss
+}
+
+const HEALTH_POLL_MS = 4000;
+const HYPERION_DOWN_AFTER_MS = 10_000; // a restart of Hyperion takes a few seconds and is no failure
+const STUCK_AGE_MS = 5000;
+let hyperionDownSince = 0;
+let hyperionDownReported = false;
+let stuckPolls = 0;
+let healthKnown = false;
+let wasCalibrating = false;
+
+async function pollHealth() {
+  const next = { ...health };
+  let info = null;
+  if (monitor) {
+    hyperionDownSince = 0;
+    try { info = (await monitor.call({ command: "grabbertest", nosignal: "status" })).info ?? null; } catch {}
+  } else if (!hyperionDownSince) {
+    hyperionDownSince = Date.now();
+  }
+  const down = !monitor && hyperionDownSince > 0 && Date.now() - hyperionDownSince >= HYPERION_DOWN_AFTER_MS;
+  if (down && !hyperionDownReported) { hyperionDownReported = true; addNotice("hyperionDown", "critical", {}, "card-ts"); }
+  if (!down && monitor && hyperionDownReported) { hyperionDownReported = false; addNotice("hyperionUp", "info", {}, "card-ts"); }
+  next.hyperionUp = !down;
+  if (info) {
+    const stuck = !!grabberDevice && !info.calibrating && (info.ageMs < 0 || info.ageMs > STUCK_AGE_MS);
+    stuckPolls = stuck ? stuckPolls + 1 : 0;
+    const nowStuck = stuckPolls >= 2;
+    const nowNoSignal = info.noSignal === true && !nowStuck;
+    if (healthKnown) {
+      if (nowStuck !== next.grabberStuck) addNotice(nowStuck ? "grabberStuck" : "grabberOk", nowStuck ? "critical" : "info", {}, "card-ns");
+      if (nowNoSignal !== next.noSignal) addNotice(nowNoSignal ? "noSignal" : "signalBack", nowNoSignal ? "critical" : "info", {}, "card-ns");
+      if (wasCalibrating && !info.calibrating) addNotice("nsCalibDone", "info", {}, "card-ns");
+    }
+    wasCalibrating = info.calibrating === true;
+    next.grabberStuck = nowStuck;
+    next.noSignal = nowNoSignal;
+    healthKnown = true;
+  }
+  if (JSON.stringify(next) !== JSON.stringify(health)) { health = next; broadcast(); }
+}
+setInterval(() => pollHealth().catch(() => {}), HEALTH_POLL_MS);
+
 // --- "No Signal" still image detection (card of the same name, nosignal-ui.js like the WebUI) ---
 // The setting grabberTest.noSignal for the page, without the calibration data of the slots
 function noSignalConfig() {
@@ -840,7 +916,13 @@ async function selectGrabber(name) {
 }
 
 function setRun(patch) {
+  const wasRunning = grabberRun.running;
   grabberRun = { ...grabberRun, ...patch };
+  if (wasRunning && !grabberRun.running) {
+    if (grabberRun.error) addNotice("gtError", "critical", { error: grabberRun.error }, "card-gx");
+    else if (grabberRun.aborted) addNotice("gtAborted", "critical", {}, "card-gx");
+    else addNotice("gtDone", "info", { kind: grabberRun.kind }, "card-gx");
+  }
   broadcast();
 }
 
@@ -1423,6 +1505,7 @@ function pauseTests() {
   });
   saveState();
   console.log(`No control page for ${GRACE_MS / 1000} s: paused ${keys.join(", ") || "overlays"}`);
+  addNotice("paused", "critical", { tests: keys }, keys.length ? "" : "card-ts");
   // a color of the RGB wizard stays on the LEDs without the page that alternates it
   hyperionCommand({ command: "clear", priority: RGB_WIZARD_PRIORITY }).catch(() => {});
   broadcast();
@@ -1555,10 +1638,19 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, publicState());
     if (req.method === "GET" && p === "/api/presets") return sendJson(res, 200, PRESETS);
+    if (req.method === "POST" && p === "/api/notices") {
+      const { op } = await readBody(req);
+      if (op !== "clear") throw new Error("Unbekannter Befehl");
+      notices = [];
+      try { fs.writeFileSync(NOTICES_FILE, "[]"); } catch {}
+      broadcast();
+      return sendJson(res, 200, { ok: true });
+    }
 
     if (req.method === "GET" && p === "/api/events") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
       clients.set(res, url.searchParams.get("role") === "phone" ? "phone" : "tv");
+      checkTv();
       updateGrace();
       broadcast(); // also tells the TV that a phone joined
       if (lastDebug) res.write(`event: debug\ndata: ${JSON.stringify(lastDebug)}\n\n`);
@@ -1566,6 +1658,7 @@ const server = http.createServer(async (req, res) => {
       req.on("close", () => {
         clearInterval(ping);
         clients.delete(res);
+        checkTv();
         updateGrace();
         broadcast();
       });
@@ -1747,8 +1840,11 @@ const server = http.createServer(async (req, res) => {
       const testPresets = patch.presetOp ? applyPresetOp(patch.presetOp, state.testPresets) : state.testPresets;
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
+      const guideBefore = state.posGuide;
       state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules });
       saveState();
+      if (state.posGuide?.done && !guideBefore?.done) addNotice("guideDone", "info", {}, "card-lg");
+      else if (guideBefore?.active && !guideBefore.done && !state.posGuide?.active) addNotice("guideAborted", "critical", {}, "card-lg");
       // a test that is touched again is no longer "paused"
       for (const key of ["grayTest", "depthTest", "fracTest", "posTest", "posGuide", "bars"]) if (patch[key]) delete paused[key];
       if (typeof patch.color === "string" || typeof patch.colorActive === "boolean") delete paused.color;
