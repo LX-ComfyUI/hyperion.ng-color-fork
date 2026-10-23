@@ -164,7 +164,9 @@
       mBlack: "Schwarzwert", mWhite: "Weißwert", mGain: "Spreizung Weiß − Schwarz", mDarkLost: "Dunkle Stufen wie Schwarz bis", mLightLost: "Helle Stufen wie Weiß ab",
       mTint: "Farbstich der Grautöne", mNoise: "Rauschen bei 128", mDrift: "Schwarz-Drift",
       vgSteps: "Alle Messschritte im Vergleich ({n}, {k} mit Abweichung)", vgOnlyOne: "nur in einer Messung",
-      vgChart: "Graustufen im Vergleich", vgChartHint: "Blau durchgezogen: Messung A, orange gestrichelt: Messung B. Je ein Diagramm für Rot, Grün und Blau.",
+      vgChart: "Graustufen im Vergleich", vgChartHint: "Die Graustufen beider Messungen wie im Ergebnis: Rot, Grün und Blau über dem gesendeten Wert.",
+      vgChannels: "Je Kanal übereinander: Messung A blau durchgezogen, Messung B orange gestrichelt.",
+      vgLadders: "Farbleitern im Vergleich", vgLaddersHint: "Je Farbe Messung A, Messung B und beide übereinander (A blau durchgezogen, B orange gestrichelt, nur die Hauptkanäle der Farbe).", vgOver: "übereinander",
       vgMatrix: "Korrekturmatrix", vgNoMatrix: "keine Korrektur berechenbar", vgMatrixDelta: "Größter Unterschied der Matrixwerte: {v}.",
       cmpTitle: "Ohne und mit Korrektur",
       cmpMeasured: "Ausgewählte Testfarben, mit Korrektur über Hyperion gemessen.",
@@ -299,7 +301,9 @@
       mBlack: "Black level", mWhite: "White level", mGain: "Span white − black", mDarkLost: "Dark levels like black up to", mLightLost: "Light levels like white from",
       mTint: "Tint of the grays", mNoise: "Noise at 128", mDrift: "Black drift",
       vgSteps: "All measuring steps compared ({n}, {k} deviating)", vgOnlyOne: "in one measurement only",
-      vgChart: "Gray levels compared", vgChartHint: "Blue solid: measurement A, orange dashed: measurement B. One chart each for red, green and blue.",
+      vgChart: "Gray levels compared", vgChartHint: "The gray levels of both measurements as in the result: red, green and blue over the sent value.",
+      vgChannels: "Each channel over each other: measurement A blue solid, measurement B orange dashed.",
+      vgLadders: "Color ladders compared", vgLaddersHint: "For each color measurement A, measurement B and both over each other (A blue solid, B orange dashed, the main channels of the color only).", vgOver: "over each other",
       vgMatrix: "Correction matrix", vgNoMatrix: "no correction can be computed", vgMatrixDelta: "Largest difference of the matrix values: {v}.",
       cmpTitle: "Without and with correction",
       cmpMeasured: "Selected test colors, measured with the correction through Hyperion.",
@@ -582,6 +586,11 @@
     .gtr-muted { opacity: .6; }
     .gtr-cmp-go { margin: 8px 0; }
     .gtr-cmp-charts { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .gtr-cmp-pair { grid-template-columns: repeat(auto-fill, minmax(240px, 320px)); }
+    .gtr-cmp-ladders { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px 18px; }
+    .gtr-cmp-ladder > .cap { font-size: 13px; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+    .gtr-cmp-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .gtr-cmp-three .cap { font-size: 12px; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
   `;
 
   function ensureStyle(doc) {
@@ -875,12 +884,39 @@
 
       // gray levels of both over each other
       const grayRows = (an, result) => [{ level: 0, got: an.black }, ...validSteps(result).filter((s) => s.group === "gray").map((s) => ({ level: s.sent[0], got: s.got }))].sort((p, q) => p.level - q.level);
-      // one small chart per channel: A in the blue and B in the orange of the selection above
+      // gray levels: both measurements as in the single result, then each channel over each other;
+      // A is the blue and B the orange of the selection above
       const rowsA = grayRows(a, A.result);
       const rowsB = grayRows(b, B.result);
-      out += `<h4>${t.vgChart}</h4><p class="gtr-hint">${t.vgChartHint}</p><div class="gtr-grid gtr-cmp-charts">`
-        + [0, 1, 2].map((i) => `<div><div class="cap"><span class="gtr-sw" style="background:${CHANNEL_COLORS[i]}"></span>${channelName(i)}</div>${chartSvg(rowsA, [i], [], { width: 220, height: 150, small: true, color: "#2b93ef", overlayColor: "#d08a00", overlayChannels: [i] }, rowsB)}</div>`).join("")
+      const tag = (k) => `<span class="gtr-cmp-tag ${k.toLowerCase()}">${k}</span>`;
+      const OVER = { color: "#2b93ef", overlayColor: "#d08a00" };
+      out += `<h4>${t.vgChart}</h4><p class="gtr-hint">${t.vgChartHint}</p>`
+        + `<div class="gtr-grid gtr-cmp-pair"><div><div class="cap">${tag("A")}</div>${chartSvg(rowsA, [0, 1, 2], [], { width: 260, height: 180 })}</div>`
+        + `<div><div class="cap">${tag("B")}</div>${chartSvg(rowsB, [0, 1, 2], [], { width: 260, height: 180 })}</div></div>`
+        + `<p class="gtr-hint">${t.vgChannels}</p><div class="gtr-grid gtr-cmp-charts">`
+        + [0, 1, 2].map((i) => `<div><div class="cap"><span class="gtr-sw" style="background:${CHANNEL_COLORS[i]}"></span>${channelName(i)}</div>${chartSvg(rowsA, [i], [], { width: 220, height: 150, small: true, ...OVER, overlayChannels: [i] }, rowsB)}</div>`).join("")
         + `</div>`;
+
+      // color ladders: per color A, B and both over each other (the main channels of the color)
+      const ladderPairs = Object.keys(la).filter((n) => lb[n]);
+      if (ladderPairs.length) {
+        out += `<h4>${t.vgLadders}</h4><p class="gtr-hint">${t.vgLaddersHint}</p><div class="gtr-cmp-ladders">`;
+        for (const name of ladderPairs) {
+          const x = la[name];
+          const y = lb[name];
+          const rA = [{ level: 0, got: a.black }, ...x.rows];
+          const rB = [{ level: 0, got: b.black }, ...y.rows];
+          const solid = [0, 1, 2].filter((i) => x.mask[i]);
+          const dashed = [0, 1, 2].filter((i) => !x.mask[i]);
+          const small = { width: 170, height: 120, small: true };
+          out += `<div class="gtr-cmp-ladder"><div class="cap"><span class="gtr-sw" style="background:${hex(x.mask.map((m) => m * 255))}"></span>${t[name]}</div><div class="gtr-cmp-three">`
+            + `<div><div class="cap">${tag("A")}</div>${chartSvg(rA, solid, dashed, small)}</div>`
+            + `<div><div class="cap">${tag("B")}</div>${chartSvg(rB, solid, dashed, small)}</div>`
+            + `<div><div class="cap">${t.vgOver}</div>${chartSvg(rA, solid, [], { ...small, ...OVER, overlayChannels: solid }, rB)}</div>`
+            + `</div></div>`;
+        }
+        out += `</div>`;
+      }
 
       // every step
       let body = "";
