@@ -166,6 +166,7 @@
       vgSteps: "Alle Messschritte im Vergleich ({n}, {k} mit Abweichung)", vgOnlyOne: "nur in einer Messung",
       vgChart: "Graustufen im Vergleich", vgChartHint: "Die Graustufen beider Messungen wie im Ergebnis: Rot, Grün und Blau über dem gesendeten Wert.",
       vgFindings: "Befund",
+      vgCustom: "Eigene Farben im Vergleich", vgCustomNone: "In keiner der beiden Messungen sind eigene Farben gespeichert. Sie werden mit dem Platz gespeichert, wenn sie vor dem Speichern gemessen wurden (ältere Plätze haben keine).", vgCustomOne: "Nur eine der beiden Messungen hat eigene Farben gespeichert, ein Vergleich ist nicht möglich.",
       vgChannels: "Je Kanal übereinander: Messung A blau durchgezogen, Messung B orange gestrichelt.",
       vgLadders: "Farbleitern im Vergleich", vgLaddersHint: "Je Farbe Messung A, Messung B und beide übereinander (A blau durchgezogen, B orange gestrichelt, nur die Hauptkanäle der Farbe).", vgOver: "übereinander",
       vgMatrix: "Korrekturmatrix", vgNoMatrix: "keine Korrektur berechenbar", vgMatrixDelta: "Größter Unterschied der Matrixwerte: {v}.",
@@ -304,6 +305,7 @@
       vgSteps: "All measuring steps compared ({n}, {k} deviating)", vgOnlyOne: "in one measurement only",
       vgChart: "Gray levels compared", vgChartHint: "The gray levels of both measurements as in the result: red, green and blue over the sent value.",
       vgFindings: "Findings",
+      vgCustom: "Own colors compared", vgCustomNone: "Neither measurement has own colors saved. They are saved with the slot when they were measured before saving (older slots have none).", vgCustomOne: "Only one of the two measurements has own colors saved, so they cannot be compared.",
       vgChannels: "Each channel over each other: measurement A blue solid, measurement B orange dashed.",
       vgLadders: "Color ladders compared", vgLaddersHint: "For each color measurement A, measurement B and both over each other (A blue solid, B orange dashed, the main channels of the color only).", vgOver: "over each other",
       vgMatrix: "Correction matrix", vgNoMatrix: "no correction can be computed", vgMatrixDelta: "Largest difference of the matrix values: {v}.",
@@ -935,6 +937,30 @@
       }
       out += `<details class="gtr-cmp-steps"><summary>${fill(t.vgSteps, { n: pairs.length, k: off.length })}</summary><div class="gtr-scroll"><table class="gtr-table gtr-cmp-table"><thead><tr><th>${t.colColor}</th><th>${t.colSent}</th><th>A</th><th>B</th><th>${t.vgDelta}</th></tr></thead><tbody>${body}</tbody></table></div></details>`;
 
+      // own colors: only where both measurements have them (they are saved with a memory slot)
+      const cA = A.custom ? validSteps(A.custom) : [];
+      const cB = B.custom ? validSteps(B.custom) : [];
+      out += `<h4>${t.vgCustom}</h4>`;
+      if (cA.length && cB.length) {
+        const byColor = new Map(cB.map((s) => [String(s.name ?? s.sent.join(",")).toLowerCase(), s]));
+        const used = new Set();
+        let body2 = "";
+        for (const sa of cA) {
+          const k = String(sa.name ?? sa.sent.join(",")).toLowerCase();
+          const sb = byColor.get(k);
+          used.add(k);
+          const d = sb ? sb.got.map((v, i) => v - sa.got[i]) : null;
+          body2 += `<tr><td><span class="gtr-sw" style="background:${hex(sa.sent)}"></span> ${esc(stepName(sa))}</td><td>${sa.sent.join(" / ")}</td><td>${rgbText(sa.got)}</td><td>${sb ? rgbText(sb.got) : `<span class="gtr-muted">${t.vgOnlyOne}</span>`}</td><td class="${d ? levelClass(Math.max(...d.map(Math.abs)), THRESHOLD, 8) : ""}">${d ? d.map((x) => sign(x)).join(" / ") : "–"}</td></tr>`;
+        }
+        for (const sb of cB) {
+          const k = String(sb.name ?? sb.sent.join(",")).toLowerCase();
+          if (!used.has(k)) body2 += `<tr><td><span class="gtr-sw" style="background:${hex(sb.sent)}"></span> ${esc(stepName(sb))}</td><td>${sb.sent.join(" / ")}</td><td><span class="gtr-muted">${t.vgOnlyOne}</span></td><td>${rgbText(sb.got)}</td><td>–</td></tr>`;
+        }
+        out += `<div class="gtr-scroll"><table class="gtr-table gtr-cmp-table"><thead><tr><th>${t.colColor}</th><th>${t.colSent}</th><th>A</th><th>B</th><th>${t.vgDelta}</th></tr></thead><tbody>${body2}</tbody></table></div>`;
+      } else {
+        out += `<p class="gtr-hint">${cA.length || cB.length ? t.vgCustomOne : t.vgCustomNone}</p>`;
+      }
+
       // correction matrices
       const matrixOf = (side) => {
         if (validMatrix(side.matrix)) return side.matrix;
@@ -1056,6 +1082,9 @@
       if (fit.error) fail("errFit");
       const old = g.slots[i];
       g.slots[i] = { name: old?.name ?? "", matrix: fit.matrix, basedOn: basic.date, before: fit.before, after: fit.after, savedAt: now, basic };
+      // the own colors measured with this grabber belong to the slot, so measurements can be compared later
+      const custom = next.custom;
+      if (custom && Array.isArray(custom.steps) && custom.steps.length && sameGrabber(testDevice(custom), device)) g.slots[i].custom = custom;
       g.active = i;
       g.enable = true;
     };
@@ -1154,16 +1183,20 @@
       (entry.slots ?? []).forEach((slot, i) => {
         if (!slot) return;
         const result = slot.basic && validSteps(slot.basic).length ? slot.basic : null;
-        out.push({ device, key: String(i), slot: i, name: slot.name ?? "", date: (result && result.date) || slot.basedOn || slot.savedAt || null, result, matrix: validMatrix(slot.matrix) ? slot.matrix : null });
+        out.push({ device, key: String(i), slot: i, name: slot.name ?? "", date: (result && result.date) || slot.basedOn || slot.savedAt || null, result, matrix: validMatrix(slot.matrix) ? slot.matrix : null, custom: slot.custom && validSteps(slot.custom).length ? slot.custom : null });
       });
     }
-    if (g.basic && validSteps(g.basic).length) out.push({ device: testDevice(g.basic) || "?", key: "last", slot: -1, name: "", date: g.basic.date, result: g.basic, matrix: null });
+    if (g.basic && validSteps(g.basic).length) {
+      const device = testDevice(g.basic) || "?";
+      const custom = g.custom && validSteps(g.custom).length && sameGrabber(testDevice(g.custom), device) ? g.custom : null;
+      out.push({ device, key: "last", slot: -1, name: "", date: g.basic.date, result: g.basic, matrix: null, custom });
+    }
     return out;
   }
 
   // The section "compare measurements": pick grabber and measurement for A and B, then "Compare".
   // The selection stays in the element when the page redraws.
-  function renderCompare(element, { grabberTest, device = null, lang = "de", heading = true } = {}) {
+  function renderCompare(element, { grabberTest, device = null, lang = "de", heading = true, buttonClass = "" } = {}) {
     if (!element) return;
     ensureStyle(element.ownerDocument);
     const r = make(lang);
@@ -1202,7 +1235,7 @@
         + `<label>${esc(t.vgPick)}</label><select data-cmp-pick="${tag}">${inDevice.map((x) => `<option value="${esc(idOf(x))}"${idOf(x) === id ? " selected" : ""}${x.result ? "" : " disabled"}>${esc(slotLabel(x))}</option>`).join("")}</select></div>`;
     };
     html += `<div class="gtr-cmp-sel">${side("A", t.vgA, st.a)}${side("B", t.vgB, st.b)}</div>`
-      + `<div class="gtr-cmp-go"><button type="button" data-cmp-go>${esc(t.vgGo)}</button></div><div data-cmp-result></div>`;
+      + `<div class="gtr-cmp-go"><button type="button"${buttonClass ? ` class="${buttonClass}"` : ""} data-cmp-go>${esc(t.vgGo)}</button></div><div data-cmp-result></div>`;
     element.innerHTML = `<div class="gtr">${html}</div>`;
     const show = () => {
       const box = element.querySelector("[data-cmp-result]");
@@ -1211,7 +1244,7 @@
       if (!st.shown || !A || !B) { box.innerHTML = ""; return; }
       if (idOf(A) === idOf(B)) { box.innerHTML = `<p>${esc(t.vgSame)}</p>`; return; }
       const label = (x) => `${displayName(x.device)} · ${slotLabel(x).split(" · ")[0]}`;
-      box.innerHTML = r.compareHtml({ label: label(A), result: A.result, matrix: A.matrix }, { label: label(B), result: B.result, matrix: B.matrix });
+      box.innerHTML = r.compareHtml({ label: label(A), result: A.result, matrix: A.matrix, custom: A.custom }, { label: label(B), result: B.result, matrix: B.matrix, custom: B.custom });
     };
     // a grabber change selects its first usable measurement; any change clears the result
     for (const tag of ["A", "B"]) {
@@ -1220,7 +1253,7 @@
         const first = sources.find((x) => x.device === ev.target.value && x.result);
         if (first) st[key] = idOf(first);
         st.shown = false;
-        renderCompare(element, { grabberTest, device, lang, heading });
+        renderCompare(element, { grabberTest, device, lang, heading, buttonClass });
       });
       element.querySelector(`[data-cmp-pick="${tag}"]`).addEventListener("change", (ev) => {
         st[key] = ev.target.value;
