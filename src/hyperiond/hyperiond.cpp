@@ -82,6 +82,7 @@
 
 // InstanceManager Hyperion
 #include <hyperion/HyperionIManager.h>
+#include <hyperion/Hyperion.h>
  
 #if defined(ENABLE_EFFECTENGINE)
 // Init Python
@@ -998,11 +999,58 @@ void HyperionDaemon::updateScreenGrabbers(const QJsonDocument& grabberConfig)
 	}
 }
 
+void HyperionDaemon::switchVideoGrabber(const QStringList& paths, const QStringList& names)
+{
+	// a grabber is known when the grabber test or the "No Signal" detection saved a calibration for it
+	const QJsonObject test = getSetting(settings::GRABBERTEST).object();
+	const auto hasSlots = [](const QJsonObject& grabbers, const QString& name) {
+		for (const QJsonValue& slot : grabbers.value(name).toObject().value("slots").toArray())
+		{
+			if (slot.isObject())
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+	const QJsonObject colorGrabbers = test.value("grabbers").toObject();
+	const QJsonObject noSignalGrabbers = test.value("noSignal").toObject().value("grabbers").toObject();
+
+	for (int i = 0; i < names.size() && i < paths.size(); ++i)
+	{
+		if (!hasSlots(colorGrabbers, names[i]) && !hasSlots(noSignalGrabbers, names[i]))
+		{
+			continue;
+		}
+		QJsonObject config = getSetting(settings::V4L2).object();
+		const QString configured = config.value("available_devices").toString();
+		if (configured == names[i])
+		{
+			return;
+		}
+		Info(_log, "Video grabber '%s' is gone, switching to the known grabber '%s' (%s)", QSTRING_CSTR(configured), QSTRING_CSTR(names[i]), QSTRING_CSTR(paths[i]));
+		config["device"] = paths[i];
+		config["available_devices"] = names[i];
+		if (auto mgr = _instanceManagerWeak.toStrongRef())
+		{
+			// like the JSON API: global settings (no instance) are saved by a settings manager of their own,
+			// whose change signal goes to the instance manager and from there to the daemon
+			SettingsManager globalSettings(NO_INSTANCE_ID);
+			connect(&globalSettings, &SettingsManager::settingsChanged, mgr.get(), &HyperionIManager::settingsChanged);
+			globalSettings.saveSettings(QJsonObject{ { "grabberV4L2", config } });
+		}
+		return;
+	}
+}
+
 void HyperionDaemon::updateVideoGrabbers(const QJsonObject& /*grabberConfig*/)
 {
 #if defined(ENABLE_V4L2) || defined(ENABLE_MF)
-	_videoGrabber.reset(new VideoWrapper());
+	auto* videoWrapper = new VideoWrapper();
+	_videoGrabber.reset(videoWrapper);
 	_videoGrabber->handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
+	// queued: the wrapper is replaced while the settings change, which must not happen inside its own timer slot
+	connect(videoWrapper, &VideoWrapper::deviceSwitchRequested, this, &HyperionDaemon::switchVideoGrabber, Qt::QueuedConnection);
 
 #if defined(ENABLE_MF)
 	Debug(_log, "Media Foundation grabber created");

@@ -152,6 +152,9 @@ public:
 public slots:
 	void stopServices();
 
+	/// fork: the configured video grabber is gone; switch to a plugged-in grabber that is known (has calibrations)
+	void switchVideoGrabber(const QStringList& paths, const QStringList& names);
+
 signals:
 	///////////////////////////////////////
 	/// FROM HYPERIONDAEMON TO HYPERION ///

@@ -10,7 +10,47 @@
 
 namespace {
 	constexpr int RECONNECT_INTERVAL_MS = 2000;
+	constexpr int SWITCH_AFTER_MS = 5000; // a missing device this long: look for a known grabber
 }
+
+#if defined(ENABLE_V4L2)
+namespace {
+	// a V4L2 node whose sysfs name matches the device name the grabber is configured with
+	bool videoNodeWithNameExists(const QString& deviceName)
+	{
+		for (const QString& node : QDir("/sys/class/video4linux").entryList({ "video*" }, QDir::Dirs | QDir::System))
+		{
+			QFile file("/sys/class/video4linux/" + node + "/name");
+			if (file.open(QIODevice::ReadOnly) && QString::fromUtf8(file.readAll()).trimmed() == deviceName)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// the capture nodes (index 0, not the metadata node of the same USB device) with another name
+	void otherCaptureNodes(const QString& deviceName, QStringList& paths, QStringList& names)
+	{
+		for (const QString& node : QDir("/sys/class/video4linux").entryList({ "video*" }, QDir::Dirs | QDir::System))
+		{
+			QFile nameFile("/sys/class/video4linux/" + node + "/name");
+			QFile indexFile("/sys/class/video4linux/" + node + "/index");
+			if (!nameFile.open(QIODevice::ReadOnly) || !indexFile.open(QIODevice::ReadOnly))
+			{
+				continue;
+			}
+			const QString name = QString::fromUtf8(nameFile.readAll()).trimmed();
+			if (name != deviceName && QString::fromUtf8(indexFile.readAll()).trimmed() == "0")
+			{
+				paths << "/dev/" + node;
+				names << name;
+			}
+		}
+	}
+}
+#endif
+
 
 VideoWrapper::VideoWrapper()
 #if defined(ENABLE_V4L2)
@@ -118,7 +158,19 @@ void VideoWrapper::handleSettingsUpdate(settings::type type, const QJsonDocument
 			updateTimer(getGrabber()->getUpdateInterval());
 
 			// Reload the Grabber if any settings have been changed that require it
-			_grabber.reload(getV4lGrabberState());
+			const bool started = _grabber.reload(getV4lGrabberState());
+#if defined(ENABLE_V4L2)
+			// fork: a device that is not there yet (plugged in later, or another grabber is plugged in)
+			// is waited for like one that vanished
+			if (!started && !_reconnectTimer.isActive() && !videoNodeWithNameExists(_deviceName))
+			{
+				Info(_log, "Video device '%s' is not there, waiting for it, retrying every %d s", QSTRING_CSTR(_deviceName), RECONNECT_INTERVAL_MS / 1000);
+				_missingTimer.restart();
+				_reconnectTimer.start();
+			}
+#else
+			Q_UNUSED(started)
+#endif
 		}
 		else
 			stop();
@@ -139,27 +191,10 @@ void VideoWrapper::readError(const char* err)
 	if (getV4lGrabberState())
 	{
 		Info(_log, "Waiting for the video device to reappear, retrying every %d s", RECONNECT_INTERVAL_MS / 1000);
+		_missingTimer.restart();
 		_reconnectTimer.start();
 	}
 }
-
-#if defined(ENABLE_V4L2)
-namespace {
-	// a V4L2 node whose sysfs name matches the device name the grabber is configured with
-	bool videoNodeWithNameExists(const QString& deviceName)
-	{
-		for (const QString& node : QDir("/sys/class/video4linux").entryList({ "video*" }, QDir::Dirs | QDir::System))
-		{
-			QFile file("/sys/class/video4linux/" + node + "/name");
-			if (file.open(QIODevice::ReadOnly) && QString::fromUtf8(file.readAll()).trimmed() == deviceName)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-}
-#endif
 
 void VideoWrapper::tryReconnect()
 {
@@ -172,8 +207,9 @@ void VideoWrapper::tryReconnect()
 
 #if defined(ENABLE_V4L2)
 	// the device may also come back under another node number; the grabber then finds it by name
-	if (!QFileInfo::exists(_devicePath) && !videoNodeWithNameExists(_deviceName))
+	if (!videoNodeWithNameExists(_deviceName))
 	{
+		offerOtherDevices();
 		return;
 	}
 
@@ -186,6 +222,23 @@ void VideoWrapper::tryReconnect()
 		Info(_log, "Video device is back, grabber restarted");
 		_reconnectTimer.stop();
 	}
+}
+
+void VideoWrapper::offerOtherDevices()
+{
+#if defined(ENABLE_V4L2)
+	if (!_missingTimer.isValid() || _missingTimer.elapsed() < SWITCH_AFTER_MS)
+	{
+		return;
+	}
+	QStringList paths;
+	QStringList names;
+	otherCaptureNodes(_deviceName, paths, names);
+	if (!names.isEmpty())
+	{
+		emit deviceSwitchRequested(paths, names);
+	}
+#endif
 }
 
 void VideoWrapper::action()
