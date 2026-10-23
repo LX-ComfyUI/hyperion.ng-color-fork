@@ -165,6 +165,7 @@
       mTint: "Farbstich der Grautöne", mNoise: "Rauschen bei 128", mDrift: "Schwarz-Drift",
       vgSteps: "Alle Messschritte im Vergleich ({n}, {k} mit Abweichung)", vgOnlyOne: "nur in einer Messung",
       vgChart: "Graustufen im Vergleich", vgChartHint: "Die Graustufen beider Messungen wie im Ergebnis: Rot, Grün und Blau über dem gesendeten Wert.",
+      vgFindings: "Befund",
       vgChannels: "Je Kanal übereinander: Messung A blau durchgezogen, Messung B orange gestrichelt.",
       vgLadders: "Farbleitern im Vergleich", vgLaddersHint: "Je Farbe Messung A, Messung B und beide übereinander (A blau durchgezogen, B orange gestrichelt, nur die Hauptkanäle der Farbe).", vgOver: "übereinander",
       vgMatrix: "Korrekturmatrix", vgNoMatrix: "keine Korrektur berechenbar", vgMatrixDelta: "Größter Unterschied der Matrixwerte: {v}.",
@@ -302,6 +303,7 @@
       mTint: "Tint of the grays", mNoise: "Noise at 128", mDrift: "Black drift",
       vgSteps: "All measuring steps compared ({n}, {k} deviating)", vgOnlyOne: "in one measurement only",
       vgChart: "Gray levels compared", vgChartHint: "The gray levels of both measurements as in the result: red, green and blue over the sent value.",
+      vgFindings: "Findings",
       vgChannels: "Each channel over each other: measurement A blue solid, measurement B orange dashed.",
       vgLadders: "Color ladders compared", vgLaddersHint: "For each color measurement A, measurement B and both over each other (A blue solid, B orange dashed, the main channels of the color only).", vgOver: "over each other",
       vgMatrix: "Correction matrix", vgNoMatrix: "no correction can be computed", vgMatrixDelta: "Largest difference of the matrix values: {v}.",
@@ -849,6 +851,11 @@
         const top = both.reduce((m, p) => (p.max > m.max ? p : m), both[0]);
         out += `<p class="gtr-cmp-summary">${off.length ? fill(t.vgSummary, { k: off.length, n: both.length, x: THRESHOLD, name: esc(stepLevelName(top.a)), v: num(top.max, 0) }) : fill(t.vgSummaryNone, { n: both.length, x: THRESHOLD })}</p>`;
       }
+
+      // the findings of both measurements side by side, as in the single result
+      const findingList = (an) => `<ul class="gtr-findings">${an.findings.map((f) => `<li class="gtr-${f.level}"><span class="ico">${f.level === "ok" ? "✓" : f.level === "warn" ? "!" : "✕"}</span><span>${findingText(f)}</span></li>`).join("")}</ul>`;
+      out += `<h4>${t.vgFindings}</h4><div class="gtr-cmp-head">`
+        + [["A", a], ["B", b]].map(([k, an]) => `<div class="gtr-cmp-side"><span class="gtr-cmp-tag ${k.toLowerCase()}">${k}</span>${findingList(an)}</div>`).join("") + `</div>`;
 
       // key figures
       const rgbRow = (label, va, vb, warn, bad) => {
