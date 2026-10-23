@@ -467,12 +467,13 @@
   .tb-pop .tb-note-actions button, .tb-note-actions a { display: inline-block; width: auto; padding: 5px 12px; border-radius: 4px; border: 1px solid var(--btn-line); background: var(--btn); color: var(--btn-text); font-size: 13px; text-decoration: none; }
   .tb-notes .tb-none { padding: 10px 16px; font-size: 13px; color: var(--muted); }
   @media (max-width: 767.98px) { .tb-pop { position: fixed; top: calc(var(--bar-h) + 4px); right: 8px; } }
-  /* TV page status in the bar */
-  .tb-tv { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: 13px; color: var(--muted); white-space: nowrap; }
-  .tb-tv i { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
-  .tb-tv.on i { background: #2fa36b; }
-  .tb-tv.on { color: var(--text); }
-  @media (max-width: 767.98px) { .tb-tv span { display: none; } }
+  /* Hyperion health dot (green / yellow / red) and the TV page status field in the bar */
+  .tb-hy { flex: none; width: 12px; height: 12px; border-radius: 50%; background: #2fa36b; box-shadow: 0 0 0 3px color-mix(in srgb, #2fa36b 25%, transparent); }
+  .tb-hy.warn { background: #f2c200; box-shadow: 0 0 0 3px color-mix(in srgb, #f2c200 28%, transparent); }
+  .tb-hy.bad { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 25%, transparent); }
+  .tb-tv { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 10px; border: 1px solid var(--btn-line); border-radius: 4px;
+           font-size: 13px; color: var(--text); white-space: nowrap; background: color-mix(in srgb, var(--text) 4%, transparent); }
+  @media (max-width: 767.98px) { .tb-tv .txt { display: none; } .tb-tv { padding: 4px 6px; } }
   /* grabber without signal: yellow "!" at the TV preview icon, red without a grabber */
   .tb-icon.alert::after { content: "!"; position: absolute; top: 5px; right: 6px; width: 14px; height: 14px; border-radius: 50%; background: #f2c200; color: #222;
                           font: 700 11px/14px system-ui, sans-serif; text-align: center; pointer-events: none; }
@@ -553,8 +554,8 @@
       <img class="tb-logo logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion">
       <img class="tb-logo logo-dark" src="/static/hyperion-logo.png" alt="Hyperion">
     </a>
-    <span class="tb-title">TV-Testseite</span>
-    <span class="tb-tv" id="tb-tv" data-i18n-skip><i></i><span></span></span>
+    <span class="tb-hy" id="tb-hy" data-i18n-skip></span>
+    <span class="tb-tv" id="tb-tv" data-i18n-skip><span class="txt"></span><span class="ico"></span></span>
   </div>
   <div class="tb-icons">
     <div class="tb-drop">
@@ -4296,14 +4297,26 @@ function markNotesSeen() {
 }
 
 // the TV page status in the bar and the "no signal" frame on the TV preview icon
+let serverDown = false; // the event stream to the test server is broken
 function renderBar() {
   const on = state?.tvConnected === true;
   const pill = $("tb-tv");
-  pill.classList.toggle("on", on);
-  pill.lastElementChild.textContent = on ? tr("TV-Seite verbunden") : tr("TV-Seite nicht verbunden");
-  pill.dataset.tip = pill.lastElementChild.textContent;
-  const prev = $("tb-preview");
+  pill.querySelector(".txt").textContent = on ? tr("TV-Testseite verbunden") : tr("TV-Testseite nicht verbunden");
+  pill.querySelector(".ico").textContent = on ? "✅" : "❌";
+  pill.dataset.tip = pill.querySelector(".txt").textContent;
+  // Hyperion health: red = not reachable / no grabber, yellow = running with a limit, green = fine
   const h = state?.health ?? {};
+  const pausedAny = Object.keys(state?.paused ?? {}).length > 0;
+  const bad = serverDown ? tr("Testserver nicht erreichbar")
+    : h.hyperionUp === false ? tr("Hyperion nicht erreichbar")
+    : (h.noGrabber || h.grabberStuck) ? tr("Kein Grabber erkannt") : "";
+  const warn = h.noSignal ? tr("Kein Signal am Grabber") : pausedAny ? tr("Tests pausiert") : "";
+  const hy = $("tb-hy");
+  hy.classList.toggle("bad", !!bad);
+  hy.classList.toggle("warn", !bad && !!warn);
+  hy.dataset.tip = bad || warn || tr("Hyperion läuft");
+  hy.setAttribute("aria-label", hy.dataset.tip);
+  const prev = $("tb-preview");
   const red = h.noGrabber === true || h.grabberStuck === true;
   const alert = red || h.noSignal === true;
   prev.classList.toggle("alert", alert);
@@ -4622,7 +4635,9 @@ async function init() {
   setPanel(store.get("tvtest-preview") === "1");
   // role=phone tells the TV to hide its QR code
   const es = new EventSource("/api/events?role=phone");
+  es.onerror = () => { serverDown = true; renderBar(); };
   es.onmessage = (ev) => {
+    serverDown = false;
     const msg = JSON.parse(ev.data);
     if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
     if (pendingSends > 0) return; // do not overwrite a slider that is being sent

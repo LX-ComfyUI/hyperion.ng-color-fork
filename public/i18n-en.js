@@ -2,6 +2,10 @@
 // normalized text of a text node or attribute, or the innerHTML of an element that holds only text and
 // inline markup, or the template of an I18N.tr() call with its {placeholders}.
 window.I18N_EN = {
+ "TV-Testseite verbunden": "TV test page connected",
+ "TV-Testseite nicht verbunden": "TV test page not connected",
+ "Hyperion läuft": "Hyperion is running",
+ "Testserver nicht erreichbar": "Test server not reachable",
  "Bekannter Grabber: {name}": "Known grabber: {name}",
  "Er läuft mit seinen zuletzt benutzten Einstellungen. No-Signal-Erkennung: {ns}. Farbkorrektur: {color}.": "It runs with the settings it used last. No-signal detection: {ns}. Color correction: {color}.",
  "Platz aktiv": "active slot",
