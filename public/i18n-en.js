@@ -2,6 +2,7 @@
 // normalized text of a text node or attribute, or the innerHTML of an element that holds only text and
 // inline markup, or the template of an I18N.tr() call with its {placeholders}.
 window.I18N_EN = {
+ "Messungen vergleichen": "Compare measurements",
  "Testseite": "Test page",
  "Raspberry Pi": "Raspberry Pi",
  "TV-Seite neu laden": "Reload TV page",

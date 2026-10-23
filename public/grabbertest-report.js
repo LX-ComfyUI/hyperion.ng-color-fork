@@ -1111,7 +1111,7 @@
 
   // The section "compare measurements": pick grabber and measurement for A and B, then "Compare".
   // The selection stays in the element when the page redraws.
-  function renderCompare(element, { grabberTest, device = null, lang = "de" } = {}) {
+  function renderCompare(element, { grabberTest, device = null, lang = "de", heading = true } = {}) {
     if (!element) return;
     ensureStyle(element.ownerDocument);
     const r = make(lang);
@@ -1124,7 +1124,7 @@
     const slotLabel = (x) => (x.key === "last"
       ? r.fill(t.vgLast, { date: x.date ? r.dateText(x.date) : "–" })
       : r.fill(t.vgSlot, { n: x.slot + 1, name: x.name ? ` (${x.name})` : "", date: x.date ? r.dateText(x.date) : "–" }) + (x.result ? "" : ` · ${t.vgNoMeasure}`));
-    let html = `<h4>${esc(t.vgTitle)}</h4><p class="gtr-hint">${esc(t.vgIntro)}</p>`;
+    let html = (heading ? `<h4>${esc(t.vgTitle)}</h4>` : "") + `<p class="gtr-hint">${esc(t.vgIntro)}</p>`;
     if (usable.length < 2) {
       element.innerHTML = `<div class="gtr">${html}<p>${esc(t.vgNeedTwo)}</p></div>`;
       return;
@@ -1168,7 +1168,7 @@
         const first = sources.find((x) => x.device === ev.target.value && x.result);
         if (first) st[key] = idOf(first);
         st.shown = false;
-        renderCompare(element, { grabberTest, device, lang });
+        renderCompare(element, { grabberTest, device, lang, heading });
       });
       element.querySelector(`[data-cmp-pick="${tag}"]`).addEventListener("change", (ev) => {
         st[key] = ev.target.value;

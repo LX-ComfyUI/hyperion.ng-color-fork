@@ -503,7 +503,7 @@
   details.gx-fold { margin: 18px 0 0; }
   details.gx-fold > summary { list-style: none; cursor: pointer; font-size: 14px; font-weight: 700; padding: 4px 0; }
   details.gx-fold > summary::-webkit-details-marker { display: none; }
-  details.gx-fold > summary::before { content: "▾ "; color: var(--accent); }
+  details.gx-fold > summary::before { content: "▾ "; color: var(--text); }
   details.gx-fold:not([open]) > summary::before { content: "▸ "; }
   .gx-save { margin: 12px 0; padding: 14px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--inset); }
   .gx-save b { color: var(--accent); }
@@ -673,6 +673,9 @@
     <details class="gx-fold" id="gx-result" open>
       <summary>Ergebnis</summary>
       <div id="gx-report">Lade Ergebnis …</div>
+    </details>
+    <details class="gx-fold" id="gx-compare-fold" open>
+      <summary>Messungen vergleichen</summary>
       <div id="gx-compare" data-i18n-skip></div>
     </details>
   </section>
@@ -4376,7 +4379,7 @@ async function loadGrabberReport() {
     });
     renderCorrectionSwitch();
     renderGxSave(r);
-    GrabberTestReport.renderCompare($("gx-compare"), { grabberTest: r, device: r.device, lang: I18N.lang });
+    GrabberTestReport.renderCompare($("gx-compare"), { grabberTest: r, device: r.device, lang: I18N.lang, heading: false });
   } catch (e) {
     $("gx-report").textContent = "Ergebnis nicht lesbar: " + e.message;
   }
@@ -4439,11 +4442,11 @@ async function grabberTestAction(kind) {
 }
 $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
 // the result folds like "All measured values"; the choice is kept in this browser
-(function () {
-  const box = $("gx-result");
-  try { if (localStorage.getItem("tvtest-gx-result") === "0") box.open = false; } catch {}
-  box.addEventListener("toggle", () => { try { localStorage.setItem("tvtest-gx-result", box.open ? "1" : "0"); } catch {} });
-})();
+for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", "tvtest-gx-compare"]]) {
+  const box = $(id);
+  try { if (localStorage.getItem(key) === "0") box.open = false; } catch {}
+  box.addEventListener("toggle", () => { try { localStorage.setItem(key, box.open ? "1" : "0"); } catch {} });
+}
 
 // ---------- power menu (Hyperion system commands, like the WebUI) ----------
 
