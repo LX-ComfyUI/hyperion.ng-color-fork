@@ -576,7 +576,7 @@
     .gtr-cmp-tag.b { background: #d08a00; }
     .gtr-cmp-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 16px; margin: 12px 0 4px; }
     .gtr-cmp-summary { margin: 6px 0; font-weight: 600; }
-    .gtr-cmp-table td:nth-child(n+2) { text-align: right; }
+    .gtr-cmp-table td:nth-child(n+2), .gtr-cmp-table th:nth-child(n+2) { text-align: right; }
     .gtr-cwarn { color: #d08a00; font-weight: 600; }
     .gtr-cbad { color: #d93025; font-weight: 600; }
     .gtr-muted { opacity: .6; }
