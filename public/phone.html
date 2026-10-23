@@ -1509,6 +1509,7 @@
 <script src="/static/graycurve-graph.js"></script>
 <script src="/static/grabbertest-report.js"></script>
 <script src="/static/nosignal-ui.js"></script>
+<script src="/static/notice-text.js"></script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, ledSegments, posTestIndices, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 import { guidePoints, runSummary, MAX_ANSWER } from "/static/layoutfix.js";
@@ -4178,42 +4179,9 @@ let noteMode = NOTE_MODES.includes(noteStore.get("tvtest-notes-mode", "all")) ? 
 let noteSeen = null; // highest notice id this browser has seen
 let noteToasted = null; // highest notice id that was announced (or skipped)
 
-function noteTestName(key) {
-  const card = $(PAUSED_CARDS[key] ?? "");
-  const name = card?.querySelector("h2 .ttl, h2, h3")?.textContent?.trim();
-  return name || key;
-}
-// title, text and card to jump to of a notice (the server only sends kind and values)
+// title, text and card to jump to of a notice: the texts are shared with the test server (notice-text.js)
 function noteInfo(n) {
-  const p = n.params ?? {};
-  switch (n.kind) {
-    case "tvConnected": return { title: tr("TV-Seite verbunden"), text: tr("Die TV-Seite ist wieder mit der Testseite verbunden.") };
-    case "tvLost": return { title: tr("TV-Seite getrennt"), text: tr("Die TV-Seite ist nicht mehr verbunden. Tests und Kalibrierungen brauchen sie, bitte auf dem TV-Gerät neu öffnen.") };
-    case "gtDone": return { title: tr("Grabber-Kalibrierung fertig"), text: tr("Noch in einen Speicherplatz speichern, sonst wirkt die Korrektur nicht.") };
-    case "gtAborted": return { title: tr("Grabber-Kalibrierung abgebrochen"), text: tr("Es wurde nichts gespeichert.") };
-    case "gtError": return { title: tr("Grabber-Kalibrierung fehlgeschlagen"), text: p.error ?? "" };
-    case "guideDone": return { title: tr("LED-Position-Kalibrierung fertig"), text: tr("Die Messung ist abgeschlossen.") };
-    case "guideAborted": return { title: tr("LED-Position-Kalibrierung abgebrochen"), text: tr("Zum Weitermachen neu starten.") };
-    case "nsCalibDone": return { title: tr("No-Signal-Kalibrierung fertig"), text: tr("Das Ergebnis steht in der Karte.") };
-    case "paused": {
-      const keys = Array.isArray(p.tests) ? p.tests : [];
-      return { title: tr("Tests pausiert"), text: keys.length ? keys.map(noteTestName).join(", ") + ". " + tr("Keine Testseite war mehr verbunden. Zum Weitermachen neu starten.") : tr("Keine Testseite war mehr verbunden."),
-               target: n.target || PAUSED_CARDS[keys[0]] || "" };
-    }
-    case "hyperionDown": return { title: tr("Hyperion nicht erreichbar"), text: tr("Die Testseite erreicht Hyperion nicht mehr. Läuft der Dienst noch?") };
-    case "hyperionUp": return { title: tr("Hyperion wieder erreichbar"), text: "" };
-    case "grabberStuck": return { title: tr("Kein Grabber erkannt"), text: tr("Der Grabber hängt oder wurde entfernt. USB-Anschluss und Kabel prüfen.") };
-    case "grabberOk": return { title: tr("Grabber liefert wieder Bilder"), text: "" };
-    case "noSignal": return { title: tr("Kein Signal"), text: "" };
-    case "grabberKnown": return { title: tr("Bekannter Grabber: {name}", { name: p.name }),
-      text: tr("Er läuft mit seinen zuletzt benutzten Einstellungen. No-Signal-Erkennung: {ns}. Farbkorrektur: {color}.", { ns: p.nsSlot || tr("Platz aktiv"), color: p.colorSlot || tr("Platz aktiv") }) };
-    case "grabberNew": {
-      const what = (p.missing ?? []).map((m) => m === "ns" ? tr("No-Signal-Erkennung") : tr("Farbkorrektur")).join(" + ");
-      return { title: tr("Neuer Grabber: {name}", { name: p.name }), text: tr("Für diesen Grabber fehlt die Kalibrierung: {what}. Das bleibt für ihn aus, bis er kalibriert ist.", { what }) };
-    }
-    case "signalBack": return { title: tr("Signal wieder da"), text: "" };
-    default: return { title: n.kind, text: "" };
-  }
+  return NoticeText.info(n, I18N.lang === "en" ? "en" : "de");
 }
 const noteShown = (n) => noteMode === "all" || (noteMode === "critical" && n.level === "critical");
 function noteTime(ts) {
@@ -4305,7 +4273,7 @@ function renderBell() {
     el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } });
   });
   menu.querySelector("[data-clear]")?.addEventListener("click", async () => {
-    try { await fetch("/api/notices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "clear" }) }); } catch {}
+    try { await fetch("/api/notices", { method: "POST", headers: { "Content-Type": "application/json", "X-Tvtest": "1" }, body: JSON.stringify({ op: "clear" }) }); } catch {}
   });
 }
 function closeBell() {
@@ -4490,7 +4458,7 @@ $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
     const action = b.dataset.page;
     if (ASK_PAGE[action] && !confirm(I18N.t(ASK_PAGE[action]))) return;
     try {
-      const res = await fetch("/api/testpage/system", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+      const res = await fetch("/api/testpage/system", { method: "POST", headers: { "Content-Type": "application/json", "X-Tvtest": "1" }, body: JSON.stringify({ action }) });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
     } catch (e) {
@@ -4736,7 +4704,11 @@ async function init() {
     if (state?.posTest?.active && state.posTest.mode !== "run") renderPosLive();
   });
 }
-init();
+init().then(() => {
+  // a link from the Hyperion WebUI bell (/phone#card-gx): open that card and scroll to it
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (id && /^card-[\w-]+$/.test(id)) setTimeout(() => jumpToCard(id), 300);
+});
 </script>
 </body>
 </html>

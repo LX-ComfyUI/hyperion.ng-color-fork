@@ -602,8 +602,10 @@ connectMonitor();
 
 require("./public/grabbertest-report.js");
 require("./public/nosignal-ui.js");
+require("./public/notice-text.js");
 const NoSignal = globalThis.NoSignalUI;
 const Report = globalThis.GrabberTestReport;
+const NoticeText = globalThis.NoticeText;
 
 const GT_POLL_MS = 100;
 const GT_MIN_WAIT_MS = 600;     // TV page, HDMI and grabber need a moment for the new color
@@ -1647,9 +1649,37 @@ async function restoreBackup(name) {
   }
 }
 
+// The Hyperion WebUI (same host, other port) shows the notices and the page commands of the power menu.
+// Only a page of the same host may do that; POST needs the header X-Tvtest, which a browser only sends
+// after the preflight below, so a page from elsewhere cannot trigger the commands.
+function corsHeaders(req) {
+  const origin = req.headers.origin;
+  if (!origin) return null;
+  try {
+    const host = (req.headers.host ?? "").replace(/:\d+$/, "");
+    if (new URL(origin).hostname !== host) return null;
+  } catch { return null; }
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Tvtest",
+    "Access-Control-Max-Age": "600",
+    Vary: "Origin",
+  };
+}
+function needTvtestHeader(req) {
+  if (req.headers["x-tvtest"] !== "1") throw new Error("Header X-Tvtest fehlt");
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
+  const cors = corsHeaders(req);
+  if (cors) for (const [k, v] of Object.entries(cors)) res.setHeader(k, v);
+  if (req.method === "OPTIONS") {
+    res.writeHead(cors ? 204 : 403);
+    return res.end();
+  }
 
   try {
     if (req.method === "GET" && (p === "/" || p === "/phone")) return serveStatic(res, "phone.html");
@@ -1658,7 +1688,14 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, publicState());
     if (req.method === "GET" && p === "/api/presets") return sendJson(res, 200, PRESETS);
+    // what the bell of the Hyperion WebUI shows
+    if (req.method === "GET" && p === "/api/notices") {
+      const lang = url.searchParams.get("lang") === "en" ? "en" : "de";
+      const list = notices.map((n) => ({ id: n.id, ts: n.ts, level: n.level, kind: n.kind, ...NoticeText.info(n, lang) }));
+      return sendJson(res, 200, { notices: list, health, tvConnected: hasTv() });
+    }
     if (req.method === "POST" && p === "/api/notices") {
+      needTvtestHeader(req);
       const { op } = await readBody(req);
       if (op !== "clear") throw new Error("Unbekannter Befehl");
       notices = [];
@@ -1715,6 +1752,7 @@ const server = http.createServer(async (req, res) => {
     // test page and Pi commands of the power menu: reload the TV page, restart this server (systemd starts
     // it again after a failure exit), reboot or power off the Pi
     if (req.method === "POST" && p === "/api/testpage/system") {
+      needTvtestHeader(req);
       const { action } = await readBody(req);
       if (!["reloadTv", "restartServer", "rebootPi", "poweroffPi"].includes(action)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
       sendJson(res, 200, { ok: true });
