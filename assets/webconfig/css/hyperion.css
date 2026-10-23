@@ -1509,3 +1509,64 @@ nav.navbar-static-top .navbar-toggle {
 #nt_menu .nt-actions .btn {
   padding: 4px 10px;
 }
+
+/* Fork-Erweiterung: Glocke mit Meldungen des Testservers (content_index.js): Auswahl neben dem Titel,
+   scrollbare Liste, kritische Einträge mit rotem Balken, Eintrag öffnet die Testseite */
+#nt_menu .nt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#nt_menu .nt-modes .btn {
+  margin-left: 2px;
+}
+#nt_menu > li.nt-listrow {
+  padding: 0;
+}
+#nt_menu .nt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(60vh, 440px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#nt_menu .nt-list > li {
+  padding: 10px 15px;
+  border-bottom: 1px solid rgba(128, 128, 128, .25);
+  border-left: 4px solid transparent;
+  white-space: normal;
+}
+#nt_menu .nt-list > li:last-child {
+  border-bottom: none;
+}
+#nt_menu .nt-item[data-nt-open] {
+  cursor: pointer;
+}
+#nt_menu .nt-item[data-nt-open]:hover {
+  background: rgba(128, 128, 128, .12);
+}
+#nt_menu .nt-item.nt-crit {
+  border-left-color: #d93025;
+}
+#nt_menu .nt-item.nt-fresh b::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #2b93ef;
+}
+#nt_menu .nt-item time {
+  float: right;
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: .7;
+}
+#nt_menu .nt-foot {
+  padding: 8px 15px;
+  text-align: right;
+  border-top: 1px solid rgba(128, 128, 128, .25);
+}

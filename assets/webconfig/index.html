@@ -231,6 +231,7 @@
             <i class="fa fa-power-off fa-fw"></i>  <i class="fa fa-caret-down"></i>
           </a>
           <ul class="dropdown-menu dropdown-alerts">
+            <li class="dropdown-header" data-i18n="power_group_hyperion">Hyperion</li>
             <li id="btn_systemSuspend">
               <a>
                 <div>
@@ -247,7 +248,6 @@
                 </div>
               </a>
             </li>
-            <li class="divider"></li>
             <li id="btn_systemRestart">
               <a>
                 <div>
@@ -261,6 +261,43 @@
                 <div>
                   <i class="fa fa-plug fa-fw"></i>
                   <span data-i18n="InfoDialog_systemUsbResetRestart_title"></span>
+                </div>
+              </a>
+            </li>
+            <!-- Fork-Erweiterung: Befehle der TV-Testseite, nur sichtbar, wenn ihr Testserver erreichbar ist (content_index.js) -->
+            <li class="divider tp-only" style="display:none"></li>
+            <li class="dropdown-header tp-only" style="display:none" data-i18n="power_group_testpage">Test page</li>
+            <li id="btn_tpReloadTv" class="tp-only" style="display:none">
+              <a>
+                <div>
+                  <i class="fa fa-television fa-fw"></i>
+                  <span data-i18n="power_tp_reloadTv"></span>
+                </div>
+              </a>
+            </li>
+            <li id="btn_tpRestartServer" class="tp-only" style="display:none">
+              <a>
+                <div>
+                  <i class="fa fa-refresh fa-fw"></i>
+                  <span data-i18n="power_tp_restartServer"></span>
+                </div>
+              </a>
+            </li>
+            <li class="divider tp-only" style="display:none"></li>
+            <li class="dropdown-header tp-only" style="display:none" data-i18n="power_group_pi">Raspberry Pi</li>
+            <li id="btn_piReboot" class="tp-only" style="display:none">
+              <a>
+                <div>
+                  <i class="fa fa-repeat fa-fw"></i>
+                  <span data-i18n="power_pi_reboot"></span>
+                </div>
+              </a>
+            </li>
+            <li id="btn_piPoweroff" class="tp-only" style="display:none">
+              <a>
+                <div>
+                  <i class="fa fa-power-off fa-fw"></i>
+                  <span data-i18n="power_pi_poweroff"></span>
                 </div>
               </a>
             </li>

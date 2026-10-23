@@ -501,42 +501,89 @@ function SwitchToMenuItem(target, item) {
   }
 };
 
-// Fork-Erweiterung: Glocke mit Meldungen. Zurzeit eine Art: Ein Grabber liefert Bilder, für den es
-// noch keinen Eintrag mit Farbkalibrierungen gibt (globale Einstellung grabberTest.grabbers, siehe
-// js/grabbertest-report.js). Welcher Grabber gerade Bilder liefert, fragt der Fork-Befehl
-// "grabbertest" mit "peek" ab, ohne eine Messung zu starten. "Gesehen" legt den Eintrag ohne
-// Kalibrierung an; die TV-Testseite zeigt dieselbe Meldung.
+// Fork-Erweiterung: Glocke mit Meldungen. Zwei Quellen:
+// 1. Ein Grabber liefert Bilder, für den es noch keinen Eintrag mit Farbkalibrierungen gibt (globale
+//    Einstellung grabberTest.grabbers, siehe js/grabbertest-report.js). Welcher Grabber gerade Bilder
+//    liefert, fragt der Fork-Befehl "grabbertest" mit "peek" ab, ohne eine Messung zu starten.
+//    "Gesehen" legt den Eintrag ohne Kalibrierung an.
+// 2. Die Meldungen des Testservers der TV-Testseite (Statuswechsel, Tests und Kalibrierungen fertig,
+//    pausiert oder abgebrochen, Grabber, No Signal). Der Testserver läuft auf demselben Rechner, Port
+//    8093; ohne ihn bleibt die Glocke bei Quelle 1. Dieselben Meldungen zeigt die TV-Testseite.
+// Die Auswahl rechts neben dem Titel (alle / nur kritische / stumm) gilt je Browser.
 (function () {
   const POLL_MS = 15000;
+  const TV_POLL_MS = 5000;
+  const MODES = ['all', 'critical', 'off'];
+  const MODE_ICONS = { all: 'fa-bell', critical: 'fa-exclamation-triangle', off: 'fa-bell-slash' };
   let device = null;
   let started = false;
+  let tvNotes = [];
+  let tvUp = false;
+  let toasted = null; // höchste Nummer, die schon angekündigt (oder übersprungen) wurde
 
   const lang = () => (storedLang === 'de' ? 'de' : 'en');
+  const esc = (s) => $('<div>').text(s).html();
+  const store = {
+    get(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; } },
+    set(key, value) { try { localStorage.setItem(key, String(value)); } catch (e) { /* ohne Speicher gilt der Standard */ } },
+  };
+  let mode = store.get('hy-notes-mode', 'all');
+  if (!MODES.includes(mode)) mode = 'all';
+  let seen = Number(store.get('hy-notes-seen', '-1'));
+
+  // Adresse des Testservers; über https (Mixed Content) ist er nicht erreichbar
+  const tvBase = () => (location.protocol === 'http:' ? 'http://' + location.hostname + ':8093' : null);
+  const shown = (n) => mode === 'all' || (mode === 'critical' && n.level === 'critical');
+  const lastId = () => (tvNotes.length ? tvNotes[tvNotes.length - 1].id : 0);
+
+  function timeText(ts) {
+    const d = new Date(ts);
+    const locale = lang() === 'de' ? 'de-DE' : 'en-GB';
+    return d.toDateString() === new Date().toDateString()
+      ? d.toLocaleTimeString(locale)
+      : d.toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
 
   function render() {
     if (typeof GrabberTestReport === 'undefined') return;
     const grabberTest = (globalThis.serverConfig && globalThis.serverConfig.grabberTest) || {};
-    const notes = GrabberTestReport.notifications(grabberTest, device, lang());
+    const notes = mode === 'off' ? [] : GrabberTestReport.notifications(grabberTest, device, lang());
     const t = GrabberTestReport.make(lang()).t;
     const count = document.getElementById('nt_count');
     const menu = document.getElementById('nt_menu');
     if (!count || !menu) return;
-    count.textContent = String(notes.length);
-    count.style.display = notes.length ? '' : 'none';
-    const key = JSON.stringify(notes) + lang();
+    const fresh = notes.length + tvNotes.filter((n) => n.id > seen && shown(n)).length;
+    count.textContent = String(fresh);
+    count.style.display = fresh ? '' : 'none';
+    const key = JSON.stringify([notes, tvNotes, mode, seen, tvUp]) + lang();
     if (menu.dataset.key === key) return;
     menu.dataset.key = key;
-    const esc = (s) => $('<div>').text(s).html();
-    let html = '<li class="nt-head">' + esc(t.ntTitle) + '</li>';
-    if (!notes.length) {
-      html += '<li class="nt-none">' + esc(t.ntNone) + '</li>';
-    }
+    const list = menu.querySelector('.nt-list');
+    const scrollTop = list ? list.scrollTop : 0;
+    const modeButtons = MODES.map((m) => '<button type="button" class="btn btn-default btn-xs' + (m === mode ? ' active' : '')
+      + '" data-nt-mode="' + m + '" title="' + esc($.i18n('nt_mode_' + m)) + '"><i class="fa ' + MODE_ICONS[m] + '"></i></button>').join('');
+    let html = '<li class="nt-head"><span>' + esc(t.ntTitle) + '</span><span class="nt-modes">' + modeButtons + '</span></li><li class="nt-listrow"><ul class="nt-list">';
     for (const n of notes) {
       html += '<li class="nt-item"><b>' + esc(n.title) + '</b><p>' + esc(n.text) + '</p><div class="nt-actions">'
         + '<a class="btn btn-default btn-sm" href="#conf_grabber" data-nt-goto>' + esc($.i18n('edt_conf_grabbertest_heading_title')) + '</a>'
         + '<button type="button" class="btn btn-primary btn-sm" data-nt-seen>' + esc(t.ntSeen) + '</button></div></li>';
     }
+    const base = tvBase();
+    for (const n of tvNotes.slice().reverse()) {
+      html += '<li class="nt-item' + (n.level === 'critical' ? ' nt-crit' : '') + (n.id > seen ? ' nt-fresh' : '') + '"'
+        + (n.target && base ? ' data-nt-open="' + esc(base + '/phone#' + n.target) + '"' : '') + '>'
+        + '<time>' + esc(timeText(n.ts)) + '</time><b>' + esc(n.title) + '</b>' + (n.text ? '<p>' + esc(n.text) + '</p>' : '') + '</li>';
+    }
+    if (!notes.length && !tvNotes.length) {
+      html += '<li class="nt-none">' + esc(t.ntNone) + '</li>';
+    }
+    html += '</ul></li>';
+    if (tvNotes.length) {
+      html += '<li class="nt-foot"><button type="button" class="btn btn-default btn-sm" data-nt-clear>' + esc($.i18n('nt_clear')) + '</button></li>';
+    }
     menu.innerHTML = html;
+    const newList = menu.querySelector('.nt-list');
+    if (newList) newList.scrollTop = scrollTop;
     $(menu).find('[data-nt-seen]').on('click', function () {
       const current = globalThis.serverConfig.grabberTest || {};
       requestWriteConfig({ grabberTest: GrabberTestReport.applyOp(current, device, 'acknowledge', {}, lang()) });
@@ -548,6 +595,64 @@ function SwitchToMenuItem(target, item) {
       const item = document.getElementById('MenuItemGrabber');
       if (item) item.click();
     });
+    $(menu).find('[data-nt-mode]').on('click', function () {
+      mode = this.getAttribute('data-nt-mode');
+      store.set('hy-notes-mode', mode);
+      render();
+    });
+    // ein Eintrag öffnet die zugehörige Karte der TV-Testseite
+    $(menu).find('[data-nt-open]').on('click', function () {
+      window.open(this.getAttribute('data-nt-open'), 'hyperion-tvtest');
+    });
+    $(menu).find('[data-nt-clear]').on('click', async function () {
+      try {
+        await fetch(base + '/api/notices', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tvtest': '1' }, body: JSON.stringify({ op: 'clear' }) });
+        fetchTv();
+      } catch (e) { /* Testserver nicht erreichbar */ }
+    });
+  }
+
+  // Bedienelemente im Menü schließen es nicht; Öffnen zählt alles als gesehen
+  $(document).on('click', '#nt_menu', function (ev) { ev.stopPropagation(); });
+  $(document).on('shown.bs.dropdown', '#btn_notifications', function () {
+    seen = lastId();
+    store.set('hy-notes-seen', seen);
+    render();
+  });
+
+  // Meldung unten rechts, wenn eine neue ankommt und die Auswahl es zulässt
+  function announce() {
+    if (toasted === null) { toasted = lastId(); return; }
+    if (lastId() < toasted) toasted = lastId(); // Liste wurde geleert
+    for (const n of tvNotes) {
+      if (n.id <= toasted) continue;
+      toasted = n.id;
+      if (shown(n) && n.kind !== 'noSignal' && n.kind !== 'signalBack') {
+        showNotification(n.level === 'critical' ? 'danger' : 'info', n.text, n.title);
+      }
+    }
+  }
+
+  async function fetchTv() {
+    const base = tvBase();
+    if (!base) return;
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 3000);
+    try {
+      const res = await fetch(base + '/api/notices?lang=' + lang(), { cache: 'no-store', signal: abort.signal });
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      tvNotes = data.notices || [];
+      tvUp = true;
+      if (seen < 0) { seen = lastId(); store.set('hy-notes-seen', seen); } // erster Besuch: ohne alte Meldungen
+      announce();
+    } catch (e) {
+      tvUp = false;
+    } finally {
+      clearTimeout(timer);
+    }
+    $('.tp-only').toggle(tvUp);
+    render();
   }
 
   async function poll() {
@@ -565,6 +670,8 @@ function SwitchToMenuItem(target, item) {
     started = true;
     poll();
     setInterval(poll, POLL_MS);
+    fetchTv();
+    setInterval(fetchTv, TV_POLL_MS);
   });
   // Änderungen der Einstellung (Testseite, Grabber-Seite, Gesehen) wirken sofort
   $(globalThis.hyperion).on('cmd-settings-update', function (event) {
