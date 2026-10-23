@@ -499,14 +499,19 @@
   .note-toast.crit { border-left-color: var(--danger); }
   .note-toast p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
   /* the basic test start and the unsaved result stand out in the accent color */
-  .gx-start button { color: var(--accent); border: 2px solid var(--accent); font-weight: 600; }
-  .gx-save { margin: 12px 0; padding: 12px 14px; border: 2px solid var(--accent); border-radius: 4px; }
+  .gx-start button { color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; background: var(--inset); font-weight: 600; }
+  details.gx-fold { margin: 18px 0 0; }
+  details.gx-fold > summary { list-style: none; cursor: pointer; font-size: 14px; font-weight: 700; padding: 4px 0; }
+  details.gx-fold > summary::-webkit-details-marker { display: none; }
+  details.gx-fold > summary::before { content: "▾ "; color: var(--accent); }
+  details.gx-fold:not([open]) > summary::before { content: "▸ "; }
+  .gx-save { margin: 12px 0; padding: 14px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--inset); }
   .gx-save b { color: var(--accent); }
   .gx-save p { margin: 6px 0; font-size: 14px; }
   .gx-save input[type=text] { width: 100%; max-width: 320px; box-sizing: border-box; margin: 4px 0 8px; }
   .gx-save .gx-save-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .gx-save .gx-save-actions button { width: auto; }
-  .tp-unsaved { margin: 6px 0; padding: 8px 10px; border: 2px solid var(--accent); border-radius: 4px; font-size: 13px; }
+  .tp-unsaved { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 8px; background: var(--inset); font-size: 13px; }
   .logo-dark { display: none; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
   :root[data-theme="dark"] .logo-dark { display: block; }
@@ -665,8 +670,10 @@
     <label class="check gx-corr"><input type="checkbox" id="gx-corr"><span>Grabber-Farbkorrektur aktiv<small id="gx-corr-note"></small></span></label>
     <div id="gx-slots" data-i18n-skip></div>
 
-    <h3>Ergebnis</h3>
-    <div id="gx-report">Lade Ergebnis …</div>
+    <details class="gx-fold" id="gx-result" open>
+      <summary>Ergebnis</summary>
+      <div id="gx-report">Lade Ergebnis …</div>
+    </details>
   </section>
 
   <!-- ===== "No Signal" still image detection, the same section as in the WebUI (nosignal-ui.js) ===== -->
@@ -4429,6 +4436,12 @@ async function grabberTestAction(kind) {
   }
 }
 $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
+// the result folds like "All measured values"; the choice is kept in this browser
+(function () {
+  const box = $("gx-result");
+  try { if (localStorage.getItem("tvtest-gx-result") === "0") box.open = false; } catch {}
+  box.addEventListener("toggle", () => { try { localStorage.setItem("tvtest-gx-result", box.open ? "1" : "0"); } catch {} });
+})();
 
 // ---------- power menu (Hyperion system commands, like the WebUI) ----------
 
