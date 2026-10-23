@@ -31,7 +31,7 @@ window.I18N_EN = {
  "Die Testseite erreicht Hyperion nicht mehr. Läuft der Dienst noch?": "The test page can no longer reach Hyperion. Is the service still running?",
  "Hyperion wieder erreichbar": "Hyperion reachable again",
  "Grabber hängt": "Grabber stuck",
- "Der Grabber liefert keine Bilder mehr. USB-Aufnahme und Kabel prüfen.": "The grabber no longer delivers frames. Check the USB capture and the cable.",
+ "Der Grabber hängt oder wurde entfernt. USB-Anschluss und Kabel prüfen.": "The grabber is stuck or was removed. Check the USB port and the cable.",
  "Grabber liefert wieder Bilder": "Grabber delivers frames again",
  "Kein Signal": "No signal",
  "Der Grabber zeigt ein No-Signal-Bild. Die LEDs folgen der eingestellten Reaktion.": "The grabber shows a no-signal picture. The LEDs follow the chosen reaction.",

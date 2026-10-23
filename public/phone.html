@@ -4178,7 +4178,7 @@ function noteInfo(n) {
     }
     case "hyperionDown": return { title: tr("Hyperion nicht erreichbar"), text: tr("Die Testseite erreicht Hyperion nicht mehr. Läuft der Dienst noch?") };
     case "hyperionUp": return { title: tr("Hyperion wieder erreichbar"), text: "" };
-    case "grabberStuck": return { title: tr("Grabber hängt"), text: tr("Der Grabber liefert keine Bilder mehr. USB-Aufnahme und Kabel prüfen.") };
+    case "grabberStuck": return { title: tr("Kein Grabber erkannt"), text: tr("Der Grabber hängt oder wurde entfernt. USB-Anschluss und Kabel prüfen.") };
     case "grabberOk": return { title: tr("Grabber liefert wieder Bilder"), text: "" };
     case "noSignal": return { title: tr("Kein Signal"), text: "" };
     case "grabberKnown": return { title: tr("Bekannter Grabber: {name}", { name: p.name }),
