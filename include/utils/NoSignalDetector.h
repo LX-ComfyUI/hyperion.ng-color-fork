@@ -9,7 +9,7 @@
 // count as "no signal".
 //
 // Settings live in the global setting grabberTest:
-//   noSignal: { enable, action: "release" | "black", delay (s), tolerance (0-255),
+//   noSignal: { enable, action: "black" (default) | "release", delay (s), tolerance (0-255),
 //               match (%), grabbers: { "<device name>": { active, slots: [ slot | null, ... ] } } }
 //   slot:     { name, savedAt, cols, rows, ref: base64 RGB per cell, unstable: base64 0/1 per cell }
 // The frames of a device use the active slot of that device, so a grabber change switches the

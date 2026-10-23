@@ -668,7 +668,7 @@
   "edt_conf_v4l2_nosignalEnable_title": "Detection enabled",
   "edt_conf_v4l2_nosignalEnable_expl": "Switches the detection on for all grabbers. For a grabber without a calibration it rests. The grabber picture shows continuously how well the current picture matches the calibrated one, also while the detection is off. That way it can be tried out safely.",
   "edt_conf_v4l2_nosignalAction_title": "Reaction to \"no signal\"",
-  "edt_conf_v4l2_nosignalAction_expl": "\"Release the source\": the USB capture delivers no more pictures, after one second the next source takes over. If \"Background Effect/Color\" is switched on, it runs, otherwise the LEDs go off (they get black, the LED device stays on). The former signal detection behaved the same way. \"LEDs black\": the USB capture stays the active source and sends black, \"Background Effect/Color\" stays off as well.",
+  "edt_conf_v4l2_nosignalAction_expl": "\"LEDs off\" (default): the USB capture stays the active source and sends black, \"Background Effect/Color\" stays off as well. \"Background Effect/Color, if set\": the USB capture delivers no more pictures, after one second the next source takes over. If \"Background Effect/Color\" is switched on, it runs, otherwise the LEDs go off (they get black, the LED device stays on). The former signal detection behaved the same way.",
   "edt_conf_v4l2_nosignalDelay_title": "Delay",
   "edt_conf_v4l2_nosignalDelay_expl": "This many seconds the no-signal picture has to show without a break before Hyperion reacts. As soon as a normal picture comes back, the signal is back.",
   "edt_conf_v4l2_nosignalTolerance_title": "Tolerance",

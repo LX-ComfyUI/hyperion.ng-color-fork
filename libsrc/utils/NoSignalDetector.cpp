@@ -32,15 +32,22 @@ constexpr int MIN_CALIBRATION_FRAMES = 5;
 
 enum class Action { Release, Black };
 
-struct Config
+// the reaction and the thresholds, saved per slot (a slot without them follows the global values)
+struct Settings
 {
-	bool enable = false;
-	Action action = Action::Release;
+	Action action = Action::Black;
 	qint64 delayMs = 3000;
 	int tolerance = 24;
 	double match = 0.95;
-	// device name -> reference of its active slot
+};
+
+struct Config
+{
+	bool enable = false;
+	Settings defaults;
+	// device name -> reference and settings of its active slot
 	QHash<QString, NoSignalDetector::Reference> references;
+	QHash<QString, Settings> settings;
 	QHash<QString, QString> slotNames;
 };
 
@@ -82,6 +89,28 @@ State state;
 QSharedPointer<Logger> log()
 {
 	return Logger::getInstance("V4L2");
+}
+
+Settings readSettings(const QJsonObject& source, const Settings& fallback)
+{
+	Settings result = fallback;
+	if (source.contains("action"))
+	{
+		result.action = source["action"].toString() == "release" ? Action::Release : Action::Black;
+	}
+	if (source.contains("delay"))
+	{
+		result.delayMs = qint64(std::lround(std::clamp(source["delay"].toDouble(3.0), 0.5, 120.0) * 1000.0));
+	}
+	if (source.contains("tolerance"))
+	{
+		result.tolerance = std::clamp(source["tolerance"].toInt(24), 4, 100);
+	}
+	if (source.contains("match"))
+	{
+		result.match = std::clamp(source["match"].toDouble(95.0), 50.0, 100.0) / 100.0;
+	}
+	return result;
 }
 
 QString actionName(Action a)
@@ -283,11 +312,7 @@ void NoSignalDetector::configure(const QJsonObject& grabberTest)
 	const QJsonObject ns = grabberTest["noSignal"].toObject();
 	Config next;
 	next.enable = ns["enable"].toBool(false);
-	const QString action = ns["action"].toString("release");
-	next.action = action == "black" ? Action::Black : Action::Release;
-	next.delayMs = qint64(std::lround(std::clamp(ns["delay"].toDouble(3.0), 0.5, 120.0) * 1000.0));
-	next.tolerance = std::clamp(ns["tolerance"].toInt(24), 4, 100);
-	next.match = std::clamp(ns["match"].toDouble(95.0), 50.0, 100.0) / 100.0;
+	next.defaults = readSettings(ns, Settings());
 
 	const QJsonObject grabbers = ns["grabbers"].toObject();
 	for (auto it = grabbers.begin(); it != grabbers.end(); ++it)
@@ -312,6 +337,7 @@ void NoSignalDetector::configure(const QJsonObject& grabberTest)
 		}
 		next.references.insert(it.key(), std::move(reference));
 		next.slotNames.insert(it.key(), slot["name"].toString());
+		next.settings.insert(it.key(), readSettings(slot["settings"].toObject(), next.defaults));
 	}
 
 	const QMutexLocker locker(&mutex);
@@ -378,8 +404,9 @@ NoSignalDetector::Verdict NoSignalDetector::check(const Image<ColorRgb>& image, 
 		return Verdict::Pass;
 	}
 
-	state.last = compare(grid, ref.value(), config.tolerance);
-	const bool match = state.last.all >= config.match && state.last.features >= config.match;
+	const Settings settings = config.settings.value(device, config.defaults);
+	state.last = compare(grid, ref.value(), settings.tolerance);
+	const bool match = state.last.all >= settings.match && state.last.features >= settings.match;
 	if (match)
 	{
 		state.misses = 0;
@@ -387,7 +414,7 @@ NoSignalDetector::Verdict NoSignalDetector::check(const Image<ColorRgb>& image, 
 		{
 			state.matchSinceMs = now;
 		}
-		if (!state.noSignal && now - state.matchSinceMs >= config.delayMs)
+		if (!state.noSignal && now - state.matchSinceMs >= settings.delayMs)
 		{
 			state.noSignal = true;
 			state.changedMs = now;
@@ -411,7 +438,7 @@ NoSignalDetector::Verdict NoSignalDetector::check(const Image<ColorRgb>& image, 
 	{
 		return Verdict::Pass;
 	}
-	return config.action == Action::Release ? Verdict::Drop : config.action == Action::Black ? Verdict::Black : Verdict::Pass;
+	return settings.action == Action::Release ? Verdict::Drop : settings.action == Action::Black ? Verdict::Black : Verdict::Pass;
 }
 
 QJsonObject NoSignalDetector::status(bool withImage)
@@ -425,7 +452,7 @@ QJsonObject NoSignalDetector::status(bool withImage)
 
 	QJsonObject result;
 	result["enable"] = config.enable;
-	result["action"] = actionName(config.action);
+	result["action"] = actionName(config.settings.value(state.device, config.defaults).action);
 	result["device"] = state.device;
 	result["ageMs"] = state.lastFrameMs > 0 ? double(now - state.lastFrameMs) : -1.0;
 	result["calibrated"] = state.calibrated;

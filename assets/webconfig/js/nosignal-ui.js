@@ -4,6 +4,8 @@
 //
 // Settings: global setting grabberTest, key noSignal (see include/utils/NoSignalDetector.h):
 //   { enable, action, delay, tolerance, match, grabbers: { "<device>": { active, slots: [slot | null] } } }
+// enable is global; action, delay, tolerance and match are saved per slot (slot.settings), the global
+// values are the fallback of a slot without them and the template of a new slot.
 //
 //   NoSignalUI.applyOp(grabberTest, device, op, args, lang)   new grabberTest; ops: options, save, use, rename, clear, forget
 //   NoSignalUI.render(element, { lang, getConfig, change, command, buttonClass, primaryClass, inputClass, heading })
@@ -17,7 +19,7 @@
 
   const SLOT_COUNT = 3;
   const CELLS = 64 * 36;
-  const DEFAULTS = { enable: false, action: "release", delay: 3, tolerance: 24, match: 95 };
+  const DEFAULTS = { enable: false, action: "black", delay: 3, tolerance: 24, match: 95 };
   const ACTIONS = ["release", "black"];
   const POLL_MS = 1000;
   const CALIBRATION_MS = 3000;
@@ -77,12 +79,14 @@
       forget: "Entfernen",
       confirmForget: "Alle Kalibrierungen von {name} entfernen?",
       optTitle: "Einstellungen",
+      optForSlot: "Diese Einstellungen gehören zu {slot} und werden mit dem Platz gespeichert. Wechselst du den Platz, gelten seine eigenen Werte. Nur „Erkennung aktiviert“ gilt für alle Plätze.",
+      optNoSlot: "Noch kein Platz gewählt. Diese Werte bekommt der nächste gespeicherte Platz.",
       enable: "Erkennung aktiviert",
       enableHint: "Gilt für alle Grabber. Ohne Kalibrierung für den angeschlossenen Grabber ruht die Erkennung. Auch ausgeschaltet zeigt das Grabber-Bild oben, ob das No-Signal-Bild erkannt würde, so lässt sie sich gefahrlos ausprobieren.",
       action: "Reaktion bei „kein Signal“",
-      actionRelease: "Quelle freigeben (empfohlen)",
-      actionBlack: "LEDs schwarz",
-      actionHint: "Quelle freigeben: LEDs aus oder „Hintergrund Effekt/Farbe“, falls eingeschaltet. So hat sich auch die frühere Signalerkennung verhalten. LEDs schwarz: auch „Hintergrund Effekt/Farbe“ bleibt aus.",
+      actionRelease: "Hintergrund Effekt/Farbe, falls eingestellt",
+      actionBlack: "LEDs aus (Standard)",
+      actionHint: "LEDs aus: Die LEDs bekommen Schwarz, auch „Hintergrund Effekt/Farbe“ bleibt aus. Hintergrund Effekt/Farbe: Die USB-Aufnahme wird als Quelle freigegeben, es läuft „Hintergrund Effekt/Farbe“, falls eingeschaltet, sonst sind die LEDs aus. So hat sich auch die frühere Signalerkennung verhalten.",
       delay: "Wartezeit (Sekunden)",
       delayHint: "So lange muss das No-Signal-Bild ununterbrochen zu sehen sein, bevor Hyperion reagiert. Kommt wieder ein normales Bild, ist das Signal sofort zurück.",
       tolerance: "Toleranz (0–100)",
@@ -147,12 +151,14 @@
       forget: "Remove",
       confirmForget: "Remove all calibrations of {name}?",
       optTitle: "Settings",
+      optForSlot: "These settings belong to {slot} and are saved with the slot. When you switch the slot, its own values apply. Only \"Detection enabled\" applies to all slots.",
+      optNoSlot: "No slot chosen yet. The next slot you save gets these values.",
       enable: "Detection enabled",
       enableHint: "Applies to all grabbers. Without a calibration for the connected grabber the detection rests. Even while it is off, the grabber picture above shows whether the no-signal picture would be detected, so it can be tried out safely.",
       action: "Reaction to \"no signal\"",
-      actionRelease: "Release the source (recommended)",
-      actionBlack: "LEDs black",
-      actionHint: "Release the source: LEDs off, or \"Background Effect/Color\" if it is switched on. The former signal detection behaved the same way. LEDs black: \"Background Effect/Color\" stays off as well.",
+      actionRelease: "Background Effect/Color, if set",
+      actionBlack: "LEDs off (default)",
+      actionHint: "LEDs off: the LEDs get black, \"Background Effect/Color\" stays off as well. Background Effect/Color: the USB capture is released as source and \"Background Effect/Color\" runs if it is switched on, otherwise the LEDs are off. The former signal detection behaved the same way.",
       delay: "Delay (seconds)",
       delayHint: "The no-signal picture has to show this long without a break before Hyperion reacts. As soon as a normal picture comes back, the signal is back.",
       tolerance: "Tolerance (0–100)",
@@ -171,15 +177,22 @@
   // the kernel name of a V4L2 device is "<card>: <card>"; show the card once
   const displayName = (device) => { const m = /^(.*): \1$/.exec(device ?? ""); return m ? m[1] : (device ?? ""); };
 
-  function options(gt) {
-    const ns = (gt && gt.noSignal) || {};
+  function settingsOf(source) {
+    const s = source || {};
     return {
-      enable: ns.enable === true,
-      action: ACTIONS.includes(ns.action) ? ns.action : DEFAULTS.action,
-      delay: clamp(ns.delay, 0.5, 120, DEFAULTS.delay),
-      tolerance: clamp(ns.tolerance, 4, 100, DEFAULTS.tolerance),
-      match: clamp(ns.match, 50, 100, DEFAULTS.match),
+      action: ACTIONS.includes(s.action) ? s.action : DEFAULTS.action,
+      delay: clamp(s.delay, 0.5, 120, DEFAULTS.delay),
+      tolerance: clamp(s.tolerance, 4, 100, DEFAULTS.tolerance),
+      match: clamp(s.match, 50, 100, DEFAULTS.match),
     };
+  }
+
+  // the options of the chosen slot of the device (without a device or a slot: the global values)
+  function options(gt, device) {
+    const ns = (gt && gt.noSignal) || {};
+    const e = device ? entry(gt, device) : null;
+    const slot = e && e.active >= 0 ? e.slots[e.active] : null;
+    return Object.assign({ enable: ns.enable === true }, settingsOf(Object.assign({}, ns, (slot && slot.settings) || {})));
   }
 
   function entry(gt, device) {
@@ -206,8 +219,15 @@
     };
     switch (op) {
       case "options": {
-        const o = options({ noSignal: Object.assign({}, ns, args) });
+        if (args.enable !== undefined) ns.enable = args.enable === true;
+        // the rest belongs to the chosen slot of the device and is the template of the next new slot
+        const o = settingsOf(Object.assign({}, options(next, device), args));
         Object.assign(ns, o);
+        const e = device ? entry(next, device) : null;
+        if (e && e.active >= 0) {
+          ns.grabbers[device] = e;
+          e.slots[e.active].settings = o;
+        }
         break;
       }
       case "save": {
@@ -215,9 +235,11 @@
         if (!r || !r.ref || !r.unstable) throw new Error(t.errResult);
         const g = own();
         const i = slotIndex();
+        // a new calibration brings the settings along: those of the slot it replaces, else the current ones
+        const settings = settingsOf((g.slots[i] && g.slots[i].settings) || options(next, device));
         g.slots[i] = {
           name: String(args.name ?? "").trim().slice(0, 60), savedAt: r.savedAt || now, cols: r.cols, rows: r.rows,
-          ref: r.ref, unstable: r.unstable, featureCells: r.featureCells, unstableCells: r.unstableCells,
+          ref: r.ref, unstable: r.unstable, featureCells: r.featureCells, unstableCells: r.unstableCells, settings,
         };
         g.active = i;
         break;
@@ -352,7 +374,7 @@
       const el = $("status");
       el.className = "nsd-status";
       if (!s) { el.textContent = ""; return; }
-      const o = options(opts.getConfig());
+      const o = options(opts.getConfig(), device());
       if (s.calibrating) el.textContent = t.stCalibrating;
       else if (s.ageMs < 0 || s.ageMs > 3000) { el.textContent = t.stNoFrames; el.classList.add("bad"); }
       else if (!s.calibrated) el.textContent = t.stUncalibrated;
@@ -443,8 +465,8 @@
 
     function renderConfig(force) {
       const gt = opts.getConfig() || {};
-      const o = options(gt);
       const dev = device();
+      const o = options(gt, dev);
       const e = entry(gt, dev);
       const others = Object.keys((gt.noSignal && gt.noSignal.grabbers) || {}).filter((d) => d !== dev && entry(gt, d).slots.some(Boolean));
       const light = JSON.stringify([o, dev, e.active, e.slots.map((s) => s && [s.name, s.savedAt, s.featureCells]), others, lang]);
@@ -455,11 +477,13 @@
       view.configKey = light;
 
       // settings first, the slots at the end: set up, then save
-      let html = `<h5>${esc(t.optTitle)}</h5><div class="nsd-box">`
+      const chosen = e.active >= 0 ? e.slots[e.active] : null;
+      const chosenLabel = chosen ? (chosen.name ? `${fill(t.slot, { n: e.active + 1 })} (${chosen.name})` : fill(t.slot, { n: e.active + 1 })) : "";
+      let html = `<h5>${esc(t.optTitle)}</h5><p class="nsd-muted" style="margin:0 0 6px">${esc(chosen ? fill(t.optForSlot, { slot: chosenLabel }) : t.optNoSlot)}</p><div class="nsd-box">`
         + `<label class="nsd-switch"><input type="checkbox" data-ns-opt="enable"${o.enable ? " checked" : ""}> ${esc(t.enable)}</label>`
         + `<p class="nsd-muted" style="margin:4px 0 0">${esc(t.enableHint)}</p>`
         + `<div class="nsd-opt"><label>${esc(t.action)}</label><select${field} data-ns-opt="action">`
-        + [["release", t.actionRelease], ["black", t.actionBlack]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
+        + [["black", t.actionBlack], ["release", t.actionRelease]].map(([v, l]) => `<option value="${v}"${o.action === v ? " selected" : ""}>${esc(l)}</option>`).join("")
         + `</select><p class="nsd-muted">${esc(t.actionHint)}</p></div>`
         + `<div class="nsd-opt"><label>${esc(t.delay)}</label><input type="number"${field} min="0.5" max="120" step="0.5" value="${o.delay}" data-ns-opt="delay"><p class="nsd-muted">${esc(t.delayHint)}</p></div>`
         + `<div class="nsd-opt"><label>${esc(t.tolerance)}</label><input type="number"${field} min="4" max="100" step="1" value="${o.tolerance}" data-ns-opt="tolerance"><p class="nsd-muted">${esc(t.toleranceHint)}</p></div>`
