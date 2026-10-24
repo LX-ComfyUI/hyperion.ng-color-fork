@@ -221,7 +221,6 @@
   :root.has-side #side { display: flex; flex-direction: column; gap: 14px; position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; width: var(--side-w);
                          box-sizing: border-box; padding: 20px 14px; overflow-y: auto; background: var(--card); border-right: 1px solid var(--line); }
   :root.has-side body { padding-left: var(--side-w); }
-  :root.has-side main > header { display: none; }
   #side h1 { font-size: 17px; }
   /* the four controls all as wide as the menu, a bit smaller than in the header */
   .side-tools { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
@@ -447,7 +446,6 @@
   @media (max-width: 767.98px) { .tb-logo { width: 116px; } }
   .tb-title { font-size: 17px; white-space: nowrap; color: var(--text); }
   @media (max-width: 767.98px) { .tb-title { display: none; } }
-  @media (min-width: 768px) { main > header { display: none !important; } }
   .tb-drop { position: relative; }
   .tb-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 70; min-width: 220px; padding: 6px 0; border-radius: 4px;
             background: var(--card); border: 1px solid var(--btn-line); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
@@ -569,7 +567,6 @@
       <img class="tb-logo logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion">
       <img class="tb-logo logo-dark" src="/static/hyperion-logo.png" alt="Hyperion">
     </a>
-    <span class="tb-title">Hyperion TV-Testseite</span>
     <span class="tb-hy" id="tb-hy" data-i18n-skip></span>
     <span class="tb-tv" id="tb-tv" data-i18n-skip><span class="txt"></span><span class="ico"></span></span>
   </div>
@@ -4306,9 +4303,10 @@ function renderBar() {
   const pill = $("tb-tv");
   pill.querySelector(".txt").textContent = on ? tr("TV-Testseite verbunden") : tr("TV-Testseite nicht verbunden");
   const lk = (c, extra) => '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="' + c + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + extra + '</svg>';
+  const halves = '<path d="M15 7h3a5 5 0 0 1 0 10h-3"/><path d="M9 17H6A5 5 0 0 1 6 7h3"/>';
   pill.querySelector(".ico").innerHTML = on
-    ? lk("#2fa36b", '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>')
-    : lk("#d93025", '<path d="M9.5 6.5l1-1a4.5 4.5 0 0 1 6.4 6.4l-1 1"/><path d="M14.5 17.5l-1 1a4.5 4.5 0 0 1-6.4-6.4l1-1"/><path d="M12 3v3M3 12h3M18 12h3M12 18v3" transform="rotate(45 12 12)"/>');
+    ? lk("#2fa36b", halves + '<path d="M8 12h8"/>')
+    : lk("#d93025", '<path d="M16 7h2a5 5 0 0 1 0 10h-2" transform="translate(1.5 0)"/><path d="M8 17H6A5 5 0 0 1 6 7h2" transform="translate(-1.5 0)"/>');
   pill.dataset.tip = pill.querySelector(".txt").textContent;
   // Hyperion health: red = not reachable / no grabber, yellow = running with a limit, green = fine
   const h = state?.health ?? {};
