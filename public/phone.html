@@ -473,10 +473,9 @@
   .tb-tv .ico { display: inline-flex; }
   .tb-tv { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 2px; font-size: 14px; color: var(--text); white-space: nowrap; }
   .tb-tv .txt { display: none; }
-  /* grabber without signal: yellow "!" at the TV preview icon, red without a grabber */
-  .tb-icon.alert::after { content: "!"; position: absolute; top: 5px; right: 6px; width: 14px; height: 14px; border-radius: 50%; background: #f2c200; color: #222;
-                          font: 700 11px/14px system-ui, sans-serif; text-align: center; pointer-events: none; }
-  .tb-icon.alert.red::after { background: var(--danger); color: #fff; }
+  /* grabber preview icon: monitor with check = picture there, yellow monitor with x = no signal, red screen-share-off = no grabber */
+  .tb-icon.alert svg { color: #f2c200; }
+  .tb-icon.alert.red svg { color: var(--danger); }
   /* bell menu: mode choice, scrolling list, entries that jump to their card */
   .tb-notes h4 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .tb-modes { display: flex; gap: 2px; }
@@ -4297,16 +4296,21 @@ function markNotesSeen() {
 }
 
 // the TV page status in the bar and the "no signal" frame on the TV preview icon
+const PREVIEW_ICONS = { // lucide monitor-check, monitor-x, screen-share-off
+  ok: '<path d="m9 10 2 2 4-4"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/>',
+  x: '<path d="m14.5 12.5-5-5"/><path d="m9.5 12.5 5-5"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/>',
+  off: '<path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="m22 3-5 5"/><path d="m17 3 5 5"/>',
+};
 let serverDown = false; // the event stream to the test server is broken
 function renderBar() {
   const on = state?.tvConnected === true;
   const pill = $("tb-tv");
   pill.querySelector(".txt").textContent = on ? tr("TV-Testseite verbunden") : tr("TV-Testseite nicht verbunden");
-  const lk = (c, extra) => '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="' + c + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + extra + '</svg>';
-  const halves = '<path d="M15 7h3a5 5 0 0 1 0 10h-3"/><path d="M9 17H6A5 5 0 0 1 6 7h3"/>';
+  const link = '<path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/>';
+  const chain = (c, extra) => '<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="' + c + '">' + extra + '</svg>';
   pill.querySelector(".ico").innerHTML = on
-    ? lk("#2fa36b", halves + '<path d="M8 12h8"/>')
-    : lk("#d93025", '<path d="M16 7h2a5 5 0 0 1 0 10h-2" transform="translate(1.5 0)"/><path d="M8 17H6A5 5 0 0 1 6 7h2" transform="translate(-1.5 0)"/>');
+    ? chain("#2fa36b", link)
+    : chain("#d93025", '<mask id="tb-cut"><rect width="16" height="16" fill="#fff"/><path d="M1.5 1.5 14.5 14.5" stroke="#000" stroke-width="3.6" stroke-linecap="round"/></mask><g mask="url(#tb-cut)">' + link + '</g><path d="M1.5 1.5 14.5 14.5" stroke="#d93025" stroke-width="1.5" stroke-linecap="round"/>');
   pill.dataset.tip = pill.querySelector(".txt").textContent;
   // Hyperion health: red = not reachable / no grabber, yellow = running with a limit, green = fine
   const h = state?.health ?? {};
@@ -4325,6 +4329,11 @@ function renderBar() {
   const alert = red || h.noSignal === true;
   prev.classList.toggle("alert", alert);
   prev.classList.toggle("red", red);
+  const kind = red ? "off" : alert ? "x" : "ok";
+  if (prev.dataset.kind !== kind) {
+    prev.dataset.kind = kind;
+    prev.querySelector("svg").innerHTML = PREVIEW_ICONS[kind];
+  }
   prev.dataset.tip = !alert ? tr("Grabber-Vorschau") : (red ? tr("Kein Grabber erkannt") : tr("Kein Signal am Grabber")) + " · " + tr("Grabber-Vorschau");
 }
 (function () {
