@@ -1140,14 +1140,14 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
-    min-height: 72px !important;
+    min-height: 64px !important;
   }
   /* Menüknopf und Logo gemeinsam mittig über der Seitenleiste (250 px breit, Kopfzeile und Leiste
      beginnen am selben Rand); der Knopf blendet die Seitenleiste aus und ein (sb-admin-2.js) */
   nav.navbar-static-top .navbar-header {
     margin: 0;
     width: 250px;
-    height: 72px;
+    height: 63px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1165,25 +1165,23 @@ body {
     opacity: 1 !important;
   }
   nav.navbar-static-top .navbar-brand {
-    height: 72px;
+    height: 63px;
     left: 0;
     margin: 0;
     padding: 0;
     display: flex;
     align-items: center;
   }
+  /* Kopfzeile und Logo so groß wie auf der TV-Testseite (64 px hoch, Logo 150 px breit) */
   #navbar_brand_logo {
-    width: 180px;
+    width: 150px;
     height: auto;
   }
   .navbar-top-links li a {
-    min-height: 72px;
+    min-height: 63px;
   }
   .navbar-top-links li a > .fa {
     font-size: 19px;
-  }
-  #btn_help_fold_all .mdi {
-    font-size: 21px;
   }
   html.side-collapsed #main-nav {
     display: none !important;
@@ -1194,7 +1192,7 @@ body {
   }
   #main-nav {
     position: fixed !important;
-    top: 72px;
+    top: 64px;
     bottom: 0;
     left: 10px;
     width: 250px;
@@ -1202,7 +1200,7 @@ body {
     overflow-y: auto;
   }
   html {
-    scroll-padding-top: 82px;
+    scroll-padding-top: 74px;
   }
 }
 @media (max-width: 767.98px) {
@@ -1232,8 +1230,8 @@ body {
   }
   nav.navbar-static-top .navbar-brand {
     float: none;
-    flex: 0 1 112px;
-    min-width: 92px;
+    flex: 0 1 116px;
+    min-width: 96px;
     height: 56px;
     padding: 0 0 0 6px;
     left: 0;
@@ -1263,9 +1261,6 @@ body {
   #top-navbar > li > a > .mdi {
     font-size: 18px;
     margin-right: 0;
-  }
-  #btn_help_fold_all .mdi {
-    font-size: 20px;
   }
   #top-navbar .fa-caret-down {
     display: none;
@@ -1569,4 +1564,17 @@ nav.navbar-static-top .navbar-toggle {
   padding: 8px 15px;
   text-align: right;
   border-top: 1px solid rgba(128, 128, 128, .25);
+}
+
+/* Fork-Erweiterung: Linien-Symbole der Kopfzeile wie auf der TV-Testseite (Link zur Testseite,
+   alles auf-/zuklappen) */
+#top-navbar .tb-svg {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

@@ -652,6 +652,7 @@ function SwitchToMenuItem(target, item) {
       clearTimeout(timer);
     }
     $('.tp-only').toggle(tvUp);
+    $('#btn_open_testpage > a').attr('href', base + '/phone');
     render();
   }
 

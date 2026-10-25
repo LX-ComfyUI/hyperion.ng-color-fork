@@ -1444,7 +1444,10 @@ const helpFold = (function () {
     link.dataset.tipKey = anyOpen ? 'general_btn_help_fold_all' : 'general_btn_help_unfold_all';
     link.dataset.tip = $.i18n(link.dataset.tipKey);
     link.setAttribute('aria-label', link.dataset.tip);
-    item.querySelector('i').className = 'mdi ' + (anyOpen ? 'mdi-arrow-collapse-vertical' : 'mdi-arrow-expand-vertical');
+    // dieselben Symbole wie auf der TV-Testseite: Pfeile zueinander = zuklappen, auseinander = aufklappen
+    item.querySelector('svg').innerHTML = anyOpen
+      ? '<polyline points="7 4 12 9 17 4"/><polyline points="7 20 12 15 17 20"/><line x1="4" y1="12" x2="20" y2="12"/>'
+      : '<polyline points="7 9 12 4 17 9"/><polyline points="7 15 12 20 17 15"/><line x1="12" y1="4" x2="12" y2="20"/>';
   }
 
   function schedule() {

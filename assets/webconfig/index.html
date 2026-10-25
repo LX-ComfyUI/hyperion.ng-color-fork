@@ -135,6 +135,12 @@
       <!-- /.navbar-header -->
 
       <ul class="nav navbar-top-links navbar-right" id="top-navbar">
+        <!-- Fork-Erweiterung: öffnet die TV-Testseite (tvtest-Dienst, Port 8093 auf demselben Host, content_index.js) -->
+        <li class="dropdown tp-only" id="btn_open_testpage" style="display:none">
+          <a target="hyperion-tvtest" rel="noopener" data-tip-key="general_tip_open_testpage">
+            <svg class="tb-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+          </a>
+        </li>
         <!-- Fork-Erweiterung: Glocke mit Meldungen, z. B. neuer Grabber ohne Farbkalibrierung (content_index.js) -->
         <li class="dropdown" id="btn_notifications">
           <a class="dropdown-toggle" data-toggle="dropdown" href="#" data-tip-key="general_tip_notifications">
@@ -145,7 +151,7 @@
         <!-- Fork-Erweiterung: alle Erklärungstabellen der Seite auf-/zuklappen (helpFold in ui_utils.js) -->
         <li class="dropdown" id="btn_help_fold_all" style="display:none">
           <a data-tip-key="general_btn_help_fold_all">
-            <i class="mdi mdi-arrow-collapse-vertical"></i>
+            <svg class="tb-svg" viewBox="0 0 24 24" aria-hidden="true"></svg>
           </a>
         </li>
         <!-- Browser built in capture stream - streamer.js -->

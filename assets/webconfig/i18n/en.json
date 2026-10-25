@@ -63,6 +63,7 @@
   "general_tip_theme_dark": "Appearance: dark",
   "general_tip_darkmode": "Light/Dark",
   "general_tip_notifications": "Notifications",
+  "general_tip_open_testpage": "Open TV test page",
   "general_tip_power": "System: Hyperion, test page, Raspberry Pi",
   "general_tip_lock": "Log out",
   "general_info_icon_label": "Show explanation",
