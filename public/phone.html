@@ -318,6 +318,61 @@
   .tp-empty { color: var(--muted); margin-top: 6px; }
   .gcc-lock { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; font-size: 13px; color: var(--muted); }
   .gcc-lock .ts-lock { flex: none; }
+  /* media library */
+  .md-player { border: 2px solid var(--accent); border-radius: 9px; padding: 10px 12px; margin: 10px 0 4px; }
+  .md-now { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 6px; min-width: 0; }
+  .md-now span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #md-seek { width: 100%; }
+  .md-times { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin: 0 0 6px; }
+  .md-checks { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+  .md-checks .check { margin: 0; }
+  .md-upload-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .md-disk { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  .md-disk .bar { height: 6px; border-radius: 3px; background: var(--btn-line); overflow: hidden; margin: 4px 0 2px; }
+  .md-disk .bar span { display: block; height: 100%; background: var(--accent); }
+  .md-up { font-size: 13px; margin-top: 6px; }
+  .md-up .bar { height: 4px; border-radius: 2px; background: var(--btn-line); overflow: hidden; margin-top: 3px; }
+  .md-up .bar span { display: block; height: 100%; background: var(--accent); width: 0; }
+  .md-link-row { display: flex; gap: 8px; margin-top: 10px; }
+  .md-link-row input { flex: 1; min-width: 0; }
+  .md-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+  .md-list li { display: flex; align-items: center; gap: 2px; min-width: 0; padding: 0; border: none; flex-wrap: nowrap; }
+  .md-list .md-show { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; padding: 4px 8px 4px 4px; }
+  .md-list .md-show[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .md-list .md-show[aria-pressed="true"] .tp-badge { background: var(--accent-text); color: var(--accent); }
+  .md-thumb { flex: none; width: 64px; height: 36px; border-radius: 4px; background: #000 center / cover no-repeat; display: flex; align-items: center; justify-content: center; color: #888; font-size: 18px; overflow: hidden; }
+  .md-thumb canvas { width: 100%; height: 100%; display: block; }
+  .md-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .md-text b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .md-text small { color: inherit; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .md-flag { flex: none; font-size: 11px; padding: 1px 6px; border-radius: 8px; border: 1px solid currentColor; }
+  .md-flag.bad { color: var(--danger); }
+  .md-flag.maybe { color: var(--warn); }
+  .md-show[aria-pressed="true"] .md-flag { color: inherit; }
+  .md-list .md-edit { flex: 1; min-width: 0; display: flex; gap: 4px; }
+  .md-list .md-edit input { flex: 1; min-width: 0; }
+  .md-empty { font-size: 13px; color: var(--muted); }
+  .md-caps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 12px; }
+  .md-caps span { padding: 2px 8px; border-radius: 8px; border: 1px solid var(--btn-line); }
+  .md-caps .yes { color: #2fa36b; border-color: #2fa36b; }
+  .md-caps .no { color: var(--danger); border-color: var(--danger); }
+  .md-caps .maybe { color: var(--warn); border-color: var(--warn); }
+  /* picture measurement */
+  #mm-pick { max-width: 100%; }
+  #mm-run { margin-top: 8px; }
+  .mm-summary { margin-top: 10px; font-size: 14px; }
+  .mm-summary small { display: block; color: var(--muted); margin-top: 2px; }
+  .mm-pics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+  .mm-pics figure { margin: 0; position: relative; }
+  .mm-pics img { display: block; width: 100%; height: auto; border-radius: 4px; }
+  .mm-pics figcaption { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .mm-meas svg { position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 16 / 9; pointer-events: none; }
+  .mm-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .mm-legend span { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-left: 4px; }
+  .mm-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .mm-table th, .mm-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--btn-line); vertical-align: middle; }
+  .mm-table th { font-weight: 600; color: var(--muted); }
+  .mm-sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid color-mix(in srgb, var(--text) 25%, transparent); }
   /* guided gray curve calibration */
   .gck-sub { margin: 12px 0 6px; font-size: 13px; color: var(--muted); }
   .gck-levels { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -659,6 +714,7 @@
       <li><a class="jump" href="#card-ft"><b>Nachkommastellen Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen.</li>
       <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen.</li>
       <li><a class="jump" href="#card-gs"><b>Graues Standbild Test</b></a> und <a class="jump" href="#card-gsd"><b>Graues-Standbild-Erkennung</b></a>: Manche Player blenden ein pausiertes Video zu einem grauen Standbild ab, und die LEDs leuchten dann lange grau. Die Erkennung friert die LEDs in diesem Fall ein oder schaltet sie aus.</li>
+      <li><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a> und <a class="jump" href="#card-mm"><b>Bild messen</b></a>: Zum Schluss mit echten Bildern und Videos prüfen, wie die LEDs reagieren. „Bild messen“ zeigt, ob ein Bild unverfälscht beim Grabber ankommt und ob der Zuspieler es zoomt oder verschiebt.</li>
     </ol>
   </section>
 
@@ -758,6 +814,75 @@
   </section>
 
   <!-- ===== Hyperion gray curve (own card below the test colors) ===== -->
+  <section class="card card-pair" id="card-p-media">
+    <h2>Testbilder &amp; Videos</h2>
+    <div class="pair">
+    <div class="pair-col" id="card-media">
+      <h3 class="pair-ttl">Mediathek</h3>
+      <p class="help">Eingebaute Testbilder, eigene Bilder und Videos vom PC oder Handy und Links zu YouTube, Vimeo und Dailymotion. Ein Tipp auf einen Eintrag zeigt ihn bildschirmfüllend auf dem TV, so siehst du, wie die LEDs auf echte Bilder reagieren. Die Dateien liegen auf dem Server, alle Geräte sehen dieselbe Liste.</p>
+
+      <div class="md-player" id="md-player" hidden>
+        <div class="md-now"><span id="md-now-name"></span><span class="tp-badge" id="md-now-badge"></span></div>
+        <div id="md-video-ctl">
+          <input type="range" id="md-seek" min="0" max="100" step="1" value="0" aria-label="Position">
+          <div class="md-times"><span id="md-pos">0:00</span><span id="md-dur"></span></div>
+          <div class="seg full" role="group" aria-label="Video steuern">
+            <button type="button" id="md-back10">−10 s</button>
+            <button type="button" id="md-play"></button>
+            <button type="button" id="md-fwd10">+10 s</button>
+          </div>
+          <div class="md-checks">
+            <label class="check"><input type="checkbox" id="md-loop"><span>Endlosschleife</span></label>
+            <label class="check"><input type="checkbox" id="md-sound"><span>Ton</span></label>
+          </div>
+        </div>
+        <div class="seg full" role="group" aria-label="Anzeige" id="md-fit" style="margin-top:8px">
+          <button type="button" data-fit="contain">Einpassen</button>
+          <button type="button" data-fit="cover">Füllen</button>
+          <button type="button" data-fit="fill">Strecken</button>
+        </div>
+        <p class="warn" id="md-tv-note" hidden></p>
+        <button type="button" class="wide" id="md-stop" style="margin-top:8px">Vom TV nehmen</button>
+      </div>
+
+      <h4 class="hy-h"><span>Hochladen</span></h4>
+      <div class="md-upload-row">
+        <button type="button" class="primary" id="md-pick">Bilder oder Videos wählen …</button>
+        <input type="file" id="md-file" multiple accept="image/*,video/*" hidden>
+      </div>
+      <div class="md-disk" id="md-disk"></div>
+      <div id="md-progress"></div>
+      <details class="more" id="md-formats">
+        <summary>Welche Formate gehen?</summary>
+        <p class="help">Videos spielt der <b>Browser des TV-Geräts</b> ab, nicht der Server. Was dort nicht geht, bleibt schwarz. Am sichersten ist MP4 mit H.264-Video und AAC-Ton. HEVC (H.265), AV1, 10 Bit und HDR kann nicht jeder TV-Browser, HDR-Videos wirken im Browser oft blass. Bilder: JPG, PNG, WebP, GIF, AVIF, BMP. Höchstens 4 GB je Datei.</p>
+        <div id="md-caps"></div>
+      </details>
+      <div class="md-link-row">
+        <input type="url" id="md-link" placeholder="Link zu YouTube, Vimeo oder Dailymotion" inputmode="url">
+        <button type="button" id="md-link-add">Hinzufügen</button>
+      </div>
+
+      <h4 class="hy-h"><span>Eingebaute Testbilder</span></h4>
+      <ul class="md-list" id="md-builtin"></ul>
+      <h4 class="hy-h"><span>Eigene Bilder</span></h4>
+      <ul class="md-list" id="md-images"></ul>
+      <h4 class="hy-h"><span>Videos</span></h4>
+      <ul class="md-list" id="md-videos"></ul>
+      <h4 class="hy-h"><span>Video-Links</span></h4>
+      <ul class="md-list" id="md-links"></ul>
+      <p class="warn" id="md-warn" hidden></p>
+    </div>
+    <div class="pair-col" id="card-mm">
+      <h3 class="pair-ttl">Bild messen</h3>
+      <p class="help">Zeigt ein Bild auf dem TV und vergleicht es mit dem, was beim Grabber ankommt (nach der Grabber-Farbkorrektur): je LED-Fläche und über das ganze Bild, dazu ob der Zuspieler das Bild zoomt oder verschiebt. Gemessen wird, was Hyperion sieht, nicht das Licht an der Wand.</p>
+      <div class="frow"><label for="mm-pick">Bild</label><span class="inputs"><select id="mm-pick"></select></span></div>
+      <button type="button" class="primary wide" id="mm-run">Messen</button>
+      <p class="note" id="mm-status"></p>
+      <div id="mm-result"></div>
+    </div>
+    </div>
+  </section>
+
   <section class="card card-pair" id="card-p-gc">
     <h2>Graukurve</h2>
     <div class="pair">
@@ -1604,12 +1729,14 @@
 </script>
 <script src="/static/graycurve-graph.js"></script>
 <script src="/static/graycal.js"></script>
+<script src="/static/testimages.js"></script>
 <script src="/static/grabbertest-report.js"></script>
 <script src="/static/nosignal-ui.js"></script>
 <script src="/static/notice-text.js"></script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillText, grayStillCompactHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, layoutDepths, areaPixelStats, ledSegments, posTestIndices, GRAY_STILL_CSS, BB_MODE_NAMES } from "/static/overlay.js";
 import { guidePoints, runSummary, MAX_ANSWER } from "/static/layoutfix.js";
+import { measurePicture, resultHtml } from "/static/measure.js";
 
 const EDGES = ["top", "bottom", "left", "right"];
 const BAR_PAIRS = [
@@ -1763,6 +1890,8 @@ function renderState() {
   renderGcGuide();
   renderCurveByGrabber();
   renderPort();
+  if (state.mediaStamp !== mdStampSeen) { mdStampSeen = state.mediaStamp; mdLoad().then(renderMeasure); } else renderMediaLib();
+  renderMeasure();
   if (state.webuiPort) $("tb-webui").href = `${location.protocol}//${location.hostname}:${state.webuiPort}/`;
   if (state.colorStamp !== colorStampSeen) { const first = colorStampSeen === undefined; colorStampSeen = state.colorStamp; if (!first) loadColorConfig(); }
   renderTestPresets();
@@ -1786,6 +1915,7 @@ function renderCardBadges() {
     "card-ft": state.fracTest?.active && "läuft",
     "card-lp": state.posTest?.active && !state.posGuide?.active && "läuft",
     "card-lg": state.posGuide?.active && "läuft",
+    "card-media": state.media?.active && "läuft",
     "card-gcg": state.gcGuide?.active && "läuft",
   };
   const perCard = new Map();
@@ -3318,6 +3448,377 @@ document.addEventListener("click", async (ev) => {
   }
 });
 fetch("/api/testdefaults").then((r) => r.json()).then((d) => { testDefaults = d; if (state) renderTestPresets(); }).catch(() => {});
+
+// ---------- media library (files and list on the server: media.mjs; the TV plays them: tvmedia.js) ----------
+const MD_ICON = {
+  pencil: TP_ICON.pencil,
+  trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 12 10 18 20 6"/></svg>',
+  cancel: '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
+};
+const MD_PROVIDER = { youtube: "YouTube", vimeo: "Vimeo", dailymotion: "Dailymotion" };
+const MD_CODEC = { h264: "H.264", hevc: "HEVC", vp9: "VP9", vp8: "VP8", av1: "AV1", mpeg4: "MPEG-4", theora: "Theora", mpeg2video: "MPEG-2" };
+let mdInfo = { items: [], disk: null };
+let mdStampSeen;
+let mdEditing = null;
+let mdUploads = [];
+let mdSeeking = false;
+const mdBuiltinThumbs = {};
+
+const mdBytes = (n) => {
+  if (!(n >= 0)) return "";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  // 1024 steps, like the file managers and df show it
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return `${n.toLocaleString(I18N.locale, { maximumFractionDigits: n < 10 && i > 0 ? 1 : 0 })} ${u[i]}`;
+};
+const mdTime = (s) => {
+  if (!(s >= 0)) return "";
+  s = Math.floor(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+};
+
+async function mdLoad() {
+  try {
+    const r = await fetch("/api/media");
+    if (r.ok) mdInfo = await r.json();
+  } catch {}
+  renderMediaLib();
+}
+
+// can the TV page's browser play this video? from the codec (ffprobe) or else the file type
+function mdCompat(it) {
+  const caps = state?.tvCaps?.caps;
+  if (it.kind !== "video" || !caps) return null;
+  const ext = (it.file ?? "").split(".").pop();
+  const key = it.codec
+    ? ({ h264: "h264", hevc: it.bits > 8 ? "hevc10" : "hevc", vp9: "vp9", vp8: "vp8", av1: "av1", theora: "ogv" })[it.codec] ?? null
+    : ({ mp4: "h264", m4v: "h264", webm: "vp9", ogv: "ogv", mov: "mov", mkv: "mkv" })[ext] ?? null;
+  const v = key ? caps[key] : null;
+  const what = it.codec ? MD_CODEC[it.codec] ?? it.codec.toUpperCase() : ext.toUpperCase();
+  if (v === "") return { cls: "bad", text: tr("TV kann {a} nicht", { a: what }) };
+  if (v === "maybe" || v === null) return { cls: "maybe", text: it.codec ? tr("{a}: vielleicht", { a: what }) : tr("Codec unbekannt") };
+  return null;
+}
+
+function mdMeta(it) {
+  const parts = [];
+  if (it.kind === "link") parts.push(MD_PROVIDER[it.provider] ?? it.provider);
+  if (it.duration) parts.push(mdTime(it.duration));
+  if (it.width && it.height) parts.push(`${it.width}×${it.height}`);
+  if (it.codec) parts.push(MD_CODEC[it.codec] ?? it.codec.toUpperCase());
+  if (it.bits > 8) parts.push(`${it.bits} Bit`);
+  if (it.size) parts.push(mdBytes(it.size));
+  return parts.join(" · ");
+}
+
+function mdRow(it) {
+  const m = state?.media ?? {};
+  const on = !!m.active && m.id === it.id;
+  const paused = on && (it.kind === "video" || it.kind === "link") && !m.playing;
+  if (mdEditing === it.id) {
+    return `<li data-id="${it.id}"><span class="md-edit"><input type="text" value="${escHtml(it.name ?? "")}" maxlength="120" aria-label="${tr("Neuer Name")}">` +
+      `<button type="button" class="ibtn" data-md="save" title="${tr("Speichern")}">${MD_ICON.ok}</button><button type="button" class="ibtn" data-md="cancel" title="${tr("Abbrechen")}">${MD_ICON.cancel}</button></span></li>`;
+  }
+  const thumb = it.kind === "builtin" ? `<span class="md-thumb" data-builtin="${it.id}"></span>`
+    : it.thumb ? `<span class="md-thumb" style="background-image:url('/media/thumb/${it.id}?t=${it.thumb}')"></span>`
+    : `<span class="md-thumb">${it.kind === "video" || it.kind === "link" ? "▶" : "▣"}</span>`;
+  const flags = [];
+  const c = mdCompat(it);
+  if (c) flags.push(`<span class="md-flag ${c.cls}">${escHtml(c.text)}</span>`);
+  if (it.hdr) flags.push(`<span class="md-flag maybe">${it.hdr}</span>`);
+  if (it.embedBlocked) flags.push(`<span class="md-flag bad">${tr("Einbetten gesperrt")}</span>`);
+  const badge = on ? `<span class="tp-badge">${paused ? tr("Pause") : tr("läuft")}</span>` : "";
+  const name = it.kind === "builtin" ? tr(it.name) : it.name;
+  const tools = it.kind === "builtin" ? "" : `<button type="button" class="ibtn" data-md="rename" title="${tr("Umbenennen")}" aria-label="${tr("Umbenennen")}">${MD_ICON.pencil}</button>` +
+    `<button type="button" class="ibtn trash" data-md="delete" title="${tr("Löschen")}" aria-label="${tr("Löschen")}">${MD_ICON.trash}</button>`;
+  return `<li data-id="${it.id}"><button type="button" class="md-show" data-md="show" aria-pressed="${on}">${thumb}<span class="md-text"><b>${escHtml(name)}</b><small>${escHtml(mdMeta(it))}</small></span>${flags.join("")}${badge}</button>${tools}</li>`;
+}
+
+function renderMediaLib() {
+  const items = mdInfo.items ?? [];
+  const group = (kind) => items.filter((i) => i.kind === kind).sort((a, b) => b.createdAt - a.createdAt);
+  const fill = (id, list, empty) => {
+    const ul = $(id);
+    if (ul.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return; // renaming
+    const html = list.length ? list.map(mdRow).join("") : `<li class="md-empty">${tr(empty)}</li>`;
+    if (ul.dataset.html !== html) { ul.innerHTML = html; ul.dataset.html = html; }
+  };
+  fill("md-builtin", TestImages.LIST.map((b) => ({ ...b, kind: "builtin" })), "");
+  fill("md-images", group("image"), "Noch keine eigenen Bilder.");
+  fill("md-videos", group("video"), "Noch keine Videos.");
+  fill("md-links", group("link"), "Noch keine Links.");
+  document.querySelectorAll("#md-builtin .md-thumb[data-builtin]").forEach((el) => {
+    const id = el.dataset.builtin;
+    if (!mdBuiltinThumbs[id]) {
+      const c = document.createElement("canvas");
+      c.width = 128; c.height = 72;
+      TestImages.draw(c.getContext("2d"), id, 128, 72);
+      mdBuiltinThumbs[id] = c.toDataURL();
+    }
+    el.style.backgroundImage = `url(${mdBuiltinThumbs[id]})`;
+  });
+  // disk of the server
+  const d = mdInfo.disk;
+  $("md-disk").innerHTML = d ? `${tr("Speicher auf dem Server: {a} frei von {b}", { a: mdBytes(d.free), b: mdBytes(d.total) })}<div class="bar"><span style="width:${Math.round(((d.total - d.free) / d.total) * 100)}%"></span></div>` +
+    tr("Mediathek: {a} in {b} Dateien · höchstens {c} je Datei", { a: mdBytes(d.used), b: items.filter((i) => i.file).length, c: mdBytes(mdInfo.maxUpload) }) : "";
+  $("md-progress").innerHTML = mdUploads.map((u) => `<div class="md-up">${escHtml(u.name)} · ${u.error ? `<span class="warn">${escHtml(u.error)}</span>` : u.done ? tr("fertig") : `${mdBytes(u.loaded)} / ${mdBytes(u.size)}`}<div class="bar"><span style="width:${Math.round((u.loaded / u.size) * 100)}%"></span></div></div>`).join("");
+  renderMdCaps();
+  renderMdPlayer();
+}
+
+function renderMdCaps() {
+  const t = state?.tvCaps;
+  const el = $("md-caps");
+  if (!t?.caps) { el.innerHTML = `<p class="note">${tr("Öffne die TV-Seite, dann steht hier, was ihr Browser abspielen kann.")}</p>`; return; }
+  const names = [["h264", "H.264"], ["hevc", "HEVC"], ["hevc10", "HEVC 10 Bit"], ["vp9", "VP9"], ["av1", "AV1"], ["vp8", "WebM VP8"], ["mkv", "MKV"], ["mov", "MOV"], ["aac", "AAC-Ton"], ["opus", "Opus-Ton"]];
+  el.innerHTML = `<p class="note" style="margin-bottom:0">${tr("Der Browser des TV-Geräts kann:")}</p><div class="md-caps">` +
+    names.map(([k, n]) => `<span class="${t.caps[k] === "probably" ? "yes" : t.caps[k] === "maybe" ? "maybe" : "no"}">${n} ${t.caps[k] === "probably" ? "✓" : t.caps[k] === "maybe" ? "?" : "✗"}</span>`).join("") + "</div>";
+}
+
+// where the video is now, like the TV computes it
+function mdPosition() {
+  const m = state?.media;
+  if (!m) return 0;
+  const dur = state.tvMedia?.duration || state.mediaItem?.duration || 0;
+  let t = m.position + (m.playing ? Math.max(0, Date.now() + clockOffset - m.startedAt) / 1000 : 0);
+  if (m.loop && dur > 0) t %= dur;
+  else if (dur > 0) t = Math.min(t, dur);
+  return t;
+}
+
+function renderMdPlayer() {
+  const m = state?.media ?? {};
+  const it = state?.mediaItem;
+  const on = !!m.active && !!it;
+  $("md-player").hidden = !on;
+  if (!on) return;
+  const video = it.kind === "video" || it.kind === "link";
+  $("md-now-name").textContent = it.kind === "builtin" ? tr(TestImages.LIST.find((b) => b.id === it.id)?.name ?? "") : it.name;
+  $("md-now-badge").textContent = video && !m.playing ? tr("Pause") : tr("läuft");
+  $("md-video-ctl").hidden = !video;
+  $("md-fit").hidden = it.kind === "link" || it.kind === "builtin";
+  $("md-fit").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fit === m.fit)));
+  if (video) {
+    const dur = state.tvMedia?.duration || it.duration || 0;
+    $("md-play").textContent = m.playing ? tr("Pause") : tr("Abspielen");
+    $("md-loop").checked = m.loop;
+    $("md-sound").checked = !m.muted;
+    const seek = $("md-seek");
+    seek.max = String(Math.max(1, Math.round(dur)));
+    seek.disabled = !dur;
+    if (!mdSeeking) seek.value = String(Math.round(mdPosition()));
+    $("md-pos").textContent = mdTime(mdSeeking ? Number(seek.value) : mdPosition());
+    $("md-dur").textContent = dur ? mdTime(dur) : "";
+  }
+  const tv = state.tvMedia?.id === it.id ? state.tvMedia : null;
+  const notes = [];
+  if (!state.tvConnected) notes.push(tr("Die TV-Seite ist nicht verbunden."));
+  if (tv?.error) notes.push(tr(tv.error));
+  if (tv?.blocked && !m.muted) notes.push(tr("Der TV-Browser startet Videos mit Ton erst nach einem Klick auf dem TV-Gerät. Es läuft stumm: einmal auf dem TV-Gerät klicken oder tippen, dann „Ton“ neu setzen."));
+  if (tv?.simple) notes.push(tr("Dailymotion: Pause, Springen und Ton laden das Video neu."));
+  $("md-tv-note").hidden = !notes.length;
+  $("md-tv-note").textContent = notes.join(" ");
+}
+setInterval(() => { if (state?.media?.active && state.media.playing && !$("md-player").hidden) renderMdPlayer(); }, 500);
+
+const mdSend = (patch) => send({ media: patch }).then((body) => { if (body) renderState(); });
+$("md-play").addEventListener("click", () => mdSend({ playing: !state.media.playing, position: mdPosition() }));
+$("md-back10").addEventListener("click", () => mdSend({ position: Math.max(0, mdPosition() - 10) }));
+$("md-fwd10").addEventListener("click", () => mdSend({ position: mdPosition() + 10 }));
+$("md-seek").addEventListener("input", () => { mdSeeking = true; $("md-pos").textContent = mdTime(Number($("md-seek").value)); });
+$("md-seek").addEventListener("change", () => { mdSeeking = false; mdSend({ position: Number($("md-seek").value) }); });
+$("md-loop").addEventListener("change", () => mdSend({ loop: $("md-loop").checked }));
+$("md-sound").addEventListener("change", () => mdSend({ muted: !$("md-sound").checked }));
+$("md-fit").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-fit]"); if (b) mdSend({ fit: b.dataset.fit }); });
+$("md-stop").addEventListener("click", () => mdSend({ active: false }));
+
+for (const id of ["md-builtin", "md-images", "md-videos", "md-links"]) {
+  $(id).addEventListener("click", async (ev) => {
+    const b = ev.target.closest("[data-md]");
+    if (!b) return;
+    const li = b.closest("li[data-id]");
+    const itemId = li?.dataset.id;
+    const it = (mdInfo.items ?? []).find((i) => i.id === itemId);
+    switch (b.dataset.md) {
+      case "show":
+        if (state.media?.active && state.media.id === itemId) return;
+        mdSend({ active: true, id: itemId, position: it?.start ?? 0, playing: true });
+        break;
+      case "rename": mdEditing = itemId; renderMediaLib(); li.parentElement.querySelector(`li[data-id="${itemId}"] input`)?.focus(); break;
+      case "cancel": mdEditing = null; renderMediaLib(); break;
+      case "save": await mdOp({ op: "rename", id: itemId, name: li.querySelector("input").value }); mdEditing = null; renderMediaLib(); break;
+      case "delete":
+        if (!confirm(tr("„{a}“ löschen?", { a: it?.name ?? "" }))) return;
+        if (state.media?.active && state.media.id === itemId) await mdSend({ active: false });
+        await mdOp({ op: "delete", id: itemId });
+        break;
+    }
+  });
+  $(id).addEventListener("keydown", (ev) => {
+    if (ev.target.tagName !== "INPUT") return;
+    if (ev.key === "Enter") ev.target.closest("li").querySelector('[data-md="save"]').click();
+    if (ev.key === "Escape") { mdEditing = null; renderMediaLib(); }
+  });
+}
+
+async function mdOp(body) {
+  $("md-warn").hidden = true;
+  try {
+    const r = await fetch("/api/media", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const out = await r.json();
+    if (!r.ok) throw new Error(out.error);
+    mdInfo = { ...mdInfo, ...out };
+    renderMediaLib();
+    return out;
+  } catch (e) {
+    $("md-warn").textContent = e.message;
+    $("md-warn").hidden = false;
+    return null;
+  }
+}
+
+$("md-link-add").addEventListener("click", async () => {
+  const url = $("md-link").value.trim();
+  if (!url) return $("md-link").focus();
+  $("md-link-add").disabled = true;
+  const out = await mdOp({ op: "link", url });
+  $("md-link-add").disabled = false;
+  if (out) $("md-link").value = "";
+});
+$("md-link").addEventListener("keydown", (ev) => { if (ev.key === "Enter") $("md-link-add").click(); });
+
+// a thumbnail drawn by this browser (no ffmpeg on the server needed); a video this browser cannot
+// decode gets none, the TV may still play it
+function mdOnce(el, ev, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("timeout")), ms);
+    el.addEventListener(ev, () => { clearTimeout(t); resolve(); }, { once: true });
+    el.addEventListener("error", () => { clearTimeout(t); reject(new Error("error")); }, { once: true });
+  });
+}
+async function mdThumb(file) {
+  const W = 320, H = 180;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, W, H);
+  const put = (src, w, h) => { const k = Math.min(W / w, H / h); ctx.drawImage(src, (W - w * k) / 2, (H - h * k) / 2, w * k, h * k); };
+  const meta = {};
+  if (file.type.startsWith("image/")) {
+    const bmp = await createImageBitmap(file);
+    meta.width = bmp.width; meta.height = bmp.height;
+    put(bmp, bmp.width, bmp.height);
+  } else {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.muted = true; v.preload = "auto"; v.src = url;
+    try {
+      await mdOnce(v, "loadedmetadata", 10000);
+      meta.width = v.videoWidth; meta.height = v.videoHeight; meta.duration = v.duration;
+      v.currentTime = Math.min(1, (v.duration || 0) / 3);
+      await mdOnce(v, "seeked", 10000);
+      put(v, v.videoWidth, v.videoHeight);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  meta.blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.8));
+  return meta;
+}
+
+function mdUpload(file) {
+  const u = { name: file.name, size: file.size, loaded: 0 };
+  mdUploads.push(u);
+  const d = mdInfo.disk;
+  if (file.size > (mdInfo.maxUpload ?? Infinity)) u.error = tr("größer als {a}", { a: mdBytes(mdInfo.maxUpload) });
+  else if (d && file.size + (mdInfo.keepFree ?? 0) > d.free) u.error = tr("nicht genug Speicher auf dem Server");
+  renderMediaLib();
+  if (u.error) return Promise.resolve();
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/media/upload");
+    xhr.setRequestHeader("X-Name", encodeURIComponent(file.name));
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    let last = 0;
+    xhr.upload.onprogress = (e) => { u.loaded = e.loaded; if (Date.now() - last > 250) { last = Date.now(); renderMediaLib(); } };
+    xhr.onerror = () => { u.error = tr("Hochladen fehlgeschlagen"); renderMediaLib(); resolve(); };
+    xhr.onload = async () => {
+      let out = {};
+      try { out = JSON.parse(xhr.responseText); } catch {}
+      if (xhr.status !== 200) { u.error = out.error ? tr(out.error) : tr("Hochladen fehlgeschlagen"); renderMediaLib(); return resolve(); }
+      u.loaded = u.size; u.done = true;
+      mdInfo = { ...mdInfo, ...out };
+      renderMediaLib();
+      try {
+        const t = await mdThumb(file);
+        const q = new URLSearchParams({ id: out.item.id, width: t.width || "", height: t.height || "", duration: t.duration || "" });
+        if (t.blob) await fetch("/api/media/thumb?" + q, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: t.blob });
+      } catch {}
+      resolve();
+    };
+    xhr.send(file);
+  });
+}
+$("md-pick").addEventListener("click", () => $("md-file").click());
+$("md-file").addEventListener("change", async () => {
+  const files = [...$("md-file").files];
+  $("md-file").value = "";
+  mdUploads = mdUploads.filter((u) => !u.done && !u.error);
+  for (const f of files) await mdUpload(f);
+  setTimeout(() => { mdUploads = mdUploads.filter((u) => !u.done); renderMediaLib(); }, 4000);
+});
+
+// ---------- picture measurement (measure.js): the TV shows a picture, this page compares the grabber frames ----------
+const mmResults = new Map(); // item id -> last result (this page only)
+let mmBusy = false;
+function mmChoices() {
+  const own = (mdInfo.items ?? []).filter((i) => i.kind === "image");
+  return [...TestImages.LIST.map((b) => ({ ...b, kind: "builtin", name: tr(b.name) })), ...own];
+}
+function renderMeasure() {
+  const sel = $("mm-pick");
+  const list = mmChoices();
+  const html = list.map((i) => `<option value="${i.id}">${escHtml(i.name)}</option>`).join("");
+  if (sel.dataset.html !== html) {
+    const keep = sel.value;
+    sel.innerHTML = html;
+    sel.dataset.html = html;
+    const shown = state?.media?.active && list.find((i) => i.id === state.media.id);
+    sel.value = list.some((i) => i.id === keep) ? keep : shown ? shown.id : list[0]?.id ?? "";
+  }
+  $("mm-run").disabled = mmBusy || !list.length;
+  const r = mmResults.get(sel.value);
+  if (!mmBusy) $("mm-result").innerHTML = r ? resultHtml(r, tr, escHtml) : "";
+}
+$("mm-pick").addEventListener("change", renderMeasure);
+$("mm-run").addEventListener("click", async () => {
+  const item = mmChoices().find((i) => i.id === $("mm-pick").value);
+  if (!item || mmBusy) return;
+  if (!state.tvConnected) { $("mm-status").textContent = tr("Die TV-Seite ist nicht verbunden. Öffne sie zuerst auf dem Gerät, das dem TV das Bild liefert."); return; }
+  mmBusy = true;
+  renderMeasure();
+  const status = (t) => { $("mm-status").textContent = t; };
+  try {
+    // the picture on the TV first, then a moment until it is through HDMI and the grabber
+    if (!state.media?.active || state.media.id !== item.id) {
+      status(tr("Zeige das Bild auf dem TV …"));
+      await mdSend({ active: true, id: item.id, playing: true, position: 0 });
+      await new Promise((r) => setTimeout(r, 2500));
+    }
+    if (!ledAreas) ledAreas = await (await fetch("/api/hyperion/leds")).json().catch(() => null);
+    const result = await measurePicture({ item, fit: state.media?.fit ?? "contain", areas: lpAreas() ?? [], TestImages, tr, onProgress: status });
+    mmResults.set(item.id, result);
+    status(tr("Gemessen um {a}.", { a: new Date(result.when).toLocaleTimeString(I18N.locale) }));
+  } catch (e) {
+    status(tr("Messung fehlgeschlagen: {a}", { a: e.message }));
+  }
+  mmBusy = false;
+  renderMeasure();
+});
 
 // ---------- guided gray curve calibration (run by the server, math in graycal.js) ----------
 // The levels to calibrate are chosen here; the server shows the gray, measures what Hyperion sees and

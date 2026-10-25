@@ -12,3 +12,8 @@ graycurve-history.json
 graycurve-history.json.tmp
 notices.json
 notices.json.tmp
+prefs.json
+prefs.json.tmp
+media/
+media.json
+media.json.tmp

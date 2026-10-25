@@ -11,6 +11,7 @@ import { DatabaseSync } from "node:sqlite";
 import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 
+import { createMedia } from "./media.mjs";
 import { layoutRuns, offsetsFromAnswers, composeOffsets, correctedLeds, sameLayout, MAX_ANSWER } from "./public/layoutfix.js";
 
 const require = createRequire(import.meta.url);
@@ -110,6 +111,9 @@ const DEFAULT_STATE = {
   grayCurveByGrabber: {},
   // the grabber the gray curve belonged to at the last check (a change while the server was off counts too)
   curveGrabber: "",
+  // picture or video of the media library on the TV (media.mjs; "builtin:*" = test pictures drawn by
+  // testimages.js). A video plays from `position` seconds at `startedAt` (server time) while playing.
+  media: { active: false, id: "", fit: "contain", playing: true, loop: true, muted: true, position: 0, startedAt: 0 },
 };
 
 const num = (v, min, max, fallback, step = 1) => {
@@ -292,6 +296,17 @@ function sanitize(input) {
       .filter(([d, id]) => typeof id === "string" && d.length <= 200 && id.length <= 40).slice(0, 30));
   }
   if (typeof input.curveGrabber === "string") out.curveGrabber = input.curveGrabber.slice(0, 200);
+  const md = { ...DEFAULT_STATE.media, ...(input.media ?? {}) };
+  out.media = {
+    active: md.active === true && typeof md.id === "string" && md.id.length > 0,
+    id: typeof md.id === "string" ? md.id.slice(0, 40) : "",
+    fit: ["contain", "cover", "fill"].includes(md.fit) ? md.fit : "contain",
+    playing: md.playing !== false,
+    loop: md.loop !== false,
+    muted: md.muted !== false,
+    position: num(md.position, 0, 86400 * 2, 0, 0.001),
+    startedAt: num(md.startedAt, 0, Number.MAX_SAFE_INTEGER, 0),
+  };
   if (Array.isArray(input.grabberColors)) {
     const colors = input.grabberColors.filter((c) => typeof c === "string" && HEX_COLOR.test(c)).map((c) => c.toLowerCase());
     out.grabberColors = [...new Set(colors)].slice(0, MAX_CUSTOM_COLORS);
@@ -336,6 +351,17 @@ function addNotice(kind, level, params = {}, target = "") {
 
 const hasTv = () => [...clients.values()].includes("tv");
 
+// media library (media.mjs); the pages read the list again when mediaStamp changes
+let mediaStamp = 0;
+const media = createMedia({ dataDir: DATA_DIR, onChange: () => { mediaStamp++; broadcast(); } });
+let tvCaps = null;   // what the TV page's browser can play (canPlayType), sent by the TV page
+let tvMedia = null;  // what the TV page reports about the shown media: position, length, errors
+function mediaItemOf(id) {
+  if (!id) return null;
+  if (id.startsWith("builtin:")) return { id, kind: "builtin" };
+  return media.find(id);
+}
+
 // port of Hyperion's WebUI (global setting webConfig), for the link on the control page
 let webuiPortCache = { at: 0, port: 8090 };
 function webuiPort() {
@@ -347,7 +373,8 @@ function webuiPort() {
 
 // the state with everything the pages show besides it
 function publicState() {
-  return { ...state, webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
+  return { ...state, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
+    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
 }
 
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
@@ -402,6 +429,61 @@ function serveStatic(res, file) {
     if (err) return sendJson(res, 404, { error: "not found" });
     res.writeHead(200, { "Content-Type": MIME[path.extname(full)] ?? "application/octet-stream", "Cache-Control": "no-cache" });
     res.end(data);
+  });
+}
+
+// --- browser settings per device (language, theme, folds, bell …): the pages keep them in localStorage,
+// which belongs to one address with its port, so after a port change they were gone. A cookie (cookies
+// belong to the host name, not to the port) names the device; the server keeps its "tvtest-*" keys in
+// prefs.json and puts them into the page it serves, prefs.js mirrors every change back.
+const PREFS_FILE = path.join(DATA_DIR, "prefs.json");
+const PREFS_MAX_DEVICES = 50;
+const PREFS_MAX_BYTES = 20_000;
+let prefs = {};
+try { prefs = JSON.parse(fs.readFileSync(PREFS_FILE, "utf8")) ?? {}; } catch {}
+let prefsTimer = null;
+function savePrefs() {
+  clearTimeout(prefsTimer);
+  prefsTimer = setTimeout(() => {
+    const tmp = PREFS_FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(prefs));
+    fs.renameSync(tmp, PREFS_FILE);
+  }, 300);
+}
+const deviceOf = (req) => /(?:^|;\s*)tvtest-device=([\w-]{8,40})/.exec(req.headers.cookie ?? "")?.[1] ?? null;
+
+function changePrefs(req, changes) {
+  const id = deviceOf(req);
+  if (!id) throw new Error("Kein Geräte-Cookie");
+  const entry = prefs[id] ?? { keys: {}, seen: 0 };
+  for (const [k, v] of Object.entries(changes ?? {})) {
+    if (!/^tvtest-[\w-]{1,60}$/.test(k)) continue;
+    if (v === null) entry.keys[k] = null; // removed: the other ports remove it too
+    else entry.keys[k] = String(v).slice(0, 4000);
+  }
+  if (JSON.stringify(entry.keys).length > PREFS_MAX_BYTES) throw new Error("Zu viele Einstellungen");
+  entry.seen = Date.now();
+  prefs[id] = entry;
+  // the devices not seen for the longest time go first
+  const ids = Object.keys(prefs).sort((a, b) => prefs[b].seen - prefs[a].seen);
+  for (const old of ids.slice(PREFS_MAX_DEVICES)) delete prefs[old];
+  savePrefs();
+}
+
+// phone.html / tv.html with the device's settings in front of everything else
+function servePage(req, res, file) {
+  let id = deviceOf(req);
+  const headers = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" };
+  if (!id) {
+    id = createHash("sha1").update(String(Math.random()) + Date.now()).digest("hex").slice(0, 20);
+    headers["Set-Cookie"] = `tvtest-device=${id}; Max-Age=315360000; Path=/; SameSite=Lax; HttpOnly`;
+  }
+  fs.readFile(path.join(PUBLIC, file), "utf8", (err, html) => {
+    if (err) return sendJson(res, 404, { error: "not found" });
+    const keys = JSON.stringify(prefs[id]?.keys ?? {}).replace(/</g, "\\u003c");
+    const inject = `<script>window.TVTEST_PREFS=${keys};</script><script src="/static/prefs.js"></script>`;
+    res.writeHead(200, headers);
+    res.end(html.replace("<head>", "<head>" + inject));
   });
 }
 
@@ -2042,8 +2124,35 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    if (req.method === "GET" && (p === "/" || p === "/phone")) return serveStatic(res, "phone.html");
-    if (req.method === "GET" && p === "/tv") return serveStatic(res, "tv.html");
+    if (req.method === "GET" && (p === "/" || p === "/phone")) return servePage(req, res, "phone.html");
+    if (req.method === "GET" && p === "/tv") return servePage(req, res, "tv.html");
+    if (await media.handle(req, res, p, sendJson, readBody)) return;
+    // the TV page tells what its browser can play and how the shown media is doing
+    if (req.method === "POST" && p === "/api/media/caps") {
+      needTvtestHeader(req);
+      const body = await readBody(req, 5000);
+      tvCaps = { ...body, at: Date.now() };
+      broadcast();
+      return sendJson(res, 200, { ok: true });
+    }
+    if (req.method === "POST" && p === "/api/media/tvstatus") {
+      needTvtestHeader(req);
+      const body = await readBody(req, 5000);
+      const changed = JSON.stringify({ ...tvMedia, at: 0 }) !== JSON.stringify({ ...body, at: 0 });
+      // the TV cannot show it: tell the bell once per item and error
+      if (body.error && (body.error !== tvMedia?.error || body.id !== tvMedia?.id)) {
+        const it = mediaItemOf(String(body.id ?? ""));
+        addNotice("mediaError", "critical", { name: it?.name ?? "", error: String(body.error).slice(0, 200) }, "card-media");
+      }
+      tvMedia = { ...body, at: Date.now() };
+      if (changed) broadcast();
+      return sendJson(res, 200, { ok: true });
+    }
+    if (req.method === "POST" && p === "/api/prefs") {
+      needTvtestHeader(req);
+      changePrefs(req, (await readBody(req, 50_000)).changes);
+      return sendJson(res, 200, { ok: true });
+    }
     if (req.method === "GET" && p.startsWith("/static/")) return serveStatic(res, p.slice("/static/".length));
 
     if (req.method === "GET" && p === "/api/state") return sendJson(res, 200, publicState());
@@ -2275,12 +2384,18 @@ const server = http.createServer(async (req, res) => {
       const posGuide = patch.posGuide ? { ...state.posGuide, ...patch.posGuide } : state.posGuide;
       // the running light starts again from its LED on every change
       if (patch.posTest || patch.posRestart) posTest.startedAt = Date.now();
-      // only one test pattern at a time: starting one ends the others, a new test color ends all
+      // the media on the TV: a new item, a new position or play/pause start its timeline again
+      let mediaState = patch.media ? { ...state.media, ...patch.media } : state.media;
+      if (patch.media && ["id", "position", "playing"].some((k) => k in patch.media)) mediaState.startedAt = Date.now();
+      if (patch.media && "id" in patch.media && patch.media.id !== state.media.id) tvMedia = null;
+      // only one test pattern at a time: starting one ends the others, a new test color ends all;
+      // a picture or video of the media library counts as one too
       const tests = { grayTest, depthTest, fracTest, posTest };
       for (const [name, test] of Object.entries(tests)) {
-        const started = Object.keys(tests).some((other) => other !== name && patch[other]?.active === true);
+        const started = Object.keys(tests).some((other) => other !== name && patch[other]?.active === true) || patch.media?.active === true;
         if (started || typeof patch.color === "string") test.active = false;
       }
+      if (typeof patch.color === "string" || Object.keys(tests).some((t) => patch[t]?.active === true) || patch.posGuide?.active === true) mediaState = { ...mediaState, active: false };
       const overlays = { ...state.overlays, ...(patch.overlays ?? {}) };
       const colorActive = typeof patch.colorActive === "boolean" ? patch.colorActive : state.colorActive;
       const color = typeof patch.color === "string" && HEX_COLOR.test(patch.color) ? patch.color : state.color;
@@ -2289,7 +2404,7 @@ const server = http.createServer(async (req, res) => {
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
       const guideBefore = state.posGuide;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber });
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState });
       saveState();
       if (state.posGuide?.done && !guideBefore?.done) addNotice("guideDone", "info", {}, "card-lg");
       else if (guideBefore?.active && !guideBefore.done && !state.posGuide?.active) addNotice("guideAborted", "critical", {}, "card-lg");

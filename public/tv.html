@@ -144,6 +144,8 @@
 <script src="/static/i18n-en.js"></script>
 <script src="/static/i18n.js"></script>
 <script>I18N.start();</script>
+<script src="/static/testimages.js"></script>
+<script src="/static/tvmedia.js"></script>
 <script type="module">
 import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, posTestIndices, ledSegments, GRAY_STILL_CSS } from "/static/overlay.js";
 
@@ -422,7 +424,7 @@ function nothingShown() {
   const o = state.overlays ?? {};
   const bars = state.bars ?? {};
   const colorShown = state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000";
-  return !grabberTestRunning() && !colorShown && !["top", "bottom", "left", "right"].some((e) => bars[e] > 0)
+  return !grabberTestRunning() && !TvMedia.active() && !colorShown && !["top", "bottom", "left", "right"].some((e) => bars[e] > 0)
     && !state.grayTest?.active && !state.depthTest?.active && !state.fracTest?.active && !state.posTest?.active
     && !o.bbTv && !o.gsTv && !o.dpTv;
 }
@@ -441,7 +443,9 @@ function renderHints() {
 }
 setInterval(() => { if (!$("grace").hidden) renderHints(); }, 500);
 
+const renderMedia = () => TvMedia.render(state, () => Date.now() + clockOffset);
 function render() {
+  renderMedia();
   renderGrabberTest();
   renderGrayTest();
   renderDepthTest();
@@ -487,7 +491,7 @@ function connectEvents() {
     if (msg.layoutFix?.stamp && msg.layoutFix.stamp !== state.layoutFix?.stamp && state.layoutFix) loadLedAreas();
     state = msg;
     if (grayChanged) render();
-    else { renderBars(); renderDebug(); renderGrabberTest(); renderHints(); }
+    else { renderMedia(); renderBars(); renderDebug(); renderGrabberTest(); renderHints(); }
   };
   es.addEventListener("debug", (ev) => {
     debug = JSON.parse(ev.data);
