@@ -15,6 +15,7 @@
       gcgAborted: ["Graukurven-Kalibrierung abgebrochen", "Die Änderungen bis dahin bleiben, „Zurück“ bei der Graukurve nimmt sie zurück."],
       gcgError: ["Graukurven-Kalibrierung fehlgeschlagen", "{error}"],
       gcSlotLoaded: ["Graukurve für {name}", "Speicherplatz „{slot}“ geladen, den dieser Grabber zuletzt benutzt hat."],
+      gcNewGrabber: ["Graukurve bei neuem Grabber: {name}", "Es läuft weiter die Graukurve des bisherigen Grabbers{slotText}. Prüfe die Grautöne mit den Testfarben. Eine neue Kalibrierung der Graukurve ist kein Muss."],
       paused: ["Tests pausiert", "{tests}Keine Testseite war mehr verbunden. Zum Weitermachen neu starten."],
       hyperionDown: ["Hyperion nicht erreichbar", "Die Testseite erreicht Hyperion nicht mehr. Läuft der Dienst noch?"],
       hyperionUp: ["Hyperion wieder erreichbar", ""],
@@ -39,6 +40,7 @@
       gcgAborted: ["Gray curve calibration aborted", "The changes made so far stay, \u201cBack\u201d at the gray curve undoes them."],
       gcgError: ["Gray curve calibration failed", "{error}"],
       gcSlotLoaded: ["Gray curve for {name}", "Loaded memory slot \u201c{slot}\u201d, the one this grabber used last."],
+      gcNewGrabber: ["Gray curve with a new grabber: {name}", "The gray curve of the previous grabber keeps running{slotText}. Check the gray tones with the test colors. A new calibration of the gray curve is not a must."],
       paused: ["Tests paused", "{tests}No control page was connected any more. Start again to continue."],
       hyperionDown: ["Hyperion not reachable", "The test page can no longer reach Hyperion. Is the service still running?"],
       hyperionUp: ["Hyperion reachable again", ""],
@@ -70,6 +72,7 @@
     const keys = Array.isArray(q.tests) ? q.tests : [];
     const p = {
       name: q.name ?? "", error: q.error ?? "", slot: q.slot ?? "",
+      slotText: q.slot ? (lang === "en" ? ` (memory slot \u201c${q.slot}\u201d)` : ` (Speicherplatz „${q.slot}“)`) : "",
       tests: keys.length ? keys.map((k) => names[k] ?? k).join(", ") + ". " : "",
       ns: q.nsSlot || t.activeSlot, color: q.colorSlot || t.activeSlot,
       what: (q.missing ?? []).map((m) => (m === "ns" ? t.whatNs : t.whatColor)).join(" + "),

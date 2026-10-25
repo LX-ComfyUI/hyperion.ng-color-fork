@@ -581,7 +581,7 @@
 <nav id="topbar" aria-label="Kopfzeile">
   <div class="tb-left">
     <button type="button" class="tb-menu" id="tb-menu" aria-label="Menü"><span></span><span></span><span></span></button>
-    <a class="tb-home" id="tb-home" target="hyperion-webui" rel="noopener" title="Hyperion-WebUI öffnen">
+    <a class="tb-home" id="tb-home" target="_blank" rel="noopener" href="https://github.com/LX-ComfyUI/hyperion.ng-color-fork" title="Projektseite auf GitHub öffnen">
       <img class="tb-logo logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion">
       <img class="tb-logo logo-dark" src="/static/hyperion-logo.png" alt="Hyperion">
     </a>
@@ -589,6 +589,7 @@
     <span class="tb-tv" id="tb-tv" data-i18n-skip><span class="txt"></span><span class="ico"></span></span>
   </div>
   <div class="tb-icons">
+    <a class="tb-icon" id="tb-webui" target="hyperion-webui" rel="noopener" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a>
     <div class="tb-drop">
       <button type="button" class="tb-icon tb-bell" id="tb-bell" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="tb-count" id="tb-bell-count" hidden></span></button>
       <div class="tb-pop tb-notes" id="tb-bell-menu" hidden></div>
@@ -1549,9 +1550,12 @@
   };
   const menuBtn = document.getElementById("tb-menu");
   tip(menuBtn, "Menü");
-  // the logo opens Hyperion's WebUI (port 8090 on the same host) in its own tab; the named
-  // target brings back a WebUI tab this page opened before instead of opening another one
-  document.getElementById("tb-home").href = `${location.protocol}//${location.hostname}:8090/`;
+  // the link icon opens Hyperion's WebUI (its port from Hyperion's settings, on the same host as this
+  // page) in its own tab; the named target brings back a WebUI tab this page opened before
+  const tbWebui = document.getElementById("tb-webui");
+  tip(tbWebui, "Hyperion-WebUI öffnen");
+  tbWebui.href = `${location.protocol}//${location.hostname}:8090/`;
+  tip(document.getElementById("tb-home"), "Projektseite auf GitHub öffnen");
 
   const fold = document.getElementById("fold-all");
   const tbFold = document.getElementById("tb-fold");
@@ -1754,6 +1758,7 @@ function renderState() {
   renderPosGuide();
   renderGcGuide();
   renderCurveByGrabber();
+  if (state.webuiPort) $("tb-webui").href = `${location.protocol}//${location.hostname}:${state.webuiPort}/`;
   if (state.colorStamp !== colorStampSeen) { const first = colorStampSeen === undefined; colorStampSeen = state.colorStamp; if (!first) loadColorConfig(); }
   renderTestPresets();
   renderGuard();
@@ -4603,7 +4608,7 @@ function renderBar() {
   const chain = (c, extra) => '<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="' + c + '">' + extra + '</svg>';
   pill.querySelector(".ico").innerHTML = on
     ? chain("#2fa36b", link)
-    : chain("#d93025", '<mask id="tb-cut"><rect width="16" height="16" fill="#fff"/><path d="M1.5 1.5 14.5 14.5" stroke="#000" stroke-width="3.6" stroke-linecap="round"/></mask><g mask="url(#tb-cut)">' + link + '</g><path d="M1.5 1.5 14.5 14.5" stroke="#d93025" stroke-width="1.5" stroke-linecap="round"/>');
+    : chain("#d93025", link);
   pill.dataset.tip = pill.querySelector(".txt").textContent;
   // Hyperion health: red = not reachable / no grabber, yellow = running with a limit, green = fine
   const h = state?.health ?? {};

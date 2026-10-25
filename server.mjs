@@ -316,9 +316,18 @@ function addNotice(kind, level, params = {}, target = "") {
 
 const hasTv = () => [...clients.values()].includes("tv");
 
+// port of Hyperion's WebUI (global setting webConfig), for the link on the control page
+let webuiPortCache = { at: 0, port: 8090 };
+function webuiPort() {
+  if (Date.now() - webuiPortCache.at > 60_000) {
+    try { webuiPortCache = { at: Date.now(), port: Number(readGlobalSetting("webConfig")?.port) || 8090 }; } catch { webuiPortCache.at = Date.now(); }
+  }
+  return webuiPortCache.port;
+}
+
 // the state with everything the pages show besides it
 function publicState() {
-  return { ...state, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
+  return { ...state, webuiPort: webuiPort(), grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
 }
 
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
@@ -1340,6 +1349,8 @@ async function syncCurveSlot() {
       addNotice("gcSlotLoaded", "info", { name: Report.displayName(device), slot: want.name }, "card-gcc");
       return;
     }
+    // a grabber without a slot of its own keeps the curve of the one before
+    if (!want) addNotice("gcNewGrabber", "info", { name: Report.displayName(device), slot: slots.find((s) => sameCurve(curve, s.settings))?.name ?? "" }, "card-color");
   }
   const match = slots.find((s) => sameCurve(curve, s.settings));
   if (match && state.grayCurveByGrabber?.[device] !== match.id) {

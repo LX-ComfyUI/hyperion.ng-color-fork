@@ -2,6 +2,7 @@
 // normalized text of a text node or attribute, or the innerHTML of an element that holds only text and
 // inline markup, or the template of an I18N.tr() call with its {placeholders}.
 window.I18N_EN = {
+ "Projektseite auf GitHub öffnen": "Open the project page on GitHub",
  "Messungen vergleichen": "Compare measurements",
  "Testseite": "Test page",
  "Raspberry Pi": "Raspberry Pi",
@@ -367,7 +368,7 @@ window.I18N_EN = {
  "Die Kalibrierung der Grabber-Farberkennung läuft schon": "The grabber color detection calibration is already running",
  "Der Mittelwert mit Nachkommastellen braucht die neue Hyperion-Version": "The mean with decimal places needs the new Hyperion version",
  "Der TV zeigt eine helle Markierung genau im Bildbereich einer LED, so wie Hyperion ihn mit der eingestellten Erfassungstiefe abtastet. Der Grabber sieht die Markierung, und Hyperion lässt genau diese LED leuchten. <b>Sitzt die leuchtende LED direkt neben der Markierung, passt die Zuordnung.</b> Leuchtet sie ein Stück daneben, ist das Layout an dieser Stelle verschoben. <b>Lauflicht:</b> Die Markierung wandert um den ganzen Rahmen.": "The TV shows a bright marking exactly in the picture area of one LED, as Hyperion samples it with the set capture depth. The grabber sees the marking, and Hyperion lights exactly this LED. <b>If the lit LED sits right next to the marking, the mapping is correct.</b> If it lights up a bit off, the layout is shifted at that spot. <b>Running light:</b> the marking travels around the whole frame.",
- "Der Test wird über ein Smartphone, Tablet, einen PC oder Laptop gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser des Geräts:": "The test is controlled from a smartphone, tablet, PC or laptop. Scan the QR code with the camera or open this address in the device's browser:",
+ "Der Test wird über ein Smartphone, Tablet oder einen PC gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser des Geräts:": "The test is controlled from a smartphone, tablet or PC. Scan the QR code with the camera or open this address in the device's browser:",
  "Der Zuordnungstyp „Dominante Farbe“ liefert immer die Farbe eines einzelnen Bildpunkts, also eine ganze Zahl.": "The mapping type “dominant color” always delivers the color of a single pixel, i.e. a whole number.",
  "Die Erfassungstiefe braucht die neue Hyperion-Version": "The capture depth needs the new Hyperion version",
  "Die Graukurve braucht 1 bis 12 Punkte": "The gray curve needs 1 to 12 points",
@@ -528,10 +529,10 @@ window.I18N_EN = {
  "Mit Hyperion verbunden. Wiederherstellen und Einstellungen ändern ist möglich.": "Connected to Hyperion. Restoring and changing settings is possible.",
  "Mit Nachkommastellen gleiten die LEDs gleichmäßig. Ohne springen sie {a}-mal je Richtung um eine ganze Stufe.": "With decimal places the LEDs glide evenly. Without, they jump {a} times per direction by a whole level.",
  "Mit Nachkommastellen ändern sich die LEDs bei jedem Wechsel um etwa {a} Stufe. Ohne bleiben sie meist gleich oder springen um eine ganze Stufe, je nachdem, wo der Grabber den Ton sieht.": "With decimal places the LEDs change by about {a} level on every switch. Without, they mostly stay the same or jump by a whole level, depending on where the grabber sees the tone.",
- "Mit Smartphone, Tablet, PC oder Laptop steuern": "Control it with a smartphone, tablet, PC or laptop",
+ "Mit Smartphone, Tablet oder PC steuern": "Control it with a smartphone, tablet or PC",
  "Keine Verbindung zur Testseite": "No connection to the test page",
  "Der Test wird in {a} s pausiert, wenn sich kein Gerät verbindet.": "The test will be paused in {a} s if no device connects.",
- "Zum Verbinden die Testseite auf dem Smartphone, Tablet, PC oder Laptop wieder öffnen. Der Testserver läuft weiter.": "To connect, open the test page again on the smartphone, tablet, PC or laptop. The test server keeps running.",
+ "Zum Verbinden die Testseite auf dem Smartphone, Tablet oder PC wieder öffnen. Der Testserver läuft weiter.": "To connect, open the test page again on the smartphone, tablet or PC. The test server keeps running.",
  "Mit schwarzen Balken stimmt die Erwartung nicht, Hyperion misst dann ab der Balkenkante.": "With black bars the expectation is off, Hyperion then measures from the bar edge.",
  "Mittelwert mit Nachkommastellen": "Mean with decimal places",
  "Modus": "Mode",

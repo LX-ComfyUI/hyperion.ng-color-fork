@@ -49,7 +49,7 @@
     padding: 4vh; border-radius: 2vh; background: rgba(20, 20, 24, .94); color: #eee;
   }
   #connect[hidden] { display: none; }
-  #qr { width: 42vh; height: 42vh; flex: none; background: #fff; border-radius: 1vh; }
+  #qr { width: 42vh; height: 42vh; flex: none; background: #fff; border-radius: 2vh; overflow: hidden; }
   #qr svg { display: block; width: 100%; height: 100%; }
   #connect .logo { display: block; height: 6vh; width: auto; margin: 0 0 2.4vh; }
   #connect h1 { font-size: 4vh; margin: 0 0 2vh; color: #fff; }
@@ -121,8 +121,8 @@
   <div id="qr" role="img" aria-label="QR-Code zur Steuerung"></div>
   <div>
     <img class="logo" src="/static/hyperion-logo.png" alt="Hyperion">
-    <h1>Mit Smartphone, Tablet, PC oder Laptop steuern</h1>
-    <p>Der Test wird über ein Smartphone, Tablet, einen PC oder Laptop gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser des Geräts:</p>
+    <h1>Mit Smartphone, Tablet oder PC steuern</h1>
+    <p>Der Test wird über ein Smartphone, Tablet oder einen PC gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser des Geräts:</p>
     <p class="url" id="url"></p>
     <p>Sobald ein Gerät verbunden ist, verschwindet dieser Hinweis und das Testbild ist frei.</p>
   </div>
@@ -132,7 +132,7 @@
 <div id="grace" hidden>
   <h1>Keine Verbindung zur Testseite</h1>
   <p class="count" id="grace-count"></p>
-  <p>Zum Verbinden die Testseite auf dem Smartphone, Tablet, PC oder Laptop wieder öffnen. Der Testserver läuft weiter.</p>
+  <p>Zum Verbinden die Testseite auf dem Smartphone, Tablet oder PC wieder öffnen. Der Testserver läuft weiter.</p>
 </div>
 
 <div id="idle" hidden>
