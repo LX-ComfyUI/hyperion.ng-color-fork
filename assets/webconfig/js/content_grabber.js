@@ -83,9 +83,8 @@ $(document).ready(function () {
       const testPanel = createPanel('<i class="fa fa-eyedropper fa-fw"></i>' + $.i18n('edt_conf_grabbertest_heading_title'), '', null, 'grabbertest_container', 'panel-system', 'grabbertestPanelId');
       testPanel.className = 'col-lg-12';
       $('#conf_cont_grabbertest').append(testPanel);
-      // TV-Testseite (tvtest-Dienst auf demselben Host, Port 8093): /tv auf dem TV, / ist die Steuerseite
-      const testPageBase = "http://" + globalThis.location.hostname + ":8093";
-      const testPageLink = (path) => '<a href="' + testPageBase + path + '" target="_blank" rel="noopener">' + testPageBase + path + '</a>';
+      // TV-Testseite (tvtest-Dienst auf demselben Host, testPageBase): /tv auf dem TV, / ist die Steuerseite
+      const testPageLink = (path) => '<a href="' + testPageBase() + path + '" target="_blank" rel="noopener">' + testPageBase() + path + '</a>';
       $('#grabbertest_container').append(
         '<div class="bs-callout bs-callout-primary" style="margin-top:0px"><h4>' + $.i18n('conf_helptable_expl') + '</h4>'
         + $.i18n('conf_grabber_test_intro', testPageLink('/tv'), testPageLink('/')) + '</div>'
@@ -969,9 +968,8 @@ $(document).ready(function () {
       createHint("intro", $.i18n('conf_grabber_fg_intro'), "editor_container_screengrabber");
     }
     if (videoGrabberAvailable) {
-      // Fork-Erweiterung: Hinweis auf den Grabber-Test der TV-Testseite (Port 8093)
-      const testPageBase = "http://" + globalThis.location.hostname + ":8093";
-      const testPageLink = (path) => '<a href="' + testPageBase + path + '" target="_blank" rel="noopener">' + testPageBase + path + '</a>';
+      // Fork-Erweiterung: Hinweis auf den Grabber-Test der TV-Testseite (testPageBase)
+      const testPageLink = (path) => '<a href="' + testPageBase() + path + '" target="_blank" rel="noopener">' + testPageBase() + path + '</a>';
       createHint("intro", $.i18n('conf_grabber_v4l_intro') + '<br><br>' + $.i18n('conf_grabber_v4l_testpage', testPageLink('/tv'), testPageLink('/')), "editor_container_videograbber");
     }
     if (audioGrabberAvailable) {

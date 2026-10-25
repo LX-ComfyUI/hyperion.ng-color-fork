@@ -2,6 +2,13 @@ const DURATION_ENDLESS = -1;
 
 let prevTag;
 
+// Fork-Erweiterung: Adresse der TV-Testseite (tvtest-Dienst auf demselben Host); ihr Port steht in
+// webConfig.testPagePort (Standard 8093) und wird auch auf der Testseite selbst eingestellt
+function testPageBase() {
+  const port = Number(window.serverConfig && window.serverConfig.webConfig && window.serverConfig.webConfig.testPagePort) || 8093;
+  return 'http://' + location.hostname + ':' + port;
+}
+
 function removeOverlay() {
   $("#loading_overlay").removeClass("overlay");
 }

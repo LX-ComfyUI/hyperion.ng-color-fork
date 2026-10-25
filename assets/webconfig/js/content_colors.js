@@ -407,10 +407,9 @@ $(document).ready(function () {
 
   //create introduction
   if (window.showOptHelp) {
-    // TV test page (tvtest service on the same host, port 8093): /tv on the TV, / is the phone/PC control page
-    var testPageBase = "http://" + window.location.hostname + ":8093";
+    // TV test page (tvtest service on the same host, see testPageBase): /tv on the TV, / is the phone/PC control page
     var testPageLink = function (path) {
-      return '<a href="' + testPageBase + path + '" target="_blank" rel="noopener">' + testPageBase + path + '</a>';
+      return '<a href="' + testPageBase() + path + '" target="_blank" rel="noopener">' + testPageBase() + path + '</a>';
     };
     createHint("intro", $.i18n('conf_colors_color_intro') + '<br><br>' + $.i18n('conf_colors_color_testpage', testPageLink("/tv"), testPageLink("/")), "editor_container_color");
     createHint("intro", $.i18n('conf_colors_smoothing_intro'), "editor_container_smoothing");

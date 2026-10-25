@@ -52,6 +52,16 @@
 			"required" : true,
 			"default" : "",
 			"propertyOrder" : 7
+		},
+		"testPagePort" :
+		{
+			"type" : "integer",
+			"title" : "edt_conf_webConfig_testPagePort_title",
+			"minimum" : 1024,
+			"maximum" : 65535,
+			"default" : 8093,
+			"access" : "expert",
+			"propertyOrder" : 8
 		}
 	},
 	"additionalProperties" : false

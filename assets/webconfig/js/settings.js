@@ -106,11 +106,11 @@ $(document).ready(function () {
     setTimeout(initRestart, 100);
   });
 
-  // Fork-Erweiterung: Befehle der TV-Testseite im Power-Menü (Testserver, Port 8093, siehe Glocke in
+  // Fork-Erweiterung: Befehle der TV-Testseite im Power-Menü (Testserver, testPageBase, siehe Glocke in
   // content_index.js); die Einträge erscheinen nur, wenn er erreichbar ist
   const tvCommand = function (action, question) {
     if (question && !window.confirm($.i18n(question))) return;
-    fetch('http://' + location.hostname + ':8093/api/testpage/system', {
+    fetch(testPageBase() + '/api/testpage/system', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Tvtest': '1' },
       body: JSON.stringify({ action: action })

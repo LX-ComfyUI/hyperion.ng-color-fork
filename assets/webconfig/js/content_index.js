@@ -507,8 +507,8 @@ function SwitchToMenuItem(target, item) {
 //    liefert, fragt der Fork-Befehl "grabbertest" mit "peek" ab, ohne eine Messung zu starten.
 //    "Gesehen" legt den Eintrag ohne Kalibrierung an.
 // 2. Die Meldungen des Testservers der TV-Testseite (Statuswechsel, Tests und Kalibrierungen fertig,
-//    pausiert oder abgebrochen, Grabber, No Signal). Der Testserver läuft auf demselben Rechner, Port
-//    8093; ohne ihn bleibt die Glocke bei Quelle 1. Dieselben Meldungen zeigt die TV-Testseite.
+//    pausiert oder abgebrochen, Grabber, No Signal). Der Testserver läuft auf demselben Rechner (Port
+//    webConfig.testPagePort, siehe testPageBase); ohne ihn bleibt die Glocke bei Quelle 1. Dieselben Meldungen zeigt die TV-Testseite.
 // Die Auswahl rechts neben dem Titel (alle / nur kritische / stumm) gilt je Browser.
 (function () {
   const POLL_MS = 15000;
@@ -532,7 +532,7 @@ function SwitchToMenuItem(target, item) {
   let seen = Number(store.get('hy-notes-seen', '-1'));
 
   // Adresse des Testservers; über https (Mixed Content) ist er nicht erreichbar
-  const tvBase = () => (location.protocol === 'http:' ? 'http://' + location.hostname + ':8093' : null);
+  const tvBase = () => (location.protocol === 'http:' ? testPageBase() : null);
   const shown = (n) => mode === 'all' || (mode === 'critical' && n.level === 'critical');
   const lastId = () => (tvNotes.length ? tvNotes[tvNotes.length - 1].id : 0);
 

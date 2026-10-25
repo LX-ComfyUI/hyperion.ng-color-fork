@@ -714,6 +714,8 @@
   "edt_conf_webConfig_keyPath_title": "Private key path",
   "edt_conf_webConfig_port_expl": "Port for the WebServer, RPC and WebSocket HTTP connections",
   "edt_conf_webConfig_port_title": "HTTP Port",
+  "edt_conf_webConfig_testPagePort_expl": "Fork extension: port the TV test page (tvtest service) runs on this computer. The links, the bell and the power menu of the WebUI use it. It can also be changed on the test page itself (card Test server), which then restarts on the new port.",
+  "edt_conf_webConfig_testPagePort_title": "TV test page port",
   "edt_conf_webConfig_sslPort_expl": "Port for the WebServer, RPC and WebSocket HTTPS connections",
   "edt_conf_webConfig_sslPort_title": "HTTPS Port",
   "edt_dev_auth_key_title": "Authorization Token",
