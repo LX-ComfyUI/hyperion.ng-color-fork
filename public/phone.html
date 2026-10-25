@@ -327,6 +327,15 @@
   .md-checks { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
   .md-checks .check { margin: 0; }
   .md-upload-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .md-upload-row button { padding: 7px 14px; font-size: 14px; }
+  .md-hist { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 2px; }
+  .md-hist li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px; padding: 3px 0; border: none; font-size: 13px; }
+  .md-hist .h-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .md-hist .h-text b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .md-hist .h-text small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .md-hist .ibtn { width: 34px; height: 34px; }
+  .small-btn { padding: 5px 10px; font-size: 13px; }
+  .ibtn.play svg { fill: currentColor; stroke: none; }
   .md-disk { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
   .md-disk .bar { height: 6px; border-radius: 3px; background: var(--btn-line); overflow: hidden; margin: 4px 0 2px; }
   .md-disk .bar span { display: block; height: 100%; background: var(--accent); }
@@ -849,7 +858,7 @@
           <button type="button" data-fit="fill">Strecken</button>
         </div>
         <p class="warn" id="md-tv-note" hidden></p>
-        <button type="button" class="wide" id="md-stop" style="margin-top:8px">Vom TV nehmen</button>
+        <button type="button" class="wide" id="md-stop" style="margin-top:8px">■ Vom TV nehmen</button>
       </div>
 
       <h4 class="hy-h"><span>Hochladen</span></h4>
@@ -866,9 +875,15 @@
         <div id="md-caps"></div>
       </details>
       <div class="md-link-row">
-        <input type="url" id="md-link" placeholder="Link zu YouTube, Vimeo oder Dailymotion" inputmode="url">
+        <input type="url" id="md-link" placeholder="Link einfügen" inputmode="url" aria-label="Link">
         <button type="button" id="md-link-add">Hinzufügen</button>
       </div>
+      <p class="note" style="margin-top:4px">YouTube, Vimeo und Dailymotion werden eingebettet. Ein Link direkt zu einer Bild- oder Videodatei wird auf den Server heruntergeladen und landet bei den eigenen Bildern oder Videos.</p>
+      <details class="more" id="md-history">
+        <summary id="md-history-sum">Verlauf</summary>
+        <ul class="md-hist" id="md-history-list"></ul>
+        <button type="button" id="md-history-clear" class="small-btn">Verlauf leeren</button>
+      </details>
 
       <h4 class="hy-h"><span>Eingebaute Testbilder</span></h4>
       <ul class="md-list" id="md-builtin"></ul>
@@ -3487,7 +3502,17 @@ const MD_ICON = {
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 12 10 18 20 6"/></svg>',
   cancel: '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
+  play: '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="7 4 20 12 7 20"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>',
+  again: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10"/></svg>',
 };
+// play / pause / stop of one entry: not shown → play; shown → (video: pause or play) and stop
+function mdPlayTools(on, video, playing) {
+  const b = (act, icon, title) => `<button type="button" class="ibtn play" data-md="${act}" title="${tr(title)}" aria-label="${tr(title)}">${MD_ICON[icon]}</button>`;
+  if (!on) return b("show", "play", "Auf dem TV zeigen");
+  return (video ? (playing ? b("pause", "pause", "Pause") : b("resume", "play", "Weiter abspielen")) : "") + b("stop", "stop", "Vom TV nehmen");
+}
 const MD_PROVIDER = { youtube: "YouTube", vimeo: "Vimeo", dailymotion: "Dailymotion" };
 const MD_CODEC = { h264: "H.264", hevc: "HEVC", vp9: "VP9", vp8: "VP8", av1: "AV1", mpeg4: "MPEG-4", theora: "Theora", mpeg2video: "MPEG-2" };
 let mdInfo = { items: [], disk: null };
@@ -3564,9 +3589,12 @@ function mdRow(it) {
   if (it.embedBlocked) flags.push(`<span class="md-flag bad">${tr("Einbetten gesperrt")}</span>`);
   const badge = on ? `<span class="tp-badge">${paused ? tr("Pause") : tr("läuft")}</span>` : "";
   const name = it.kind === "builtin" ? tr(it.name) : it.name;
-  const tools = it.kind === "builtin" ? "" : `<button type="button" class="ibtn" data-md="rename" title="${tr("Umbenennen")}" aria-label="${tr("Umbenennen")}">${MD_ICON.pencil}</button>` +
-    `<button type="button" class="ibtn trash" data-md="delete" title="${tr("Löschen")}" aria-label="${tr("Löschen")}">${MD_ICON.trash}</button>`;
-  return `<li data-id="${it.id}"><button type="button" class="md-show" data-md="show" aria-pressed="${on}">${thumb}<span class="md-text"><b>${escHtml(name)}</b><small>${escHtml(mdMeta(it))}</small></span>${flags.join("")}${badge}</button>${tools}</li>`;
+  const video = it.kind === "video" || it.kind === "link";
+  const play = it.downloading ? "" : mdPlayTools(on, video, !paused);
+  const tools = play + (it.kind === "builtin" ? "" : `<button type="button" class="ibtn" data-md="rename" title="${tr("Umbenennen")}" aria-label="${tr("Umbenennen")}">${MD_ICON.pencil}</button>` +
+    `<button type="button" class="ibtn trash" data-md="delete" title="${tr("Löschen")}" aria-label="${tr("Löschen")}">${MD_ICON.trash}</button>`);
+  const meta = it.downloading ? tr("wird heruntergeladen … {a}", { a: it.size ? `${Math.round(((it.loaded ?? 0) / it.size) * 100)} %` : mdBytes(it.loaded ?? 0) }) : mdMeta(it);
+  return `<li data-id="${it.id}"><button type="button" class="md-show" data-md="show" aria-pressed="${on}"${it.downloading ? " disabled" : ""}>${thumb}<span class="md-text"><b>${escHtml(name)}</b><small>${escHtml(meta)}</small></span>${flags.join("")}${badge}</button>${tools}</li>`;
 }
 
 function renderMediaLib() {
@@ -3600,7 +3628,29 @@ function renderMediaLib() {
   $("md-ffmpeg").hidden = !mdInfo.disk || mdInfo.ffprobe !== false;
   renderMdCaps();
   renderMdPlayer();
+  renderMdHistory();
 }
+
+// every link pasted (server: link-history.json), newest first
+function renderMdHistory() {
+  const h = mdInfo.history ?? [];
+  $("md-history").hidden = !h.length;
+  $("md-history-sum").textContent = tr("Verlauf der Links ({a})", { a: h.length });
+  const res = { embed: "eingebettet", download: "heruntergeladen", error: "Fehler" };
+  const html = h.map((e) => `<li data-url="${escHtml(e.url)}"><span class="h-text"><b>${escHtml(e.name || e.url)}</b><small>${escHtml(new Date(e.at).toLocaleString(I18N.locale, { dateStyle: "short", timeStyle: "short" }))} · ${e.result === "error" ? `<span class="warn">${escHtml(tr(e.error ?? res.error))}</span>` : escHtml(tr(res[e.result] ?? ""))}${e.name ? " · " + escHtml(e.url) : ""}</small></span>` +
+    `<button type="button" class="ibtn" data-h="again" title="${tr("Erneut hinzufügen")}" aria-label="${tr("Erneut hinzufügen")}">${MD_ICON.again}</button>` +
+    `<button type="button" class="ibtn" data-h="forget" title="${tr("Aus dem Verlauf entfernen")}" aria-label="${tr("Aus dem Verlauf entfernen")}">${MD_ICON.cancel}</button></li>`).join("");
+  const ul = $("md-history-list");
+  if (ul.dataset.html !== html) { ul.innerHTML = html; ul.dataset.html = html; }
+}
+$("md-history-list").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-h]");
+  if (!b) return;
+  const url = b.closest("li").dataset.url;
+  if (b.dataset.h === "again") { $("md-link").value = url; $("md-link-add").click(); }
+  else await mdOp({ op: "forget", url });
+});
+$("md-history-clear").addEventListener("click", () => { if (confirm(tr("Den ganzen Verlauf der Links leeren?"))) mdOp({ op: "forgetAll" }); });
 
 function renderMdCaps() {
   const t = state?.tvCaps;
@@ -3636,7 +3686,7 @@ function renderMdPlayer() {
   $("md-fit").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fit === m.fit)));
   if (video) {
     const dur = state.tvMedia?.duration || it.duration || 0;
-    $("md-play").textContent = m.playing ? tr("Pause") : tr("Abspielen");
+    $("md-play").textContent = m.playing ? "⏸ " + tr("Pause") : "▶ " + tr("Abspielen");
     $("md-loop").checked = m.loop;
     $("md-sound").checked = !m.muted;
     const seek = $("md-seek");
@@ -3680,6 +3730,9 @@ for (const id of ["md-builtin", "md-images", "md-videos", "md-links"]) {
         if (state.media?.active && state.media.id === itemId) return;
         mdSend({ active: true, id: itemId, position: it?.start ?? 0, playing: true });
         break;
+      case "pause": mdSend({ playing: false, position: mdPosition() }); break;
+      case "resume": mdSend({ playing: true, position: mdPosition() }); break;
+      case "stop": mdSend({ active: false }); break;
       case "rename": mdEditing = itemId; renderMediaLib(); li.parentElement.querySelector(`li[data-id="${itemId}"] input`)?.focus(); break;
       case "cancel": mdEditing = null; renderMediaLib(); break;
       case "save": await mdOp({ op: "rename", id: itemId, name: li.querySelector("input").value }); mdEditing = null; renderMediaLib(); break;
@@ -3946,7 +3999,8 @@ function srcEntryRow(e) {
   const flags = [c ? `<span class="md-flag ${c.cls}">${escHtml(c.text)}</span>` : "", e.hdr ? `<span class="md-flag maybe">${escHtml(String(e.hdr))}</span>` : ""].join("");
   const meta = e.kind === "folder" ? tr("Ordner") : mdMeta({ ...e, kind: e.kind });
   const badge = on ? `<span class="tp-badge">${e.kind === "video" && !m.playing ? tr("Pause") : tr("läuft")}</span>` : "";
-  return `<li data-key="${escHtml(e.key)}"><button type="button" class="md-show" aria-pressed="${on}">${thumb}<span class="md-text"><b>${escHtml(e.name)}</b><small>${escHtml(meta)}</small></span>${flags}${badge}</button></li>`;
+  const tools = e.kind === "folder" ? "" : mdPlayTools(on, e.kind === "video", !!m.playing);
+  return `<li data-key="${escHtml(e.key)}"><button type="button" class="md-show" data-md="show" aria-pressed="${on}">${thumb}<span class="md-text"><b>${escHtml(e.name)}</b><small>${escHtml(meta)}</small></span>${flags}${badge}</button>${tools}</li>`;
 }
 
 function renderSrcBrowser() {
@@ -3967,6 +4021,10 @@ $("src-entries").addEventListener("click", (ev) => {
   if (!li) return;
   const e = srcEntries.find((x) => x.key === li.dataset.key);
   if (!e) return;
+  const act = ev.target.closest("[data-md]")?.dataset.md ?? "show";
+  if (act === "pause") return mdSend({ playing: false, position: mdPosition() });
+  if (act === "resume") return mdSend({ playing: true, position: mdPosition() });
+  if (act === "stop") return mdSend({ active: false });
   if (e.kind === "folder") { srcOpen.stack.push({ key: e.key, name: e.name }); return srcBrowse(); }
   const full = `src:${srcOpen.id}:${e.key}`;
   if (state.media?.active && state.media.id === full) return;

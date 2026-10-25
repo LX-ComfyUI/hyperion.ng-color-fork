@@ -63,6 +63,17 @@ export function createMedia({ dataDir, onChange, onUpload }) {
   fs.mkdirSync(THUMBS, { recursive: true });
   let items = [];
   try { items = JSON.parse(fs.readFileSync(LIST, "utf8")).filter((i) => i && typeof i.id === "string"); } catch {}
+  // a download cut off by a restart is gone
+  for (const it of items.filter((i) => i.downloading)) { fs.rm(path.join(DIR, it.file + ".part"), { force: true }, () => {}); }
+  items = items.filter((i) => !i.downloading);
+  // every link pasted, newest first: { url, at, result: "embed" | "download" | "error", name, error }
+  const HISTORY = path.join(dataDir, "link-history.json");
+  let history = [];
+  try { history = JSON.parse(fs.readFileSync(HISTORY, "utf8")).filter((h) => h && typeof h.url === "string"); } catch {}
+  function remember(entry) {
+    history = [{ ...entry, at: Date.now() }, ...history.filter((h) => h.url !== entry.url)].slice(0, 50);
+    fs.writeFileSync(HISTORY, JSON.stringify(history));
+  }
   let ffprobe = null;
   let ffmpeg = null;
   // TVTEST_NO_FFMPEG=1 behaves as if ffmpeg were missing (to test the hints)
@@ -90,7 +101,7 @@ export function createMedia({ dataDir, onChange, onUpload }) {
   }
 
   function info() {
-    return { items, disk: disk(), ffprobe: ffprobe === true, ffmpeg: ffmpeg === true, maxUpload: MAX_UPLOAD, keepFree: KEEP_FREE };
+    return { items, history, disk: disk(), ffprobe: ffprobe === true, ffmpeg: ffmpeg === true, maxUpload: MAX_UPLOAD, keepFree: KEEP_FREE };
   }
 
   // codec, HDR and length of a video (or size of a picture), if ffprobe is there
@@ -202,6 +213,93 @@ export function createMedia({ dataDir, onChange, onUpload }) {
     });
   }
 
+  // a pasted link: YouTube/Vimeo/Dailymotion are embedded, anything else is downloaded if it is a
+  // picture or video file; every link goes into the history
+  async function addAnyLink(url) {
+    try {
+      if (parseLink(url)) {
+        const it = await addLink(url);
+        remember({ url, result: "embed", name: it.name });
+        return it;
+      }
+      const it = await download(url);
+      remember({ url, result: "download", name: it.name });
+      return it;
+    } catch (e) {
+      remember({ url, result: "error", error: e.message });
+      throw e;
+    }
+  }
+
+  // downloads a picture or video into the library; the item shows the progress while it runs
+  async function download(input) {
+    let url;
+    try { url = new URL(String(input).trim()); } catch { throw new Error("Das ist kein gültiger Link"); }
+    if (!/^https?:$/.test(url.protocol)) throw new Error("Nur Links mit http:// oder https:// gehen");
+    if (items.length >= MAX_ITEMS) throw new Error(`Höchstens ${MAX_ITEMS} Einträge`);
+    const ctrl = new AbortController();
+    const headTimer = setTimeout(() => ctrl.abort(), 15_000);
+    let r;
+    try {
+      r = await fetch(url, { signal: ctrl.signal, redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 (Hyperion TV-Testseite)" } });
+    } catch (e) {
+      throw new Error(`Link nicht erreichbar (${e.cause?.code ?? e.name})`);
+    } finally {
+      clearTimeout(headTimer);
+    }
+    if (!r.ok) throw new Error(`Der Server des Links antwortet mit ${r.status}`);
+    const ext0 = path.extname(new URL(r.url).pathname).toLowerCase();
+    let mime = String(r.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    if (!IMAGE_EXT[mime] && !VIDEO_EXT[mime]) mime = BY_EXT[ext0] ?? mime;
+    const kind = IMAGE_EXT[mime] ? "image" : VIDEO_EXT[mime] ? "video" : null;
+    if (!kind) {
+      r.body?.cancel().catch(() => {});
+      throw new Error(mime === "text/html" ? "Der Link führt zu einer Webseite, nicht direkt zu einer Bild- oder Videodatei" : "Der Link führt zu keiner Bild- oder Videodatei");
+    }
+    const size = Number(r.headers.get("content-length")) || 0;
+    if (size > MAX_UPLOAD) { r.body?.cancel().catch(() => {}); throw new Error("Die Datei ist größer als 4 GB"); }
+    const d = disk();
+    if (d && size + KEEP_FREE > d.free) { r.body?.cancel().catch(() => {}); throw new Error("Nicht genug freier Speicher auf dem Server"); }
+    const cd = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(r.headers.get("content-disposition") ?? "");
+    const fname = decodeURIComponent(cd?.[1] ?? path.basename(new URL(r.url).pathname) ?? "") || "Download";
+    const id = newId();
+    const file = id + (IMAGE_EXT[mime] ?? VIDEO_EXT[mime]);
+    const it = { id, kind, name: path.basename(fname, path.extname(fname)).slice(0, 120) || "Download", file, mime, size: size || undefined, createdAt: Date.now(), source: r.url.slice(0, 500), downloading: true, loaded: 0 };
+    items.push(it);
+    save();
+    // the rest runs on; the list shows the progress
+    (async () => {
+      const tmp = path.join(DIR, file + ".part");
+      const out = fs.createWriteStream(tmp);
+      let got = 0, last = 0;
+      try {
+        for await (const chunk of r.body) {
+          if (!items.includes(it)) throw new Error("Download abgebrochen");
+          got += chunk.length;
+          if (got > MAX_UPLOAD) throw new Error("Die Datei ist größer als 4 GB");
+          if (!out.write(chunk)) await new Promise((res) => out.once("drain", res));
+          if (Date.now() - last > 1000) { last = Date.now(); it.loaded = got; onChange?.(); }
+        }
+        await new Promise((res, rej) => out.end((e) => (e ? rej(e) : res())));
+        fs.renameSync(tmp, path.join(DIR, file));
+        delete it.downloading;
+        delete it.loaded;
+        it.size = got;
+        if (kind === "image") it.thumb = Date.now(); // the picture itself serves as its thumbnail
+        save();
+        probe(it);
+        if (kind === "video") onUpload?.(it);
+      } catch (e) {
+        out.destroy();
+        fs.rm(tmp, { force: true }, () => {});
+        items = items.filter((i) => i.id !== id);
+        remember({ url: String(input).trim(), result: "error", error: e.message });
+        save();
+      }
+    })();
+    return it;
+  }
+
   async function addLink(url) {
     const p = parseLink(url);
     if (!p) throw new Error("Unbekannter Link. Es gehen Links zu YouTube, Vimeo und Dailymotion.");
@@ -282,7 +380,9 @@ export function createMedia({ dataDir, onChange, onUpload }) {
       const { op, id, name, url } = await readBody(req);
       if (op === "rename") rename(id, name);
       else if (op === "delete") remove(id);
-      else if (op === "link") { const item = await addLink(url); sendJson(res, 200, { item, ...info() }); return true; }
+      else if (op === "link") { const item = await addAnyLink(url); sendJson(res, 200, { item, ...info() }); return true; }
+      else if (op === "forget") { history = history.filter((h) => h.url !== url); fs.writeFileSync(HISTORY, JSON.stringify(history)); }
+      else if (op === "forgetAll") { history = []; fs.writeFileSync(HISTORY, "[]"); }
       else throw new Error("Unbekannte Aktion");
       sendJson(res, 200, info());
       return true;
@@ -296,7 +396,13 @@ export function createMedia({ dataDir, onChange, onUpload }) {
     if (req.method === "GET" && p.startsWith("/media/thumb/")) {
       const id = p.slice("/media/thumb/".length);
       const full = path.join(THUMBS, id.replace(/[^\da-f]/g, "") + ".jpg");
-      if (!fs.existsSync(full)) { sendJson(res, 404, { error: "not found" }); return true; }
+      if (!fs.existsSync(full)) {
+        // a downloaded picture without a thumbnail of its own
+        const it = find(id);
+        if (it?.kind === "image" && !it.downloading) { serveFile(req, res, it); return true; }
+        sendJson(res, 404, { error: "not found" });
+        return true;
+      }
       res.writeHead(200, { "Content-Type": "image/jpeg", "Cache-Control": "max-age=86400" });
       fs.createReadStream(full).pipe(res);
       return true;
