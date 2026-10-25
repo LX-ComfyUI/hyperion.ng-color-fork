@@ -56,7 +56,7 @@ const OEMBED = {
 };
 const PROVIDER_NAME = { youtube: "YouTube", vimeo: "Vimeo", dailymotion: "Dailymotion" };
 
-export function createMedia({ dataDir, onChange }) {
+export function createMedia({ dataDir, onChange, onUpload }) {
   const DIR = path.join(dataDir, "media");
   const THUMBS = path.join(DIR, "thumbs");
   const LIST = path.join(dataDir, "media.json");
@@ -65,8 +65,10 @@ export function createMedia({ dataDir, onChange }) {
   try { items = JSON.parse(fs.readFileSync(LIST, "utf8")).filter((i) => i && typeof i.id === "string"); } catch {}
   let ffprobe = null;
   let ffmpeg = null;
-  execFile("ffprobe", ["-version"], (err) => { ffprobe = !err; });
-  execFile("ffmpeg", ["-version"], (err) => { ffmpeg = !err; });
+  // TVTEST_NO_FFMPEG=1 behaves as if ffmpeg were missing (to test the hints)
+  const noTools = process.env.TVTEST_NO_FFMPEG === "1";
+  execFile("ffprobe", ["-version"], (err) => { ffprobe = !err && !noTools; });
+  execFile("ffmpeg", ["-version"], (err) => { ffmpeg = !err && !noTools; });
 
   function save() {
     const tmp = LIST + ".tmp";
@@ -88,7 +90,7 @@ export function createMedia({ dataDir, onChange }) {
   }
 
   function info() {
-    return { items, disk: disk(), ffprobe: ffprobe === true, maxUpload: MAX_UPLOAD, keepFree: KEEP_FREE };
+    return { items, disk: disk(), ffprobe: ffprobe === true, ffmpeg: ffmpeg === true, maxUpload: MAX_UPLOAD, keepFree: KEEP_FREE };
   }
 
   // codec, HDR and length of a video (or size of a picture), if ffprobe is there
@@ -176,6 +178,7 @@ export function createMedia({ dataDir, onChange }) {
       items.push(it);
       save();
       probe(it);
+      onUpload?.(it);
       sendJson(res, 200, { item: it, ...info() });
     });
   }

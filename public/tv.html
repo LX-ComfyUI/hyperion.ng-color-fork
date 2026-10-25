@@ -465,6 +465,19 @@ async function loadQr() {
   } catch { /* the URL text next to the code still works */ }
 }
 
+// the server has newer files for this page: reload, but only while nothing is shown (no test, no
+// test color, no picture or video), so a running test is never interrupted
+let reloadTimer = null;
+function checkVersion() {
+  const stale = window.TVTEST_VERSION && state.tvVersion && state.tvVersion !== window.TVTEST_VERSION;
+  if (!stale || reloadTimer) return;
+  if (!nothingShown()) return;
+  reloadTimer = setTimeout(() => {
+    reloadTimer = null;
+    if (nothingShown()) location.reload();
+  }, 3000);
+}
+
 function connectEvents() {
   const es = new EventSource("/api/events?role=tv");
   es.addEventListener("reload", () => location.reload());
@@ -495,6 +508,7 @@ function connectEvents() {
     state = msg;
     if (grayChanged) render();
     else { renderMedia(); renderBars(); renderDebug(); renderGrabberTest(); renderHints(); }
+    checkVersion();
   };
   es.addEventListener("debug", (ev) => {
     debug = JSON.parse(ev.data);

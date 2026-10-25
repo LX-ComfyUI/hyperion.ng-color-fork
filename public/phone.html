@@ -851,6 +851,7 @@
         <input type="file" id="md-file" multiple accept="image/*,video/*" hidden>
       </div>
       <div class="md-disk" id="md-disk"></div>
+      <p class="warn" id="md-ffmpeg" hidden>Auf dem Server fehlt ffmpeg. Videos lassen sich trotzdem hochladen und abspielen, aber Codec, 10 Bit, HDR und Länge bleiben unbekannt, und die Seite kann nicht vorher sagen, ob der TV-Browser ein Video kann. Vorschaubilder gibt es nur, wenn dein Browser das Video beim Hochladen lesen kann. Nachinstallieren auf dem Server, z. B. mit <code>sudo apt install ffmpeg</code>.</p>
       <div id="md-progress"></div>
       <details class="more" id="md-formats">
         <summary>Welche Formate gehen?</summary>
@@ -3565,6 +3566,7 @@ function renderMediaLib() {
   $("md-disk").innerHTML = d ? `${tr("Speicher auf dem Server: {a} frei von {b}", { a: mdBytes(d.free), b: mdBytes(d.total) })}<div class="bar"><span style="width:${Math.round(((d.total - d.free) / d.total) * 100)}%"></span></div>` +
     tr("Mediathek: {a} in {b} Dateien · höchstens {c} je Datei", { a: mdBytes(d.used), b: items.filter((i) => i.file).length, c: mdBytes(mdInfo.maxUpload) }) : "";
   $("md-progress").innerHTML = mdUploads.map((u) => `<div class="md-up">${escHtml(u.name)} · ${u.error ? `<span class="warn">${escHtml(u.error)}</span>` : u.done ? tr("fertig") : `${mdBytes(u.loaded)} / ${mdBytes(u.size)}`}<div class="bar"><span style="width:${Math.round((u.loaded / u.size) * 100)}%"></span></div></div>`).join("");
+  $("md-ffmpeg").hidden = !mdInfo.disk || mdInfo.ffprobe !== false;
   renderMdCaps();
   renderMdPlayer();
 }

@@ -116,6 +116,8 @@ const DEFAULT_STATE = {
   media: { active: false, id: "", fit: "contain", playing: true, loop: true, muted: true, position: 0, startedAt: 0 },
   // the port this server ran on last time: a change is told in the bell with what to check
   lastPort: 0,
+  // the hint "ffmpeg is missing" was given at the first video upload / the first video played
+  ffmpegHint: { upload: false, play: false },
 };
 
 const num = (v, min, max, fallback, step = 1) => {
@@ -299,6 +301,7 @@ function sanitize(input) {
   }
   if (typeof input.curveGrabber === "string") out.curveGrabber = input.curveGrabber.slice(0, 200);
   out.lastPort = num(input.lastPort, 0, 65535, 0);
+  out.ffmpegHint = { upload: input.ffmpegHint?.upload === true, play: input.ffmpegHint?.play === true };
   const md = { ...DEFAULT_STATE.media, ...(input.media ?? {}) };
   out.media = {
     active: md.active === true && typeof md.id === "string" && md.id.length > 0,
@@ -356,7 +359,15 @@ const hasTv = () => [...clients.values()].includes("tv");
 
 // media library (media.mjs); the pages read the list again when mediaStamp changes
 let mediaStamp = 0;
-const media = createMedia({ dataDir: DATA_DIR, onChange: () => { mediaStamp++; broadcast(); } });
+const media = createMedia({ dataDir: DATA_DIR, onChange: () => { mediaStamp++; broadcast(); }, onUpload: (it) => ffmpegHint(it, "upload") });
+// without ffmpeg/ffprobe videos still work, but codec, HDR and length stay unknown: the bell says so
+// once at the first video uploaded and once at the first video played
+function ffmpegHint(it, when) {
+  if (it?.kind !== "video" || media.info().ffprobe || state.ffmpegHint?.[when]) return;
+  state = sanitize({ ...state, ffmpegHint: { ...state.ffmpegHint, [when]: true } });
+  saveState();
+  addNotice("ffmpegMissing", "info", { when }, "card-media");
+}
 let tvCaps = null;   // what the TV page's browser can play (canPlayType), sent by the TV page
 let tvMedia = null;  // what the TV page reports about the shown media: position, length, errors
 function mediaItemOf(id) {
@@ -376,7 +387,7 @@ function webuiPort() {
 
 // the state with everything the pages show besides it
 function publicState() {
-  return { ...state, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
+  return { ...state, tvVersion, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
     webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
 }
 
@@ -453,6 +464,16 @@ function savePrefs() {
     fs.renameSync(tmp, PREFS_FILE);
   }, 300);
 }
+// version of the files the TV page loads: a TV page that was served older files reloads itself as soon
+// as nothing is shown (tv.html compares it with the version written into it when it was served)
+const TV_FILES = ["tv.html", "i18n.js", "i18n-en.js", "overlay.js", "testimages.js", "tvmedia.js", "prefs.js"];
+function tvFilesVersion() {
+  const parts = TV_FILES.map((f) => { try { const st = fs.statSync(path.join(PUBLIC, f)); return `${f}:${st.mtimeMs}:${st.size}`; } catch { return f; } });
+  return createHash("sha1").update(parts.join("|")).digest("hex").slice(0, 12);
+}
+let tvVersion = tvFilesVersion();
+setInterval(() => { const v = tvFilesVersion(); if (v !== tvVersion) { tvVersion = v; broadcast(); } }, 5000);
+
 const deviceOf = (req) => /(?:^|;\s*)tvtest-device=([\w-]{8,40})/.exec(req.headers.cookie ?? "")?.[1] ?? null;
 
 function changePrefs(req, changes) {
@@ -484,7 +505,7 @@ function servePage(req, res, file) {
   fs.readFile(path.join(PUBLIC, file), "utf8", (err, html) => {
     if (err) return sendJson(res, 404, { error: "not found" });
     const keys = JSON.stringify(prefs[id]?.keys ?? {}).replace(/</g, "\\u003c");
-    const inject = `<script>window.TVTEST_PREFS=${keys};</script><script src="/static/prefs.js"></script>`;
+    const inject = `<script>window.TVTEST_PREFS=${keys};window.TVTEST_VERSION=${JSON.stringify(tvFilesVersion())};</script><script src="/static/prefs.js"></script>`;
     res.writeHead(200, headers);
     res.end(html.replace("<head>", "<head>" + inject));
   });
@@ -2407,7 +2428,8 @@ const server = http.createServer(async (req, res) => {
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
       const guideBefore = state.posGuide;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState, lastPort: state.lastPort });
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState, lastPort: state.lastPort, ffmpegHint: state.ffmpegHint });
+      if (patch.media?.active === true) ffmpegHint(mediaItemOf(state.media.id), "play");
       saveState();
       if (state.posGuide?.done && !guideBefore?.done) addNotice("guideDone", "info", {}, "card-lg");
       else if (guideBefore?.active && !guideBefore.done && !state.posGuide?.active) addNotice("guideAborted", "critical", {}, "card-lg");
