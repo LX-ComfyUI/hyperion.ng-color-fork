@@ -114,6 +114,8 @@ const DEFAULT_STATE = {
   // picture or video of the media library on the TV (media.mjs; "builtin:*" = test pictures drawn by
   // testimages.js). A video plays from `position` seconds at `startedAt` (server time) while playing.
   media: { active: false, id: "", fit: "contain", playing: true, loop: true, muted: true, position: 0, startedAt: 0 },
+  // the port this server ran on last time: a change is told in the bell with what to check
+  lastPort: 0,
 };
 
 const num = (v, min, max, fallback, step = 1) => {
@@ -296,6 +298,7 @@ function sanitize(input) {
       .filter(([d, id]) => typeof id === "string" && d.length <= 200 && id.length <= 40).slice(0, 30));
   }
   if (typeof input.curveGrabber === "string") out.curveGrabber = input.curveGrabber.slice(0, 200);
+  out.lastPort = num(input.lastPort, 0, 65535, 0);
   const md = { ...DEFAULT_STATE.media, ...(input.media ?? {}) };
   out.media = {
     active: md.active === true && typeof md.id === "string" && md.id.length > 0,
@@ -2404,7 +2407,7 @@ const server = http.createServer(async (req, res) => {
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
       const guideBefore = state.posGuide;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState });
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState, lastPort: state.lastPort });
       saveState();
       if (state.posGuide?.done && !guideBefore?.done) addNotice("guideDone", "info", {}, "card-lg");
       else if (guideBefore?.active && !guideBefore.done && !state.posGuide?.active) addNotice("guideAborted", "critical", {}, "card-lg");
@@ -2497,7 +2500,14 @@ function listen(port) {
     addNotice("portTaken", "critical", { port }, "card-ts");
     listen(DEFAULT_PORT);
   });
-  server.listen(port, "0.0.0.0", () => console.log(`tvtest listening on :${port}`));
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`tvtest listening on :${port}`);
+    // a new port: what still points to the old one has to be changed by hand (test copies do not count)
+    if (process.env.TVTEST_PORT || state.lastPort === port) return;
+    if (state.lastPort) addNotice("portChanged", "critical", { from: state.lastPort, to: port }, "card-ts");
+    state = sanitize({ ...state, lastPort: port });
+    saveState();
+  });
 }
 listen(PORT);
 

@@ -15,6 +15,7 @@
       gcgAborted: ["Graukurven-Kalibrierung abgebrochen", "Die Änderungen bis dahin bleiben, „Zurück“ bei der Graukurve nimmt sie zurück."],
       gcgError: ["Graukurven-Kalibrierung fehlgeschlagen", "{error}"],
       mediaError: ["TV kann „{name}“ nicht zeigen", "{error}"],
+      portChanged: ["Testseite jetzt auf Port {to}", "Bisher Port {from}. Bitte prüfen und anpassen: Lesezeichen oder Startseite auf dem TV-Gerät (neu: Adresse des Servers mit :{to}/tv), Lesezeichen und Verknüpfungen auf Handy, Tablet und PC (:{to}), Portfreigaben im Router, Firewall-Regeln und Einträge in einem Reverse-Proxy, die noch auf {from} zeigen. Von selbst ziehen mit: offene Testseiten, der QR-Code auf dem TV, die Links im Hyperion-WebUI und die Einstellungen dieser Seite."],
       portTaken: ["Port {port} belegt", "Die Testseite läuft deshalb auf dem Standard-Port 8093. Einen freien Port in der Karte Testserver einstellen."],
       gcSlotLoaded: ["Graukurve für {name}", "Speicherplatz „{slot}“ geladen, den dieser Grabber zuletzt benutzt hat."],
       gcNewGrabber: ["Graukurve bei neuem Grabber: {name}", "Es läuft weiter die Graukurve des bisherigen Grabbers{slotText}. Prüfe die Grautöne mit den Testfarben. Eine neue Kalibrierung der Graukurve ist kein Muss."],
@@ -42,6 +43,7 @@
       gcgAborted: ["Gray curve calibration aborted", "The changes made so far stay, \u201cBack\u201d at the gray curve undoes them."],
       gcgError: ["Gray curve calibration failed", "{error}"],
       mediaError: ["TV cannot show \u201c{name}\u201d", "{error}"],
+      portChanged: ["Test page now on port {to}", "Port {from} before. Please check and change: the bookmark or start page on the TV device (new: the server's address with :{to}/tv), bookmarks and shortcuts on phone, tablet and PC (:{to}), port forwardings in the router, firewall rules and reverse proxy entries that still point to {from}. These follow by themselves: open test pages, the QR code on the TV, the links in the Hyperion WebUI and the settings of this page."],
       portTaken: ["Port {port} taken", "So the test page runs on the standard port 8093. Set a free port in the card Test server."],
       gcSlotLoaded: ["Gray curve for {name}", "Loaded memory slot \u201c{slot}\u201d, the one this grabber used last."],
       gcNewGrabber: ["Gray curve with a new grabber: {name}", "The gray curve of the previous grabber keeps running{slotText}. Check the gray tones with the test colors. A new calibration of the gray curve is not a must."],
@@ -75,7 +77,7 @@
     if (!Array.isArray(pair)) return { title: n.kind, text: "", target: n.target || "" };
     const keys = Array.isArray(q.tests) ? q.tests : [];
     const p = {
-      name: q.name ?? "", error: q.error ?? "", slot: q.slot ?? "", port: q.port ?? "",
+      name: q.name ?? "", error: q.error ?? "", slot: q.slot ?? "", port: q.port ?? "", from: q.from ?? "", to: q.to ?? "",
       slotText: q.slot ? (lang === "en" ? ` (memory slot \u201c${q.slot}\u201d)` : ` (Speicherplatz „${q.slot}“)`) : "",
       tests: keys.length ? keys.map((k) => names[k] ?? k).join(", ") + ". " : "",
       ns: q.nsSlot || t.activeSlot, color: q.colorSlot || t.activeSlot,
