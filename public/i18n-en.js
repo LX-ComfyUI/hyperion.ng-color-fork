@@ -126,7 +126,7 @@ window.I18N_EN = {
  "grün": "green",
  "türkis": "turquoise",
  "Port der Testseite": "Test page port",
- "Auf diesem Port erreichst du die Testseite (Standard 8093). Nach dem Ändern startet der Testserver auf dem neuen Port neu, die TV-Seite und diese Seite wechseln von selbst dorthin. Lesezeichen danach anpassen. Das Hyperion-WebUI liest den Port aus derselben Einstellung (Netzwerk → Webserver).": "The test page is reached on this port (standard 8093). After a change the test server restarts on the new port, the TV page and this page move there by themselves. Update bookmarks afterwards. The Hyperion WebUI reads the port from the same setting (Network → Webserver).",
+ "Auf diesem Port erreichst du die Testseite (Standard 8093). Nach dem Ändern startet der Testserver auf dem neuen Port neu, die TV-Seite und diese Seite wechseln von selbst dorthin. Lesezeichen danach anpassen. Das Hyperion-WebUI liest den Port aus derselben Einstellung (System → Web Konfiguration, Stufe Experte).": "The test page is reached on this port (standard 8093). After a change the test server restarts on the new port, the TV page and this page move there by themselves. Update bookmarks afterwards. The Hyperion WebUI reads the port from the same setting (System → Web Configuration, level Expert).",
  "Port (1024–65535)": "Port (1024–65535)",
  "Ändern": "Change",
  "Die Testseite startet auf Port {a} neu …": "The test page restarts on port {a} …",
