@@ -16,7 +16,9 @@ import { layoutRuns, offsetsFromAnswers, composeOffsets, correctedLeds, sameLayo
 const require = createRequire(import.meta.url);
 const qrcode = require("qrcode-generator");
 
-const PORT = Number(process.env.TVTEST_PORT ?? 8093);
+// the port: TVTEST_PORT (test copies), else Hyperion's setting webConfig.testPagePort (fork, changeable
+// in the WebUI and on this page), else 8093. See configuredPort below.
+const DEFAULT_PORT = 8093;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(HERE, "public");
 // TVTEST_DATA_DIR lets a test copy keep its own state and backups
@@ -30,6 +32,24 @@ const TOKEN_FILE = path.join(DATA_DIR, "hyperion-token");
 const HYPERION_HOST = "127.0.0.1";
 const HYPERION_JSON_PORT = Number(process.env.TVTEST_HYPERION_PORT ?? 19444);
 const TOKEN_REQUEST_TIMEOUT_MS = 180_000; // Hyperion drops unanswered token requests after 180 s
+
+const validPort = (v) => (Number.isInteger(Number(v)) && Number(v) >= 1024 && Number(v) <= 65535 ? Number(v) : null);
+function configuredPort() {
+  if (process.env.TVTEST_PORT) return Number(process.env.TVTEST_PORT);
+  try {
+    const db = new DatabaseSync(HYPERION_DB, { readOnly: true });
+    try {
+      const row = db.prepare("SELECT config FROM settings WHERE type = 'webConfig' AND hyperion_inst IS NULL").get();
+      return validPort(row && JSON.parse(row.config).testPagePort) ?? DEFAULT_PORT;
+    } finally {
+      db.close();
+    }
+  } catch {
+    return DEFAULT_PORT;
+  }
+}
+const CONFIGURED_PORT = configuredPort();
+let PORT = CONFIGURED_PORT; // the port in use; DEFAULT_PORT when the configured one was taken
 
 const MAX_CUSTOM_COLORS = 24;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -327,7 +347,7 @@ function webuiPort() {
 
 // the state with everything the pages show besides it
 function publicState() {
-  return { ...state, webuiPort: webuiPort(), grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
+  return { ...state, webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
 }
 
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
@@ -2108,6 +2128,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && p === "/api/testpage/port") {
+      needTvtestHeader(req);
+      const { port } = await readBody(req);
+      return sendJson(res, 200, await changePort(port));
+    }
+
     if (req.method === "POST" && p === "/api/hyperion/system") {
       const { subcommand } = await readBody(req);
       if (!["suspend", "resume", "restart", "usbResetRestart"].includes(subcommand)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
@@ -2347,6 +2373,58 @@ updateGrace();
 // restore what a test switched off before a restart, or switch off again for a test still running
 scheduleGuard();
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`tvtest listening on :${PORT}`);
-});
+// a configured port that is taken would leave the page unreachable: then it runs on the standard port
+function listen(port) {
+  server.once("error", (err) => {
+    if (err.code !== "EADDRINUSE" || port === DEFAULT_PORT) throw err;
+    console.warn(`Port ${port} is taken, using ${DEFAULT_PORT}`);
+    PORT = DEFAULT_PORT;
+    addNotice("portTaken", "critical", { port }, "card-ts");
+    listen(DEFAULT_PORT);
+  });
+  server.listen(port, "0.0.0.0", () => console.log(`tvtest listening on :${port}`));
+}
+listen(PORT);
+
+// a port changed in the WebUI: tell the pages where to go, then restart (systemd starts it again)
+function moveTo(port) {
+  console.log(`Port changed to ${port}, restarting`);
+  const payload = `event: move\ndata: ${JSON.stringify({ port })}\n\n`;
+  for (const res of clients.keys()) res.write(payload);
+  setTimeout(() => process.exit(1), 500);
+}
+let moving = false;
+setInterval(() => {
+  if (moving || process.env.TVTEST_PORT) return;
+  const next = configuredPort();
+  if (next !== CONFIGURED_PORT) { moving = true; moveTo(next); }
+}, 4000);
+
+// is a port free on this computer (another program, or one of Hyperion's own)
+function portFree(port) {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once("error", () => resolve(false));
+    probe.listen(port, "0.0.0.0", () => probe.close(() => resolve(true)));
+  });
+}
+
+async function changePort(input) {
+  if (process.env.TVTEST_PORT) throw new Error("Der Port ist hier fest über TVTEST_PORT eingestellt");
+  const port = validPort(input);
+  if (!port) throw new Error("Der Port muss eine ganze Zahl von 1024 bis 65535 sein");
+  if (port === PORT) return { port };
+  const hyperionPorts = [readGlobalSetting("webConfig")?.port, readGlobalSetting("webConfig")?.sslPort, readGlobalSetting("jsonServer")?.port,
+    readGlobalSetting("flatbufServer")?.port, readGlobalSetting("protoServer")?.port].map(Number);
+  if (hyperionPorts.includes(port)) throw new Error(`Port ${port} benutzt Hyperion selbst`);
+  if (!(await portFree(port))) throw new Error(`Port ${port} ist schon belegt`);
+  const web = readGlobalSetting("webConfig") ?? {};
+  try {
+    await exclusive(() => writeGlobalSetting("webConfig", { ...web, testPagePort: port }));
+  } catch (err) {
+    throw new Error(/additional|schema|testPagePort/i.test(err.message) ? "Diese Hyperion-Version kennt den Port der Testseite noch nicht. Bitte die Hyperion-Version des Forks aktualisieren." : err.message);
+  }
+  moving = true;
+  setTimeout(() => moveTo(port), 300);
+  return { port };
+}

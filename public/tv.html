@@ -461,6 +461,15 @@ async function loadQr() {
 function connectEvents() {
   const es = new EventSource("/api/events?role=tv");
   es.addEventListener("reload", () => location.reload());
+  // the test server moves to another port: go there once it answers
+  es.addEventListener("move", (ev) => {
+    const base = `${location.protocol}//${location.hostname}:${JSON.parse(ev.data).port}`;
+    const go = async () => {
+      try { await fetch(base + "/api/state", { mode: "no-cors", cache: "no-store" }); location.href = base + "/tv"; }
+      catch { setTimeout(go, 1500); }
+    };
+    setTimeout(go, 2000);
+  });
   es.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     // the TV page shows the language chosen last on a control page

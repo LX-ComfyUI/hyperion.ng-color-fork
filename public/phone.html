@@ -1279,6 +1279,10 @@
     <p class="help">Zustand der Testseite, der Verbindung zu Hyperion, der Funktionen in Hyperion, die Tests beeinflussen, und der Tests selbst. Unten legst du fest, was der Testschutz während eines Tests ausschaltet.</p>
     <h3>Status</h3>
     <ul class="ts-list" id="ts-status"></ul>
+    <h3>Port der Testseite</h3>
+    <p class="help">Auf diesem Port erreichst du die Testseite (Standard 8093). Nach dem Ändern startet der Testserver auf dem neuen Port neu, die TV-Seite und diese Seite wechseln von selbst dorthin. Lesezeichen danach anpassen. Das Hyperion-WebUI liest den Port aus derselben Einstellung (Netzwerk → Webserver).</p>
+    <div class="frow"><label for="ts-port">Port (1024–65535)</label><span class="inputs"><input type="number" class="wide-in" id="ts-port" min="1024" max="65535" step="1" inputmode="numeric"><button type="button" id="ts-port-save">Ändern</button></span></div>
+    <p class="note" id="ts-port-note"></p>
     <h3>Funktionen in Hyperion</h3>
     <ul class="ts-list" id="ts-features"></ul>
     <h3>Tests</h3>
@@ -1758,6 +1762,7 @@ function renderState() {
   renderPosGuide();
   renderGcGuide();
   renderCurveByGrabber();
+  renderPort();
   if (state.webuiPort) $("tb-webui").href = `${location.protocol}//${location.hostname}:${state.webuiPort}/`;
   if (state.colorStamp !== colorStampSeen) { const first = colorStampSeen === undefined; colorStampSeen = state.colorStamp; if (!first) loadColorConfig(); }
   renderTestPresets();
@@ -3507,6 +3512,39 @@ $("gcg-save").addEventListener("click", async () => {
   }
 });
 
+// port of the test page: the server restarts on the new one, the pages follow (event "move")
+function followMove(port) {
+  const base = `${location.protocol}//${location.hostname}:${port}`;
+  $("ts-port-note").textContent = tr("Die Testseite startet auf Port {a} neu …", { a: port });
+  showError(tr("Die Testseite startet auf Port {a} neu …", { a: port }));
+  const go = async () => {
+    try { await fetch(base + "/api/state", { mode: "no-cors", cache: "no-store" }); location.href = base + location.pathname + location.hash; }
+    catch { setTimeout(go, 1500); }
+  };
+  setTimeout(go, 2000);
+}
+let tsPortTyped = false;
+$("ts-port").addEventListener("input", () => { tsPortTyped = true; });
+function renderPort() {
+  const input = $("ts-port");
+  if (!tsPortTyped && document.activeElement !== input) input.value = state?.port ?? "";
+  input.disabled = $("ts-port-save").disabled = !!state?.portFixed;
+  if (state?.portFixed) $("ts-port-note").textContent = tr("Hier fest über TVTEST_PORT eingestellt.");
+}
+$("ts-port-save").addEventListener("click", async () => {
+  const port = Number($("ts-port").value);
+  if (port === state?.port) return;
+  if (!confirm(tr("Die Testseite auf Port {a} umstellen? Sie startet dabei neu, laufende Tests werden abgebrochen.", { a: port }))) return;
+  try {
+    const res = await fetch("/api/testpage/port", { method: "POST", headers: { "Content-Type": "application/json", "X-Tvtest": "1" }, body: JSON.stringify({ port }) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error);
+    tsPortTyped = false;
+  } catch (e) {
+    $("ts-port-note").textContent = e.message;
+  }
+});
+
 // gray curve slot per grabber: which slot each known grabber loads
 function renderCurveByGrabber() {
   const map = state?.grayCurveByGrabber ?? {};
@@ -5010,6 +5048,7 @@ async function init() {
   setPanel(store.get("tvtest-preview") === "1");
   // role=phone tells the TV to hide its QR code
   const es = new EventSource("/api/events?role=phone");
+  es.addEventListener("move", (ev) => followMove(JSON.parse(ev.data).port));
   es.onerror = () => { serverDown = true; renderBar(); };
   es.onmessage = (ev) => {
     serverDown = false;

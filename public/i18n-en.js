@@ -2,6 +2,16 @@
 // normalized text of a text node or attribute, or the innerHTML of an element that holds only text and
 // inline markup, or the template of an I18N.tr() call with its {placeholders}.
 window.I18N_EN = {
+ "Port der Testseite": "Test page port",
+ "Auf diesem Port erreichst du die Testseite (Standard 8093). Nach dem Ändern startet der Testserver auf dem neuen Port neu, die TV-Seite und diese Seite wechseln von selbst dorthin. Lesezeichen danach anpassen. Das Hyperion-WebUI liest den Port aus derselben Einstellung (Netzwerk → Webserver).": "The test page is reached on this port (standard 8093). After a change the test server restarts on the new port, the TV page and this page move there by themselves. Update bookmarks afterwards. The Hyperion WebUI reads the port from the same setting (Network → Webserver).",
+ "Port (1024–65535)": "Port (1024–65535)",
+ "Ändern": "Change",
+ "Die Testseite startet auf Port {a} neu …": "The test page restarts on port {a} …",
+ "Hier fest über TVTEST_PORT eingestellt.": "Fixed here through TVTEST_PORT.",
+ "Die Testseite auf Port {a} umstellen? Sie startet dabei neu, laufende Tests werden abgebrochen.": "Move the test page to port {a}? It restarts, running tests are aborted.",
+ "Der Port ist hier fest über TVTEST_PORT eingestellt": "The port is fixed here through TVTEST_PORT",
+ "Der Port muss eine ganze Zahl von 1024 bis 65535 sein": "The port must be a whole number from 1024 to 65535",
+ "Diese Hyperion-Version kennt den Port der Testseite noch nicht. Bitte die Hyperion-Version des Forks aktualisieren.": "This Hyperion version does not know the test page port yet. Please update to the fork's Hyperion version.",
  "Projektseite auf GitHub öffnen": "Open the project page on GitHub",
  "Messungen vergleichen": "Compare measurements",
  "Testseite": "Test page",
@@ -814,6 +824,8 @@ window.I18N_EN_PATTERNS = [
   // server messages with values
   [/^Maximal (\d+) eigene Farben$/, "At most $1 own colors"],
   [/^Maximal (\d+) Vorlagen je Test$/, "At most $1 saved settings per test"],
+  [/^Port (\d+) benutzt Hyperion selbst$/, "Port $1 is used by Hyperion itself"],
+  [/^Port (\d+) ist schon belegt$/, "Port $1 is already taken"],
   [/^Einstellung (.+) nicht gefunden$/, "Setting $1 not found"],
   // "Prefix: message": both parts on their own, only for known prefixes
   [/^([^:]{3,60}): ([\s\S]+)$/, (m, t, lookup) => { const p = lookup(m[1]); return p === null ? null : `${p}: ${t(m[2])}`; }],

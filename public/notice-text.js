@@ -14,6 +14,7 @@
       gcgDone: ["Graukurven-Kalibrierung fertig", "Die neue Kurve wirkt schon. Als Speicherplatz sichern, damit sie bleibt, wenn ein anderer Platz geladen wird."],
       gcgAborted: ["Graukurven-Kalibrierung abgebrochen", "Die Änderungen bis dahin bleiben, „Zurück“ bei der Graukurve nimmt sie zurück."],
       gcgError: ["Graukurven-Kalibrierung fehlgeschlagen", "{error}"],
+      portTaken: ["Port {port} belegt", "Die Testseite läuft deshalb auf dem Standard-Port 8093. Einen freien Port in der Karte Testserver einstellen."],
       gcSlotLoaded: ["Graukurve für {name}", "Speicherplatz „{slot}“ geladen, den dieser Grabber zuletzt benutzt hat."],
       gcNewGrabber: ["Graukurve bei neuem Grabber: {name}", "Es läuft weiter die Graukurve des bisherigen Grabbers{slotText}. Prüfe die Grautöne mit den Testfarben. Eine neue Kalibrierung der Graukurve ist kein Muss."],
       paused: ["Tests pausiert", "{tests}Keine Testseite war mehr verbunden. Zum Weitermachen neu starten."],
@@ -39,6 +40,7 @@
       gcgDone: ["Gray curve calibration finished", "The new curve is already in use. Save it in a memory slot so it stays when another slot is loaded."],
       gcgAborted: ["Gray curve calibration aborted", "The changes made so far stay, \u201cBack\u201d at the gray curve undoes them."],
       gcgError: ["Gray curve calibration failed", "{error}"],
+      portTaken: ["Port {port} taken", "So the test page runs on the standard port 8093. Set a free port in the card Test server."],
       gcSlotLoaded: ["Gray curve for {name}", "Loaded memory slot \u201c{slot}\u201d, the one this grabber used last."],
       gcNewGrabber: ["Gray curve with a new grabber: {name}", "The gray curve of the previous grabber keeps running{slotText}. Check the gray tones with the test colors. A new calibration of the gray curve is not a must."],
       paused: ["Tests paused", "{tests}No control page was connected any more. Start again to continue."],
@@ -71,7 +73,7 @@
     if (!Array.isArray(pair)) return { title: n.kind, text: "", target: n.target || "" };
     const keys = Array.isArray(q.tests) ? q.tests : [];
     const p = {
-      name: q.name ?? "", error: q.error ?? "", slot: q.slot ?? "",
+      name: q.name ?? "", error: q.error ?? "", slot: q.slot ?? "", port: q.port ?? "",
       slotText: q.slot ? (lang === "en" ? ` (memory slot \u201c${q.slot}\u201d)` : ` (Speicherplatz „${q.slot}“)`) : "",
       tests: keys.length ? keys.map((k) => names[k] ?? k).join(", ") + ". " : "",
       ns: q.nsSlot || t.activeSlot, color: q.colorSlot || t.activeSlot,
