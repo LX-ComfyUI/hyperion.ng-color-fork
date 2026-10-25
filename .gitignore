@@ -17,3 +17,5 @@ prefs.json.tmp
 media/
 media.json
 media.json.tmp
+sources.json
+sources.json.tmp

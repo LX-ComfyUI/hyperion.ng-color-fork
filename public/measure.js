@@ -48,7 +48,7 @@ async function reference(item, fit, w, h, TestImages) {
     TestImages.draw(ctx, item.id, w, h);
     return c;
   }
-  const img = await loadImage("/media/file/" + item.id);
+  const img = await loadImage(item.url ?? "/media/file/" + item.id);
   const iw = img.naturalWidth, ih = img.naturalHeight;
   if (fit === "fill") ctx.drawImage(img, 0, 0, w, h);
   else {

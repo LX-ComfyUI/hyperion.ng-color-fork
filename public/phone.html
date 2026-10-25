@@ -357,6 +357,13 @@
   .md-caps .yes { color: #2fa36b; border-color: #2fa36b; }
   .md-caps .no { color: var(--danger); border-color: var(--danger); }
   .md-caps .maybe { color: var(--warn); border-color: var(--warn); }
+  /* more sources */
+  .src-form { border: 1px solid var(--btn-line); border-radius: 9px; padding: 10px 12px; margin-top: 8px; }
+  .src-browser { border: 1px solid var(--btn-line); border-radius: 9px; padding: 8px 10px; margin-top: 10px; }
+  .src-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; margin-bottom: 6px; }
+  .src-crumbs button { padding: 3px 8px; font-size: 13px; }
+  .src-crumbs span { color: var(--muted); }
+  .md-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   /* picture measurement */
   #mm-pick { max-width: 100%; }
   #mm-run { margin-top: 8px; }
@@ -871,6 +878,29 @@
       <ul class="md-list" id="md-videos"></ul>
       <h4 class="hy-h"><span>Video-Links</span></h4>
       <ul class="md-list" id="md-links"></ul>
+      <h4 class="hy-h"><span>Weitere Quellen</span></h4>
+      <p class="help">Ein Ordner auf dem Server (zum Beispiel eine dort eingebundene NAS-Freigabe), Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Zugangsschlüssel bleiben auf dem Server.</p>
+      <ul class="md-list" id="src-list"></ul>
+      <div class="src-form" id="src-form" hidden>
+        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner / NAS</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option></select></span></div>
+        <div class="frow"><label for="src-name">Name</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
+        <div class="frow" id="src-path-row"><label for="src-path">Pfad auf dem Server</label><span class="inputs"><input type="text" id="src-path" class="wide-in" placeholder="/mnt/nas/videos" autocomplete="off"></span></div>
+        <div class="frow" id="src-url-row"><label for="src-url">Adresse</label><span class="inputs"><input type="url" id="src-url" class="wide-in" autocomplete="off"></span></div>
+        <div class="frow" id="src-token-row"><label for="src-token" id="src-token-label">Token</label><span class="inputs"><input type="password" id="src-token" class="wide-in" autocomplete="off"></span></div>
+        <p class="help" id="src-help"></p>
+        <div class="lg-actions">
+          <button type="button" id="src-test">Verbindung prüfen</button>
+          <button type="button" class="primary" id="src-save">Speichern</button>
+          <button type="button" id="src-cancel">Abbrechen</button>
+        </div>
+        <p class="note" id="src-note"></p>
+      </div>
+      <button type="button" id="src-add" style="margin-top:6px">Quelle hinzufügen</button>
+      <div class="src-browser" id="src-browser" hidden>
+        <div class="src-crumbs" id="src-crumbs"></div>
+        <ul class="md-list" id="src-entries"></ul>
+        <p class="note" id="src-browse-note"></p>
+      </div>
       <p class="warn" id="md-warn" hidden></p>
     </div>
     <div class="pair-col" id="card-mm">
@@ -1892,6 +1922,7 @@ function renderState() {
   renderCurveByGrabber();
   renderPort();
   if (state.mediaStamp !== mdStampSeen) { mdStampSeen = state.mediaStamp; mdLoad().then(renderMeasure); } else renderMediaLib();
+  renderSrcBrowser();
   renderMeasure();
   if (state.webuiPort) $("tb-webui").href = `${location.protocol}//${location.hostname}:${state.webuiPort}/`;
   if (state.colorStamp !== colorStampSeen) { const first = colorStampSeen === undefined; colorStampSeen = state.colorStamp; if (!first) loadColorConfig(); }
@@ -3773,6 +3804,175 @@ $("md-file").addEventListener("change", async () => {
   for (const f of files) await mdUpload(f);
   setTimeout(() => { mdUploads = mdUploads.filter((u) => !u.done); renderMediaLib(); }, 4000);
 });
+
+// ---------- more sources: folder/NAS, Plex, Jellyfin (sources.mjs browses and streams them) ----------
+const SRC_FOLDER = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>';
+const SRC_TYPE = { folder: "Ordner / NAS", plex: "Plex", jellyfin: "Jellyfin" };
+const SRC_HELP = {
+  folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern. Eine NAS-Freigabe muss dort vorher eingebunden sein (zum Beispiel über /etc/fstab, dafür braucht es einmal Administratorrechte). Die Testseite liest nur.",
+  plex: "Adresse des Plex-Servers mit Port, z. B. http://192.168.1.10:32400. Den Token zeigt Plex Web: bei einem Film „Medieninfo“ → „XML anzeigen“, in der Adresse steht X-Plex-Token=…",
+  jellyfin: "Adresse des Jellyfin-Servers mit Port, z. B. http://192.168.1.10:8096. Den API-Schlüssel legst du im Jellyfin-Dashboard unter „API-Schlüssel“ mit „+“ an.",
+};
+let srcList = [];
+let srcEditing = null;   // null = closed, "new" or the id of the source being edited
+let srcOpen = null;      // { id, stack: [{ key, name }] } of the source being browsed
+let srcEntries = [];
+
+async function srcLoad() {
+  try {
+    const r = await fetch("/api/sources");
+    if (r.ok) srcList = (await r.json()).sources ?? [];
+  } catch {}
+  renderSources();
+}
+
+function renderSources() {
+  const rows = srcList.map((s) => {
+    const open = srcOpen?.id === s.id;
+    const flag = s.status && !s.status.ok ? `<span class="md-flag bad">${tr("Fehler")}</span>` : "";
+    return `<li data-id="${s.id}"><button type="button" class="md-show" data-src="open" aria-pressed="${open}"><span class="md-thumb">${s.type === "folder" ? SRC_FOLDER : s.type === "plex" ? "P" : "J"}</span>` +
+      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.path ?? s.url ?? "")}</small></span>${flag}</button>` +
+      `<button type="button" class="ibtn" data-src="edit" title="${tr("Bearbeiten")}" aria-label="${tr("Bearbeiten")}">${MD_ICON.pencil}</button>` +
+      `<button type="button" class="ibtn trash" data-src="remove" title="${tr("Entfernen")}" aria-label="${tr("Entfernen")}">${MD_ICON.trash}</button></li>`;
+  }).join("");
+  const html = rows || `<li class="md-empty">${tr("Noch keine weiteren Quellen.")}</li>`;
+  if ($("src-list").dataset.html !== html) { $("src-list").innerHTML = html; $("src-list").dataset.html = html; }
+  $("src-add").hidden = !!srcEditing;
+  $("src-form").hidden = !srcEditing;
+  renderSrcBrowser();
+}
+
+function srcFormType() {
+  const t = $("src-type").value;
+  $("src-path-row").hidden = t !== "folder";
+  $("src-url-row").hidden = t === "folder";
+  $("src-token-row").hidden = t === "folder";
+  $("src-token-label").textContent = tr(t === "plex" ? "Token" : "API-Schlüssel");
+  $("src-url").placeholder = t === "plex" ? "http://192.168.1.10:32400" : "http://192.168.1.10:8096";
+  $("src-help").textContent = tr(SRC_HELP[t]);
+}
+$("src-type").addEventListener("change", srcFormType);
+
+function srcEdit(id) {
+  srcEditing = id;
+  const s = srcList.find((x) => x.id === id);
+  $("src-type").value = s?.type ?? "folder";
+  $("src-type").disabled = !!s;
+  $("src-name").value = s?.name ?? "";
+  $("src-path").value = s?.path ?? "";
+  $("src-url").value = s?.url ?? "";
+  $("src-token").value = "";
+  $("src-token").placeholder = s?.hasToken ? tr("gespeichert, leer lassen = unverändert") : "";
+  $("src-note").textContent = "";
+  srcFormType();
+  renderSources();
+}
+const srcFormData = () => ({ type: $("src-type").value, name: $("src-name").value, path: $("src-path").value, url: $("src-url").value, token: $("src-token").value });
+
+async function srcPost(body) {
+  const r = await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const out = await r.json();
+  if (!r.ok) throw new Error(out.error);
+  return out;
+}
+$("src-add").addEventListener("click", () => srcEdit("new"));
+$("src-cancel").addEventListener("click", () => { srcEditing = null; renderSources(); });
+$("src-test").addEventListener("click", async () => {
+  $("src-note").textContent = tr("Prüfe …");
+  try {
+    const out = await srcPost({ op: "test", id: srcEditing === "new" ? undefined : srcEditing, source: srcFormData() });
+    $("src-note").textContent = "✓ " + tr(out.message);
+  } catch (e) {
+    $("src-note").textContent = tr(e.message);
+  }
+});
+$("src-save").addEventListener("click", async () => {
+  try {
+    const out = await srcPost(srcEditing === "new" ? { op: "add", source: srcFormData() } : { op: "update", id: srcEditing, source: srcFormData() });
+    srcList = out.sources;
+    srcEditing = null;
+    renderSources();
+  } catch (e) {
+    $("src-note").textContent = tr(e.message);
+  }
+});
+$("src-list").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-src]");
+  if (!b) return;
+  const id = b.closest("li[data-id]")?.dataset.id;
+  const s = srcList.find((x) => x.id === id);
+  if (!s) return;
+  if (b.dataset.src === "edit") return srcEdit(id);
+  if (b.dataset.src === "remove") {
+    if (!confirm(tr("Quelle „{a}“ entfernen? Die Dateien selbst bleiben, wo sie sind.", { a: s.name }))) return;
+    try { srcList = (await srcPost({ op: "remove", id })).sources; } catch (e) { $("md-warn").textContent = e.message; $("md-warn").hidden = false; }
+    if (srcOpen?.id === id) srcOpen = null;
+    return renderSources();
+  }
+  // open or close the browser of this source
+  srcOpen = srcOpen?.id === id ? null : { id, stack: [{ key: "", name: s.name }] };
+  renderSources();
+  if (srcOpen) srcBrowse();
+});
+
+async function srcBrowse() {
+  if (!srcOpen) return;
+  const at = srcOpen.stack.at(-1);
+  srcEntries = [];
+  $("src-browse-note").textContent = tr("Lade …");
+  renderSrcBrowser();
+  try {
+    const r = await fetch(`/api/sources/browse?id=${srcOpen.id}&key=${encodeURIComponent(at.key)}`);
+    const out = await r.json();
+    if (!r.ok) throw new Error(out.error);
+    srcEntries = out.entries ?? [];
+    $("src-browse-note").textContent = srcEntries.length ? "" : tr("Hier gibt es keine Bilder oder Videos.");
+  } catch (e) {
+    $("src-browse-note").textContent = tr(e.message);
+    srcLoad();
+  }
+  renderSrcBrowser();
+}
+
+function srcEntryRow(e) {
+  const full = `src:${srcOpen.id}:${e.key}`;
+  const m = state?.media ?? {};
+  const on = e.kind !== "folder" && !!m.active && m.id === full;
+  // Plex names its picture path, Jellyfin and folders use the entry's own key
+  const thumbUrl = e.thumb ? `/api/sources/thumb?id=${srcOpen.id}&key=${encodeURIComponent(typeof e.thumb === "string" ? e.thumb : e.key)}` : "";
+  const thumb = thumbUrl ? `<span class="md-thumb"><img loading="lazy" src="${thumbUrl}" alt="" onerror="this.remove()"></span>` : `<span class="md-thumb">${e.kind === "folder" ? SRC_FOLDER : e.kind === "video" ? "▶" : "▣"}</span>`;
+  const it = { kind: e.kind, codec: e.codec, bits: e.bits, file: "x." + (e.container ?? "") };
+  const c = e.kind === "video" ? mdCompat(it) : null;
+  const flags = [c ? `<span class="md-flag ${c.cls}">${escHtml(c.text)}</span>` : "", e.hdr ? `<span class="md-flag maybe">${escHtml(String(e.hdr))}</span>` : ""].join("");
+  const meta = e.kind === "folder" ? tr("Ordner") : mdMeta({ ...e, kind: e.kind });
+  const badge = on ? `<span class="tp-badge">${e.kind === "video" && !m.playing ? tr("Pause") : tr("läuft")}</span>` : "";
+  return `<li data-key="${escHtml(e.key)}"><button type="button" class="md-show" aria-pressed="${on}">${thumb}<span class="md-text"><b>${escHtml(e.name)}</b><small>${escHtml(meta)}</small></span>${flags}${badge}</button></li>`;
+}
+
+function renderSrcBrowser() {
+  $("src-browser").hidden = !srcOpen;
+  if (!srcOpen) return;
+  $("src-crumbs").innerHTML = srcOpen.stack.map((c, i) => (i === srcOpen.stack.length - 1 ? `<b>${escHtml(c.name)}</b>` : `<button type="button" data-crumb="${i}">${escHtml(c.name)}</button><span>›</span>`)).join("");
+  const html = srcEntries.map(srcEntryRow).join("");
+  if ($("src-entries").dataset.html !== html) { $("src-entries").innerHTML = html; $("src-entries").dataset.html = html; }
+}
+$("src-crumbs").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-crumb]");
+  if (!b) return;
+  srcOpen.stack = srcOpen.stack.slice(0, Number(b.dataset.crumb) + 1);
+  srcBrowse();
+});
+$("src-entries").addEventListener("click", (ev) => {
+  const li = ev.target.closest("li[data-key]");
+  if (!li) return;
+  const e = srcEntries.find((x) => x.key === li.dataset.key);
+  if (!e) return;
+  if (e.kind === "folder") { srcOpen.stack.push({ key: e.key, name: e.name }); return srcBrowse(); }
+  const full = `src:${srcOpen.id}:${e.key}`;
+  if (state.media?.active && state.media.id === full) return;
+  mdSend({ active: true, id: full, src: { kind: e.kind, name: e.name }, position: 0, playing: true });
+});
+srcLoad();
 
 // ---------- picture measurement (measure.js): the TV shows a picture, this page compares the grabber frames ----------
 const mmResults = new Map(); // item id -> last result (this page only)

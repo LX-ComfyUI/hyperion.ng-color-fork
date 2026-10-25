@@ -110,7 +110,7 @@
       const img = new Image();
       img.onload = () => report({ ok: true, width: img.naturalWidth, height: img.naturalHeight });
       img.onerror = () => report({ error: "Der TV-Browser kann dieses Bild nicht anzeigen" });
-      img.src = "/media/file/" + item.id;
+      img.src = item.url ?? "/media/file/" + item.id;
       fit(img);
       host.appendChild(img);
       shown.el = img;
@@ -120,7 +120,7 @@
       const v = document.createElement("video");
       v.playsInline = true;
       v.preload = "auto";
-      v.src = "/media/file/" + item.id;
+      v.src = item.url ?? "/media/file/" + item.id;
       fit(v);
       v.onerror = () => report({ error: "Der TV-Browser kann dieses Video nicht abspielen (Format oder Codec)" });
       v.onloadedmetadata = () => apply(currentMedia ?? m, true);

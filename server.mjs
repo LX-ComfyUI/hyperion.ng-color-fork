@@ -12,6 +12,7 @@ import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 
 import { createMedia } from "./media.mjs";
+import { createSources } from "./sources.mjs";
 import { layoutRuns, offsetsFromAnswers, composeOffsets, correctedLeds, sameLayout, MAX_ANSWER } from "./public/layoutfix.js";
 
 const require = createRequire(import.meta.url);
@@ -305,7 +306,9 @@ function sanitize(input) {
   const md = { ...DEFAULT_STATE.media, ...(input.media ?? {}) };
   out.media = {
     active: md.active === true && typeof md.id === "string" && md.id.length > 0,
-    id: typeof md.id === "string" ? md.id.slice(0, 40) : "",
+    id: typeof md.id === "string" ? md.id.slice(0, 600) : "",
+    // a file of another source: what it is, for the TV (the list of the source is not kept here)
+    src: md.src && typeof md.src === "object" ? { kind: md.src.kind === "image" ? "image" : "video", name: String(md.src.name ?? "").slice(0, 200) } : null,
     fit: ["contain", "cover", "fill"].includes(md.fit) ? md.fit : "contain",
     playing: md.playing !== false,
     loop: md.loop !== false,
@@ -368,11 +371,14 @@ function ffmpegHint(it, when) {
   saveState();
   addNotice("ffmpegMissing", "info", { when }, "card-media");
 }
+// sources the user added (folder/NAS, Plex, Jellyfin): browsed and streamed through this server
+const sources = createSources({ dataDir: DATA_DIR, thumbsDir: path.join(DATA_DIR, "media", "thumbs") });
 let tvCaps = null;   // what the TV page's browser can play (canPlayType), sent by the TV page
 let tvMedia = null;  // what the TV page reports about the shown media: position, length, errors
 function mediaItemOf(id) {
   if (!id) return null;
   if (id.startsWith("builtin:")) return { id, kind: "builtin" };
+  if (id.startsWith("src:")) return sources.item(id, state.media?.src);
   return media.find(id);
 }
 
@@ -2151,6 +2157,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && (p === "/" || p === "/phone")) return servePage(req, res, "phone.html");
     if (req.method === "GET" && p === "/tv") return servePage(req, res, "tv.html");
     if (await media.handle(req, res, p, sendJson, readBody)) return;
+    if (await sources.handle(req, res, p, sendJson, readBody)) return;
     // the TV page tells what its browser can play and how the shown media is doing
     if (req.method === "POST" && p === "/api/media/caps") {
       needTvtestHeader(req);
@@ -2412,6 +2419,7 @@ const server = http.createServer(async (req, res) => {
       let mediaState = patch.media ? { ...state.media, ...patch.media } : state.media;
       if (patch.media && ["id", "position", "playing"].some((k) => k in patch.media)) mediaState.startedAt = Date.now();
       if (patch.media && "id" in patch.media && patch.media.id !== state.media.id) tvMedia = null;
+      if (patch.media && "id" in patch.media && !String(patch.media.id).startsWith("src:")) mediaState.src = null;
       // only one test pattern at a time: starting one ends the others, a new test color ends all;
       // a picture or video of the media library counts as one too
       const tests = { grayTest, depthTest, fracTest, posTest };
