@@ -409,11 +409,13 @@ function renderDebug() {
 }
 
 // grabber test (run by the server): full screen test color, nothing else may be in the picture
-const grabberTestRunning = () => !!(state.grabberRun?.running && state.grabberRun.color);
+// the gray of the gray curve calibration (also run by the server) is shown the same way
+const fullScreenColor = () => (state.grabberRun?.running && state.grabberRun.color) || (state.gcGuide?.active && state.gcGuide.color) || null;
+const grabberTestRunning = () => !!fullScreenColor();
 function renderGrabberTest() {
   const el = $("gtest");
   el.hidden = !grabberTestRunning();
-  if (!el.hidden) el.style.background = state.grabberRun.color;
+  if (!el.hidden) el.style.background = fullScreenColor();
 }
 // nothing on the TV: no test, no test color (black counts as none), no black bars, no debug view
 function nothingShown() {
@@ -430,7 +432,8 @@ function renderHints() {
   // the QR code only while nothing is shown, so it never lands in a test picture (and the LEDs)
   const shown = !nothingShown();
   const left = (state.graceUntil ?? 0) - (Date.now() + clockOffset);
-  const warn = !connected && shown && state.graceUntil > 0 && !grabberTestRunning();
+  // the grabber test goes on without a control page, the gray curve calibration does not
+  const warn = !connected && shown && state.graceUntil > 0 && !(state.grabberRun?.running && state.grabberRun.color);
   connectEl.hidden = connected || shown || grabberTestRunning();
   $("grace").hidden = !warn;
   if (warn) $("grace-count").textContent = I18N.tr("Der Test wird in {a} s pausiert, wenn sich kein Gerät verbindet.", { a: Math.max(0, Math.ceil(left / 1000)) });

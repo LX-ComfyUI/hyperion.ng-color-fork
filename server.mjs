@@ -86,6 +86,10 @@ const DEFAULT_STATE = {
   lang: "de",
   // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
   overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true, dpTv: false, dpPreview: true },
+  // gray curve memory slot last used per grabber (device name -> slot id, "default" = standard)
+  grayCurveByGrabber: {},
+  // the grabber the gray curve belonged to at the last check (a change while the server was off counts too)
+  curveGrabber: "",
 };
 
 const num = (v, min, max, fallback, step = 1) => {
@@ -263,6 +267,11 @@ function sanitize(input) {
       .map((p) => ({ id: p.id.slice(0, 40), name: p.name.trim().slice(0, 60) || "?", fav: p.fav === true, settings: presetSettings(test, p.settings), savedAt: num(p.savedAt, 0, Number.MAX_SAFE_INTEGER, 0) }));
     if (clean.length) out.testPresets[test] = clean;
   }
+  if (input.grayCurveByGrabber && typeof input.grayCurveByGrabber === "object") {
+    out.grayCurveByGrabber = Object.fromEntries(Object.entries(input.grayCurveByGrabber)
+      .filter(([d, id]) => typeof id === "string" && d.length <= 200 && id.length <= 40).slice(0, 30));
+  }
+  if (typeof input.curveGrabber === "string") out.curveGrabber = input.curveGrabber.slice(0, 200);
   if (Array.isArray(input.grabberColors)) {
     const colors = input.grabberColors.filter((c) => typeof c === "string" && HEX_COLOR.test(c)).map((c) => c.toLowerCase());
     out.grabberColors = [...new Set(colors)].slice(0, MAX_CUSTOM_COLORS);
@@ -309,7 +318,7 @@ const hasTv = () => [...clients.values()].includes("tv");
 
 // the state with everything the pages show besides it
 function publicState() {
-  return { ...state, grabberRun, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
+  return { ...state, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
 }
 
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
@@ -1025,6 +1034,322 @@ async function startGrabberTest(kind) {
   runGrabberTest(kind);
 }
 
+// --- guided gray curve calibration (card "Graukurve kalibrieren", math in graycal.js) ---
+// The TV shows one gray full screen per level. The server sets that gray so that Hyperion measures
+// the level after the grabber color correction (what the LEDs are computed from), whatever the
+// grabber lifts or lowers. The page answers per level: neutral, or too much / too little of a tint;
+// every answer changes the gray curve point of the level at once (a point is added if the level has
+// none). After all levels a control round goes through them again. All writes of one run are one
+// undo step of the gray curve; "Original" writes the points from before the run.
+require("./public/graycurve-graph.js");
+require("./public/graycal.js");
+const GrayCal = globalThis.GrayCal;
+const CurveMath = globalThis.GrayCurveGraph.math;
+const GC_MAX_TRIES = 6;     // TV grays tried to hit a level
+const GC_MAX_POINTS = 12;   // like the WebUI and the graph
+
+const GC_IDLE = { active: false, phase: "idle", round: "measure", levels: [], index: 0, color: null, measure: null, showing: "after", done: false, error: null, aborted: false, restored: false, startPoints: null, afterPoints: null, results: {}, colorIndex: 0, runId: "" };
+let gcGuide = { ...GC_IDLE };
+// counts the color writes the server makes on its own, so the pages read the settings again
+let colorStamp = 0;
+const colorChanged = () => { colorStamp++; broadcast(); };
+let gcJob = 0;              // a newer job (level change, stop) ends a running measurement
+const gcMemo = {};          // per level: { scale, last } of applyAnswer
+const gcTv = {};            // per level: the TV gray that hit it last in this run
+
+function gcSet(patch, silent = false) {
+  const was = gcGuide;
+  gcGuide = { ...gcGuide, ...patch };
+  if (was.active && !gcGuide.active && !gcGuide.done && !silent) {
+    if (gcGuide.error) addNotice("gcgError", "critical", { error: gcGuide.error }, "card-gcg");
+    else addNotice("gcgAborted", "critical", {}, "card-gcg");
+  }
+  if (!was.done && gcGuide.done) addNotice("gcgDone", "info", {}, "card-gcg");
+  broadcast();
+}
+
+const gcEntry = (color) => color?.channelAdjustment?.[gcGuide.colorIndex] ?? null;
+
+// LED output of a gray at the level (0..255 scale per channel, 16-bit counts)
+function gcPrediction(level) {
+  const color = readInstanceSetting("color");
+  const entry = gcEntry(color);
+  let black = null;
+  try { black = readInstanceSetting("device").blackThreshold ?? null; } catch {}
+  const model = CurveMath.makeModel(entry, black);
+  const gains = model.curveEnabled ? CurveMath.gainsAt(entry.grayCurve.points ?? [], level) : [1, 1, 1];
+  const { led } = CurveMath.grayOutput(model, level * 2.55, gains);
+  const counts = led.map((v) => Math.round(v * 257));
+  return { counts, on: counts.some((v) => v > 0), coarse: counts.some((v) => v > 0) && Math.min(...counts) < GrayCal.COARSE_COUNTS };
+}
+
+// one measurement of the frame mean after the grabber color correction (raw if it is off)
+async function gcMeasureOnce(tv, job) {
+  gcSet({ color: toHex([tv, tv, tv]) });
+  const settled = await waitStable(Date.now());
+  if (job !== gcJob) return null;
+  await probeGrabber(true);
+  await sleep(GT_MEASURE_MS);
+  const s = await probeGrabber(false);
+  if (!s.avg?.n) throw new Error("Der Grabber liefert keine Bilder mehr");
+  const rgb = (s.avg.corrected ?? s.avg.mean).map(Number);
+  return { tv, rgb, level: Math.max(...rgb) * 100 / 255, corrected: !!s.avg.corrected, settled };
+}
+
+// finds the TV gray that Hyperion measures as `target` percent and measures it
+async function gcMeasureLevel(target, job) {
+  const tried = new Map();
+  let tv = gcTv[target] ?? Math.min(255, Math.max(1, Math.round(target * 2.55)));
+  let best = null;
+  for (let i = 0; i < GC_MAX_TRIES && !tried.has(tv); i++) {
+    if (![...clients.values()].includes("tv")) throw new Error("Die TV-Seite wurde geschlossen");
+    const m = await gcMeasureOnce(tv, job);
+    if (!m) return null;
+    tried.set(tv, m);
+    if (!best || Math.abs(m.level - target) < Math.abs(best.level - target)) best = m;
+    // close enough: within half a TV step
+    if (Math.abs(m.level - target) * 2.55 < 0.5) break;
+    const top = Math.max(...m.rgb);
+    // the grabber may scale, lift or cut the gray: correct in proportion, or one step up from black
+    let next = top > 0.5 ? Math.round(tv * (target * 2.55) / top) : tv + Math.max(1, Math.round(tv / 2));
+    next = Math.min(255, Math.max(1, next));
+    if (next === tv) next = Math.min(255, Math.max(1, tv + Math.sign(target - m.level)));
+    tv = next;
+  }
+  gcTv[target] = best.tv;
+  const shown = toHex([best.tv, best.tv, best.tv]);
+  if (gcGuide.color !== shown) gcSet({ color: shown });
+  return best;
+}
+
+async function gcMeasureCurrent() {
+  const job = ++gcJob;
+  const target = gcGuide.levels[gcGuide.index];
+  gcSet({ phase: "measure", measure: null, error: null });
+  try {
+    const m = await gcMeasureLevel(target, job);
+    if (!m || job !== gcJob) return;
+    const color = readInstanceSetting("color");
+    const entry = gcEntry(color);
+    const limit = Number(entry?.grayCurve?.saturationLimit ?? 0.15);
+    const pred = gcPrediction(m.level);
+    gcSet({
+      phase: "answer",
+      measure: {
+        level: target, tv: m.tv, rgb: m.rgb.map((v) => Math.round(v * 100) / 100), got: Math.round(m.level * 100) / 100,
+        corrected: m.corrected, unstable: !m.settled,
+        // the TV gray never reaches the level: the grabber cuts it to black or the step is too coarse
+        missed: Math.abs(m.level - target) > Math.max(0.6, target * 0.25),
+        weight: Math.round(GrayCal.curveWeight(m.rgb, limit) * 100) / 100,
+        ledOn: pred.on, coarse: pred.coarse, counts: pred.counts,
+        gains: GrayCal.gainsAt(entry?.grayCurve?.points ?? [], target).map((v) => Math.round(v * 100) / 100),
+      },
+    });
+  } catch (err) {
+    if (job === gcJob) gcSet({ phase: "error", error: err.message });
+  }
+}
+
+// writes points of the run (one undo step per run); no history for the before/after toggle
+async function gcWritePoints(points, history = true) {
+  const written = history
+    ? await saveColor({ index: gcGuide.colorIndex, field: "grayCurve.points", value: points, step: gcGuide.runId })
+    : await exclusive(async () => {
+      const current = readInstanceSetting("color");
+      const next = structuredClone(current);
+      next.channelAdjustment[gcGuide.colorIndex].grayCurve.points = points;
+      return writeInstanceSetting("color", next);
+    });
+  colorChanged();
+  return written;
+}
+
+function gcGo(index) {
+  gcSet({ index, measure: null });
+  gcMeasureCurrent();
+}
+
+// the next level, or the control round, or the end
+function gcNext() {
+  if (gcGuide.index + 1 < gcGuide.levels.length) return gcGo(gcGuide.index + 1);
+  if (gcGuide.round === "measure") {
+    gcSet({ round: "control" });
+    return gcGo(0);
+  }
+  gcFinish();
+}
+
+function gcFinish() {
+  ++gcJob;
+  gcSet({ active: false, done: true, phase: "done", color: null, measure: null });
+  scheduleGuard();
+  updateGrace();
+}
+
+async function gcStart({ levels, enableCurve, colorIndex }) {
+  if (gcGuide.active) throw new Error("Die Graukurven-Kalibrierung läuft schon");
+  if (grabberRun.running) throw new Error("Zuerst die Grabber-Kalibrierung abwarten");
+  if (!hasTv()) throw new Error("Die TV-Seite ist nicht geöffnet. Öffne sie zuerst auf dem Gerät, das dem TV das Bild liefert.");
+  if (!readToken()) throw new Error("Nicht mit Hyperion verbunden. Zuerst unter „Backup“ mit Hyperion verbinden.");
+  const index = Number.isInteger(colorIndex) ? colorIndex : 0;
+  const color = readInstanceSetting("color");
+  const curve = color.channelAdjustment?.[index]?.grayCurve;
+  if (!curve) throw new Error("Diese Hyperion-Version hat keine Graukurve");
+  const list = [...new Set((Array.isArray(levels) ? levels : []).map((v) => num(v, 1, 100, NaN)).filter(Number.isFinite))].sort((a, b) => b - a);
+  if (!list.length) throw new Error("Mindestens eine Stufe wählen");
+  const missing = list.filter((l) => !curve.points?.some((p) => p.level === l)).length;
+  if ((curve.points?.length ?? 0) + missing > GC_MAX_POINTS) throw new Error(`Die Graukurve hat höchstens ${GC_MAX_POINTS} Punkte. Weniger neue Stufen wählen.`);
+  await probeGrabber(true);
+  await sleep(400);
+  const first = await probeGrabber(false);
+  if (first.ageMs < 0 || first.ageMs > GT_MAX_AGE_MS) throw new Error("Der Grabber liefert keine Bilder. Ist die USB-Aufnahme in Hyperion eingeschaltet?");
+  if (curve.enabled !== true) {
+    if (enableCurve !== true) throw new Error("Die Graukurve ist ausgeschaltet");
+    await saveColor({ index, field: "grayCurve.enabled", value: true });
+    colorChanged();
+  }
+  for (const k of Object.keys(gcMemo)) delete gcMemo[k];
+  for (const k of Object.keys(gcTv)) delete gcTv[k];
+  // a test pattern would cover the gray: the calibration takes the TV alone
+  const off = (t) => ({ ...state[t], active: false });
+  state = sanitize({ ...state, grayTest: off("grayTest"), depthTest: off("depthTest"), fracTest: off("fracTest"), posTest: off("posTest"), posGuide: { ...DEFAULT_STATE.posGuide }, colorActive: false });
+  saveState();
+  delete paused.gcGuide;
+  gcSet({ ...GC_IDLE, active: true, levels: list, colorIndex: index, runId: "gcg-" + Date.now().toString(36), startPoints: structuredClone(curve.points ?? []), phase: "measure" });
+  // the test guard first, so a still image or black border detection never touches the gray
+  await exclusive(syncGuard).catch(() => {});
+  updateGrace();
+  gcGo(0);
+}
+
+async function gcAnswer({ tint, dir, strength }) {
+  if (!gcGuide.active || gcGuide.phase !== "answer" || gcGuide.showing !== "after") throw new Error("Gerade ist keine Antwort möglich");
+  const level = gcGuide.levels[gcGuide.index];
+  const entry = gcEntry(readInstanceSetting("color"));
+  const points = entry?.grayCurve?.points ?? [];
+  const before = GrayCal.gainsAt(points, level);
+  const memo = (gcMemo[level] ??= { scale: 1, last: null });
+  const gains = GrayCal.applyAnswer(before, String(tint), dir === "less" ? "less" : "more", Number(strength), memo);
+  const next = GrayCal.withPoint(points, level, gains);
+  if (next.length > GC_MAX_POINTS) throw new Error(`Die Graukurve hat höchstens ${GC_MAX_POINTS} Punkte`);
+  await gcWritePoints(next);
+  const r = gcGuide.results[level] ?? { before: GrayCal.gainsAt(gcGuide.startPoints ?? [], level).map((v) => Math.round(v * 100) / 100), answers: 0 };
+  gcSet({
+    results: { ...gcGuide.results, [level]: { ...r, after: gains, answers: r.answers + 1 } },
+    measure: { ...gcGuide.measure, gains, ...((p) => ({ ledOn: p.on, coarse: p.coarse, counts: p.counts }))(gcPrediction(gcGuide.measure?.got ?? level)) },
+  });
+}
+
+// before/after: the curve from before the run or the current one, written without history
+async function gcCompare(show) {
+  if (!gcGuide.active || gcGuide.phase !== "answer") throw new Error("Gerade ist kein Vergleich möglich");
+  const want = show === "before" ? "before" : "after";
+  if (want === gcGuide.showing) return;
+  if (want === "before") {
+    const now = gcEntry(readInstanceSetting("color"))?.grayCurve?.points ?? [];
+    gcGuide.afterPoints = structuredClone(now);
+    await gcWritePoints(structuredClone(gcGuide.startPoints ?? []), false);
+  } else {
+    await gcWritePoints(structuredClone(gcGuide.afterPoints ?? gcGuide.startPoints ?? []), false);
+  }
+  gcSet({ showing: want });
+}
+
+async function gcRestoreAfter() {
+  if (gcGuide.showing === "before") {
+    await gcWritePoints(structuredClone(gcGuide.afterPoints ?? gcGuide.startPoints ?? []), false);
+    gcGuide.showing = "after";
+  }
+}
+
+// silent: the caller tells about it itself (a pause after a connection loss)
+async function gcStop(silent = false) {
+  if (!gcGuide.active) return;
+  ++gcJob;
+  await gcRestoreAfter().catch(() => {});
+  gcSet({ active: false, aborted: true, phase: "idle", color: null, measure: null }, silent);
+  scheduleGuard();
+  updateGrace();
+}
+
+async function gcAction(body) {
+  const { action } = body ?? {};
+  if (action === "start") return gcStart(body);
+  if (action === "stop") return gcStop();
+  if (action === "close") { if (gcGuide.active) throw new Error("Die Kalibrierung läuft noch"); return gcSet({ ...GC_IDLE }); }
+  if (action === "original") {
+    if (gcGuide.active || !gcGuide.startPoints) throw new Error("Nichts zum Wiederherstellen");
+    await saveColor({ index: gcGuide.colorIndex, field: "grayCurve.points", value: structuredClone(gcGuide.startPoints) });
+    colorChanged();
+    return gcSet({ restored: true });
+  }
+  if (!gcGuide.active) throw new Error("Die Graukurven-Kalibrierung läuft nicht");
+  if (action === "answer") return gcAnswer(body);
+  if (action === "compare") return gcCompare(body.show);
+  if (action === "remeasure") { await gcRestoreAfter(); return gcGo(gcGuide.index); }
+  if (action === "neutral" || action === "skip") {
+    await gcRestoreAfter();
+    const level = gcGuide.levels[gcGuide.index];
+    const r = gcGuide.results[level] ?? { before: GrayCal.gainsAt(gcGuide.startPoints ?? [], level).map((v) => Math.round(v * 100) / 100), answers: 0 };
+    gcSet({ results: { ...gcGuide.results, [level]: { ...r, [gcGuide.round === "control" ? "control" : "verdict"]: action } }, showing: "after" });
+    return gcNext();
+  }
+  if (action === "back") {
+    await gcRestoreAfter();
+    if (gcGuide.index > 0) return gcGo(gcGuide.index - 1);
+    if (gcGuide.round === "control") { gcSet({ round: "measure" }); return gcGo(gcGuide.levels.length - 1); }
+    return gcGo(0);
+  }
+  if (action === "finish") { await gcRestoreAfter(); return gcFinish(); }
+  throw new Error("Unbekannte Aktion");
+}
+
+// --- gray curve memory slot per grabber: the slot in use is remembered for the grabber Hyperion
+// uses; when Hyperion switches to a known grabber, its slot is loaded. A new grabber keeps the
+// curve as it is (and so gets the slot in use). Kept in state.grayCurveByGrabber (device -> slot id
+// or "default"). Checked with the other grabber states every few seconds.
+const sortedCurve = (s) => (s ? { saturationLimit: s.saturationLimit, points: [...(s.points ?? [])].sort((a, b) => a.level - b.level) } : null);
+const sameCurve = (a, b) => !!a && !!b && JSON.stringify(sortedCurve(grayCurveSettings(a))) === JSON.stringify(sortedCurve(grayCurveSettings(b)));
+
+async function curveSlots() {
+  const list = (state.testPresets?.grayCurve ?? []).map((p) => ({ id: p.id, name: p.name, settings: p.settings }));
+  try {
+    const d = (await readHyperionDefaults()).color;
+    if (d && "grayCurve.points" in d) list.unshift({ id: "default", name: "Standard", settings: { saturationLimit: d["grayCurve.saturationLimit"], points: d["grayCurve.points"] } });
+  } catch {}
+  return list;
+}
+
+async function syncCurveSlot() {
+  if (gcGuide.active) return;
+  const device = selectedGrabber();
+  if (!device || !readToken()) return;
+  const curve = readInstanceSetting("color")?.channelAdjustment?.[0]?.grayCurve;
+  if (!curve) return;
+  const slots = await curveSlots();
+  const last = state.curveGrabber;
+  if (device !== last) {
+    state = sanitize({ ...state, curveGrabber: device });
+    saveState();
+  }
+  if (last && device !== last) {
+    const want = slots.find((s) => s.id === state.grayCurveByGrabber?.[device]);
+    if (want && !sameCurve(curve, want.settings)) {
+      await saveColor({ index: 0, batch: [{ field: "grayCurve.saturationLimit", value: want.settings.saturationLimit }, { field: "grayCurve.points", value: want.settings.points }] });
+      colorChanged();
+      addNotice("gcSlotLoaded", "info", { name: Report.displayName(device), slot: want.name }, "card-gcc");
+      return;
+    }
+  }
+  const match = slots.find((s) => sameCurve(curve, s.settings));
+  if (match && state.grayCurveByGrabber?.[device] !== match.id) {
+    state = sanitize({ ...state, grayCurveByGrabber: { ...state.grayCurveByGrabber, [device]: match.id } });
+    saveState();
+    broadcast();
+  }
+}
+setInterval(() => syncCurveSlot().catch((err) => console.warn("gray curve slot per grabber:", err.message)), 4000);
+
 // --- Hyperion settings for black-border and gray-still-image detection (instance 0) ---
 
 const BB_MODES = ["default", "classic", "osd", "letterbox"];
@@ -1380,6 +1705,8 @@ function guardWanted(entries = {}) {
   if (state.posTest?.active || state.posGuide?.active) tests.push("pos");
   if (Object.values(state.bars ?? {}).some((v) => v > 0)) tests.push("bars");
   if (shownColor && !pattern) tests.push("color");
+  // the gray of the gray curve calibration is a full screen test color
+  if (gcGuide.active && !tests.includes("color")) tests.push("color");
   if (!tests.length) return {};
   const off = new Set();
   for (const t of tests) for (const f of state.guardRules?.[t] ?? DEFAULT_GUARD_RULES[t]) off.add(f);
@@ -1487,6 +1814,7 @@ function shownTests() {
   const keys = [];
   for (const k of ["grayTest", "depthTest", "fracTest", "posTest"]) if (state[k]?.active) keys.push(k);
   if (state.posGuide?.active) keys.push("posGuide");
+  if (gcGuide.active) keys.push("gcGuide");
   if (state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000") keys.push("color");
   if (Object.values(state.bars ?? {}).some((v) => v > 0)) keys.push("bars");
   return keys;
@@ -1526,6 +1854,7 @@ function pauseTests() {
     overlays: { ...state.overlays, bbTv: false, gsTv: false, dpTv: false },
   });
   saveState();
+  gcStop(true).catch(() => {});
   console.log(`No control page for ${GRACE_MS / 1000} s: paused ${keys.join(", ") || "overlays"}`);
   addNotice("paused", "critical", { tests: keys }, keys.length ? "" : "card-ts");
   // a color of the RGB wizard stays on the LEDs without the page that alternates it
@@ -1824,6 +2153,10 @@ const server = http.createServer(async (req, res) => {
       const { op, args } = await readBody(req, 100_000);
       return sendJson(res, 200, await noSignalOp(op, args));
     }
+    if (req.method === "POST" && p === "/api/graycal") {
+      await gcAction(await readBody(req));
+      return sendJson(res, 200, { gcGuide });
+    }
     if (req.method === "GET" && p === "/api/hyperion/graycurve/history") {
       return sendJson(res, 200, curveHistoryInfo(Number(url.searchParams.get("index") ?? 0)));
     }
@@ -1842,6 +2175,8 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && p === "/api/state") {
       const patch = await readBody(req);
+      // another test or a test color takes the TV: the gray curve calibration ends
+      if (gcGuide.active && (typeof patch.color === "string" || ["grayTest", "depthTest", "fracTest", "posTest", "posGuide"].some((t) => patch[t]?.active === true))) await gcStop();
       const bars = { ...state.bars, ...(patch.bars ?? {}) };
       // Relative steps are applied here, not on the client, so concurrent key presses cannot overwrite each other
       if (patch.adjust) {
@@ -1917,7 +2252,7 @@ const server = http.createServer(async (req, res) => {
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
       const guideBefore = state.posGuide;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules });
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber });
       saveState();
       if (state.posGuide?.done && !guideBefore?.done) addNotice("guideDone", "info", {}, "card-lg");
       else if (guideBefore?.active && !guideBefore.done && !state.posGuide?.active) addNotice("guideAborted", "critical", {}, "card-lg");

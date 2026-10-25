@@ -318,6 +318,25 @@
   .tp-empty { color: var(--muted); margin-top: 6px; }
   .gcc-lock { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; font-size: 13px; color: var(--muted); }
   .gcc-lock .ts-lock { flex: none; }
+  /* guided gray curve calibration */
+  .gck-sub { margin: 12px 0 6px; font-size: 13px; color: var(--muted); }
+  .gck-levels { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gck-level { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--btn-line); border-radius: 9px; background: var(--btn); font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+  .gck-level input { margin: 0; }
+  .gck-level small { font-size: 11px; color: var(--muted); }
+  .gck-level.off span { color: var(--muted); }
+  .gck-measure { font-size: 13px; line-height: 1.5; }
+  .gck-warnlist { margin-top: 6px; color: var(--warn); }
+  .gck-warnlist div + div { margin-top: 4px; }
+  #gcg-neutral { margin: 4px 0 10px; }
+  .gck-seg { margin-top: 8px; }
+  .gck-seg button { text-align: center; }
+  .gck-tints { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .gck-tints button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; font-size: 13px; }
+  .gck-dot { width: 18px; height: 18px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--text) 25%, transparent); }
+  .gck-table table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .gck-table th, .gck-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--btn-line); }
+  .gck-table th { font-weight: 600; color: var(--muted); }
   /* guided position test */
   .lg-q { margin: 12px 0 6px; font-size: 14px; }
   .lg-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
@@ -635,7 +654,7 @@
       <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout.</li>
       <li><a class="jump" href="#card-dt"><b>Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
       <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Weiß wirkt bläulich oder gelblich, oder einzelne Farben passen nicht zum TV. Du vergleichst TV und LEDs direkt und stellst die Farbwerte in Hyperion ein.</li>
-      <li><a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit.</li>
+      <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Nach der Grabber-Farberkennung machen.</li>
       <li><a class="jump" href="#card-ft"><b>Nachkommastellen Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen.</li>
       <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen.</li>
       <li><a class="jump" href="#card-gs"><b>Graues Standbild Test</b></a> und <a class="jump" href="#card-gsd"><b>Graues-Standbild-Erkennung</b></a>: Manche Player blenden ein pausiertes Video zu einem grauen Standbild ab, und die LEDs leuchten dann lange grau. Die Erkennung friert die LEDs in diesem Fall ein oder schaltet sie aus.</li>
@@ -738,14 +757,73 @@
   </section>
 
   <!-- ===== Hyperion gray curve (own card below the test colors) ===== -->
-  <section class="card" id="card-gcc">
+  <section class="card card-pair" id="card-p-gc">
     <h2>Graukurve</h2>
-    <div class="hy-scope" id="gcc">
+    <div class="pair">
+    <div class="pair-col" id="card-gcg">
+      <h3 class="pair-ttl">Graukurve kalibrieren</h3>
+      <p class="help">Der TV zeigt nacheinander graue Flächen von hell bis dunkel. Du vergleichst das Licht der LEDs an der Wand mit dem Grau auf dem TV und sagst je Stufe, ob es neutral wirkt oder welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Punkt der Graukurve für diese Helligkeit sofort. Am Ende prüft ein Kontrolllauf alle Stufen noch einmal.</p>
+      <p class="help">Die Seite misst, welches Grau Hyperion nach der Grabber-Farbkorrektur wirklich sieht, und stellt das TV-Grau so ein, dass die Stufe stimmt, egal was der Grabber hebt oder senkt. Kalibriere deshalb zuerst die <a class="jump" href="#card-gx">Grabber-Farberkennung</a>: Fehler des Grabbers gehören dorthin, nicht in die Graukurve.</p>
+      <p class="note guard-note" hidden></p>
 
-    <h4 class="hy-h" style="margin-top:0"><span>Graukurve (Hyperion)</span></h4>
+      <div id="gcg-idle">
+        <p class="gck-sub">Stufen (Helligkeit, die Hyperion misst)</p>
+        <div class="gck-levels" id="gcg-levels"></div>
+        <div class="frow"><label for="gcg-own">Eigene Stufe (1–100 %)</label><span class="inputs"><input type="number" class="wide-in" id="gcg-own" min="1" max="100" step="1" inputmode="numeric"><button type="button" id="gcg-own-add">Hinzufügen</button></span></div>
+        <p class="note" id="gcg-levels-note"></p>
+        <div class="lg-actions">
+          <button type="button" class="primary" id="gcg-start">Kalibrierung starten</button>
+        </div>
+      </div>
+
+      <div id="gcg-run" hidden>
+        <div class="status" id="gcg-progress"></div>
+        <div class="status gck-measure" id="gcg-measure"></div>
+        <div id="gcg-ask">
+          <p class="lg-q">Wie wirkt das Licht der LEDs an der Wand neben dem Grau auf dem TV?</p>
+          <button type="button" class="primary wide" id="gcg-neutral">Neutral, weiter</button>
+          <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="gcg-dir">
+            <button type="button" data-dir="more">zu viel</button>
+            <button type="button" data-dir="less">zu wenig</button>
+          </div>
+          <div class="gck-tints" id="gcg-tints"></div>
+          <div class="seg full gck-seg" role="group" aria-label="Stärke" id="gcg-strength">
+            <button type="button" data-strength="1">leicht</button>
+            <button type="button" data-strength="2">deutlich</button>
+            <button type="button" data-strength="3">stark</button>
+          </div>
+          <p class="note" id="gcg-gains"></p>
+          <div class="seg full" role="group" aria-label="Vergleichen" style="margin-top:8px">
+            <button type="button" id="gcg-compare">Vorher zeigen</button>
+            <button type="button" id="gcg-remeasure">Neu messen</button>
+          </div>
+        </div>
+        <div class="seg full" role="group" aria-label="Kalibrierung steuern" style="margin-top:8px">
+          <button type="button" id="gcg-back">Zurück</button>
+          <button type="button" id="gcg-skip">Überspringen</button>
+          <button type="button" id="gcg-finish" hidden>Fertig</button>
+          <button type="button" id="gcg-stop">Abbrechen</button>
+        </div>
+      </div>
+
+      <div id="gcg-result" hidden>
+        <div class="status" id="gcg-summary"></div>
+        <div class="gck-table" id="gcg-table"></div>
+        <div class="lg-actions">
+          <button type="button" class="primary" id="gcg-save">Als Speicherplatz sichern</button>
+          <button type="button" id="gcg-original">Original wiederherstellen</button>
+          <button type="button" id="gcg-close">Schließen</button>
+        </div>
+      </div>
+      <p class="warn" id="gcg-warn" hidden></p>
+    </div>
+    <div class="pair-col" id="card-gcc">
+    <h3 class="pair-ttl">Graukurve (Hyperion)</h3>
+    <div class="hy-scope" id="gcc">
     <p class="help">Eigene Faktoren für Rot, Grün und Blau je Helligkeit, damit helles, mittleres und dunkles Grau gleichzeitig neutral wirken. Die Faktoren wirken direkt auf die LEDs (0,90 = 10&nbsp;% weniger), nur bei Grau und schwach gesättigten Tönen. Ein Punkt im Graphen (oder „Am TV zeigen“) legt das passende Grau auf den TV, dann die Faktoren des Punkts anpassen.</p>
     <label class="check"><input type="checkbox" data-cfield="grayCurve.enabled"><span>Graukurve aktiviert<small>Gilt für die ganze Funktion. Ein Speicherplatz wechselt nur die Kurve, nicht diesen Schalter.</small></span></label>
     <div class="tp" data-test="grayCurve"></div>
+    <p class="note" id="gcc-grabber" hidden></p>
     <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
     <div class="gcc-lock" id="gcc-lock-row">
       <button type="button" class="ts-lock" id="gcc-lock"></button>
@@ -764,6 +842,8 @@
     <div class="frow"><label for="bt-threshold">Schwelle (0–10)</label><span class="inputs"><input type="number" class="wide-in" id="bt-threshold" min="0" max="10" step="0.05" placeholder="0,5" inputmode="decimal"></span></div>
     <div class="tp" data-test="blackThreshold"></div>
     <p class="note" id="bt-note"></p>
+    </div>
+    </div>
     </div>
   </section>
 
@@ -1515,6 +1595,7 @@
 })();
 </script>
 <script src="/static/graycurve-graph.js"></script>
+<script src="/static/graycal.js"></script>
 <script src="/static/grabbertest-report.js"></script>
 <script src="/static/nosignal-ui.js"></script>
 <script src="/static/notice-text.js"></script>
@@ -1572,6 +1653,7 @@ let sendSeq = 0;               // only the answer to the newest change is applie
 let debug = null;              // latest "forkdebug" snapshot from Hyperion
 let bbConfig = null;           // Hyperion's blackborderdetector settings
 let colorConfig = null;        // Hyperion's color settings
+let colorStampSeen;            // the server counts its own writes of them (gray curve calibration, slot per grabber)
 let ledAreas = null;           // LED sampling areas from Hyperion's layout (what the gray still detector sees)
 let colorIndex = 0;            // which channelAdjustment entry the right column edits
 let curveBuiltFor = -1;        // number of gray curve points currently built in the editor
@@ -1640,13 +1722,13 @@ function showError(text) {
 }
 
 // test -> its card
-const PAUSED_CARDS = { grayTest: "card-gs", bars: "card-bars", depthTest: "card-dt", fracTest: "card-ft", posTest: "card-lp", posGuide: "card-lg", color: "card-color" };
+const PAUSED_CARDS = { grayTest: "card-gs", bars: "card-bars", depthTest: "card-dt", fracTest: "card-ft", posTest: "card-lp", posGuide: "card-lg", gcGuide: "card-gcg", color: "card-color" };
 function renderPaused() {
   for (const [test, id] of Object.entries(PAUSED_CARDS)) {
     const card = $(id);
     const on = !!state.paused?.[test];
     card.classList.toggle("paused", on);
-    if (on) card.dataset.pausedText = tr(test === "posGuide" ? "Abgebrochen, weil keine Testseite mehr verbunden war. Zum Weitermachen neu starten." : "Pausiert, weil keine Testseite mehr verbunden war. Zum Weitermachen neu starten.");
+    if (on) card.dataset.pausedText = tr(test === "posGuide" || test === "gcGuide" ? "Abgebrochen, weil keine Testseite mehr verbunden war. Zum Weitermachen neu starten." : "Pausiert, weil keine Testseite mehr verbunden war. Zum Weitermachen neu starten.");
     else delete card.dataset.pausedText;
   }
 }
@@ -1670,6 +1752,9 @@ function renderState() {
   renderFracTest();
   renderPosTest();
   renderPosGuide();
+  renderGcGuide();
+  renderCurveByGrabber();
+  if (state.colorStamp !== colorStampSeen) { const first = colorStampSeen === undefined; colorStampSeen = state.colorStamp; if (!first) loadColorConfig(); }
   renderTestPresets();
   renderGuard();
   renderTestServer();
@@ -1691,6 +1776,7 @@ function renderCardBadges() {
     "card-ft": state.fracTest?.active && "läuft",
     "card-lp": state.posTest?.active && !state.posGuide?.active && "läuft",
     "card-lg": state.posGuide?.active && "läuft",
+    "card-gcg": state.gcGuide?.active && "läuft",
   };
   const perCard = new Map();
   for (const [id, text] of Object.entries(badges)) {
@@ -2239,6 +2325,7 @@ function renderColorEditor() {
   if (points !== curveBuiltFor) buildCurve(points);
   curveGraph.update({ entry, blackThreshold: deviceBlack, writable: writable && curveUnlocked() });
   renderBlackThreshold();
+  if (!state?.gcGuide?.active && !state?.gcGuide?.done) renderGcgLevels();
   renderCurveLock();
   renderCurveHistory();
   document.querySelectorAll("#hy-curve button.showgray").forEach(b => { b.disabled = !writable; });
@@ -3221,6 +3308,212 @@ document.addEventListener("click", async (ev) => {
   }
 });
 fetch("/api/testdefaults").then((r) => r.json()).then((d) => { testDefaults = d; if (state) renderTestPresets(); }).catch(() => {});
+
+// ---------- guided gray curve calibration (run by the server, math in graycal.js) ----------
+// The levels to calibrate are chosen here; the server shows the gray, measures what Hyperion sees and
+// changes the gray curve point per answer. A tap on a tint sends "too much" or "too little" of it with
+// the chosen strength.
+const GCG_TINT_NAMES = { red: "Rot", orange: "Orange", yellow: "Gelb", green: "Grün", cyan: "Türkis", blue: "Blau", purple: "Lila", magenta: "Rosa" };
+let gcgOwnLevels = [];
+let gcgChosen = null;       // Set of chosen levels: the ones where the LEDs light, until the user picks
+let gcgTouched = false;
+let gcgDir = "more";
+let gcgStrength = 1;
+let gcgBusy = false;
+const gcgFmt = (v, d = 0) => Number(v).toLocaleString(I18N.locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+const gcgGains = (g) => g.map((v) => gcgFmt(v, 2)).join(" / ");
+
+// LED output of a pure gray at the level: whether the LEDs light at all and whether it is coarse
+function gcgPredict(level) {
+  const entry = colorConfig?.channelAdjustment?.[colorIndex];
+  if (!entry) return null;
+  const M = GrayCurveGraph.math;
+  const model = M.makeModel(entry, deviceBlack);
+  const gains = model.curveEnabled ? GrayCal.gainsAt(entry.grayCurve?.points ?? [], level) : [1, 1, 1];
+  const counts = M.grayOutput(model, level * 2.55, gains).led.map((v) => Math.round(v * 257));
+  const on = counts.some((v) => v > 0);
+  return { on, coarse: on && Math.min(...counts) < GrayCal.COARSE_COUNTS, counts };
+}
+
+function gcgLevels() {
+  const points = (colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.points ?? []).map((p) => p.level);
+  return [...new Set([...GrayCal.LEVELS, ...points, ...gcgOwnLevels])].filter((l) => l >= 1 && l <= 100).sort((a, b) => b - a);
+}
+
+function renderGcgLevels() {
+  const box = $("gcg-levels");
+  const entry = colorConfig?.channelAdjustment?.[colorIndex];
+  if (!entry) { box.innerHTML = ""; $("gcg-levels-note").textContent = tr("Zuerst mit Hyperion verbinden."); return; }
+  const levels = gcgLevels();
+  if (!gcgTouched) gcgChosen = new Set(levels.filter((l) => gcgPredict(l)?.on));
+  const points = new Set((entry.grayCurve?.points ?? []).map((p) => p.level));
+  box.innerHTML = levels.map((l) => {
+    const p = gcgPredict(l);
+    const tag = !p?.on ? tr("LEDs aus") : p.coarse ? tr("grob") : points.has(l) ? tr("Punkt") : "";
+    return `<label class="gck-level${!p?.on ? " off" : ""}"><input type="checkbox" value="${l}"${gcgChosen.has(l) ? " checked" : ""}><span>${gcgFmt(l)} %</span>${tag ? `<small>${tag}</small>` : ""}</label>`;
+  }).join("");
+  const off = levels.filter((l) => !gcgPredict(l)?.on);
+  const coarse = levels.filter((l) => gcgPredict(l)?.coarse);
+  const notes = [];
+  if (off.length) notes.push(tr("„LEDs aus“: Bei diesen Stufen schaltet die Schwarzschwelle ({a}) die LEDs ganz aus, eine Kalibrierung ist dort nicht möglich. Wer sie trotzdem will, senkt rechts die Schwarzschwelle.", { a: deviceBlack?.enabled === false ? tr("aus") : gcgFmt(deviceBlack?.threshold ?? 0.5, 2) }));
+  if (coarse.length) notes.push(tr("„grob“: Die LEDs haben hier nur wenige Helligkeitsschritte, kleine Änderungen wirken kaum."));
+  const newPoints = [...gcgChosen].filter((l) => !points.has(l)).length;
+  if ((entry.grayCurve?.points?.length ?? 0) + newPoints > 12) notes.push(tr("Die Graukurve hat höchstens 12 Punkte. Weniger neue Stufen wählen."));
+  $("gcg-levels-note").textContent = notes.join(" ");
+}
+
+async function gcgSend(body) {
+  if (gcgBusy) return null;
+  gcgBusy = true;
+  $("gcg-warn").hidden = true;
+  try {
+    const res = await fetch("/api/graycal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error);
+    state = { ...state, gcGuide: out.gcGuide };
+    renderGcGuide();
+    renderCardBadges();
+    return out;
+  } catch (e) {
+    $("gcg-warn").textContent = e instanceof TypeError ? tr("Die Testseite auf dem Hyperion-Server ist nicht erreichbar.") : e.message;
+    $("gcg-warn").hidden = false;
+    return null;
+  } finally {
+    gcgBusy = false;
+  }
+}
+
+function renderGcgMeasure(g) {
+  const m = g.measure;
+  if (g.phase === "error") return `<b>${tr("Messung fehlgeschlagen")}</b>: ${escHtml(g.error ?? "")}`;
+  if (!m) return tr("Stelle das TV-Grau ein und messe, was Hyperion sieht …");
+  const lines = [tr("TV-Grau {a} → Hyperion misst {b} % (R {r} · G {g} · B {bl}){c}", {
+    a: m.tv, b: gcgFmt(m.got, 1), r: gcgFmt(m.rgb[0], 1), g: gcgFmt(m.rgb[1], 1), bl: gcgFmt(m.rgb[2], 1),
+    c: m.corrected ? tr(", nach der Grabber-Farbkorrektur") : "",
+  })];
+  const warn = [];
+  if (!m.corrected) warn.push(tr("Die Grabber-Farbkorrektur ist aus: Fehler des Grabbers landen so in der Graukurve."));
+  if (m.missed) warn.push(tr("Der Grabber erreicht diese Stufe nicht genau (gemessen {a} %).", { a: gcgFmt(m.got, 1) }));
+  if (m.weight < 0.95) warn.push(tr("Der Grabber liefert hier kein reines Grau: Die Graukurve wirkt nur zu {a} %. Zuerst die Grabber-Farberkennung kalibrieren.", { a: gcgFmt(m.weight * 100) }));
+  if (!m.ledOn) warn.push(tr("Bei dieser Stufe bleiben die LEDs aus (Schwarzschwelle). Überspringen oder rechts die Schwarzschwelle senken."));
+  else if (m.coarse) warn.push(tr("Grobe Stufe: Die LEDs haben hier nur {a} von 65 535 Schritten, kleine Änderungen wirken kaum.", { a: m.counts.join(" / ") }));
+  if (m.unstable) warn.push(tr("Das Grabberbild war unruhig, die Messung ist ungenau."));
+  return lines.join("<br>") + (warn.length ? `<div class="gck-warnlist">${warn.map((w) => `<div>${escHtml(w)}</div>`).join("")}</div>` : "");
+}
+
+function renderGcGuide() {
+  const g = state?.gcGuide ?? {};
+  const running = g.active === true;
+  const result = !running && g.done === true;
+  $("gcg-idle").hidden = running || result;
+  $("gcg-run").hidden = !running;
+  $("gcg-result").hidden = !result;
+  if (!running && !result) {
+    renderGcgLevels();
+    $("gcg-start").disabled = !colorConfig?.channelAdjustment?.[colorIndex] || state?.grabberRun?.running;
+  }
+  if (running) {
+    const level = g.levels[g.index];
+    $("gcg-progress").innerHTML = tr("{a} · Stufe {b} von {c}: <b>{d} %</b>", {
+      a: g.round === "control" ? tr("Kontrolllauf") : tr("Messlauf"), b: g.index + 1, c: g.levels.length, d: gcgFmt(level),
+    });
+    $("gcg-measure").innerHTML = renderGcgMeasure(g);
+    const ask = g.phase === "answer";
+    const before = g.showing === "before";
+    $("gcg-ask").hidden = !ask;
+    for (const id of ["gcg-neutral", "gcg-skip"]) $(id).disabled = !ask || before;
+    $("gcg-tints").querySelectorAll("button").forEach((b) => { b.disabled = !ask || before; });
+    $("gcg-dir").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dir === gcgDir)));
+    $("gcg-strength").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.strength) === gcgStrength)));
+    $("gcg-compare").textContent = before ? tr("Nachher zeigen") : tr("Vorher zeigen");
+    $("gcg-compare").setAttribute("aria-pressed", String(before));
+    $("gcg-compare").disabled = !ask;
+    $("gcg-remeasure").disabled = !ask && g.phase !== "error";
+    $("gcg-finish").hidden = g.round !== "control";
+    const r = g.results?.[level];
+    const gains = g.measure?.gains;
+    $("gcg-gains").textContent = before ? tr("Gerade wirkt die Kurve von vor der Kalibrierung.")
+      : gains ? tr("Faktoren bei {a} %: R / G / B {b}{c}", { a: gcgFmt(level), b: gcgGains(gains), c: r?.answers ? tr(" (vorher {a})", { a: gcgGains(r.before) }) : "" }) : "";
+  }
+  if (result) {
+    const rows = Object.entries(g.results ?? {}).sort((a, b) => b[0] - a[0]);
+    const changed = rows.filter(([, r]) => r.after);
+    $("gcg-summary").textContent = g.restored ? tr("Die Kurve von vor der Kalibrierung ist wiederhergestellt.")
+      : changed.length ? tr("Fertig. {a} von {b} Stufen geändert, die neue Kurve wirkt schon. Sichere sie als Speicherplatz, damit sie bleibt.", { a: changed.length, b: rows.length })
+      : tr("Fertig. Alle Stufen waren schon neutral, an der Kurve hat sich nichts geändert.");
+    $("gcg-table").innerHTML = rows.length ? `<table><thead><tr><th>${tr("Stufe")}</th><th>${tr("vorher R / G / B")}</th><th>${tr("nachher")}</th></tr></thead><tbody>${rows.map(([l, r]) =>
+      `<tr><td>${gcgFmt(l)} %</td><td>${gcgGains(r.before)}</td><td>${r.after ? gcgGains(r.after) : r.verdict === "skip" ? tr("übersprungen") : tr("neutral")}</td></tr>`).join("")}</tbody></table>` : "";
+    $("gcg-original").disabled = g.restored === true || !changed.length;
+    $("gcg-save").disabled = g.restored === true || !changed.length;
+  }
+}
+
+$("gcg-tints").innerHTML = GrayCal.TINTS.map((t) => `<button type="button" data-tint="${t.id}"><span class="gck-dot" style="background:${t.hex}"></span>${GCG_TINT_NAMES[t.id]}</button>`).join("");
+$("gcg-tints").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-tint]");
+  if (b) gcgSend({ action: "answer", tint: b.dataset.tint, dir: gcgDir, strength: gcgStrength });
+});
+$("gcg-dir").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-dir]"); if (b) { gcgDir = b.dataset.dir; renderGcGuide(); } });
+$("gcg-strength").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-strength]"); if (b) { gcgStrength = Number(b.dataset.strength); renderGcGuide(); } });
+$("gcg-levels").addEventListener("change", (ev) => {
+  const l = Number(ev.target.value);
+  gcgTouched = true;
+  if (ev.target.checked) gcgChosen.add(l); else gcgChosen.delete(l);
+  renderGcgLevels();
+});
+$("gcg-own-add").addEventListener("click", () => {
+  const l = Math.round(Number($("gcg-own").value));
+  if (!(l >= 1 && l <= 100)) return $("gcg-own").focus();
+  if (!gcgOwnLevels.includes(l)) gcgOwnLevels.push(l);
+  gcgTouched = true;
+  gcgChosen?.add(l);
+  $("gcg-own").value = "";
+  renderGcgLevels();
+});
+$("gcg-start").addEventListener("click", async () => {
+  const entry = colorConfig?.channelAdjustment?.[colorIndex];
+  const levels = gcgLevels().filter((l) => gcgChosen?.has(l));
+  if (!levels.length) { $("gcg-warn").textContent = tr("Mindestens eine Stufe wählen"); $("gcg-warn").hidden = false; return; }
+  let enableCurve = false;
+  if (entry?.grayCurve && entry.grayCurve.enabled !== true) {
+    if (!confirm(tr("Die Graukurve ist ausgeschaltet. Für die Kalibrierung einschalten?"))) return;
+    enableCurve = true;
+  }
+  const out = await gcgSend({ action: "start", levels, enableCurve, colorIndex });
+  if (out && $("pv-panel").hidden) setPanel(true);
+});
+$("gcg-neutral").addEventListener("click", () => gcgSend({ action: "neutral" }));
+$("gcg-skip").addEventListener("click", () => gcgSend({ action: "skip" }));
+$("gcg-back").addEventListener("click", () => gcgSend({ action: "back" }));
+$("gcg-finish").addEventListener("click", () => gcgSend({ action: "finish" }));
+$("gcg-stop").addEventListener("click", () => gcgSend({ action: "stop" }));
+$("gcg-remeasure").addEventListener("click", () => gcgSend({ action: "remeasure" }));
+$("gcg-compare").addEventListener("click", () => gcgSend({ action: "compare", show: state.gcGuide?.showing === "before" ? "after" : "before" }));
+$("gcg-close").addEventListener("click", () => gcgSend({ action: "close" }));
+$("gcg-original").addEventListener("click", () => {
+  if (confirm(tr("Die Graukurve von vor der Kalibrierung wiederherstellen?"))) gcgSend({ action: "original" });
+});
+$("gcg-save").addEventListener("click", async () => {
+  const name = prompt(tr("Name des Speicherplatzes"), tr("Kalibriert {a}", { a: new Date().toLocaleDateString(I18N.locale) }));
+  if (!name || !name.trim()) return;
+  await loadColorConfig();
+  if (await tpOp({ op: "save", test: "grayCurve", name: name.trim(), settings: tpCurrent("grayCurve") })) {
+    $("gcg-summary").textContent = tr("Als Speicherplatz „{a}“ gesichert.", { a: name.trim() });
+  }
+});
+
+// gray curve slot per grabber: which slot each known grabber loads
+function renderCurveByGrabber() {
+  const map = state?.grayCurveByGrabber ?? {};
+  const slots = state?.testPresets?.grayCurve ?? [];
+  const entries = Object.entries(map).map(([device, id]) => {
+    const name = id === "default" ? tr("Standard") : slots.find((p) => p.id === id)?.name;
+    return name ? `${escHtml(GrabberTestReport.displayName(device))}: „${escHtml(name)}“` : null;
+  }).filter(Boolean);
+  const el = $("gcc-grabber");
+  el.hidden = !entries.length;
+  if (entries.length) el.innerHTML = tr("Speicherplatz je Grabber: {a}. Wechselt Hyperion zu einem dieser Grabber, lädt die Seite seinen Platz. Ein neuer Grabber behält die aktuelle Kurve.", { a: entries.join(" · ") });
+}
 
 // ---------- guided LED position test ----------
 // It steps the position test through 5 points per edge run. The answer is where the lit LED sits
