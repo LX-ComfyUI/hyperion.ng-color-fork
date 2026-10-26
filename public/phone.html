@@ -537,6 +537,7 @@
   .tb-home { display: block; flex: 0 1 auto; min-width: 96px; }
   .tb-logo { display: block; height: auto; width: 150px; max-width: 100%; }
   @media (max-width: 767.98px) { .tb-logo { width: 116px; } }
+  @media (max-width: 559.98px) { .tb-home { min-width: 0; } .tb-left { gap: 6px; } .tb-icons > .tb-icon, .tb-icons > .tb-drop > .tb-icon { width: 36px; } }
   .tb-title { font-size: 17px; white-space: nowrap; color: var(--text); }
   @media (max-width: 767.98px) { .tb-title { display: none; } }
   .tb-drop { position: relative; }
@@ -633,6 +634,11 @@
   .side-order .order-seg { flex-direction: column; }
   .side-order .order-seg button { padding: 6px 10px; font-size: 13px; text-align: left; }
   .side-order .order-seg button + button { border-left: none; border-top: 1px solid var(--btn-line); }
+  /* WebUI, language and appearance in the menu on phones: one row each, icon and name */
+  .side-tools { padding: 6px 0; border-top: 1px solid var(--bar-line); }
+  .side-tools[hidden] { display: none; }
+  .side-tools .tb-icon { width: 100%; height: 40px; padding: 0 15px; justify-content: flex-start; gap: 12px; border-radius: 0; text-decoration: none; }
+  .side-tools .tb-icon::after { content: attr(data-tip); font-size: 14px; font-weight: normal; }
   .side-order-hint { margin: 6px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted); }
   #order-guide { max-width: 420px; margin: 0 0 10px; }
   #order-guide .order-seg button { padding: 7px 4px; font-size: 13px; }
@@ -894,7 +900,7 @@
       <div class="col">
         <div class="hy-col hy-scope" id="hy-col">
           <h3 style="margin-top:0">Farben in Hyperion</h3>
-          <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort.</p>
+          <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort. Unten legst du alle Werte zusammen in Speicherplätzen ab und holst sie wieder zurück.</p>
           <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
 
           <h4 class="hy-h" data-hy-group="colors"><span>Farben</span></h4>
@@ -918,6 +924,7 @@
           </div>
           </div>
           <p class="note" id="hy-note"></p>
+          <div class="tp" data-test="hyColor"></div>
         </div>
       </div>
     </div>
@@ -2084,6 +2091,24 @@
     document.querySelector(`[data-theme-choice="${next}"]`).click();
   });
   syncTheme();
+
+  // a phone has no room for all icons in the bar: WebUI, language and appearance move into the menu
+  // (with their names) and come back to the bar when the window gets wider
+  const narrow = matchMedia("(max-width: 559.98px)");
+  const sideTools = document.createElement("div");
+  sideTools.className = "side-tools";
+  document.querySelector("#side .side-foot").before(sideTools);
+  const power = document.getElementById("tb-power").parentElement;
+  const placeTools = () => {
+    if (narrow.matches) sideTools.append(tbWebui, tbLang, tbTheme);
+    else {
+      power.parentElement.prepend(tbWebui);
+      power.before(tbLang, tbTheme);
+    }
+    sideTools.hidden = !narrow.matches;
+  };
+  narrow.addEventListener("change", placeTools);
+  placeTools();
 })();
 </script>
 <script src="/static/graycurve-graph.js"></script>
@@ -3670,16 +3695,25 @@ const TP_SEND = {
   fracTest: (s) => sendFracTest(s),
   posTest: (s) => sendPosTest(s),
   grayCurve: (s) => saveGrayCurve(s),
+  hyColor: (s) => saveHyColor(s),
 };
-// the gray curve slots hold Hyperion settings, not a test: always unfolded, no stars, at most 10
-const TP_MAX = { grayCurve: 10, blackThreshold: 10 };
-const TP_SLOTS = ["grayCurve", "blackThreshold"];
+// the slots of the gray curve, the black threshold and the color values hold Hyperion settings,
+// not a test: always unfolded, no stars, at most 10
+const TP_MAX = { grayCurve: 10, blackThreshold: 10, hyColor: 10 };
+const TP_SLOTS = ["grayCurve", "blackThreshold", "hyColor"];
+const TP_TITLES = { grayCurve: "Gespeicherte Graukurven", blackThreshold: "Gespeicherte Schwellen", hyColor: "Gespeicherte Farbwerte" };
+// the color values of a slot: the three groups of the Hyperion column in the test colors card
+const HY_SLOT_FIELDS = () => [...HY_GROUP_FIELDS.colors, ...HY_GROUP_FIELDS.light, ...HY_GROUP_FIELDS.gamma];
 let testDefaults = null;
 const tpOpen = new Set();      // tests whose list is unfolded
 const tpEditing = {};          // test -> preset id being renamed, or "new" for the save form
 
 function tpCurrent(test) {
   if (test === "blackThreshold") return deviceBlack ? { threshold: deviceBlack.threshold } : null;
+  if (test === "hyColor") {
+    const e = colorConfig?.channelAdjustment?.[colorIndex];
+    return e ? Object.fromEntries(HY_SLOT_FIELDS().filter((f) => f in e).map((f) => [f, e[f]])) : null;
+  }
   if (test === "grayCurve") {
     const c = colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve;
     return c ? { saturationLimit: c.saturationLimit, points: c.points ?? [] } : null;
@@ -3691,6 +3725,10 @@ function tpCurrent(test) {
 }
 function tpDefaults(test) {
   if (test === "blackThreshold") return { threshold: BT_DEFAULT };
+  if (test === "hyColor") {
+    const d = Object.fromEntries(HY_SLOT_FIELDS().filter((f) => hyDefault(f) !== undefined).map((f) => [f, hyDefault(f)]));
+    return Object.keys(d).length ? d : null;
+  }
   if (test === "grayCurve") {
     const d = hyDefaults?.color;
     return d && "grayCurve.points" in d ? { saturationLimit: d["grayCurve.saturationLimit"], points: d["grayCurve.points"] } : null;
@@ -3722,8 +3760,10 @@ function renderTestPresets(force = false) {
     const open = slots || tpOpen.has(test);
     const full = list.length >= (TP_MAX[test] ?? Infinity);
     const off = slots && (!hyperionConnected || !cur);
-    // the slot in use gets a badge like the grabber slots: "läuft" while the curve is on, else "aus"
+    // the slot in use gets a badge like the grabber slots: "läuft" while the function is on, else "aus"
+    // (the color values have no switch, they always act)
     const curveOn = test === "blackThreshold" ? deviceBlack?.enabled !== false && !!deviceBlack
+      : test === "hyColor" ? !!cur
       : slots && colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve?.enabled === true;
     const badge = (inUse) => (slots && inUse ? `<span class="tp-badge${curveOn ? "" : " idle"}">${tr(curveOn ? "läuft" : "aus")}</span>` : "");
     // a value in use that is in no slot would be lost when another slot is loaded: say so, and stress the save button
@@ -3737,7 +3777,7 @@ function renderTestPresets(force = false) {
     const def = tpDefaults(test);
     const favs = list.filter((p) => p.fav);
     // the gray curve shows the standard as the first slot, so it can be switched with the others
-    let html = `<div class="tp-head"><span class="tp-title">${tr(test === "blackThreshold" ? "Gespeicherte Schwellen" : slots ? "Gespeicherte Graukurven" : "Gespeicherte Einstellungen")}</span>` +
+    let html = `<div class="tp-head"><span class="tp-title">${tr(TP_TITLES[test] ?? "Gespeicherte Einstellungen")}</span>` +
       (slots ? "" : `<button type="button" data-tp="default"${def && tpSame(cur, def) ? ' aria-pressed="true"' : ""}${def && !off ? "" : " disabled"}>${tr("Standard")}</button>`) +
       `<button type="button"${unsaved && !full ? ' class="primary"' : ""} data-tp="new"${full || off ? " disabled" : ""}>${tr("Speichern …")}</button>` +
       (list.length && !slots ? `<button type="button" data-tp="toggle" aria-expanded="${open}">${open ? tr("Liste zu") : tr("Alle ({a})", { a: list.length })}</button>` : "") +
@@ -3747,7 +3787,7 @@ function renderTestPresets(force = false) {
     if (favs.length && !open) html += `<div class="tp-favs">${favs.map((p) => `<button type="button" data-tp="load" data-id="${p.id}" aria-pressed="${tpSame(cur, p.settings)}">★ ${tpEsc(p.name)}</button>`).join("")}</div>`;
     if (editing === "new") html += `<div class="tp-form"><input type="text" maxlength="60" placeholder="${tr("Name der Einstellungen")}" aria-label="${tr("Name der Einstellungen")}"><button type="button" class="primary" data-tp="save-new">${tr("Speichern")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></div>`;
     if (open) {
-      const std = slots ? `<li><button type="button" class="tp-name" data-tp="default" aria-pressed="${!!def && tpSame(cur, def)}" title="${tr("Laden")}"${def && !off ? "" : " disabled"}><span class="tp-label">${tr("Standard")}</span><small>${test === "blackThreshold" ? fmtDefault(BT_DEFAULT) : tr("alle Faktoren 1")}</small>${badge(!!def && tpSame(cur, def))}</button><span class="tp-std-gap"></span></li>` : "";
+      const std = slots ? `<li><button type="button" class="tp-name" data-tp="default" aria-pressed="${!!def && tpSame(cur, def)}" title="${tr("Laden")}"${def && !off ? "" : " disabled"}><span class="tp-label">${tr("Standard")}</span><small>${test === "blackThreshold" ? fmtDefault(BT_DEFAULT) : test === "hyColor" ? tr("Werte ab Werk") : tr("alle Faktoren 1")}</small>${badge(!!def && tpSame(cur, def))}</button><span class="tp-std-gap"></span></li>` : "";
       html += `<ul class="tp-list">${std}${list.map((p) => {
         const star = slots ? "" : `<button type="button" class="ibtn${p.fav ? " fav" : ""}" data-tp="fav" data-id="${p.id}" title="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-label="${p.fav ? tr("Favorit entfernen") : tr("Als Favorit markieren")}" aria-pressed="${p.fav}">${TP_ICON.star}</button>`;
         if (editing === p.id) return `<li>${star}<span class="tp-form" style="flex:1;margin:0"><input type="text" maxlength="60" value="${tpEsc(p.name)}" aria-label="${tr("Neuer Name")}"><button type="button" class="primary" data-tp="save-name" data-id="${p.id}">${tr("OK")}</button><button type="button" data-tp="cancel">${tr("Abbrechen")}</button></span></li>`;
@@ -3778,9 +3818,11 @@ document.addEventListener("click", async (ev) => {
   const test = box.dataset.test;
   const preset = (state.testPresets?.[test] ?? []).find((p) => p.id === b.dataset.id);
   const name = () => box.querySelector("input")?.value.trim() ?? "";
-  // the gray curve lives only in Hyperion: replacing one that is in no slot loses it
-  const keepsCurrent = () => test !== "grayCurve" || [tpDefaults(test), ...(state.testPresets?.[test] ?? []).map((p) => p.settings)].some((s) => tpSame(tpCurrent(test), s))
-    || confirm(tr("Die aktuelle Graukurve ist in keinem Speicherplatz gesichert und geht verloren. Trotzdem laden?"));
+  // the gray curve and the color values live only in Hyperion: replacing ones that are in no slot loses them
+  const LOSS = { grayCurve: "Die aktuelle Graukurve ist in keinem Speicherplatz gesichert und geht verloren. Trotzdem laden?",
+    hyColor: "Die aktuellen Farbwerte sind in keinem Speicherplatz gesichert und gehen verloren. Trotzdem laden?" };
+  const keepsCurrent = () => !LOSS[test] || [tpDefaults(test), ...(state.testPresets?.[test] ?? []).map((p) => p.settings)].some((s) => tpSame(tpCurrent(test), s))
+    || confirm(tr(LOSS[test]));
   switch (b.dataset.tp) {
     case "default": { const d = tpDefaults(test); if (d && keepsCurrent()) TP_SEND[test](d); break; }
     case "load": if (preset && keepsCurrent()) TP_SEND[test](preset.settings); break;
@@ -5035,6 +5077,10 @@ const saveGrayCurve = (s) => saveColorValues([
   { field: "grayCurve.saturationLimit", value: s.saturationLimit },
   { field: "grayCurve.points", value: s.points },
 ], $("gcc-note"), tr("Graukurve geladen, wirkt sofort auf die LEDs."));
+
+// saved color values (slot or standard) go to Hyperion in one write
+const saveHyColor = (s) => saveColorValues(HY_SLOT_FIELDS().filter((f) => f in s).map((f) => ({ field: f, value: s[f] })),
+  $("hy-note"), tr("Farbwerte geladen, wirken sofort auf die LEDs."));
 
 async function saveColorValues(batch, note, doneText) {
   if (!batch.length) return;

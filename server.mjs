@@ -147,10 +147,12 @@ const PRESET_IDS = PRESETS.map((p) => p.id);
 // "grayCurve" is no test: its slots hold the gray curve of Hyperion (saturation limit, points). Whether the
 // curve is on belongs to the whole function, not to a slot (old slots lose their "enabled" on load).
 // "blackThreshold" likewise: its slots hold the threshold of the LED device (the switch stays global).
-const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest", "grayCurve", "blackThreshold"];
+// "hyColor": its slots hold the color values of a color entry (colors, brightness and saturation, gamma
+// and color temperature), the fields of the Hyperion column in the test colors card.
+const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest", "grayCurve", "blackThreshold", "hyColor"];
 const MAX_TEST_PRESETS = 50;
-const MAX_PRESETS = { grayCurve: 10, blackThreshold: 10 };
-const SLOT_TESTS = ["grayCurve", "blackThreshold"];
+const MAX_PRESETS = { grayCurve: 10, blackThreshold: 10, hyColor: 10 };
+const SLOT_TESTS = ["grayCurve", "blackThreshold", "hyColor"];
 const maxPresets = (test) => MAX_PRESETS[test] ?? MAX_TEST_PRESETS;
 function grayCurveSettings(input) {
   const gain = (v) => num(v, 0, 2, 1, 0.01);
@@ -160,9 +162,27 @@ function grayCurveSettings(input) {
 }
 // schema-device.json: blackThreshold.threshold 0 to 10 in steps of 0.05, default 0.5
 const blackThresholdSettings = (input) => ({ threshold: num(input?.threshold, 0, 10, 0.5, 0.05) });
+// ranges like COLOR_FIELDS; a field missing in the input stays out (an older Hyperion may lack one)
+const HY_COLOR_SPECS = {
+  white: ["rgb"], red: ["rgb"], green: ["rgb"], blue: ["rgb"], cyan: ["rgb"], magenta: ["rgb"], yellow: ["rgb"],
+  brightness: ["num", 0, 100, 1], saturationGain: ["num", 0, 10, 0.1], backlightThreshold: ["num", 0, 100, 1], backlightColored: ["bool"],
+  gammaRed: ["num", 0.1, 100, 0.05], gammaGreen: ["num", 0.1, 100, 0.05], gammaBlue: ["num", 0.1, 100, 0.05], temperature: ["num", 1000, 40000, 100],
+};
+function hyColorSettings(input) {
+  const out = {};
+  for (const [key, [kind, min, max, step]] of Object.entries(HY_COLOR_SPECS)) {
+    const v = input?.[key];
+    if (v === undefined) continue;
+    if (kind === "rgb") { if (Array.isArray(v) && v.length === 3) out[key] = v.map((c) => num(c, 0, 255, 0, 1)); }
+    else if (kind === "bool") out[key] = v === true;
+    else out[key] = num(v, min, max, min, step);
+  }
+  return out;
+}
 function presetSettings(test, settings) {
   if (test === "grayCurve") return grayCurveSettings(settings);
   if (test === "blackThreshold") return blackThresholdSettings(settings);
+  if (test === "hyColor") return hyColorSettings(settings);
   if (test === "bars") return sanitize({ bars: settings }).bars;
   const { active, startedAt, ...rest } = sanitize({ [test]: { ...settings, active: false } })[test];
   return rest;
