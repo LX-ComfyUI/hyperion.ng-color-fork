@@ -921,7 +921,7 @@
 
           <div class="wp" id="wp">
             <h4 class="hy-h"><span>Weißpunkt</span></h4>
-            <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
+            <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
             <button type="button" class="primary wide" id="wp-start">Weißpunkt einstellen</button>
             <div id="wp-run" hidden>
               <p class="lg-q">Wie wirkt das Licht der LEDs an der Wand neben dem Weiß auf dem TV?</p>
@@ -4624,7 +4624,7 @@ function renderGcgMeasure(g) {
   const warn = [];
   if (!m.corrected) warn.push(tr("Die Grabber-Farbkorrektur ist aus: Fehler des Grabbers landen so in der Graukurve."));
   if (m.missed) warn.push(tr("Der Grabber erreicht diese Stufe nicht genau (gemessen {a} %).", { a: gcgFmt(m.got, 1) }));
-  if (m.weight < 0.95) warn.push(tr("Der Grabber liefert hier kein reines Grau: Die Graukurve wirkt nur zu {a} %. Zuerst die Grabber-Farberkennung kalibrieren.", { a: gcgFmt(m.weight * 100) }));
+  if (m.weight < 0.95) warn.push(tr("Der Grabber liefert hier kein ganz reines Grau: Die Graukurve wirkt nur zu {a} %, Antworten ändern deshalb wenig. Rechts die Sättigungsgrenze erhöhen (z. B. 0,5) oder die Stufe überspringen.", { a: gcgFmt(m.weight * 100) }));
   if (!m.ledOn) warn.push(tr("Bei dieser Stufe bleiben die LEDs aus (Schwarzschwelle). Überspringen oder rechts die Schwarzschwelle senken."));
   else if (m.coarse) warn.push(tr("Grobe Stufe: Die LEDs haben hier nur {a} von 65 535 Schritten, kleine Änderungen wirken kaum.", { a: m.counts.join(" / ") }));
   if (m.unstable) warn.push(tr("Das Grabberbild war unruhig, die Messung ist ungenau."));
@@ -4733,14 +4733,20 @@ $("gcg-save").addEventListener("click", async () => {
 });
 
 // ---------- guided white point (test colors card): 100 % white on the TV, every answer changes the
-// white value of the color entry like a gray curve answer changes a point (GrayCal.applyAnswer on
-// white / 255: the strongest channel keeps its value). Runs on this page only; Zurück steps back
-// through the answers, Abbrechen restores the white value from the start.
-let wpRun = null;          // { start: [r, g, b], steps: [[r, g, b], …], memo }
+// channel factors like a gray curve answer changes a point (GrayCal.applyAnswer: the strongest
+// channel keeps its value). The factors go into ALL corner colors (white, red, green, blue, cyan,
+// magenta, yellow) in the same ratio: Hyperion mixes every color from these corners and a middle gray
+// mostly from the colored ones, so a white value alone would only balance colors near white and
+// make middle gray too bright next to white. Runs on this page only; Zurück steps back through the
+// answers, Abbrechen restores the corner colors from the start.
+const WP_CORNERS = ["white", "red", "green", "blue", "cyan", "magenta", "yellow"];
+let wpRun = null;          // { start: {corner: [r, g, b]}, gains: [r, g, b], steps: [gains …], memo }
 let wpDir = "more";
 let wpStrength = 1;
 const wpFmt = (w) => w.join(" / ");
-const wpWhite = () => colorConfig?.channelAdjustment?.[colorIndex]?.white?.map(Number) ?? null;
+const wpEntry = () => colorConfig?.channelAdjustment?.[colorIndex] ?? null;
+const wpWhite = () => wpEntry()?.white?.map(Number) ?? null;
+const wpCorners = (start, gains) => WP_CORNERS.map((c) => ({ field: c, value: start[c].map((v, ch) => Math.min(255, Math.max(0, Math.round(v * gains[ch])))) }));
 
 function renderWhitePoint() {
   const running = !!wpRun;
@@ -4753,27 +4759,28 @@ function renderWhitePoint() {
   $("wp-back").disabled = !wpRun.steps.length;
 }
 
-async function wpWrite(white, doneText) {
-  await saveColorValues([{ field: "white", value: white }], $("wp-note"), doneText);
+async function wpWrite(gains, doneText) {
+  await saveColorValues(wpCorners(wpRun.start, gains), $("wp-note"), doneText);
 }
 
 $("wp-tints").innerHTML = GrayCal.TINTS.map((t) => `<button type="button" data-tint="${t.id}"><span class="gck-dot" style="background:${t.hex}"></span>${GCG_TINT_NAMES[t.id]}</button>`).join("");
 $("wp-start").addEventListener("click", () => {
-  const white = wpWhite();
-  if (!white) return;
-  wpRun = { start: white, steps: [], memo: { scale: 1, last: null } };
+  const e = wpEntry();
+  if (!e?.white) return;
+  const start = Object.fromEntries(WP_CORNERS.map((c) => [c, (e[c] ?? [0, 0, 0]).map(Number)]));
+  wpRun = { start, gains: [1, 1, 1], steps: [], memo: { scale: 1, last: null } };
   setColor("#ffffff");
-  $("wp-note").textContent = tr("Der TV zeigt 100 % Weiß. Weißwert jetzt {a}.", { a: wpFmt(white) });
+  $("wp-note").textContent = tr("Der TV zeigt 100 % Weiß. Weißwert jetzt {a}.", { a: wpFmt(start.white) });
   renderWhitePoint();
 });
 $("wp-tints").addEventListener("click", async (ev) => {
   const b = ev.target.closest("button[data-tint]");
-  const white = wpWhite();
-  if (!b || !wpRun || !white) return;
-  const gains = GrayCal.applyAnswer(white.map((v) => v / 255), b.dataset.tint, wpDir, wpStrength, wpRun.memo);
-  const next = gains.map((g) => Math.min(255, Math.max(0, Math.round(g * 255))));
-  wpRun.steps.push(white);
-  await wpWrite(next, tr("Weißwert jetzt {a} (vorher {b}), wirkt sofort.", { a: wpFmt(next), b: wpFmt(white) }));
+  if (!b || !wpRun) return;
+  const before = wpRun.gains;
+  wpRun.gains = GrayCal.applyAnswer(before, b.dataset.tint, wpDir, wpStrength, wpRun.memo);
+  wpRun.steps.push(before);
+  const white = wpCorners(wpRun.start, wpRun.gains)[0].value;
+  await wpWrite(wpRun.gains, tr("Weißwert jetzt {a}, alle Farbwerte im selben Verhältnis angepasst, wirkt sofort.", { a: wpFmt(white) }));
   renderWhitePoint();
 });
 $("wp-dir").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-dir]"); if (b) { wpDir = b.dataset.dir; renderWhitePoint(); } });
@@ -4781,22 +4788,24 @@ $("wp-strength").addEventListener("click", (ev) => { const b = ev.target.closest
 $("wp-back").addEventListener("click", async () => {
   const prev = wpRun?.steps.pop();
   if (!prev) return;
-  await wpWrite(prev, tr("Einen Schritt zurück: Weißwert {a}.", { a: wpFmt(prev) }));
+  wpRun.gains = prev;
+  await wpWrite(prev, tr("Einen Schritt zurück: Weißwert {a}.", { a: wpFmt(wpCorners(wpRun.start, prev)[0].value) }));
   renderWhitePoint();
 });
 $("wp-cancel").addEventListener("click", async () => {
   if (!wpRun) return;
-  const start = wpRun.start;
+  const run = wpRun;
+  wpRun = { ...run, gains: [1, 1, 1] };
+  await wpWrite([1, 1, 1], tr("Abgebrochen, die Farbwerte sind wieder wie vorher (Weißwert {a}).", { a: wpFmt(run.start.white) }));
   wpRun = null;
-  await wpWrite(start, tr("Abgebrochen, der Weißwert ist wieder {a}.", { a: wpFmt(start) }));
   renderWhitePoint();
 });
 $("wp-done").addEventListener("click", () => {
   if (!wpRun) return;
-  const white = wpWhite();
-  const changed = white && white.join() !== wpRun.start.join();
+  const white = wpCorners(wpRun.start, wpRun.gains)[0].value;
+  const changed = wpRun.gains.some((g) => g !== 1);
   $("wp-note").textContent = changed
-    ? tr("Fertig: Weißwert {a} (vorher {b}). Sichere die Farbwerte unten in einem Speicherplatz.", { a: wpFmt(white), b: wpFmt(wpRun.start) })
+    ? tr("Fertig: Weißwert {a} (vorher {b}), alle Farbwerte im selben Verhältnis. Sichere die Farbwerte unten in einem Speicherplatz.", { a: wpFmt(white), b: wpFmt(wpRun.start.white) })
     : tr("Fertig: Das Weiß war schon neutral, nichts geändert.");
   wpRun = null;
   renderWhitePoint();
