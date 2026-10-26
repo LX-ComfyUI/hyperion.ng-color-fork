@@ -59,10 +59,9 @@
   h4 { font-size: 13px; margin: 18px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
   .help { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
   .help b, .help strong { color: var(--text); }
-  .jump { color: var(--accent); font-weight: 700; text-decoration: underline; }
+  .jump { color: var(--text); font-weight: 700; text-decoration: none; }
+  .jump:hover { text-decoration: underline; }
   /* the card names in the guide: text color, the guide says a tap opens the card */
-  #card-intro .jump { color: var(--text); text-decoration: none; }
-  #card-intro .jump:hover { text-decoration: underline; }
   .warn { font-size: 13px; color: var(--warn); margin: 6px 0 0; }
   code { font-size: 13px; }
   a { color: var(--accent); }
@@ -197,7 +196,7 @@
   #dt-match { margin-top: 2px; }
 
   details.more { margin-top: 6px; border-top: 1px solid var(--line); }
-  details.more summary { list-style: none; cursor: pointer; padding: 12px 0 4px; color: var(--accent); font-size: 15px; }
+  details.more summary { list-style: none; cursor: pointer; padding: 12px 0 4px; color: var(--text); font-size: 15px; font-weight: 600; }
   details.more summary::-webkit-details-marker { display: none; }
   details.more summary::before { content: "▸ "; }
   details.more[open] summary::before { content: "▾ "; }
@@ -523,7 +522,7 @@
   /* ===== layout like the Hyperion WebUI =====
      fixed bar on top (menu button and logo left, icons right), menu on the left under it: on wide
      windows next to the page (the menu button hides it), on narrow ones a drawer from the left */
-  :root { --side-w: 250px; --bar-h: 56px; }
+  :root { --side-w: 272px; --bar-h: 56px; } /* wide enough for the longest card name next to its eye */
   @media (min-width: 768px) { :root { --bar-h: 64px; } }
   body { background: var(--bg); padding-top: var(--bar-h); }
   #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 45; height: var(--bar-h); box-sizing: border-box;
@@ -618,10 +617,22 @@
                color: #fff; font-size: 12px; font-weight: normal; line-height: 1.3; white-space: nowrap; pointer-events: none; }
   #hover-tip[hidden] { display: none; }
 
-  #side { display: flex; flex-direction: column; position: fixed; top: var(--bar-h); bottom: 0; left: 0; z-index: 44; width: var(--side-w);
+  #side { display: flex; flex-direction: column; position: fixed; top: var(--bar-h); bottom: 0; left: 0; z-index: 44; width: var(--side-w); scrollbar-width: thin;
           box-sizing: border-box; overflow-y: auto; background: var(--bg); padding: 0; gap: 0; }
   #side .side-list { list-style: none; margin: 0; padding: 0; }
-  #side .side-list li { display: block; padding: 0; border-bottom: 1px solid var(--bar-line); }
+  #side .side-list li { display: flex; align-items: center; padding: 0; border-bottom: 1px solid var(--bar-line); }
+  #side .side-list li > a { flex: 1; min-width: 0; padding-right: 2px; }
+  /* the mark of the current card spans the whole row, eye included */
+  #side .side-list li:has(> a.current) { background: color-mix(in srgb, var(--text) 6%, transparent); }
+  #side .side-list li > a.current { background: none; }
+  /* eye next to each entry: hides the card on the page; a hidden entry is dimmed, its eye crossed out */
+  .side-eye { flex: none; width: 32px; height: 36px; margin-right: 6px; padding: 0; display: flex; align-items: center; justify-content: center;
+              border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .7; }
+  .side-eye:hover { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .side-eye svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #side .side-list li.off > a { opacity: .45; }
+  #side .side-list li.off .side-eye { opacity: 1; }
+  main > section.card.user-hidden { display: none; }
   .side-list a { display: flex; align-items: center; gap: 6px; padding: 10px 15px; border-left: 4px solid transparent; border-radius: 0;
                  color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.3; }
   .side-list a:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
@@ -629,7 +640,13 @@
     .side-foot { margin-top: auto; padding: 10px 15px; font-size: 12px; color: var(--muted); }
   /* order of the cards under the list; an entry held a moment can be dragged */
   .side-order { padding: 12px 15px 6px; }
-  .side-order-ttl { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+  .side-order-ttl { margin: 0 0 6px; }
+  .side-order-ttl button { display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: none;
+                           font-size: 12px; color: var(--muted); text-align: left; }
+  .side-order-ttl svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+  .side-order.folded .side-order-ttl svg { transform: rotate(-90deg); }
+  .side-order.folded .side-order-ttl { margin: 0; }
+  .side-order.folded > :not(.side-order-ttl) { display: none; }
   /* the menu is too narrow for three buttons side by side: one under the other */
   .side-order .order-seg { flex-direction: column; }
   .side-order .order-seg button { padding: 6px 10px; font-size: 13px; text-align: left; }
@@ -666,7 +683,7 @@
     :root.side-collapsed main { margin-left: 0; border-left: none; }
   }
   @media (max-width: 767.98px) {
-    #side { transform: translateX(-100%); transition: transform .25s; width: 240px; box-shadow: 0 3px 9px rgba(0, 0, 0, .5); border-right: 1px solid var(--bar-line); }
+    #side { transform: translateX(-100%); transition: transform .25s; width: min(272px, 85vw); box-shadow: 0 3px 9px rgba(0, 0, 0, .5); border-right: 1px solid var(--bar-line); }
     :root.side-open #side { transform: none; }
     main { padding: 12px; }
   }
@@ -750,7 +767,7 @@
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
     <h3>Reihenfolge der Karten</h3>
-    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Standard</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät.</p>
+    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Standard</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät. Mit dem Auge neben einem Namen im Seitenmenü blendest du eine Karte aus, ein Tipp auf den Namen holt sie zurück.</p>
     <div id="order-guide" data-i18n-skip></div>
     <div data-order="setup">
     <h3>Ersteinrichtung</h3>
@@ -1098,6 +1115,7 @@
     <div class="tp" data-test="grayCurve"></div>
     <p class="note" id="gcc-grabber" hidden></p>
     <div class="frow"><label>Sättigungsgrenze (0–1)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="grayCurve.saturationLimit" min="0.01" max="1" step="0.01" inputmode="decimal"></span></div>
+    <p class="help" style="margin:0 0 10px">Bis zu welcher Sättigung die Graukurve wirkt. Reines Grau (0) bekommt die volle Wirkung, zur Grenze hin wird sie gleichmäßig schwächer, kräftigere Farben bleiben unverändert. Höher wirkt auch auf leicht farbige Töne wie Haut oder Himmel, niedriger nur auf fast reines Grau. Standard 0,15.</p>
     <div class="gcc-lock" id="gcc-lock-row">
       <button type="button" class="ts-lock" id="gcc-lock"></button>
       <span id="gcc-lock-text"></span>
@@ -1601,10 +1619,12 @@
     cards().forEach((c) => { open[c.id] = !c.classList.contains("closed"); });
     try { localStorage.setItem(KEY, JSON.stringify(open)); } catch {}
   };
-  const updateFoldAll = () => {
+  // "Alles auf-/zuklappen" counts only the cards not hidden with the eye in the menu
+  const shown = () => cards().filter((c) => !c.classList.contains("user-hidden"));
+  const updateFoldAll = window.updateFoldAll = () => {
     const btn = document.getElementById("fold-all");
     if (!btn) return;
-    const allOpen = cards().every((c) => !c.classList.contains("closed"));
+    const allOpen = shown().every((c) => !c.classList.contains("closed"));
     btn.textContent = allOpen ? "Alles zuklappen" : "Alles aufklappen";
     btn.dataset.allOpen = String(allOpen);
   };
@@ -1647,7 +1667,7 @@
   updateFoldAll();
   document.getElementById("fold-all").addEventListener("click", (ev) => {
     const open = ev.currentTarget.dataset.allOpen !== "true";
-    cards().forEach((c) => setCardOpen(c, open, false));
+    shown().forEach((c) => setCardOpen(c, open, false));
     save();
     updateFoldAll();
   });
@@ -1668,7 +1688,7 @@
   document.addEventListener("click", (ev) => {
     const a = ev.target.closest('a[href^="#card-"]');
     const card = a && document.querySelector(a.getAttribute("href"))?.closest("main > section.card");
-    if (card) setCardOpen(card, true);
+    if (card) { window.showCard?.(card); setCardOpen(card, true); }
   });
 })();
 </script>
@@ -1729,6 +1749,7 @@
     a.appendChild(dot);
     a.addEventListener("click", (ev) => {
       ev.preventDefault();
+      window.showCard?.(card);
       setCardOpen(card, true);
       if (!wide.matches) setDrawer(false);
       card.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -1749,7 +1770,7 @@
     frame = 0;
     const top = parseFloat(getComputedStyle(root).getPropertyValue("--bar-h")) + 24;
     let current = cards[0];
-    for (const c of cards) if (c.getBoundingClientRect().top <= top) current = c;
+    for (const c of cards) if (!c.classList.contains("user-hidden") && c.getBoundingClientRect().top <= top) current = c;
     links.forEach((a, i) => a.classList.toggle("current", cards[i] === current));
   };
   addEventListener("scroll", () => { frame ||= requestAnimationFrame(spy); }, { passive: true });
@@ -1867,16 +1888,62 @@
     segs.push(seg);
     return seg;
   };
+  // the box folds by a tap on its title (kept per device, open by default)
+  const ORDER_OPEN_KEY = "tvtest-side-order-open";
   const orderBox = document.createElement("div");
   orderBox.className = "side-order";
-  orderBox.innerHTML = '<p class="side-order-ttl"></p><p class="side-order-hint"></p>';
-  orderBox.firstChild.textContent = I18N.t("Reihenfolge der Karten");
-  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.");
+  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button></p><p class="side-order-hint"></p>';
+  const orderTtl = orderBox.querySelector(".side-order-ttl button");
+  orderTtl.querySelector("span").textContent = I18N.t("Reihenfolge der Karten");
+  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge. Das Auge blendet eine Karte aus und wieder ein.");
   orderBox.insertBefore(makeSeg(), orderBox.lastChild);
+  const setOrderOpen = (open) => {
+    orderBox.classList.toggle("folded", !open);
+    orderTtl.setAttribute("aria-expanded", String(open));
+  };
+  orderTtl.addEventListener("click", () => {
+    const open = orderBox.classList.contains("folded");
+    setOrderOpen(open);
+    store.set(ORDER_OPEN_KEY, open ? "1" : "0");
+  });
+  setOrderOpen(store.get(ORDER_OPEN_KEY) !== "0");
   list.after(orderBox);
   document.getElementById("order-guide")?.appendChild(makeSeg());
   applyOrder();
   syncSegs();
+
+  // eye next to each entry: hides its card on the page (kept per device). The entry stays in the menu,
+  // dimmed with the eye crossed out; a tap on its name, a link in the guide or a bell message going to
+  // the card shows it again.
+  const HIDDEN_KEY = "tvtest-cards-hidden";
+  const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  const hidden = new Set((() => { try { const v = JSON.parse(store.get(HIDDEN_KEY)); return Array.isArray(v) ? v : []; } catch { return []; } })());
+  const setHidden = (card, hide, keep = true) => {
+    const li = byId.get(card.id)[1].parentElement;
+    const eye = li.querySelector(".side-eye");
+    card.classList.toggle("user-hidden", hide);
+    li.classList.toggle("off", hide);
+    eye.innerHTML = hide ? EYE_OFF : EYE;
+    eye.setAttribute("aria-pressed", String(hide));
+    eye.dataset.tip = I18N.t(hide ? "Karte einblenden" : "Karte ausblenden");
+    eye.setAttribute("aria-label", eye.dataset.tip);
+    if (!keep) return;
+    if (hide) hidden.add(card.id);
+    else hidden.delete(card.id);
+    store.set(HIDDEN_KEY, JSON.stringify([...hidden]));
+    window.updateFoldAll?.();
+    spy();
+  };
+  for (const [id, [card, a]] of byId) {
+    const eye = document.createElement("button");
+    eye.type = "button";
+    eye.className = "side-eye";
+    eye.addEventListener("click", () => setHidden(card, !card.classList.contains("user-hidden")));
+    a.after(eye);
+    setHidden(card, hidden.has(id), false);
+  }
+  window.showCard = (card) => { if (card?.classList.contains("user-hidden")) setHidden(card, false); };
 
   // dragging: hold an entry (not the guide) for a moment, it sinks in a little, then lifts off like a
   // card in the hand: bigger, with a shadow, tilted in the direction it moves. It follows the finger,
@@ -5658,6 +5725,7 @@ function jumpToCard(id) {
   const el = id ? $(id) : null;
   if (!el) return;
   const section = el.closest("main > section.card");
+  window.showCard?.(section);
   if (section && section.classList.contains("closed")) window.setCardOpen?.(section, true);
   el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
