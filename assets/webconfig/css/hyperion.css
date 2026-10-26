@@ -1595,3 +1595,26 @@ nav.navbar-static-top .navbar-toggle {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* Fork-Erweiterung: Anleitung (content/guide.html) */
+.fork-guide #guide_cont {
+  max-width: 900px;
+}
+.fork-guide #guide_cont h4 {
+  margin-top: 22px;
+  font-weight: 600;
+}
+.fork-guide #guide_cont ol,
+.fork-guide #guide_cont ul {
+  padding-left: 22px;
+}
+.fork-guide #guide_cont li {
+  margin-bottom: 12px;
+}
+.fork-guide .guide-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin-top: 4px;
+  font-size: 13px;
+}

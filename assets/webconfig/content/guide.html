@@ -1,0 +1,73 @@
+<div class="container-fluid fork-guide">
+  <h3 class="page-header"><i class="fa fa-book fa-fw"></i><span data-i18n="main_menu_guide_token">Anleitung</span></h3>
+  <div id="guide_cont"></div>
+</div>
+
+<script type="text/javascript">
+  // Fork-Erweiterung: die Anleitung der TV-Testseite (Ersteinrichtung), angepasst für die WebUI. Jeder
+  // Schritt verlinkt die Karte der Testseite (/phone#card-…, die Testseite öffnet und zeigt sie) und,
+  // wo es passt, die Seite hier in der WebUI (Klick auf den Menüpunkt, damit das Menü mitgeht).
+  performTranslation();
+
+  (function () {
+    const base = testPageBase();
+    const sections = [
+      { title: 'guide_sec_webui', list: 'ul', steps: [
+        { key: 'guide_s_leds', webui: ['MenuItemInstLeds'] },
+        { key: 'guide_s_grabber', webui: ['MenuItemGrabber'] },
+      ] },
+      { title: 'guide_sec_prep', steps: [
+        { key: 'guide_s_ts', card: 'card-ts' },
+        { key: 'guide_s_backup', card: 'card-backup', webui: ['MenuItemGeneral'] },
+      ] },
+      { title: 'guide_sec_color', steps: [
+        { key: 'guide_s_rgb', card: 'card-rgb', webui: ['MenuItemInstLeds'] },
+        { key: 'guide_s_gx', card: 'card-gx', webui: ['MenuItemGrabber'] },
+        { key: 'guide_s_color', card: 'card-color', webui: ['MenuItemInstConfColors'] },
+        { key: 'guide_s_ft', card: 'card-ft', webui: ['MenuItemInstConfColors'] },
+        { key: 'guide_s_gc', card: 'card-gcg', webui: ['MenuItemInstConfColors'] },
+      ] },
+      { title: 'guide_sec_leds', steps: [
+        { key: 'guide_s_lp', card: 'card-lp', webui: ['MenuItemInstLeds'] },
+        { key: 'guide_s_dt', card: 'card-dt', webui: ['MenuItemInstLeds'] },
+        { key: 'guide_s_bars', card: 'card-bars', webui: ['MenuItemInstConfColors'] },
+      ] },
+      { title: 'guide_sec_special', steps: [
+        { key: 'guide_s_ns', card: 'card-ns', webui: ['MenuItemGrabber'] },
+        { key: 'guide_s_gs', card: 'card-gs', webui: ['MenuItemInstConfColors'] },
+      ] },
+      { title: 'guide_sec_finish', steps: [
+        { key: 'guide_s_media', card: 'card-media' },
+        { key: 'guide_s_backup2', card: 'card-backup' },
+      ] },
+    ];
+    const link = (href, text) => '<a href="' + href + '" target="_blank" rel="noopener">' + text + '</a>';
+    const menuName = (id) => $('#' + id + ' > span').first().text().trim();
+
+    let html = '<p>' + $.i18n('guide_intro', link(base + '/tv', base + '/tv'), link(base + '/phone', base + '/phone')) + '</p>'
+      + '<p>' + $.i18n('guide_foundation') + '</p>';
+    let number = 1;
+    for (const sec of sections) {
+      const tag = sec.list || 'ol';
+      html += '<h4>' + $.i18n(sec.title) + '</h4><' + tag + (tag === 'ol' ? ' start="' + number + '"' : '') + '>';
+      for (const step of sec.steps) {
+        const links = [];
+        if (step.card) links.push('<a href="' + base + '/phone#' + step.card + '" target="_blank" rel="noopener"><i class="fa fa-external-link fa-fw"></i>' + $.i18n('guide_open_testpage') + '</a>');
+        for (const id of step.webui || []) links.push('<a href="#" data-guide-goto="' + id + '"><i class="fa fa-arrow-right fa-fw"></i>' + $.i18n('guide_in_webui', menuName(id)) + '</a>');
+        html += '<li>' + $.i18n(step.key) + (links.length ? '<div class="guide-links">' + links.join('') + '</div>' : '') + '</li>';
+        if (tag === 'ol') number++;
+      }
+      html += '</' + tag + '>';
+    }
+    html += '<h4>' + $.i18n('guide_sec_later') + '</h4><p>' + $.i18n('guide_later') + '</p>';
+    $('#guide_cont').html(html);
+
+    // WebUI-Links: wie ein Klick im Menü (lädt die Seite und markiert den Menüpunkt)
+    $('#guide_cont').on('click', '[data-guide-goto]', function (ev) {
+      ev.preventDefault();
+      document.getElementById(this.dataset.guideGoto)?.click();
+    });
+  })();
+
+  removeOverlay();
+</script>
