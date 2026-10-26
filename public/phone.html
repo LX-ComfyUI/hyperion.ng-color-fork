@@ -729,10 +729,12 @@
     <h2>Anleitung</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
+    <h3>Reihenfolge der Karten</h3>
+    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Testing</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät.</p>
+    <div id="order-guide" data-i18n-skip></div>
+    <div data-order="setup">
     <h3>Ersteinrichtung</h3>
     <p class="help" style="margin:0 0 10px">Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
-    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Standard</b> für den Alltag, <b>Ersteinrichtung</b> genau wie diese Liste, <b>Eigene</b> nach deinem Geschmack. Für eine eigene Reihenfolge hältst du im Seitenmenü einen Eintrag gedrückt und ziehst ihn an die neue Stelle. Nach einer frischen Installation ist Ersteinrichtung eingestellt. Die Reihenfolge gilt für dieses Gerät.</p>
-    <div id="order-guide" data-i18n-skip></div>
     <h3>Vorher in der WebUI</h3>
     <ul class="guide">
       <li><b>LED-Hardware</b>: Unter LED-Steuerung den Controller und die Anzahl der LEDs einstellen, unter LED-Layout das grobe Layout (welche Seiten, wie viele LEDs je Seite, wo der Strang beginnt). Die genaue Lage stellst du später mit der LED-Position ein.</li>
@@ -772,6 +774,43 @@
     </ol>
     <h3>Später nachjustieren</h3>
     <p class="help" style="margin:0">Änderst du später nur einen Punkt, mach vorher ein Backup, prüf in der Grabber-Vorschau das TV-Bild und lass den Testschutz an. Danach die Schritte kurz kontrollieren, die in der Liste oben darauf folgen.</p>
+    </div>
+    <div data-order="testing" hidden>
+    <h3>Testing</h3>
+    <p class="help" style="margin:0 0 10px">Für den Alltag, wenn die Ersteinrichtung erledigt ist. Oben stehen die Karten, mit denen du das Ergebnis am TV ansiehst, darunter die Feinheiten der LEDs und die Erkennungen, unten die selten nötigen Kalibrierungen und die Werkzeuge. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <h3>Ansehen</h3>
+    <ul class="guide">
+      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Eine Farbe als Vollbild, um TV und LEDs direkt zu vergleichen, etwa nach einer Änderung an Gamma oder Weißabgleich.</li>
+      <li><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
+    </ul>
+    <h3>Feinheiten der LEDs</h3>
+    <ul class="guide">
+      <li><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a>: Zeigen die LEDs in dunklen Szenen feine Stufen, oder springen sie sichtbar?</li>
+      <li><a class="jump" href="#card-dt"><b>LED-Erfassungstiefe</b></a>: Schauen die LEDs passend tief ins Bild? Zu tief wirkt flau, zu flach zappelt bei kleinen Details am Rand.</li>
+      <li><a class="jump" href="#card-lp"><b>LED-Position</b></a>: Zeigt jede LED die Farbe der Stelle direkt neben ihr?</li>
+    </ul>
+    <h3>Erkennungen</h3>
+    <ul class="guide">
+      <li><a class="jump" href="#card-bars"><b>Schwarze Balken</b></a>: Zeigen die LEDs bei Filmen mit Balken die Bildfarbe, statt dunkel zu bleiben?</li>
+      <li><a class="jump" href="#card-gs"><b>Graues Standbild</b></a>: Wie reagieren die LEDs, wenn der Player ein pausiertes Video grau abblendet?</li>
+      <li><a class="jump" href="#card-ns"><b>„No Signal“-Standbild</b></a>: Erkennt Hyperion das Ersatzbild des Grabbers, wenn kein HDMI-Signal ankommt?</li>
+    </ul>
+    <h3>Selten nötig</h3>
+    <ul class="guide">
+      <li><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Nur bei einem Farbstich in dunklem oder mittlerem Grau.</li>
+      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Nach einem Grabberwechsel oder einem neuen Gerät im HDMI-Weg, etwa einem Splitter.</li>
+      <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Nur nach einem Wechsel der LED-Hardware.</li>
+    </ul>
+    <h3>Werkzeuge</h3>
+    <ul class="guide">
+      <li><a class="jump" href="#card-ts"><b>Testserver</b></a>: Verbindung zu Hyperion und Testschutz.</li>
+      <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Vor größeren Änderungen sichern, bei Bedarf zurückholen.</li>
+    </ul>
+    </div>
+    <div data-order="custom" hidden>
+    <h3>Eigene</h3>
+    <p class="help" style="margin:0">Die Karten stehen in der Reihenfolge, die du im Seitenmenü festgelegt hast. Zum Ändern hältst du dort einen Eintrag kurz gedrückt und ziehst ihn dann nach oben oder unten. Karten, die nach einem Update neu dazukommen, stehen am Ende. Mit Ersteinrichtung oder Testing wechselst du zurück zu einer festen Reihenfolge, deine eigene bleibt gespeichert.</p>
+    </div>
   </section>
 
   <!-- ===== grabber test ===== -->
@@ -1712,13 +1751,12 @@
   });
   wide.addEventListener("change", () => setDrawer(false));
 
-  // Order of the cards: Standard (everyday use), Ersteinrichtung (the steps of the guide) or Eigene
-  // (dragged in this menu). Kept per device like the open cards. A fresh install, where nothing was
-  // changed or tested through the page yet, starts in the first-setup order and keeps it until another
-  // one is chosen. The guide always stays on top.
+  // Order of the cards: Ersteinrichtung (the steps of the guide, the default), Testing (everyday checks)
+  // or Eigene (dragged in this menu). Kept per device like the open cards. The guide always stays on
+  // top and shows the text for the chosen order.
   const ORDERS = {
-    standard: ["card-rgb", "card-gx", "card-p-gc", "card-color", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-p-media", "card-ts", "card-backup"],
     setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-p-lp", "card-p-dt", "card-p-bars", "card-color", "card-p-ft", "card-p-gc", "card-ns", "card-p-gs", "card-p-media"],
+    testing: ["card-color", "card-p-media", "card-p-ft", "card-p-dt", "card-p-lp", "card-p-bars", "card-p-gs", "card-ns", "card-p-gc", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
   const ORDER_KEY = "tvtest-card-order";
   const CUSTOM_KEY = "tvtest-card-order-custom";
@@ -1728,10 +1766,10 @@
   const byId = new Map(cards.map((c, i) => [c.id, [c, links[i]]]));
   const readCustom = () => { try { const v = JSON.parse(store.get(CUSTOM_KEY)); return Array.isArray(v) ? v : null; } catch { return null; } };
   let mode = store.get(ORDER_KEY);
-  if (!["standard", "setup", "custom"].includes(mode) || mode === "custom" && !readCustom()) {
-    mode = window.TVTEST_FRESH === true ? "setup" : "standard";
-    if (mode === "setup") store.set(ORDER_KEY, mode);
-  }
+  // "standard" was the everyday order before it became Testing
+  if (mode === "standard") store.set(ORDER_KEY, mode = "testing");
+  if (!["setup", "testing", "custom"].includes(mode) || mode === "custom" && !readCustom()) mode = "setup";
+  const guides = document.querySelectorAll("#card-intro [data-order]");
   const applyOrder = () => {
     const ids = mode === "custom" ? readCustom() : ORDERS[mode];
     // unknown ids are skipped, cards missing in a saved order (new ones) go to the end
@@ -1747,7 +1785,10 @@
     spy();
   };
   const segs = [];
-  const syncSegs = () => segs.forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode))));
+  const syncSegs = () => {
+    segs.forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode))));
+    guides.forEach((g) => { g.hidden = g.dataset.order !== mode; });
+  };
   const setMode = (next, ids) => {
     // "Eigene" without a saved order starts from the order shown now
     if (next === "custom" && !ids && !readCustom()) ids = cards.slice(1).map((c) => c.id);
@@ -1762,7 +1803,7 @@
     seg.className = "seg full order-seg";
     seg.setAttribute("role", "group");
     seg.setAttribute("aria-label", I18N.t("Reihenfolge der Karten"));
-    for (const [m, label] of [["standard", "Standard"], ["setup", "Ersteinrichtung"], ["custom", "Eigene"]]) {
+    for (const [m, label] of [["setup", "Ersteinrichtung"], ["testing", "Testing"], ["custom", "Eigene"]]) {
       const b = document.createElement("button");
       b.type = "button";
       b.dataset.mode = m;
