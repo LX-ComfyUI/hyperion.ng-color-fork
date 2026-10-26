@@ -637,7 +637,21 @@
   #order-guide { max-width: 420px; margin: 0 0 10px; }
   #order-guide .order-seg button { padding: 7px 4px; font-size: 13px; }
   .side-list a { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-  #side .side-list li.dragging { position: relative; z-index: 1; box-shadow: 0 2px 10px rgba(0, 0, 0, .35); background: var(--bg); }
+  /* held: sinks in a little; dragged: lifted like a card in the hand (transform set by the script);
+     let go: glides back into the list. The dashed gap shows where it lands. */
+  #side { overflow-x: hidden; }
+  #side .side-list li.holding { transform: scale(.97); background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+                                transition: transform .25s ease-out, background-color .25s; }
+  #side .side-list li.dragging { position: relative; z-index: 3; margin: 0 8px; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+                                 box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 65%, transparent), 0 16px 32px rgba(0, 0, 0, .35), 0 6px 12px rgba(0, 0, 0, .25);
+                                 transition: margin .17s, border-radius .17s, box-shadow .17s; will-change: transform; }
+  #side .side-list li.dragging.lifting { transition: margin .17s, border-radius .17s, box-shadow .17s, transform .17s cubic-bezier(.3, 1.5, .6, 1); }
+  #side .side-list li.dragging a { border-left-color: var(--accent); }
+  #side .side-list li.settling { position: relative; z-index: 3; background: var(--bg); transition: margin .22s, border-radius .22s, box-shadow .22s, transform .22s ease-out; }
+  .side-gap { position: absolute; left: 6px; right: 6px; z-index: 0; box-sizing: border-box; border: 2px dashed color-mix(in srgb, var(--accent) 65%, transparent);
+              border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, transparent); pointer-events: none; transition: top .18s ease-out; }
+  .side-gap[hidden] { display: none; }
+  @media (prefers-reduced-motion: reduce) { #side .side-list li.dragging, #side .side-list li.settling, .side-gap { transition: none; } }
   :root.side-dragging, :root.side-dragging * { cursor: grabbing !important; }
   main { max-width: none; margin: 0; padding: var(--gap); background: var(--page); min-height: calc(100vh - var(--bar-h)); }
   @media (min-width: 768px) {
@@ -730,7 +744,7 @@
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
     <h3>Reihenfolge der Karten</h3>
-    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Testing</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät.</p>
+    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Standard</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät.</p>
     <div id="order-guide" data-i18n-skip></div>
     <div data-order="setup">
     <h3>Ersteinrichtung</h3>
@@ -775,41 +789,42 @@
     <h3>Später nachjustieren</h3>
     <p class="help" style="margin:0">Änderst du später nur einen Punkt, mach vorher ein Backup, prüf in der Grabber-Vorschau das TV-Bild und lass den Testschutz an. Danach die Schritte kurz kontrollieren, die in der Liste oben darauf folgen.</p>
     </div>
-    <div data-order="testing" hidden>
-    <h3>Testing</h3>
-    <p class="help" style="margin:0 0 10px">Für den Alltag, wenn die Ersteinrichtung erledigt ist. Oben stehen die Karten, mit denen du das Ergebnis am TV ansiehst, darunter die Feinheiten der LEDs und die Erkennungen, unten die selten nötigen Kalibrierungen und die Werkzeuge. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
-    <h3>Ansehen</h3>
+    <div data-order="standard" hidden>
+    <h3>Standard</h3>
+    <p class="help" style="margin:0 0 10px">Für den Alltag, wenn die Ersteinrichtung erledigt ist. Oben stehen die Karten, mit denen du Farbe und Bild am TV prüfst, darunter die Feinheiten der LEDs und die Erkennungen, unten die selten nötigen Kalibrierungen und die Werkzeuge. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <h3>Farbe und Bild</h3>
     <ul class="guide">
-      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Eine Farbe als Vollbild, um TV und LEDs direkt zu vergleichen, etwa nach einer Änderung an Gamma oder Weißabgleich.</li>
-      <li><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
+      <li data-card="card-color"><a class="jump" href="#card-color"><b>Testfarben</b></a>: Eine Farbe als Vollbild, um TV und LEDs direkt zu vergleichen, etwa nach einer Änderung an Gamma oder Weißabgleich.</li>
+      <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in den Testfarben hier kurz nachsehen.</li>
+      <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
     </ul>
     <h3>Feinheiten der LEDs</h3>
     <ul class="guide">
-      <li><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a>: Zeigen die LEDs in dunklen Szenen feine Stufen, oder springen sie sichtbar?</li>
-      <li><a class="jump" href="#card-dt"><b>LED-Erfassungstiefe</b></a>: Schauen die LEDs passend tief ins Bild? Zu tief wirkt flau, zu flach zappelt bei kleinen Details am Rand.</li>
-      <li><a class="jump" href="#card-lp"><b>LED-Position</b></a>: Zeigt jede LED die Farbe der Stelle direkt neben ihr?</li>
+      <li data-card="card-p-ft"><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a>: Zeigen die LEDs in dunklen Szenen feine Stufen, oder springen sie sichtbar?</li>
+      <li data-card="card-p-lp"><a class="jump" href="#card-lp"><b>LED-Position</b></a>: Zeigt jede LED die Farbe der Stelle direkt neben ihr?</li>
+      <li data-card="card-p-dt"><a class="jump" href="#card-dt"><b>LED-Erfassungstiefe</b></a>: Schauen die LEDs passend tief ins Bild? Zu tief wirkt flau, zu flach zappelt bei kleinen Details am Rand.</li>
     </ul>
     <h3>Erkennungen</h3>
     <ul class="guide">
-      <li><a class="jump" href="#card-bars"><b>Schwarze Balken</b></a>: Zeigen die LEDs bei Filmen mit Balken die Bildfarbe, statt dunkel zu bleiben?</li>
-      <li><a class="jump" href="#card-gs"><b>Graues Standbild</b></a>: Wie reagieren die LEDs, wenn der Player ein pausiertes Video grau abblendet?</li>
-      <li><a class="jump" href="#card-ns"><b>„No Signal“-Standbild</b></a>: Erkennt Hyperion das Ersatzbild des Grabbers, wenn kein HDMI-Signal ankommt?</li>
+      <li data-card="card-p-bars"><a class="jump" href="#card-bars"><b>Schwarze Balken</b></a>: Zeigen die LEDs bei Filmen mit Balken die Bildfarbe, statt dunkel zu bleiben?</li>
+      <li data-card="card-p-gs"><a class="jump" href="#card-gs"><b>Graues Standbild</b></a>: Wie reagieren die LEDs, wenn der Player ein pausiertes Video grau abblendet?</li>
+      <li data-card="card-ns"><a class="jump" href="#card-ns"><b>„No Signal“-Standbild</b></a>: Erkennt Hyperion das Ersatzbild des Grabbers, wenn kein HDMI-Signal ankommt?</li>
     </ul>
     <h3>Selten nötig</h3>
     <ul class="guide">
-      <li><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Nur bei einem Farbstich in dunklem oder mittlerem Grau.</li>
-      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Nach einem Grabberwechsel oder einem neuen Gerät im HDMI-Weg, etwa einem Splitter.</li>
-      <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Nur nach einem Wechsel der LED-Hardware.</li>
+      <li data-card="card-gx"><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Nach einem Grabberwechsel oder einem neuen Gerät im HDMI-Weg, etwa einem Splitter.</li>
+      <li data-card="card-rgb"><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Nur nach einem Wechsel der LED-Hardware.</li>
     </ul>
     <h3>Werkzeuge</h3>
     <ul class="guide">
-      <li><a class="jump" href="#card-ts"><b>Testserver</b></a>: Verbindung zu Hyperion und Testschutz.</li>
-      <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Vor größeren Änderungen sichern, bei Bedarf zurückholen.</li>
+      <li data-card="card-ts"><a class="jump" href="#card-ts"><b>Testserver</b></a>: Verbindung zu Hyperion und Testschutz.</li>
+      <li data-card="card-backup"><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Vor größeren Änderungen sichern, bei Bedarf zurückholen.</li>
     </ul>
     </div>
     <div data-order="custom" hidden>
     <h3>Eigene</h3>
-    <p class="help" style="margin:0">Die Karten stehen in der Reihenfolge, die du im Seitenmenü festgelegt hast. Zum Ändern hältst du dort einen Eintrag kurz gedrückt und ziehst ihn dann nach oben oder unten. Karten, die nach einem Update neu dazukommen, stehen am Ende. Mit Ersteinrichtung oder Testing wechselst du zurück zu einer festen Reihenfolge, deine eigene bleibt gespeichert.</p>
+    <p class="help" style="margin:0 0 10px">Die Karten stehen in der Reihenfolge, die du im Seitenmenü festgelegt hast, und die Liste hier folgt ihr. Zum Ändern hältst du dort einen Eintrag gedrückt, bis er sich anhebt, und ziehst ihn dann nach oben oder unten. Karten, die nach einem Update neu dazukommen, stehen am Ende. Mit Ersteinrichtung oder Standard wechselst du zurück zu einer festen Reihenfolge, deine eigene bleibt gespeichert. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <ol class="guide" id="order-custom-guide" data-i18n-skip></ol>
     </div>
   </section>
 
@@ -1751,12 +1766,12 @@
   });
   wide.addEventListener("change", () => setDrawer(false));
 
-  // Order of the cards: Ersteinrichtung (the steps of the guide, the default), Testing (everyday checks)
+  // Order of the cards: Ersteinrichtung (the steps of the guide, the default), Standard (everyday checks)
   // or Eigene (dragged in this menu). Kept per device like the open cards. The guide always stays on
   // top and shows the text for the chosen order.
   const ORDERS = {
     setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-p-lp", "card-p-dt", "card-p-bars", "card-color", "card-p-ft", "card-p-gc", "card-ns", "card-p-gs", "card-p-media"],
-    testing: ["card-color", "card-p-media", "card-p-ft", "card-p-dt", "card-p-lp", "card-p-bars", "card-p-gs", "card-ns", "card-p-gc", "card-gx", "card-rgb", "card-ts", "card-backup"],
+    standard: ["card-color", "card-p-gc", "card-p-media", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
   const ORDER_KEY = "tvtest-card-order";
   const CUSTOM_KEY = "tvtest-card-order-custom";
@@ -1765,11 +1780,41 @@
   const intro = cards[0];
   const byId = new Map(cards.map((c, i) => [c.id, [c, links[i]]]));
   const readCustom = () => { try { const v = JSON.parse(store.get(CUSTOM_KEY)); return Array.isArray(v) ? v : null; } catch { return null; } };
+  const sideIds = () => [...list.children].slice(1).map((li) => li.firstChild.hash.slice(1));
   let mode = store.get(ORDER_KEY);
-  // "standard" was the everyday order before it became Testing
-  if (mode === "standard") store.set(ORDER_KEY, mode = "testing");
-  if (!["setup", "testing", "custom"].includes(mode) || mode === "custom" && !readCustom()) mode = "setup";
+  // the everyday order was called Testing for a short while
+  if (mode === "testing") store.set(ORDER_KEY, mode = "standard");
+  if (!["setup", "standard", "custom"].includes(mode) || mode === "custom" && !readCustom()) mode = "setup";
   const guides = document.querySelectorAll("#card-intro [data-order]");
+
+  // elements moved by move() glide from their old place to the new one
+  const calm = matchMedia("(prefers-reduced-motion: reduce)");
+  const glide = (els, move) => {
+    const before = els.map((el) => el.getBoundingClientRect().top);
+    move();
+    if (calm.matches) return;
+    els.forEach((el, i) => {
+      el.getAnimations().forEach((an) => an.cancel());
+      const d = before[i] - el.getBoundingClientRect().top;
+      if (d) el.animate([{ transform: `translateY(${d}px)` }, { transform: "none" }], { duration: 180, easing: "ease-out" });
+    });
+  };
+  // puts the children in this order, touching only the ones out of place (a moved element would lose
+  // its running animation)
+  const arrange = (parent, els, offset = 0) => els.forEach((el, i) => {
+    if (parent.children[offset + i] !== el) parent.insertBefore(el, parent.children[offset + i] ?? null);
+  });
+
+  // the guide for "Eigene" lists the cards with the texts of the standard guide, in the order of the
+  // menu, and follows it while an entry is dragged
+  const customGuide = document.getElementById("order-custom-guide");
+  const guideItems = new Map([...document.querySelectorAll('#card-intro [data-order="standard"] li[data-card]')].map((li) => [li.dataset.card, li.cloneNode(true)]));
+  const renderCustomGuide = (animate) => {
+    const items = sideIds().map((id) => guideItems.get(id)).filter(Boolean);
+    if (animate) glide(items, () => arrange(customGuide, items));
+    else arrange(customGuide, items);
+  };
+
   const applyOrder = () => {
     const ids = mode === "custom" ? readCustom() : ORDERS[mode];
     // unknown ids are skipped, cards missing in a saved order (new ones) go to the end
@@ -1778,10 +1823,11 @@
     seq.forEach((id, i) => {
       const [card, a] = byId.get(id);
       main.appendChild(card);
-      list.appendChild(a.parentElement);
       cards[i] = card;
       links[i] = a;
     });
+    arrange(list, links.map((a) => a.parentElement));
+    renderCustomGuide(false);
     spy();
   };
   const segs = [];
@@ -1803,7 +1849,7 @@
     seg.className = "seg full order-seg";
     seg.setAttribute("role", "group");
     seg.setAttribute("aria-label", I18N.t("Reihenfolge der Karten"));
-    for (const [m, label] of [["setup", "Ersteinrichtung"], ["testing", "Testing"], ["custom", "Eigene"]]) {
+    for (const [m, label] of [["setup", "Ersteinrichtung"], ["standard", "Standard"], ["custom", "Eigene"]]) {
       const b = document.createElement("button");
       b.type = "button";
       b.dataset.mode = m;
@@ -1825,50 +1871,105 @@
   applyOrder();
   syncSegs();
 
-  // dragging: hold an entry (not the guide) for a moment, then move it up or down; letting go saves
-  // the order as "Eigene". Moving before the moment is up scrolls or clicks as usual.
+  // dragging: hold an entry (not the guide) for a moment, it sinks in a little, then lifts off like a
+  // card in the hand: bigger, with a shadow, tilted in the direction it moves. It follows the finger,
+  // the other entries glide out of its way and a dashed gap shows where it lands. Letting go settles
+  // it there and saves the order as "Eigene". Moving before the moment is up scrolls or clicks as usual.
   {
     const HOLD_MS = 350;
     let hold = null, drag = null, swallowClick = false;
-    const cancelHold = () => { if (hold) clearTimeout(hold.timer); hold = null; };
+    const gap = document.createElement("div");
+    gap.className = "side-gap";
+    gap.hidden = true;
+    side.appendChild(gap);
+    const cancelHold = () => {
+      if (!hold) return;
+      clearTimeout(hold.timer);
+      clearTimeout(hold.sink);
+      hold.li.classList.remove("holding");
+      hold = null;
+    };
+    // screen position of an entry's middle without its transform (offsetTop ignores transforms)
+    const middle = (li) => side.getBoundingClientRect().top + li.offsetTop - side.scrollTop + li.offsetHeight / 2;
+    const place = () => {
+      const { li } = drag;
+      const dy = drag.y - drag.grab - middle(li);
+      const tilt = calm.matches ? 0 : Math.max(-9, Math.min(9, drag.v * 1.2));
+      li.style.transform = `translateY(${dy}px) perspective(500px) rotateX(${tilt.toFixed(2)}deg) rotate(${calm.matches ? 0 : -1}deg) scale(1.05)`;
+      gap.style.top = li.offsetTop + "px";
+      gap.style.height = li.offsetHeight + "px";
+    };
+    // the held entry takes the slot whose middle it passed
+    const reorder = () => {
+      const { li } = drag;
+      const at = drag.y - drag.grab;
+      const others = [...list.children].slice(1).filter((el) => el !== li);
+      const before = others.find((el) => at < middle(el)) ?? null;
+      if (li.nextElementSibling === before) return;
+      glide(others, () => list.insertBefore(li, before));
+      navigator.vibrate?.(5);
+      renderCustomGuide(true);
+    };
+    const frame = () => {
+      if (!drag) return;
+      // near the edge of a menu taller than the window it scrolls along, faster the closer it gets
+      const r = side.getBoundingClientRect();
+      const edge = Math.max(0, drag.y - (r.bottom - 40)) - Math.max(0, r.top + 40 - drag.y);
+      if (edge) side.scrollTop += edge / 3;
+      // speed in px per frame, smoothed, drives the tilt and fades out when the finger rests
+      drag.v += (drag.y - drag.lastY - drag.v) * 0.25;
+      drag.lastY = drag.y;
+      reorder();
+      place();
+      drag.raf = requestAnimationFrame(frame);
+    };
+    const lift = (li, y) => {
+      hold = null;
+      li.classList.remove("holding");
+      drag = { li, y, lastY: y, v: 0, grab: 0, raf: 0 };
+      drag.grab = y - middle(li);
+      li.classList.add("dragging", "lifting");
+      root.classList.add("side-dragging");
+      gap.hidden = false;
+      place();
+      setTimeout(() => li.classList.remove("lifting"), 170);
+      navigator.vibrate?.(15);
+      drag.raf = requestAnimationFrame(frame);
+    };
     list.addEventListener("pointerdown", (ev) => {
       const a = ev.target.closest("a");
-      if (!a || ev.button !== 0 || a === byId.get(intro.id)[1]) return;
+      if (!a || ev.button !== 0 || a === byId.get(intro.id)[1] || drag) return;
       cancelHold();
+      const li = a.parentElement;
       const pointer = ev.pointerId;
-      hold = { x: ev.clientX, y: ev.clientY, timer: setTimeout(() => {
-        hold = null;
-        drag = a.parentElement;
-        try { a.setPointerCapture(pointer); } catch {}
-        drag.classList.add("dragging");
-        root.classList.add("side-dragging");
-        navigator.vibrate?.(15);
-      }, HOLD_MS) };
+      hold = { li, x: ev.clientX, y: ev.clientY,
+        // a short tap shows nothing, a hold sinks in until the entry lifts
+        sink: setTimeout(() => li.classList.add("holding"), 100),
+        timer: setTimeout(() => {
+          try { a.setPointerCapture(pointer); } catch {}
+          lift(li, hold.y);
+        }, HOLD_MS) };
     });
     list.addEventListener("pointermove", (ev) => {
       if (hold && Math.hypot(ev.clientX - hold.x, ev.clientY - hold.y) > 8) cancelHold();
-      if (!drag) return;
-      let before = null;
-      for (const li of [...list.children].slice(1)) {
-        if (li === drag) continue;
-        const r = li.getBoundingClientRect();
-        if (ev.clientY < r.top + r.height / 2) { before = li; break; }
-      }
-      if (drag.nextElementSibling !== before) list.insertBefore(drag, before);
-      // near the edge of a menu taller than the window it scrolls along
-      const r = side.getBoundingClientRect();
-      if (ev.clientY > r.bottom - 32) side.scrollTop += 8;
-      else if (ev.clientY < r.top + 32) side.scrollTop -= 8;
+      if (drag) drag.y = ev.clientY;
     });
     const endDrag = () => {
       cancelHold();
       if (!drag) return;
-      drag.classList.remove("dragging");
-      root.classList.remove("side-dragging");
+      const { li } = drag;
+      cancelAnimationFrame(drag.raf);
       drag = null;
+      root.classList.remove("side-dragging");
+      gap.hidden = true;
+      // settles into its slot: shrinks back, loses the shadow and the tilt
+      li.classList.add("settling");
+      li.classList.remove("dragging", "lifting");
+      li.style.transform = "";
+      setTimeout(() => li.classList.remove("settling"), 260);
       swallowClick = true;
       setTimeout(() => { swallowClick = false; }, 400);
-      setMode("custom", [...list.children].slice(1).map((li) => li.firstChild.hash.slice(1)));
+      setMode("custom", sideIds());
     };
     list.addEventListener("pointerup", endDrag);
     list.addEventListener("pointercancel", endDrag);
