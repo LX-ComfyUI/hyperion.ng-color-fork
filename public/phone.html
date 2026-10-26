@@ -402,6 +402,7 @@
   .gck-warnlist { margin-top: 6px; color: var(--warn); }
   .gck-warnlist div + div { margin-top: 4px; }
   #gcg-neutral { margin: 4px 0 10px; }
+  #cf-result td:not(:first-child) { white-space: nowrap; }
   .gck-seg { margin-top: 8px; }
   .gck-seg button { text-align: center; }
   .gck-tints { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
@@ -772,6 +773,7 @@
     <div data-order="setup">
     <h3>Ersteinrichtung</h3>
     <p class="help" style="margin:0 0 10px">Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <p class="help" style="margin:0 0 10px"><b>Erst der Grundstein, dann die Feinabstimmung.</b> Viele drehen stundenlang an Farbwerten, Gamma und Farbtemperatur, bis Grau einigermaßen neutral wirkt, und verstellen dabei die Farben. Leg stattdessen zuerst den Grundstein der Farbdarstellung: richtige Farbkanäle, ein Grabber, der die Farben unverfälscht sieht, und ein neutrales Weiß. Erst danach stimmt die Graukurve die Graustufen fein ab und rechnet das Ergebnis auf Wunsch in Gamma und Weiß um. Dreh also nicht an Gamma, um ein graues Bild zu retten, das erledigt die Graukurve.</p>
     <h3>Vorher in der WebUI</h3>
     <ul class="guide">
       <li><b>LED-Hardware</b>: Unter LED-Steuerung den Controller und die Anzahl der LEDs einstellen, unter LED-Layout das grobe Layout (welche Seiten, wie viele LEDs je Seite, wo der Strang beginnt). Die genaue Lage stellst du später mit der LED-Position ein.</li>
@@ -782,22 +784,19 @@
       <li><a class="jump" href="#card-ts"><b>Testserver</b></a>: Prüfe unter Status, ob die Verbindung zu Hyperion steht, und lass den Testschutz an. Er schaltet während eines Tests Hyperion-Funktionen aus, die das Ergebnis verfälschen würden, etwa die Schwarzbalken-Erkennung, und danach wieder ein.</li>
       <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere den Grundstand, bevor du kalibrierst. Mit Wiederherstellen kommst du jederzeit zu diesem Stand zurück.</li>
     </ol>
-    <h3>Grundlagen</h3>
+    <h3>Grundstein der Farbdarstellung</h3>
     <ol class="guide" start="3">
       <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Bei der Ersteinrichtung der wichtigste Test, denn solange die Farbkanäle vertauscht sind, ist jeder weitere Test sinnlos. Später nur nach einem Wechsel der LED-Hardware nötig.</li>
-      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Mach diesen Schritt vor der Farbkalibrierung, sonst gleichst du dort Fehler des Grabbers aus.</li>
+      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Ohne diesen Schritt gleichst du später Fehler des Grabbers mit Gamma oder Graukurve aus.</li>
+      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Hier zuerst nur 100&nbsp;% Weiß und die Grundfarben. Mit <b>Weißpunkt einstellen</b> zeigt der TV Weiß, und du sagst, welche Farbe das Licht der LEDs zu viel oder zu wenig hat. Die Seite stellt daraus den Weißwert ein. Die Farbtemperatur verschiebt alle Helligkeiten gleich stark und passt deshalb zu 100&nbsp;% Weiß: Nimm sie danach nur, wenn du es insgesamt wärmer oder kälter magst. Graustufen und Gamma fasst du hier noch nicht an.</li>
+      <li><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve einschalten, damit du dort die dunklen Stufen fein aufgelöst siehst.</li>
+      <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Danach rechnet <b>In Grundeinstellung übernehmen</b> die Kurve in Weißwert und Gamma je Kanal um. Das wirkt dann auch auf farbige Bilder, die Graukurve behält nur den Rest.</li>
     </ol>
     <h3>Wohin die LEDs schauen</h3>
-    <ol class="guide" start="5">
-      <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout. Vor den Farbtests machen, denn eine verschobene LED misst die falsche Stelle.</li>
+    <ol class="guide" start="8">
+      <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout. Die Farbschritte oben nutzen Vollbilder, dafür spielt die Lage keine Rolle. Bei echten Bildern muss jede LED aber auf die richtige Stelle schauen.</li>
       <li><a class="jump" href="#card-dt"><b>LED-Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
       <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen.</li>
-    </ol>
-    <h3>Farbe</h3>
-    <ol class="guide" start="8">
-      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Weiß wirkt bläulich oder gelblich, oder einzelne Farben passen nicht zum TV. Du vergleichst TV und LEDs direkt und stellst die Farbwerte in Hyperion ein.</li>
-      <li><a class="jump" href="#card-ft"><b>Präzise-Farbausgabe Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve machen, damit du dort die dunklen Stufen fein aufgelöst siehst.</li>
-      <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Erst machen, wenn Weiß in den Testfarben stimmt.</li>
     </ol>
     <h3>Sonderfälle</h3>
     <ol class="guide" start="11">
@@ -810,7 +809,7 @@
       <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere den fertig kalibrierten Stand. Zu diesem Stand willst du später zurück, nicht zum Grundstand aus Schritt 2.</li>
     </ol>
     <h3>Später nachjustieren</h3>
-    <p class="help" style="margin:0">Änderst du später nur einen Punkt, mach vorher ein Backup, prüf in der Grabber-Vorschau das TV-Bild und lass den Testschutz an. Danach die Schritte kurz kontrollieren, die in der Liste oben darauf folgen.</p>
+    <p class="help" style="margin:0">Änderst du später nur einen Punkt, mach vorher ein Backup, prüf in der Grabber-Vorschau das TV-Bild und lass den Testschutz an. Danach die Schritte kurz kontrollieren, die in der Liste oben darauf folgen. Wichtig: Die Graukurve gleicht aus, was Gamma, Weißwert und Farbtemperatur gerade liefern. Änderst du einen davon, kalibriere die Graukurve danach neu.</p>
     </div>
     <div data-order="standard" hidden>
     <h3>Standard</h3>
@@ -919,6 +918,32 @@
           <h3 style="margin-top:0">Farben in Hyperion</h3>
           <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort. Unten legst du alle Werte zusammen in Speicherplätzen ab und holst sie wieder zurück.</p>
           <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
+
+          <div class="wp" id="wp">
+            <h4 class="hy-h"><span>Weißpunkt</span></h4>
+            <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
+            <button type="button" class="primary wide" id="wp-start">Weißpunkt einstellen</button>
+            <div id="wp-run" hidden>
+              <p class="lg-q">Wie wirkt das Licht der LEDs an der Wand neben dem Weiß auf dem TV?</p>
+              <button type="button" class="primary wide" id="wp-done">Neutral, fertig</button>
+              <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="wp-dir">
+                <button type="button" data-dir="more">zu viel</button>
+                <button type="button" data-dir="less">zu wenig</button>
+              </div>
+              <div class="gck-tints" id="wp-tints"></div>
+              <div class="seg full gck-seg" role="group" aria-label="Stärke" id="wp-strength">
+                <button type="button" data-strength="1">leicht</button>
+                <button type="button" data-strength="2">deutlich</button>
+                <button type="button" data-strength="3">stark</button>
+              </div>
+              <div class="seg full" role="group" aria-label="Weißpunkt steuern" style="margin-top:8px">
+                <button type="button" id="wp-back">Zurück</button>
+                <button type="button" id="wp-cancel">Abbrechen</button>
+              </div>
+            </div>
+            <p class="note" id="wp-note"></p>
+            <hr class="hy-sep">
+          </div>
 
           <h4 class="hy-h" data-hy-group="colors"><span>Farben</span></h4>
           <div id="hy-rgb"></div>
@@ -1101,6 +1126,7 @@
         <div class="gck-table" id="gcg-table"></div>
         <div class="lg-actions">
           <button type="button" class="primary" id="gcg-save">Als Speicherplatz sichern</button>
+          <button type="button" id="gcg-base">In Grundeinstellung übernehmen …</button>
           <button type="button" id="gcg-original">Original wiederherstellen</button>
           <button type="button" id="gcg-close">Schließen</button>
         </div>
@@ -1126,6 +1152,14 @@
       <div id="hy-curve" style="margin-top:12px"></div>
     </details>
       <p class="note" id="gcc-note"></p>
+
+    <div class="cf" id="cf">
+      <h4 class="hy-h" style="margin-top:18px"><span>In Grundeinstellung übernehmen</span></h4>
+      <p class="help">Rechnet die Graukurve in Weißwert und Gamma je Kanal um. Die wirken auch auf farbige Bilder, die Graukurve nur auf Grau. Bei den Stufen der Kurve bleibt das Licht der LEDs genau gleich, die Graukurve behält nur den Rest. Gut geeignet, wenn der Farbstich zum Dunklen hin gleichmäßig zu- oder abnimmt. Sitzt er nur in der Mitte, bleibt er besser in der Graukurve.</p>
+      <button type="button" id="cf-calc">Vorschlag berechnen</button>
+      <div id="cf-result" hidden></div>
+      <p class="note" id="cf-note"></p>
+    </div>
 
     <h4 class="hy-h" style="margin-top:18px"><span>Schwarzschwelle 16 Bit</span></h4>
     <p class="help">Eine LED bleibt aus, solange Rot, Grün und Blau alle unter der Schwelle liegen, gemessen in 8-Bit-Stufen der LED-Ausgabe (0 bis 255; 0,5 entspricht dem Runden auf 8 Bit). Erhöhen, wenn die LEDs bei schwarzem Bild noch glimmen oder sehr dunkles Grau rötlich wirkt, senken, wenn sehr dunkle Szenen noch Licht bekommen sollen. Im Graphen zeigt die gestrichelte Linie, wie weit die Schwelle ins Bild reicht. Gilt nur für LED-Geräte mit 16-Bit-Ausgabe und für das ganze Gerät, nicht nur für eine Farbe.</p>
@@ -1798,7 +1832,7 @@
   // or Eigene (dragged in this menu). Kept per device like the open cards. The guide always stays on
   // top and shows the text for the chosen order.
   const ORDERS = {
-    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-p-lp", "card-p-dt", "card-p-bars", "card-color", "card-p-ft", "card-p-gc", "card-ns", "card-p-gs", "card-p-media"],
+    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media"],
     standard: ["card-color", "card-p-gc", "card-p-media", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
   const ORDER_KEY = "tvtest-card-order";
@@ -2180,6 +2214,7 @@
 </script>
 <script src="/static/graycurve-graph.js"></script>
 <script src="/static/graycal.js"></script>
+<script src="/static/colorfit.js"></script>
 <script src="/static/testimages.js"></script>
 <script src="/static/grabbertest-report.js"></script>
 <script src="/static/nosignal-ui.js"></script>
@@ -2918,6 +2953,8 @@ function renderColorEditor() {
   curveGraph.update({ entry, blackThreshold: deviceBlack, writable: writable && curveUnlocked() });
   renderBlackThreshold();
   if (!state?.gcGuide?.active && !state?.gcGuide?.done) renderGcgLevels();
+  renderWhitePoint();
+  renderColorFit();
   renderCurveLock();
   renderCurveHistory();
   document.querySelectorAll("#hy-curve button.showgray").forEach(b => { b.disabled = !writable; });
@@ -4693,6 +4730,155 @@ $("gcg-save").addEventListener("click", async () => {
   if (await tpOp({ op: "save", test: "grayCurve", name: name.trim(), settings: tpCurrent("grayCurve") })) {
     $("gcg-summary").textContent = tr("Als Speicherplatz „{a}“ gesichert.", { a: name.trim() });
   }
+});
+
+// ---------- guided white point (test colors card): 100 % white on the TV, every answer changes the
+// white value of the color entry like a gray curve answer changes a point (GrayCal.applyAnswer on
+// white / 255: the strongest channel keeps its value). Runs on this page only; Zurück steps back
+// through the answers, Abbrechen restores the white value from the start.
+let wpRun = null;          // { start: [r, g, b], steps: [[r, g, b], …], memo }
+let wpDir = "more";
+let wpStrength = 1;
+const wpFmt = (w) => w.join(" / ");
+const wpWhite = () => colorConfig?.channelAdjustment?.[colorIndex]?.white?.map(Number) ?? null;
+
+function renderWhitePoint() {
+  const running = !!wpRun;
+  $("wp-start").hidden = running;
+  $("wp-start").disabled = !hyperionConnected || !wpWhite();
+  $("wp-run").hidden = !running;
+  if (!running) return;
+  $("wp-dir").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dir === wpDir)));
+  $("wp-strength").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.strength) === wpStrength)));
+  $("wp-back").disabled = !wpRun.steps.length;
+}
+
+async function wpWrite(white, doneText) {
+  await saveColorValues([{ field: "white", value: white }], $("wp-note"), doneText);
+}
+
+$("wp-tints").innerHTML = GrayCal.TINTS.map((t) => `<button type="button" data-tint="${t.id}"><span class="gck-dot" style="background:${t.hex}"></span>${GCG_TINT_NAMES[t.id]}</button>`).join("");
+$("wp-start").addEventListener("click", () => {
+  const white = wpWhite();
+  if (!white) return;
+  wpRun = { start: white, steps: [], memo: { scale: 1, last: null } };
+  setColor("#ffffff");
+  $("wp-note").textContent = tr("Der TV zeigt 100 % Weiß. Weißwert jetzt {a}.", { a: wpFmt(white) });
+  renderWhitePoint();
+});
+$("wp-tints").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button[data-tint]");
+  const white = wpWhite();
+  if (!b || !wpRun || !white) return;
+  const gains = GrayCal.applyAnswer(white.map((v) => v / 255), b.dataset.tint, wpDir, wpStrength, wpRun.memo);
+  const next = gains.map((g) => Math.min(255, Math.max(0, Math.round(g * 255))));
+  wpRun.steps.push(white);
+  await wpWrite(next, tr("Weißwert jetzt {a} (vorher {b}), wirkt sofort.", { a: wpFmt(next), b: wpFmt(white) }));
+  renderWhitePoint();
+});
+$("wp-dir").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-dir]"); if (b) { wpDir = b.dataset.dir; renderWhitePoint(); } });
+$("wp-strength").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-strength]"); if (b) { wpStrength = Number(b.dataset.strength); renderWhitePoint(); } });
+$("wp-back").addEventListener("click", async () => {
+  const prev = wpRun?.steps.pop();
+  if (!prev) return;
+  await wpWrite(prev, tr("Einen Schritt zurück: Weißwert {a}.", { a: wpFmt(prev) }));
+  renderWhitePoint();
+});
+$("wp-cancel").addEventListener("click", async () => {
+  if (!wpRun) return;
+  const start = wpRun.start;
+  wpRun = null;
+  await wpWrite(start, tr("Abgebrochen, der Weißwert ist wieder {a}.", { a: wpFmt(start) }));
+  renderWhitePoint();
+});
+$("wp-done").addEventListener("click", () => {
+  if (!wpRun) return;
+  const white = wpWhite();
+  const changed = white && white.join() !== wpRun.start.join();
+  $("wp-note").textContent = changed
+    ? tr("Fertig: Weißwert {a} (vorher {b}). Sichere die Farbwerte unten in einem Speicherplatz.", { a: wpFmt(white), b: wpFmt(wpRun.start) })
+    : tr("Fertig: Das Weiß war schon neutral, nichts geändert.");
+  wpRun = null;
+  renderWhitePoint();
+});
+
+// ---------- gray curve → white value and gamma (colorfit.js): a proposal, applied after a tap, with undo ----------
+let cfProposal = null;     // result of ColorFit.fitBase shown now
+let cfUndo = null;         // values before the last apply: { gamma, white, points }
+const cfNum = (v) => gcgFmt(v, 2);
+const cfGamma = (g) => g.map(cfNum).join(" / ");
+
+function renderColorFit() {
+  const box = $("cf-result");
+  $("cf-calc").disabled = !hyperionConnected || !colorConfig?.channelAdjustment?.[colorIndex];
+  if (!cfProposal && !cfUndo) { box.hidden = true; return; }
+  box.hidden = false;
+  if (!cfProposal) {
+    box.innerHTML = `<div class="lg-actions"><button type="button" id="cf-undo">${tr("Rückgängig")}</button></div>`;
+    return;
+  }
+  const { before, after, useful, changed } = cfProposal;
+  const rows = [
+    [tr("Gamma R / G / B"), cfGamma(before.gamma), cfGamma(after.gamma)],
+    [tr("Weißwert"), before.white.join(" / "), after.white.join(" / ")],
+    [tr("Graukurve, größte Abweichung von 1"), cfNum(before.spread), cfNum(after.spread)],
+  ];
+  const verdict = !changed ? tr("Gamma und Weißwert bleiben gleich, es gibt nichts zu übernehmen.")
+    : useful ? tr("Gamma und Weißwert übernehmen den Großteil, die Graukurve behält nur den Rest.")
+    : tr("Lohnt sich kaum: Der Farbstich hängt nicht gleichmäßig von der Helligkeit ab (etwa nur in der Mitte), das kann Gamma nicht nachbilden. Er bleibt besser in der Graukurve.");
+  box.innerHTML = `<div class="gck-table"><table><thead><tr><th></th><th>${tr("jetzt")}</th><th>${tr("Vorschlag")}</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody></table></div>` +
+    `<p class="note">${verdict}</p><div class="lg-actions">` +
+    (changed ? `<button type="button"${useful ? ' class="primary"' : ""} id="cf-apply">${tr("Übernehmen")}</button>` : "") +
+    `<button type="button" id="cf-drop">${tr("Verwerfen")}</button>` + (cfUndo ? `<button type="button" id="cf-undo">${tr("Rückgängig")}</button>` : "") + `</div>`;
+}
+
+function cfCompute() {
+  const entry = colorConfig?.channelAdjustment?.[colorIndex];
+  const out = ColorFit.fitBase(entry);
+  if (!out) {
+    cfProposal = null;
+    $("cf-note").textContent = entry?.grayCurve?.enabled === true ? tr("Die Graukurve hat noch keine Punkte.") : tr("Die Graukurve ist aus. Erst einschalten und kalibrieren.");
+  } else {
+    cfProposal = out;
+    $("cf-note").textContent = "";
+  }
+  renderColorFit();
+}
+
+const cfWrite = (v, doneText) => saveColorValues([
+  { field: "gammaRed", value: v.gamma[0] }, { field: "gammaGreen", value: v.gamma[1] }, { field: "gammaBlue", value: v.gamma[2] },
+  { field: "white", value: v.white }, { field: "grayCurve.points", value: v.points },
+], $("cf-note"), doneText);
+
+$("cf-calc").addEventListener("click", async () => { await loadColorConfig(); cfCompute(); });
+$("cf-result").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button");
+  if (!b) return;
+  if (b.id === "cf-drop") { cfProposal = null; $("cf-note").textContent = ""; renderColorFit(); }
+  if (b.id === "cf-apply" && cfProposal) {
+    // the values may have changed meanwhile (another device): compute again from the live ones
+    const shown = JSON.stringify(cfProposal);
+    await loadColorConfig();
+    cfCompute();
+    if (JSON.stringify(cfProposal) !== shown) { $("cf-note").textContent = tr("Die Werte in Hyperion haben sich inzwischen geändert. Das ist der neue Vorschlag."); return; }
+    const { before, after } = cfProposal;
+    cfUndo = before;
+    cfProposal = null;
+    await cfWrite(after, tr("Übernommen: Gamma {a}, Weißwert {b}. Sichere Farbwerte und Graukurve in Speicherplätzen, damit sie bleiben.", { a: cfGamma(after.gamma), b: after.white.join(" / ") }));
+    renderColorFit();
+  }
+  if (b.id === "cf-undo" && cfUndo) {
+    const back = cfUndo;
+    cfUndo = null;
+    cfProposal = null;
+    await cfWrite(back, tr("Rückgängig gemacht: Gamma, Weißwert und Graukurve wie vorher."));
+    renderColorFit();
+  }
+});
+$("gcg-base").addEventListener("click", async () => {
+  jumpToCard("cf");
+  await loadColorConfig();
+  cfCompute();
 });
 
 // port of the test page: the server restarts on the new one, the pages follow (event "move")
