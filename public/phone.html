@@ -713,25 +713,47 @@
     <h2>Anleitung</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
-    <h3>Vor dem Start</h3>
+    <h3>Ersteinrichtung</h3>
+    <p class="help" style="margin:0 0 10px">Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Die Karten auf der Seite stehen in einer anderen Reihenfolge, ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <h3>Vorher in der WebUI</h3>
     <ul class="guide">
-      <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere die Konfiguration, bevor du etwas änderst. Mit Wiederherstellen kommst du jederzeit zu diesem Stand zurück.</li>
-      <li><b>Grabber-Vorschau</b> (Bildschirm-Symbol oben): Prüfe, ob der Grabber wirklich das TV-Bild zeigt und nicht seine „No Signal“-Seite oder ein schwarzes Bild. Sonst ist jedes Testergebnis falsch.</li>
-      <li><a class="jump" href="#card-ts"><b>Testserver</b></a>: Der Testschutz schaltet während eines Tests Hyperion-Funktionen aus, die das Ergebnis verfälschen würden, und danach wieder ein. Lass ihn an.</li>
+      <li><b>LED-Hardware</b>: Unter LED-Steuerung den Controller und die Anzahl der LEDs einstellen, unter LED-Layout das grobe Layout (welche Seiten, wie viele LEDs je Seite, wo der Strang beginnt). Die genaue Lage stellst du später mit der LED-Position ein.</li>
+      <li><b>Aufnahme Hardware</b>: Den Grabber auswählen. Dann in der <b>Grabber-Vorschau</b> (Bildschirm-Symbol oben) prüfen, ob wirklich das TV-Bild ankommt und nicht die „No Signal“-Seite des Grabbers oder ein schwarzes Bild. Sonst ist jedes Testergebnis falsch.</li>
     </ul>
-    <h3>Empfohlene Reihenfolge</h3>
+    <h3>Vorbereitung</h3>
     <ol class="guide">
-      <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Nur bei der Ersteinrichtung oder nach einem Wechsel der LED-Hardware nötig.</li>
-      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung kalibrieren</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Mach diesen Schritt vor der Farbkalibrierung, sonst gleichst du dort Fehler des Grabbers aus.</li>
-      <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout.</li>
-      <li><a class="jump" href="#card-dt"><b>Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
-      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Weiß wirkt bläulich oder gelblich, oder einzelne Farben passen nicht zum TV. Du vergleichst TV und LEDs direkt und stellst die Farbwerte in Hyperion ein.</li>
-      <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Nach der Grabber-Farberkennung machen.</li>
-      <li><a class="jump" href="#card-ft"><b>Nachkommastellen Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen.</li>
-      <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen.</li>
-      <li><a class="jump" href="#card-gs"><b>Graues Standbild Test</b></a> und <a class="jump" href="#card-gsd"><b>Graues-Standbild-Erkennung</b></a>: Manche Player blenden ein pausiertes Video zu einem grauen Standbild ab, und die LEDs leuchten dann lange grau. Die Erkennung friert die LEDs in diesem Fall ein oder schaltet sie aus.</li>
-      <li><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a> und <a class="jump" href="#card-mm"><b>Bild messen</b></a>: Zum Schluss mit echten Bildern und Videos prüfen, wie die LEDs reagieren. „Bild messen“ zeigt, ob ein Bild unverfälscht beim Grabber ankommt und ob der Zuspieler es zoomt oder verschiebt.</li>
+      <li><a class="jump" href="#card-ts"><b>Testserver</b></a>: Prüfe unter Status, ob die Verbindung zu Hyperion steht, und lass den Testschutz an. Er schaltet während eines Tests Hyperion-Funktionen aus, die das Ergebnis verfälschen würden, etwa die Schwarzbalken-Erkennung, und danach wieder ein.</li>
+      <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere den Grundstand, bevor du kalibrierst. Mit Wiederherstellen kommst du jederzeit zu diesem Stand zurück.</li>
     </ol>
+    <h3>Grundlagen</h3>
+    <ol class="guide" start="3">
+      <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Bei der Ersteinrichtung der wichtigste Test, denn solange die Farbkanäle vertauscht sind, ist jeder weitere Test sinnlos. Später nur nach einem Wechsel der LED-Hardware nötig.</li>
+      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung kalibrieren</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Mach diesen Schritt vor der Farbkalibrierung, sonst gleichst du dort Fehler des Grabbers aus.</li>
+    </ol>
+    <h3>Wohin die LEDs schauen</h3>
+    <ol class="guide" start="5">
+      <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout. Vor den Farbtests machen, denn eine verschobene LED misst die falsche Stelle.</li>
+      <li><a class="jump" href="#card-dt"><b>Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
+      <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen.</li>
+    </ol>
+    <h3>Farbe</h3>
+    <ol class="guide" start="8">
+      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Weiß wirkt bläulich oder gelblich, oder einzelne Farben passen nicht zum TV. Du vergleichst TV und LEDs direkt und stellst die Farbwerte in Hyperion ein.</li>
+      <li><a class="jump" href="#card-ft"><b>Nachkommastellen Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve machen, damit du dort die dunklen Stufen fein aufgelöst siehst.</li>
+      <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Erst machen, wenn Weiß in den Testfarben stimmt.</li>
+    </ol>
+    <h3>Sonderfälle</h3>
+    <ol class="guide" start="11">
+      <li><a class="jump" href="#card-ns"><b>„No Signal“-Standbild-Erkennung</b></a>: Ohne HDMI-Signal zeigen viele Grabber ein eigenes Bild, etwa den Text „No Signal“ oder Farbbalken, und Hyperion gibt es auf die LEDs. Die Erkennung lernt dieses Bild einmal an und reagiert, sobald es wieder erscheint. Bei der Ersteinrichtung bietet sich das an, weil du beim Umstecken diese Seite ohnehin zu sehen bekommst.</li>
+      <li><a class="jump" href="#card-gs"><b>Graues Standbild Test</b></a> und <a class="jump" href="#card-gsd"><b>Graues-Standbild-Erkennung</b></a>: Manche Player blenden ein pausiertes Video zu einem grauen Standbild ab, und die LEDs leuchten dann lange grau. Die Erkennung friert die LEDs in diesem Fall ein oder schaltet sie aus. Nur nötig, wenn dein Player das tut.</li>
+    </ol>
+    <h3>Abschluss</h3>
+    <ol class="guide" start="13">
+      <li><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a> und <a class="jump" href="#card-mm"><b>Bild messen</b></a>: Mit echten Bildern und Videos prüfen, wie die LEDs reagieren. „Bild messen“ zeigt, ob ein Bild unverfälscht beim Grabber ankommt und ob der Zuspieler es zoomt oder verschiebt.</li>
+      <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere den fertig kalibrierten Stand. Zu diesem Stand willst du später zurück, nicht zum Grundstand aus Schritt 2.</li>
+    </ol>
+    <h3>Später nachjustieren</h3>
+    <p class="help" style="margin:0">Änderst du später nur einen Punkt, mach vorher ein Backup, prüf in der Grabber-Vorschau das TV-Bild und lass den Testschutz an. Danach die Schritte kurz kontrollieren, die in der Liste oben darauf folgen.</p>
   </section>
 
   <!-- ===== grabber test ===== -->
