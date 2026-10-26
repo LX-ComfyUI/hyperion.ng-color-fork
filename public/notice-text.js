@@ -62,8 +62,8 @@
     },
   };
   const TEST_NAMES = {
-    de: { grayTest: "Graues Standbild", bars: "Schwarze Balken", depthTest: "Erfassungstiefe", fracTest: "Nachkommastellen", posTest: "LED-Position", posGuide: "LED-Position kalibrieren", gcGuide: "Graukurve kalibrieren", color: "Testfarben" },
-    en: { grayTest: "Gray still image", bars: "Black bars", depthTest: "Capture depth", fracTest: "Fractional digits", posTest: "LED position", posGuide: "LED position calibration", gcGuide: "Gray curve calibration", color: "Test colors" },
+    de: { grayTest: "Graues Standbild", bars: "Schwarze Balken", depthTest: "LED-Erfassungstiefe", fracTest: "Präzise-Farbausgabe", posTest: "LED-Position", posGuide: "LED-Position kalibrieren", gcGuide: "Graukurve kalibrieren", color: "Testfarben" },
+    en: { grayTest: "Gray still image", bars: "Black bars", depthTest: "LED capture depth", fracTest: "Precise color output", posTest: "LED position", posGuide: "LED position calibration", gcGuide: "Gray curve calibration", color: "Test colors" },
   };
   // the card of the test page that belongs to a paused test
   const TEST_CARDS = { grayTest: "card-gs", bars: "card-bars", depthTest: "card-dt", fracTest: "card-ft", posTest: "card-lp", posGuide: "card-lg", gcGuide: "card-gcg", color: "card-color" };

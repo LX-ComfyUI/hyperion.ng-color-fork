@@ -622,7 +622,20 @@
                  color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.3; }
   .side-list a:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
   .side-list a.current { border-left-color: var(--accent); background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-weight: 600; }
-  .side-foot { margin-top: auto; padding: 10px 15px; font-size: 12px; color: var(--muted); }
+    .side-foot { margin-top: auto; padding: 10px 15px; font-size: 12px; color: var(--muted); }
+  /* order of the cards under the list; an entry held a moment can be dragged */
+  .side-order { padding: 12px 15px 6px; }
+  .side-order-ttl { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+  /* the menu is too narrow for three buttons side by side: one under the other */
+  .side-order .order-seg { flex-direction: column; }
+  .side-order .order-seg button { padding: 6px 10px; font-size: 13px; text-align: left; }
+  .side-order .order-seg button + button { border-left: none; border-top: 1px solid var(--btn-line); }
+  .side-order-hint { margin: 6px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted); }
+  #order-guide { max-width: 420px; margin: 0 0 10px; }
+  #order-guide .order-seg button { padding: 7px 4px; font-size: 13px; }
+  .side-list a { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  #side .side-list li.dragging { position: relative; z-index: 1; box-shadow: 0 2px 10px rgba(0, 0, 0, .35); background: var(--bg); }
+  :root.side-dragging, :root.side-dragging * { cursor: grabbing !important; }
   main { max-width: none; margin: 0; padding: var(--gap); background: var(--page); min-height: calc(100vh - var(--bar-h)); }
   @media (min-width: 768px) {
     main { margin-left: var(--side-w); border-left: 1px solid var(--bar-line); padding: 12px 24px 24px; }
@@ -714,7 +727,9 @@
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
     <h3>Ersteinrichtung</h3>
-    <p class="help" style="margin:0 0 10px">Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Die Karten auf der Seite stehen in einer anderen Reihenfolge, ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <p class="help" style="margin:0 0 10px">Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Standard</b> für den Alltag, <b>Ersteinrichtung</b> genau wie diese Liste, <b>Eigene</b> nach deinem Geschmack. Für eine eigene Reihenfolge hältst du im Seitenmenü einen Eintrag gedrückt und ziehst ihn an die neue Stelle. Nach einer frischen Installation ist Ersteinrichtung eingestellt. Die Reihenfolge gilt für dieses Gerät.</p>
+    <div id="order-guide" data-i18n-skip></div>
     <h3>Vorher in der WebUI</h3>
     <ul class="guide">
       <li><b>LED-Hardware</b>: Unter LED-Steuerung den Controller und die Anzahl der LEDs einstellen, unter LED-Layout das grobe Layout (welche Seiten, wie viele LEDs je Seite, wo der Strang beginnt). Die genaue Lage stellst du später mit der LED-Position ein.</li>
@@ -728,23 +743,23 @@
     <h3>Grundlagen</h3>
     <ol class="guide" start="3">
       <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Bei der Ersteinrichtung der wichtigste Test, denn solange die Farbkanäle vertauscht sind, ist jeder weitere Test sinnlos. Später nur nach einem Wechsel der LED-Hardware nötig.</li>
-      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung kalibrieren</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Mach diesen Schritt vor der Farbkalibrierung, sonst gleichst du dort Fehler des Grabbers aus.</li>
+      <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Mach diesen Schritt vor der Farbkalibrierung, sonst gleichst du dort Fehler des Grabbers aus.</li>
     </ol>
     <h3>Wohin die LEDs schauen</h3>
     <ol class="guide" start="5">
       <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout. Vor den Farbtests machen, denn eine verschobene LED misst die falsche Stelle.</li>
-      <li><a class="jump" href="#card-dt"><b>Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
+      <li><a class="jump" href="#card-dt"><b>LED-Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen.</li>
       <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen.</li>
     </ol>
     <h3>Farbe</h3>
     <ol class="guide" start="8">
       <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Weiß wirkt bläulich oder gelblich, oder einzelne Farben passen nicht zum TV. Du vergleichst TV und LEDs direkt und stellst die Farbwerte in Hyperion ein.</li>
-      <li><a class="jump" href="#card-ft"><b>Nachkommastellen Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve machen, damit du dort die dunklen Stufen fein aufgelöst siehst.</li>
+      <li><a class="jump" href="#card-ft"><b>Präzise-Farbausgabe Test</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve machen, damit du dort die dunklen Stufen fein aufgelöst siehst.</li>
       <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Graukurve korrigiert das je Helligkeit. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Erst machen, wenn Weiß in den Testfarben stimmt.</li>
     </ol>
     <h3>Sonderfälle</h3>
     <ol class="guide" start="11">
-      <li><a class="jump" href="#card-ns"><b>„No Signal“-Standbild-Erkennung</b></a>: Ohne HDMI-Signal zeigen viele Grabber ein eigenes Bild, etwa den Text „No Signal“ oder Farbbalken, und Hyperion gibt es auf die LEDs. Die Erkennung lernt dieses Bild einmal an und reagiert, sobald es wieder erscheint. Bei der Ersteinrichtung bietet sich das an, weil du beim Umstecken diese Seite ohnehin zu sehen bekommst.</li>
+      <li><a class="jump" href="#card-ns"><b>„No Signal“-Standbild</b></a>: Ohne HDMI-Signal zeigen viele Grabber ein eigenes Bild, etwa den Text „No Signal“ oder Farbbalken, und Hyperion gibt es auf die LEDs. Die Erkennung lernt dieses Bild einmal an und reagiert, sobald es wieder erscheint. Bei der Ersteinrichtung bietet sich das an, weil du beim Umstecken diese Seite ohnehin zu sehen bekommst.</li>
       <li><a class="jump" href="#card-gs"><b>Graues Standbild Test</b></a> und <a class="jump" href="#card-gsd"><b>Graues-Standbild-Erkennung</b></a>: Manche Player blenden ein pausiertes Video zu einem grauen Standbild ab, und die LEDs leuchten dann lange grau. Die Erkennung friert die LEDs in diesem Fall ein oder schaltet sie aus. Nur nötig, wenn dein Player das tut.</li>
     </ol>
     <h3>Abschluss</h3>
@@ -758,7 +773,7 @@
 
   <!-- ===== grabber test ===== -->
   <section class="card" id="card-gx">
-    <h2>Grabber-Farberkennung kalibrieren</h2>
+    <h2>Grabber-Farberkennung</h2>
     <div class="seg full gt-controls gx-start" role="group" aria-label="Grundtest">
       <button type="button" id="gx-basic"></button>
     </div>
@@ -793,7 +808,7 @@
 
   <!-- ===== "No Signal" still image detection, the same section as in the WebUI (nosignal-ui.js) ===== -->
   <section class="card" id="card-ns">
-    <h2>„No Signal“-Standbild-Erkennung</h2>
+    <h2>„No Signal“-Standbild</h2>
     <div id="ns-ui" data-i18n-skip></div>
   </section>
 
@@ -1206,10 +1221,10 @@
 
   <!-- ===== capture depth test ===== -->
   <section class="card card-pair" id="card-p-dt">
-    <h2>Erfassungstiefe</h2>
+    <h2>LED-Erfassungstiefe</h2>
     <div class="pair">
     <div class="pair-col" id="card-dt">
-      <h3 class="pair-ttl">Erfassungstiefe Test</h3>
+      <h3 class="pair-ttl">LED-Erfassungstiefe Test</h3>
       <p class="help">Zeigt, wie tief die LEDs ins Bild schauen. <b>Rahmen:</b> Der Bildrand hat die Außenfarbe, innen liegt die Innenfarbe. Ist der Rand mindestens so tief wie die Erfassungstiefe, zeigen die LEDs die reine Außenfarbe. Ist er schmaler, mischen sie die Innenfarbe dazu. <b>Wandernde Linie:</b> Eine Linie in der Außenfarbe läuft vom Rand nach innen. Die LEDs zeigen sie nur, solange sie im erfassten Bereich liegt.</p>
       <p class="note guard-note" hidden></p>
       <div class="tp" data-test="depthTest"></div>
@@ -1306,10 +1321,10 @@
 
   <!-- ===== fractional LED mean test ===== -->
   <section class="card card-pair" id="card-p-ft">
-    <h2>Nachkommastellen</h2>
+    <h2>16-Bit Präzise-Farbausgabe</h2>
     <div class="pair">
     <div class="pair-col" id="card-ft">
-      <h3 class="pair-ttl">Nachkommastellen Test</h3>
+      <h3 class="pair-ttl">Präzise-Farbausgabe Test</h3>
       <p class="help">Zeigt dunkle Töne <b>zwischen</b> zwei ganzen Stufen, z. B. 25,5. Der TV kann nur ganze Stufen, deshalb mischt ein feines Punktraster 25 und 26. Jede LED mittelt über ihren Bereich und sieht so die Kommazahl. <b>Mit Nachkommastellen</b> folgen die LEDs diesen Zwischenstufen. <b>Ohne</b> springen sie nur in ganzen Stufen, und im Dunkeln ist eine Stufe 7 bis 30 % der LED-Helligkeit.</p>
       <p class="note guard-note" hidden></p>
       <div class="tp" data-test="fracTest"></div>
@@ -1694,6 +1709,137 @@
   });
   wide.addEventListener("change", () => setDrawer(false));
 
+  // Order of the cards: Standard (everyday use), Ersteinrichtung (the steps of the guide) or Eigene
+  // (dragged in this menu). Kept per device like the open cards. A fresh install, where nothing was
+  // changed or tested through the page yet, starts in the first-setup order and keeps it until another
+  // one is chosen. The guide always stays on top.
+  const ORDERS = {
+    standard: ["card-rgb", "card-gx", "card-p-gc", "card-color", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-p-media", "card-ts", "card-backup"],
+    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-p-lp", "card-p-dt", "card-p-bars", "card-color", "card-p-ft", "card-p-gc", "card-ns", "card-p-gs", "card-p-media"],
+  };
+  const ORDER_KEY = "tvtest-card-order";
+  const CUSTOM_KEY = "tvtest-card-order-custom";
+  const list = side.querySelector(".side-list");
+  const main = document.querySelector("main");
+  const intro = cards[0];
+  const byId = new Map(cards.map((c, i) => [c.id, [c, links[i]]]));
+  const readCustom = () => { try { const v = JSON.parse(store.get(CUSTOM_KEY)); return Array.isArray(v) ? v : null; } catch { return null; } };
+  let mode = store.get(ORDER_KEY);
+  if (!["standard", "setup", "custom"].includes(mode) || mode === "custom" && !readCustom()) {
+    mode = window.TVTEST_FRESH === true ? "setup" : "standard";
+    if (mode === "setup") store.set(ORDER_KEY, mode);
+  }
+  const applyOrder = () => {
+    const ids = mode === "custom" ? readCustom() : ORDERS[mode];
+    // unknown ids are skipped, cards missing in a saved order (new ones) go to the end
+    const seq = [intro.id, ...ids.filter((id) => id !== intro.id && byId.has(id))];
+    for (const id of byId.keys()) if (!seq.includes(id)) seq.push(id);
+    seq.forEach((id, i) => {
+      const [card, a] = byId.get(id);
+      main.appendChild(card);
+      list.appendChild(a.parentElement);
+      cards[i] = card;
+      links[i] = a;
+    });
+    spy();
+  };
+  const segs = [];
+  const syncSegs = () => segs.forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode))));
+  const setMode = (next, ids) => {
+    // "Eigene" without a saved order starts from the order shown now
+    if (next === "custom" && !ids && !readCustom()) ids = cards.slice(1).map((c) => c.id);
+    if (ids) store.set(CUSTOM_KEY, JSON.stringify(ids));
+    mode = next;
+    store.set(ORDER_KEY, mode);
+    applyOrder();
+    syncSegs();
+  };
+  const makeSeg = () => {
+    const seg = document.createElement("div");
+    seg.className = "seg full order-seg";
+    seg.setAttribute("role", "group");
+    seg.setAttribute("aria-label", I18N.t("Reihenfolge der Karten"));
+    for (const [m, label] of [["standard", "Standard"], ["setup", "Ersteinrichtung"], ["custom", "Eigene"]]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.mode = m;
+      b.textContent = I18N.t(label);
+      b.addEventListener("click", () => setMode(m));
+      seg.appendChild(b);
+    }
+    segs.push(seg);
+    return seg;
+  };
+  const orderBox = document.createElement("div");
+  orderBox.className = "side-order";
+  orderBox.innerHTML = '<p class="side-order-ttl"></p><p class="side-order-hint"></p>';
+  orderBox.firstChild.textContent = I18N.t("Reihenfolge der Karten");
+  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.");
+  orderBox.insertBefore(makeSeg(), orderBox.lastChild);
+  list.after(orderBox);
+  document.getElementById("order-guide")?.appendChild(makeSeg());
+  applyOrder();
+  syncSegs();
+
+  // dragging: hold an entry (not the guide) for a moment, then move it up or down; letting go saves
+  // the order as "Eigene". Moving before the moment is up scrolls or clicks as usual.
+  {
+    const HOLD_MS = 350;
+    let hold = null, drag = null, swallowClick = false;
+    const cancelHold = () => { if (hold) clearTimeout(hold.timer); hold = null; };
+    list.addEventListener("pointerdown", (ev) => {
+      const a = ev.target.closest("a");
+      if (!a || ev.button !== 0 || a === byId.get(intro.id)[1]) return;
+      cancelHold();
+      const pointer = ev.pointerId;
+      hold = { x: ev.clientX, y: ev.clientY, timer: setTimeout(() => {
+        hold = null;
+        drag = a.parentElement;
+        try { a.setPointerCapture(pointer); } catch {}
+        drag.classList.add("dragging");
+        root.classList.add("side-dragging");
+        navigator.vibrate?.(15);
+      }, HOLD_MS) };
+    });
+    list.addEventListener("pointermove", (ev) => {
+      if (hold && Math.hypot(ev.clientX - hold.x, ev.clientY - hold.y) > 8) cancelHold();
+      if (!drag) return;
+      let before = null;
+      for (const li of [...list.children].slice(1)) {
+        if (li === drag) continue;
+        const r = li.getBoundingClientRect();
+        if (ev.clientY < r.top + r.height / 2) { before = li; break; }
+      }
+      if (drag.nextElementSibling !== before) list.insertBefore(drag, before);
+      // near the edge of a menu taller than the window it scrolls along
+      const r = side.getBoundingClientRect();
+      if (ev.clientY > r.bottom - 32) side.scrollTop += 8;
+      else if (ev.clientY < r.top + 32) side.scrollTop -= 8;
+    });
+    const endDrag = () => {
+      cancelHold();
+      if (!drag) return;
+      drag.classList.remove("dragging");
+      root.classList.remove("side-dragging");
+      drag = null;
+      swallowClick = true;
+      setTimeout(() => { swallowClick = false; }, 400);
+      setMode("custom", [...list.children].slice(1).map((li) => li.firstChild.hash.slice(1)));
+    };
+    list.addEventListener("pointerup", endDrag);
+    list.addEventListener("pointercancel", endDrag);
+    list.addEventListener("click", (ev) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      ev.preventDefault();
+      ev.stopPropagation();
+    }, true);
+    // no link menu or text selection on a held entry, no page scrolling while dragging
+    list.addEventListener("contextmenu", (ev) => { if (hold || drag) ev.preventDefault(); });
+    document.addEventListener("touchmove", (ev) => { if (drag) ev.preventDefault(); }, { passive: false });
+    links.forEach((a) => { a.draggable = false; });
+  }
+
   // name of an icon next to the mouse pointer; flips to the left/top at the window edge so it is
   // always fully readable (mouse only, touch taps open the icon directly)
   {
@@ -1946,8 +2092,8 @@ function renderState() {
   if (key !== listKey && !syncColorList() && !openPicker?.isConnected) buildColorList();
   else updateActiveRows();
   $("list-note").textContent = state.grayTest?.active ? "Gerade läuft das graue Standbild. Die Testfarbe ist pausiert."
-    : state.depthTest?.active ? "Gerade läuft der Erfassungstiefe-Test. Die Testfarbe ist pausiert."
-    : state.fracTest?.active ? "Gerade läuft der Nachkommastellen-Test. Die Testfarbe ist pausiert."
+    : state.depthTest?.active ? "Gerade läuft der LED-Erfassungstiefe-Test. Die Testfarbe ist pausiert."
+    : state.fracTest?.active ? "Gerade läuft der Präzise-Farbausgabe-Test. Die Testfarbe ist pausiert."
     : state.posTest?.active ? "Gerade läuft der LED-Position-Test. Die Testfarbe ist pausiert." : "";
   renderBars();
   renderGrayTest();
@@ -3218,7 +3364,7 @@ const TS_FEATURE_LABELS = {
   grayStill: "Graues-Standbild-Erkennung", blackborder: "Schwarzbalken-Erkennung", backlight: "Hintergrundbeleuchtung",
   signal: "No-Signal-Erkennung des Grabbers", depth: "Erfassungstiefe 3 % / 2 %",
 };
-const TS_TESTS = [["color", "Testfarben"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "Erfassungstiefe"], ["frac", "Nachkommastellen"], ["pos", "LED-Position"]];
+const TS_TESTS = [["color", "Testfarben"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "LED-Erfassungstiefe"], ["frac", "Präzise-Farbausgabe"], ["pos", "LED-Position"]];
 const TS_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
 const TS_LOCK = {
   closed: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
@@ -5238,7 +5384,7 @@ function renderGrabberCorrection() {
   });
   $("gc-note").textContent = c.available
     ? tr("Gleicht den Farbfehler von Grabber oder Splitter aus (Kalibrierung des angeschlossenen Grabbers). Wirkt sofort auf die LEDs.")
-    : tr("Für den angeschlossenen Grabber ist noch keine Kalibrierung gespeichert. Zuerst unter Grabber-Farberkennung kalibrieren einen Grundtest machen.");
+    : tr("Für den angeschlossenen Grabber ist noch keine Kalibrierung gespeichert. Zuerst in der Karte Grabber-Farberkennung einen Grundtest machen.");
   renderCorrectionSwitch();
   renderBell();
   const key = JSON.stringify(c);

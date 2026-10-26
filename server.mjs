@@ -117,6 +117,9 @@ const DEFAULT_STATE = {
   media: { active: false, id: "", fit: "contain", playing: true, loop: true, muted: true, position: 0, startedAt: 0 },
   // the port this server ran on last time: a change is told in the bell with what to check
   lastPort: 0,
+  // false until someone changes something or runs a test on the page: a fresh install opens the
+  // test page in the first-setup card order
+  used: false,
   // the hint "ffmpeg is missing" was given at the first video upload / the first video played
   ffmpegHint: { upload: false, play: false },
 };
@@ -196,7 +199,8 @@ fs.mkdirSync(BACKUP_DIR, { recursive: true });
 function loadState() {
   try {
     const raw = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
-    return sanitize({ ...DEFAULT_STATE, ...raw });
+    // a state.json written before the field existed belongs to a page already in use
+    return sanitize({ ...DEFAULT_STATE, used: true, ...raw });
   } catch {
     return structuredClone(DEFAULT_STATE);
   }
@@ -302,6 +306,7 @@ function sanitize(input) {
   }
   if (typeof input.curveGrabber === "string") out.curveGrabber = input.curveGrabber.slice(0, 200);
   out.lastPort = num(input.lastPort, 0, 65535, 0);
+  out.used = input.used === true;
   out.ffmpegHint = { upload: input.ffmpegHint?.upload === true, play: input.ffmpegHint?.play === true };
   const md = { ...DEFAULT_STATE.media, ...(input.media ?? {}) };
   out.media = {
@@ -511,7 +516,7 @@ function servePage(req, res, file) {
   fs.readFile(path.join(PUBLIC, file), "utf8", (err, html) => {
     if (err) return sendJson(res, 404, { error: "not found" });
     const keys = JSON.stringify(prefs[id]?.keys ?? {}).replace(/</g, "\\u003c");
-    const inject = `<script>window.TVTEST_PREFS=${keys};window.TVTEST_VERSION=${JSON.stringify(tvFilesVersion())};</script><script src="/static/prefs.js"></script>`;
+    const inject = `<script>window.TVTEST_PREFS=${keys};window.TVTEST_VERSION=${JSON.stringify(tvFilesVersion())};window.TVTEST_FRESH=${!state.used};</script><script src="/static/prefs.js"></script>`;
     res.writeHead(200, headers);
     res.end(html.replace("<head>", "<head>" + inject));
   });
@@ -2139,6 +2144,7 @@ function corsHeaders(req) {
     Vary: "Origin",
   };
 }
+const AUTO_POSTS = new Set(["/api/prefs", "/api/notices", "/api/media/caps", "/api/media/tvstatus", "/api/testpage/system", "/api/hyperion/system"]);
 function needTvtestHeader(req) {
   if (req.headers["x-tvtest"] !== "1") throw new Error("Header X-Tvtest fehlt");
 }
@@ -2154,6 +2160,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    // the first change or test through the page ends the fresh install (pages' own reports do not count)
+    if (req.method === "POST" && p.startsWith("/api/") && !AUTO_POSTS.has(p) && !state.used) {
+      state.used = true;
+      saveState();
+    }
     if (req.method === "GET" && (p === "/" || p === "/phone")) return servePage(req, res, "phone.html");
     if (req.method === "GET" && p === "/tv") return servePage(req, res, "tv.html");
     if (await media.handle(req, res, p, sendJson, readBody)) return;
@@ -2436,7 +2447,7 @@ const server = http.createServer(async (req, res) => {
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
       const guideBefore = state.posGuide;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState, lastPort: state.lastPort, ffmpegHint: state.ffmpegHint });
+      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState, lastPort: state.lastPort, ffmpegHint: state.ffmpegHint, used: state.used });
       if (patch.media?.active === true) ffmpegHint(mediaItemOf(state.media.id), "play");
       saveState();
       if (state.posGuide?.done && !guideBefore?.done) addNotice("guideDone", "info", {}, "card-lg");
