@@ -1259,18 +1259,25 @@ function createOptPanel(phicon, phead, bodyid, footerid, css, panelId) {
   return panel;
 }
 
-// Fork-Erweiterung: Einstellungsbereiche (createOptPanel) per Klick auf die Titelzeile zuklappen; der
-// Zustand wird je Bereich gespeichert (Standard: offen). Zugeklappt sind Inhalt und Speichern-Knopf weg.
+// Fork-Erweiterung: Panels per Klick auf die Titelzeile zuklappen; der Zustand wird je Panel gespeichert
+// (Standard: offen). Zugeklappt bleibt nur die Titelzeile. createOptPanel hängt das direkt an, alle
+// übrigen Panels einer Seite (festes HTML, Grabber-Test, Fernbedienung, Log, …) bekommen es über
+// watch(); ausgenommen der Kopf mit der Instanzauswahl und die Erklärungstabellen (helpFold).
 const optFold = (function () {
   const storageKey = (key) => 'optFold_' + key;
+  const isFolded = (panel) => panel.classList.contains('opt-folded');
   function apply(panel) {
     const open = getStorage(storageKey(panel.dataset.optFold)) !== 'closed';
     panel.classList.toggle('opt-folded', !open);
     panel.querySelector('.help-fold-toggle')?.setAttribute('aria-expanded', String(open));
   }
+  function set(panel, open) {
+    setStorage(storageKey(panel.dataset.optFold), open ? 'open' : 'closed');
+    apply(panel);
+  }
   function attach(panel, key) {
-    if (!panel || !key) return;
-    const heading = panel.querySelector('.panel-heading');
+    if (!panel || !key || panel.classList.contains('opt-fold')) return;
+    const heading = panel.querySelector(':scope > .panel-heading');
     if (!heading) return;
     panel.classList.add('opt-fold');
     panel.dataset.optFold = key;
@@ -1281,14 +1288,48 @@ const optFold = (function () {
     toggle.innerHTML = '<i class="fa fa-chevron-down"></i>';
     heading.appendChild(toggle);
     heading.addEventListener('click', function (ev) {
-      if (ev.target.closest('a, input, select, label') && !ev.target.closest('.help-fold-toggle')) return;
-      const open = panel.classList.contains('opt-folded');
-      setStorage(storageKey(key), open ? 'open' : 'closed');
-      apply(panel);
+      if (ev.target.closest('a, input, select, label, .dropdown-menu') && !ev.target.closest('.help-fold-toggle')) return;
+      set(panel, isFolded(panel));
+      globalThis.helpFold?.refresh();
     });
     apply(panel);
   }
-  return { attach };
+
+  // Schlüssel ohne eigene id: Seite + Sprachschlüssel der Überschrift (gilt in jeder Sprache), sonst
+  // Seite + Überschrift
+  function keyOf(panel, heading) {
+    if (panel.id) return panel.id;
+    const body = panel.querySelector(':scope > .panel-body[id]');
+    if (body) return body.id;
+    const i18nKey = heading.querySelector('[data-i18n]')?.dataset.i18n;
+    return prevTag + ':' + (i18nKey || heading.textContent.trim().replace(/\s+/g, ' ').slice(0, 60));
+  }
+  let scheduled = false;
+  function scan() {
+    scheduled = false;
+    // zwei Panels mit derselben Überschrift (z. B. zweimal „Erweiterte Einstellungen“) bekommen eine Nummer
+    const used = new Set([...document.querySelectorAll('#page-content .opt-fold')].map((p) => p.dataset.optFold));
+    document.querySelectorAll('#page-content .panel:not(.opt-fold):not(.help-fold)').forEach((panel) => {
+      const heading = panel.querySelector(':scope > .panel-heading');
+      if (!heading || heading.querySelector('#active_instance_dropdown')) return;
+      let key = keyOf(panel, heading);
+      for (let n = 2; used.has(key); n++) key = keyOf(panel, heading) + '#' + n;
+      used.add(key);
+      attach(panel, key);
+    });
+  }
+  $(function () {
+    const content = document.getElementById('page-content');
+    if (!content) return;
+    new MutationObserver(function () {
+      if (!scheduled) {
+        scheduled = true;
+        requestAnimationFrame(scan);
+      }
+    }).observe(content, { childList: true, subtree: true });
+  });
+
+  return { attach, set, isFolded };
 })();
 
 function compareTwoValues(key1, key2, order = 'asc') {
@@ -1408,8 +1449,8 @@ function createHelpTable(list, phead, panelId) {
 }
 
 // Fork-Erweiterung: Die Erklärungstabellen neben den Einstellungen lassen sich einzeln (Pfeil in der
-// Titelzeile) und je Seite gesamt (Knopf im Seitenkopf) auf- und zuklappen; der Zustand wird je
-// Tabelle gespeichert. Ist das Fenster so schmal, dass die Erklärung unter die Einstellungen rutscht
+// Titelzeile) auf- und zuklappen; der Zustand wird je Tabelle gespeichert. Das Symbol in der Kopfzeile
+// klappt alle Panels der Seite, Erklärungen und Einstellungen (optFold). Ist das Fenster so schmal, dass die Erklärung unter die Einstellungen rutscht
 // (Umbruch von col-lg), sind alle zugeklappt. Klappen gilt dann nur bis zur nächsten breiten Ansicht,
 // danach gilt wieder der gespeicherte Zustand.
 const helpFold = (function () {
@@ -1418,6 +1459,9 @@ const helpFold = (function () {
   const storageKey = (key) => 'helpFold_' + key;
   const isOpen = (key) => (wide.matches ? getStorage(storageKey(key)) !== 'closed' : narrowOpen.has(key));
   const panels = () => [...document.querySelectorAll('#page-content .help-fold')];
+  // alle klappbaren Panels der Seite, ohne die in versteckten Reitern
+  const allPanels = () => [...document.querySelectorAll('#page-content .help-fold, #page-content .opt-fold')].filter((p) => p.offsetParent !== null);
+  const folded = (p) => p.classList.contains('help-folded') || p.classList.contains('opt-folded');
   let scheduled = false;
 
   function apply(panel) {
@@ -1438,15 +1482,15 @@ const helpFold = (function () {
     apply(panel);
   }
 
-  // das Symbol in der Kopfzeile, nur auf Seiten mit Erklärungstabellen; es zeigt, was ein Klick tut
+  // das Symbol in der Kopfzeile, nur auf Seiten mit klappbaren Panels; es zeigt, was ein Klick tut
   function updatePageButton() {
     scheduled = false;
-    const all = panels();
+    const all = allPanels();
     const item = document.getElementById('btn_help_fold_all');
     if (!item) return;
     item.style.display = all.length ? '' : 'none';
     if (!all.length) return;
-    const anyOpen = all.some((p) => !p.classList.contains('help-folded'));
+    const anyOpen = all.some((p) => !folded(p));
     const link = item.querySelector('a');
     link.dataset.tipKey = anyOpen ? 'general_btn_help_fold_all' : 'general_btn_help_unfold_all';
     link.dataset.tip = $.i18n(link.dataset.tipKey);
@@ -1494,14 +1538,18 @@ const helpFold = (function () {
     const content = document.getElementById('page-content');
     if (content) new MutationObserver(schedule).observe(content, { childList: true, subtree: true });
     $('#btn_help_fold_all > a').on('click', function () {
-      const open = !panels().some((p) => !p.classList.contains('help-folded'));
-      panels().forEach((p) => set(p, open));
+      const all = allPanels();
+      const open = !all.some((p) => !folded(p));
+      all.forEach((p) => (p.classList.contains('help-fold') ? set(p, open) : optFold.set(p, open)));
       updatePageButton();
     });
+    // Reiterwechsel ändert, welche Panels sichtbar sind
+    $(document).on('shown.bs.tab', schedule);
   });
 
-  return { attach };
+  return { attach, refresh: updatePageButton };
 })();
+globalThis.helpFold = helpFold;
 
 // Fork-Erweiterung: kurzer Name beim Darüberfahren mit der Maus über die Symbole der Kopfzeile
 // (data-tip-key in index.html; übersetzt erst beim Darüberfahren, weil die Sprachdatei beim Laden der

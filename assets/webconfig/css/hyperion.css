@@ -1080,16 +1080,18 @@ input[type="radio"] .styled:checked + label::after {
 .help-fold.help-folded > .panel-body {
   display: none;
 }
-/* Fork-Erweiterung: zuklappbare Einstellungsbereiche (optFold in js/ui_utils.js) */
+/* Fork-Erweiterung: zuklappbare Panels (optFold in js/ui_utils.js); zugeklappt bleibt nur die Titelzeile */
 .opt-fold > .panel-heading {
   cursor: pointer;
   position: relative;
   padding-right: 46px;
   user-select: none;
 }
-.opt-fold.opt-folded > .panel-body,
-.opt-fold.opt-folded > .panel-footer {
+.opt-fold.opt-folded > :not(.panel-heading) {
   display: none;
+}
+.opt-fold.opt-folded > .panel-heading {
+  border-bottom: 0;
 }
 .opt-fold.opt-folded .help-fold-toggle .fa {
   transform: rotate(-90deg);
@@ -1289,6 +1291,21 @@ body {
   }
   html {
     scroll-padding-top: 66px;
+  }
+}
+/* Handy: die Symbole rücken zusammen und das Logo wird kleiner, statt unter den Symbolen zu liegen */
+@media (max-width: 559.98px) {
+  nav.navbar-static-top .navbar-brand {
+    min-width: 0;
+  }
+  #top-navbar > li > a {
+    padding: 0 2px;
+  }
+}
+/* sehr schmal: ein briefmarkengroßes Logo wäre unleserlich, die Symbole brauchen den Platz */
+@media (max-width: 339.98px) {
+  nav.navbar-static-top .navbar-brand {
+    display: none;
   }
 }
 
