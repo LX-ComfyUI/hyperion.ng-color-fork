@@ -1311,7 +1311,8 @@ const optFold = (function () {
     const used = new Set([...document.querySelectorAll('#page-content .opt-fold')].map((p) => p.dataset.optFold));
     document.querySelectorAll('#page-content .panel:not(.opt-fold):not(.help-fold)').forEach((panel) => {
       const heading = panel.querySelector(':scope > .panel-heading');
-      if (!heading || heading.querySelector('#active_instance_dropdown')) return;
+      // Panels mit eigenem Bootstrap-Aufklappen (LED-Layout: data-toggle="collapse") klappen schon selbst
+      if (!heading || heading.querySelector('#active_instance_dropdown') || heading.matches('[data-toggle="collapse"]')) return;
       let key = keyOf(panel, heading);
       for (let n = 2; used.has(key); n++) key = keyOf(panel, heading) + '#' + n;
       used.add(key);
