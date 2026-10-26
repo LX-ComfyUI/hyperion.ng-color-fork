@@ -26,7 +26,7 @@
 
   const TEXT = {
     de: {
-      title: "„No Signal“-Standbild-Erkennung",
+      title: "„No Signal“-Standbild",
       guideTitle: "Anleitung",
       guideIntro: "Viele Grabber zeigen ohne HDMI-Signal ein eigenes Bild, statt schwarz zu bleiben, zum Beispiel den Text „No Signal“, ein Logo, ein Blaubild oder Farbbalken. Hyperion würde dieses Bild auf die LEDs geben. Die Erkennung lernt das Bild einmal und reagiert, sobald es wieder erscheint. Verglichen wird Helligkeit und Farbe. Eine dunkle Filmszene zählt nicht, weil ihr die Merkmale des Bildes fehlen (Text, Logo, Farbflächen).",
       guideSteps: [
@@ -98,7 +98,7 @@
       errResult: "Kein Kalibrierergebnis vorhanden.",
     },
     en: {
-      title: "\"No Signal\" still image detection",
+      title: "\"No Signal\" still image",
       guideTitle: "Instructions",
       guideIntro: "Many grabbers show a picture of their own while no HDMI signal arrives, instead of staying black, for example the text \"No Signal\", a logo, a blue screen or color bars. Hyperion would put that picture on the LEDs. The detection learns the picture once and reacts as soon as it appears again. Brightness and color are compared. A dark film scene does not count, because it lacks the picture's features (text, logo, colored areas).",
       guideSteps: [

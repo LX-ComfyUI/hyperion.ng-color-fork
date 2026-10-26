@@ -310,7 +310,6 @@ window.I18N_EN = {
  "LED-Layout-Korrektur": "LED layout correction",
  "Hyperion Backup": "Hyperion Backup",
  "No-Signal-Erkennung des Grabbers": "grabber \"No Signal\" detection",
- "„No Signal“-Standbild-Erkennung": "\"No Signal\" still image detection",
  "Graukurve (Hyperion)": "Gray curve (Hyperion)",
  "Störende Hyperion-Funktionen während eines Tests ausschalten<small>Solange ein Test oder eine Testfarbe läuft, schaltet die Seite vorübergehend aus, was das Ergebnis verfälschen würde: Graues-Standbild-Erkennung, Schwarzbalken-Erkennung, Hintergrundbeleuchtung, „No Signal“-Erkennung des Grabbers und beim Positionstest eine tiefe Erfassungstiefe. Was der Test gerade prüft, bleibt an. Danach ist alles wieder wie vorher.</small>": "Switch off interfering Hyperion features during a test<small>While a test or a test color runs, the page temporarily switches off what would falsify the result: gray still image detection, black bar detection, backlight, the grabber's \"No Signal\" detection and, for the position test, a deep capture depth. What the test is checking stays on. Afterwards everything is as before.</small>",
  "Störende Hyperion-Funktionen während eines Tests ausschalten": "Switch off interfering Hyperion features during a test",
