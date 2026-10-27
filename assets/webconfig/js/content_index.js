@@ -644,10 +644,12 @@ function SwitchToMenuItem(target, item) {
       const data = await res.json();
       tvNotes = data.notices || [];
       tvUp = true;
+      if (globalThis.forkSideStatus) globalThis.forkSideStatus.tv(data.running || {});
       if (seen < 0) { seen = lastId(); store.set('hy-notes-seen', seen); } // erster Besuch: ohne alte Meldungen
       announce();
     } catch (e) {
       tvUp = false;
+      if (globalThis.forkSideStatus) globalThis.forkSideStatus.tv({});
     } finally {
       clearTimeout(timer);
     }
@@ -681,5 +683,121 @@ function SwitchToMenuItem(target, item) {
       globalThis.serverConfig.grabberTest = data.grabberTest;
       render();
     }
+  });
+})();
+
+// Fork-Erweiterung: Symbole im Seitenmenü und am Knopf der LED-Visualisierung, wie auf der TV-Testseite.
+// - Blau (pulsierend): an der WebUI-Seite eines Tests oder einer Kalibrierung, die gerade läuft. Was die
+//   TV-Testseite gerade zeigt, meldet ihr Testserver (/api/notices, "running", je Karte); die Zuordnung
+//   Karte → Menüeintrag ist die der Anleitung (content/guide.html). Die Kalibrierung der No-Signal-
+//   Erkennung meldet Hyperion selbst.
+// - Gelb (Monitor mit x) = kein Signal am Grabber, rot (durchgestrichener Bildschirm) = kein Grabber
+//   oder er liefert keine Bilder mehr: am Knopf der LED-Visualisierung, an "Aufnahme Hardware" und an
+//   jedem Eintrag mit laufendem Test (ohne Grabber-Bild sagt der Test nichts). Nur bei eingeschalteter
+//   USB-Aufnahme (grabberV4L2.enable), sonst gibt es keinen Grabber, dessen Bild fehlen könnte.
+(function () {
+  const POLL_MS = 5000;
+  const STUCK_AGE_MS = 5000;
+  const CARD_MENU = {
+    'card-gx': 'MenuItemGrabber', 'card-ns': 'MenuItemGrabber',
+    'card-rgb': 'MenuItemInstLeds', 'card-lp': 'MenuItemInstLeds', 'card-dt': 'MenuItemInstLeds',
+    'card-color': 'MenuItemInstConfColors', 'card-ft': 'MenuItemInstConfColors', 'card-gcg': 'MenuItemInstConfColors',
+    'card-bars': 'MenuItemInstConfColors', 'card-gs': 'MenuItemInstConfColors',
+    'card-media': 'MenuItemGuide',
+  };
+  // Einträge im Untermenü "LED-Instanzen": ihr Symbol steht auch am zugeklappten Obereintrag
+  const SUB_PARENT = { MenuItemInstLeds: 'MenuItemLedInstances', MenuItemInstConfColors: 'MenuItemLedInstances' };
+  // lucide circle-play, monitor-check, monitor-x, screen-share-off (dieselben wie auf der Testseite)
+  const RUN_ICON = '<circle cx="12" cy="12" r="10"/><path class="fill" d="M10 8.5v7l5.5-3.5z"/>';
+  const GRAB_ICONS = {
+    ok: '<path d="m9 10 2 2 4-4"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/>',
+    x: '<path d="m14.5 12.5-5-5"/><path d="m9.5 12.5 5-5"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/>',
+    off: '<path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="m22 3-5 5"/><path d="m17 3 5 5"/>',
+  };
+  let tvRunning = {};
+  let ns = null;        // Antwort von grabbertest nosignal status
+  let stuckPolls = 0;
+  let started = false;
+
+  const v4lOn = () => {
+    const v4l = globalThis.serverConfig && globalThis.serverConfig.grabberV4L2;
+    const comp = (globalThis.comps || []).find((c) => c.name === 'V4L');
+    return !!(v4l && v4l.enable) && (!comp || comp.enabled);
+  };
+  // '' = Bild da (oder nichts bekannt), 'x' = kein Signal, 'off' = kein Grabber / keine Bilder
+  function grabberState() {
+    if (!ns || !v4lOn()) return '';
+    if (!ns.device || stuckPolls >= 2) return 'off';
+    return ns.noSignal === true ? 'x' : '';
+  }
+
+  function render() {
+    const run = {};
+    const add = (id, kind) => { if (run[id] !== 'calib') run[id] = kind; };
+    for (const [card, kind] of Object.entries(tvRunning)) if (CARD_MENU[card]) add(CARD_MENU[card], kind);
+    if (ns && ns.calibrating) add('MenuItemGrabber', 'calib');
+    for (const [id, parent] of Object.entries(SUB_PARENT)) if (run[id]) add(parent, run[id]);
+    const grab = grabberState();
+    const ids = ['MenuItemGuide', 'MenuItemGrabber', 'MenuItemInstLeds', 'MenuItemInstConfColors', 'MenuItemLedInstances'];
+    for (const id of ids) {
+      const a = document.getElementById(id);
+      if (!a) continue;
+      const kind = run[id];
+      const showGrab = grab && (kind || id === 'MenuItemGrabber');
+      const cls = showGrab ? (grab === 'off' ? 'bad' : 'warn') : kind ? 'run' : '';
+      const text = [showGrab && $.i18n(grab === 'off' ? 'general_st_nograbber' : 'general_st_nosignal'),
+        kind && $.i18n(kind === 'calib' ? 'general_st_calib' : 'general_st_test')].filter(Boolean).join(' · ');
+      let st = a.querySelector(':scope > .side-st');
+      if (!cls) { if (st) st.remove(); continue; }
+      if (!st) {
+        st = document.createElement('span');
+        st.setAttribute('role', 'img');
+        // vor dem Pfeil des Obereintrags, sonst am Ende
+        a.insertBefore(st, a.querySelector(':scope > .arrow'));
+      }
+      if (st.dataset.key === cls + text) continue;
+      st.dataset.key = cls + text;
+      st.className = 'side-st ' + cls + (SUB_PARENT[id] ? ' sub' : '') + (id === 'MenuItemLedInstances' ? ' sum' : '');
+      st.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + (showGrab ? GRAB_ICONS[grab] : RUN_ICON) + '</svg>';
+      st.dataset.tip = text;
+      st.setAttribute('aria-label', text);
+    }
+    // Knopf der LED-Visualisierung (zeigt das Grabber-Bild): dieselben Symbole wie die Grabber-Vorschau der Testseite
+    const btn = document.querySelector('#btn_open_ledsim > a');
+    if (btn) {
+      const kind = grab || 'ok';
+      if (btn.dataset.grab !== kind) {
+        btn.dataset.grab = kind;
+        btn.innerHTML = '<svg class="tb-svg" viewBox="0 0 24 24" aria-hidden="true">' + GRAB_ICONS[kind] + '</svg>';
+        btn.classList.toggle('tb-warn', kind === 'x');
+        btn.classList.toggle('tb-bad', kind === 'off');
+        btn.dataset.tipKey = kind === 'x' ? 'general_tip_ledsim_nosignal' : kind === 'off' ? 'general_tip_ledsim_nograbber' : 'main_ledsim_title';
+        btn.dataset.tip = $.i18n(btn.dataset.tipKey);
+      }
+    }
+  }
+
+  async function poll() {
+    try {
+      const reply = await sendAsyncToHyperion('grabbertest', '', { nosignal: 'status' });
+      if (reply && reply.success && reply.info) {
+        ns = reply.info;
+        const stuck = !!ns.device && !ns.calibrating && (ns.ageMs < 0 || ns.ageMs > STUCK_AGE_MS);
+        stuckPolls = stuck ? stuckPolls + 1 : 0;
+      }
+    } catch (e) {
+      // ohne Verbindung bleibt der letzte Stand
+    }
+    render();
+  }
+
+  globalThis.forkSideStatus = {
+    tv(running) { tvRunning = running; render(); },
+  };
+  $(globalThis.hyperion).on('ready', function () {
+    if (started) return;
+    started = true;
+    poll();
+    setInterval(poll, POLL_MS);
   });
 })();
