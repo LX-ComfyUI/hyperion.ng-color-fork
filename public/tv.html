@@ -161,7 +161,7 @@ const screenEl = $("screen");
 const barEls = { top: $("bar-top"), bottom: $("bar-bottom"), left: $("bar-left"), right: $("bar-right") };
 const connectEl = $("connect");
 
-let state = { color: "#000000", colorActive: true, bars: { top: 0, bottom: 0, left: 0, right: 0 } };
+let state = { color: "#000000", colorActive: false, bars: { top: 0, bottom: 0, left: 0, right: 0 } };
 let phones = 0;
 let clockOffset = 0;      // Pi clock minus TV clock
 let grayTimer = null;
@@ -422,11 +422,11 @@ function renderGrabberTest() {
   el.hidden = !grabberTestRunning();
   if (!el.hidden) el.style.background = fullScreenColor();
 }
-// nothing on the TV: no test, no test color (black counts as none), no black bars, no debug view
+// nothing on the TV: no test, no test color switched on (black too, it is a test color), no black bars, no debug view
 function nothingShown() {
   const o = state.overlays ?? {};
   const bars = state.bars ?? {};
-  const colorShown = state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000";
+  const colorShown = state.colorActive !== false;
   return !grabberTestRunning() && !TvMedia.active() && !colorShown && !["top", "bottom", "left", "right"].some((e) => bars[e] > 0)
     && !state.grayTest?.active && !state.depthTest?.active && !state.fracTest?.active && !state.posTest?.active
     && !o.bbTv && !o.gsTv && !o.dpTv;

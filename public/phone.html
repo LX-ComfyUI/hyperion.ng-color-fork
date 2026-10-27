@@ -3653,7 +3653,7 @@ const tsItem = (cls, ico, name, val) => `<li class="ts-${cls}"><span class="ico"
 
 // which kinds of tests run now (the same rules as the server's test guard)
 function tsRunning() {
-  const shown = state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000";
+  const shown = state.colorActive !== false;
   const pattern = testPatternActive() || state.posGuide?.active;
   return {
     color: shown && !pattern, bars: Object.values(state.bars ?? {}).some((v) => v > 0), gray: !!state.grayTest?.active,

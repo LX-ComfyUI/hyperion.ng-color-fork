@@ -73,8 +73,9 @@ const DEFAULT_GUARD_RULES = {
 
 const DEFAULT_STATE = {
   color: "#000000",
-  // false = the TV shows black instead of `color` (the on/off button per test color)
-  colorActive: true,
+  // false = no test color is on: the TV shows black, or the idle hint while a control page is connected
+  // (the on/off button per test color); true shows `color`, black too
+  colorActive: false,
   bars: { top: 0, bottom: 0, left: 0, right: 0 },
   customColors: [],
   // edited preset colors, id -> hex (missing id = standard color from PRESETS)
@@ -1860,7 +1861,7 @@ let guardInfo = { applied: [] };
 function guardWanted(entries = {}) {
   if (!state.testGuard) return {};
   const tests = [];
-  const shownColor = state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000";
+  const shownColor = state.colorActive !== false;
   const pattern = ["grayTest", "depthTest", "fracTest", "posTest"].some((t) => state[t]?.active) || state.posGuide?.active;
   if (state.grayTest?.active) tests.push("gray");
   if (state.depthTest?.active) tests.push("depth");
@@ -1978,7 +1979,7 @@ function shownTests() {
   for (const k of ["grayTest", "depthTest", "fracTest", "posTest"]) if (state[k]?.active) keys.push(k);
   if (state.posGuide?.active) keys.push("posGuide");
   if (gcGuide.active) keys.push("gcGuide");
-  if (state.colorActive !== false && (state.color ?? "#000000").toLowerCase() !== "#000000") keys.push("color");
+  if (state.colorActive !== false) keys.push("color");
   if (Object.values(state.bars ?? {}).some((v) => v > 0)) keys.push("bars");
   return keys;
 }
