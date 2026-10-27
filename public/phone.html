@@ -241,15 +241,12 @@
   :root.has-side #pv-fab svg { width: 16px; height: 16px; }
   :root.has-side #pv-fab .pv-label { display: inline; }
   :root.has-side #pv-fab[aria-pressed="false"] { background: var(--btn); color: var(--btn-text); border: 1px solid var(--btn-line); }
-  /* symbol next to the eye: a test or calibration of the card runs (blue, pulsing), or the grabber gives
-     no picture (the icons of the grabber preview: yellow no signal, red no grabber) */
+  /* symbol next to the eye: a test or calibration of the card runs (blue, pulsing) */
   .side-list .side-st { flex: none; display: flex; align-items: center; height: 18px; margin: -2px 0 -2px auto; color: var(--accent); }
   .side-list .side-st[hidden] { display: none; }
   .side-list .side-st svg { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .side-list .side-st.run svg .fill { fill: currentColor; }
   .side-list .side-st.run { animation: side-st-pulse 1.6s ease-in-out infinite; }
-  .side-list .side-st.warn { color: #f2c200; }
-  .side-list .side-st.bad { color: var(--danger); }
   @keyframes side-st-pulse { 50% { opacity: .45; } }
   @media (prefers-reduced-motion: reduce) { .side-list .side-st.run { animation: none; } }
   .card-close svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -1788,7 +1785,7 @@
     const a = document.createElement("a");
     a.href = "#" + card.id;
     a.textContent = card.querySelector(".card-toggle .ttl").textContent;
-    // symbol of a running test or a grabber without picture (renderSideStatus)
+    // symbol of a running test or calibration (renderSideStatus)
     const st = document.createElement("span");
     st.className = "side-st";
     st.hidden = true;
@@ -2446,8 +2443,7 @@ function sideRunning() {
   };
 }
 const SIDE_RUN_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path class="fill" d="M10 8.5v7l5.5-3.5z"/></svg>';
-// the menu entry of each card: running symbol, or the grabber preview icon when the grabber gives no
-// picture and the card needs it (a running test, the grabber color test, the no signal detection)
+// the menu entry of each card: symbol while a test or calibration of it runs
 function renderSideStatus() {
   if (!state) return;
   const run = new Map();
@@ -2455,21 +2451,16 @@ function renderSideStatus() {
     const card = document.getElementById(id)?.closest("main > section.card");
     if (kind && card && run.get(card.id) !== "calib") run.set(card.id, kind);
   }
-  const h = state.health ?? {};
-  const red = h.noGrabber === true || h.grabberStuck === true;
-  const grab = red ? "off" : h.noSignal === true ? "x" : "";
   document.querySelectorAll("#side .side-st").forEach((st) => {
-    const id = st.parentElement.hash.slice(1);
-    const kind = run.get(id);
-    const showGrab = grab && (kind || id === "card-gx" || id === "card-ns");
-    const cls = showGrab ? (red ? "bad" : "warn") : kind ? "run" : "";
-    const tipText = [showGrab && tr(red ? "Kein Grabber erkannt" : "Kein Signal am Grabber"), kind && tr(kind === "calib" ? "Kalibrierung läuft" : "Test läuft")].filter(Boolean).join(" · ");
-    st.hidden = !cls;
-    if (st.dataset.key === cls + tipText) return;
-    st.dataset.key = cls + tipText;
-    st.className = "side-st " + cls;
-    st.innerHTML = showGrab ? `<svg viewBox="0 0 24 24" aria-hidden="true">${PREVIEW_ICONS[grab]}</svg>` : kind ? SIDE_RUN_ICON : "";
-    if (tipText) { st.dataset.tip = tipText; st.setAttribute("aria-label", tipText); st.setAttribute("role", "img"); }
+    const kind = run.get(st.parentElement.hash.slice(1));
+    st.hidden = !kind;
+    if (!kind || st.dataset.kind === kind) return;
+    st.dataset.kind = kind;
+    st.className = "side-st run";
+    st.innerHTML = SIDE_RUN_ICON;
+    st.dataset.tip = tr(kind === "calib" ? "Kalibrierung läuft" : "Test läuft");
+    st.setAttribute("aria-label", st.dataset.tip);
+    st.setAttribute("role", "img");
   });
 }
 
@@ -6111,6 +6102,7 @@ function renderBar() {
     prev.querySelector("svg").innerHTML = PREVIEW_ICONS[kind];
   }
   prev.dataset.tip = !alert ? tr("Grabber-Vorschau") : (red ? tr("Kein Grabber erkannt") : tr("Kein Signal am Grabber")) + " · " + tr("Grabber-Vorschau");
+  // the health also says whether the no signal calibration runs
   renderSideStatus();
 }
 (function () {
