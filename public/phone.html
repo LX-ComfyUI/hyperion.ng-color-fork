@@ -6506,7 +6506,7 @@ async function init() {
   });
 }
 init().then(() => {
-  // a link from the Hyperion WebUI bell (/phone#card-gx): open that card and scroll to it
+  // a link from the Hyperion WebUI bell (/#card-gx): open that card and scroll to it
   const id = decodeURIComponent(location.hash.slice(1));
   if (id && /^card-[\w-]+$/.test(id)) setTimeout(() => jumpToCard(id), 300);
 });
