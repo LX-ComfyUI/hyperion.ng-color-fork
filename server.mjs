@@ -369,7 +369,7 @@ const NOTICES_FILE = path.join(DATA_DIR, "notices.json");
 const NOTICE_MAX = 60;
 let notices = [];
 try { notices = JSON.parse(fs.readFileSync(NOTICES_FILE, "utf8")).filter((n) => n && Number.isInteger(n.id)).slice(-NOTICE_MAX); } catch {}
-let health = { hyperionUp: true, noSignal: false, grabberStuck: false, noGrabber: false }; // shown in the bar of the control page
+let health = { hyperionUp: true, noSignal: false, grabberStuck: false, noGrabber: false, nsCalibrating: false }; // shown in the bar of the control page
 
 function addNotice(kind, level, params = {}, target = "") {
   const id = (notices.at(-1)?.id ?? 0) + 1;
@@ -415,7 +415,29 @@ function webuiPort() {
 // the state with everything the pages show besides it
 function publicState() {
   return { ...state, tvVersion, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
-    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices };
+    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard };
+}
+
+// what runs now, per card: { "card-…": "test" | "calib" } — for the symbols in the menu of the WebUI;
+// the control page has the same rules in sideRunning() (plus the white point, which only it knows).
+// The ids are the ones of the guide (content/guide.html in the WebUI).
+function runningCards() {
+  const pattern = ["grayTest", "depthTest", "fracTest", "posTest"].some((t) => state[t]?.active) || state.posGuide?.active;
+  const fullScreen = (grabberRun.running && grabberRun.color) || gcGuide.active;
+  const r = {
+    "card-gx": grabberRun.running && "calib",
+    "card-ns": health.nsCalibrating && "calib",
+    "card-color": state.colorActive !== false && !pattern && !fullScreen && !state.media?.active && "test",
+    "card-gcg": gcGuide.active && "calib",
+    "card-rgb": rgbWizard && "test",
+    "card-bars": Object.values(state.bars ?? {}).some((v) => v > 0) && "test",
+    "card-gs": state.grayTest?.active && "test",
+    "card-dt": state.depthTest?.active && "test",
+    "card-ft": state.fracTest?.active && "test",
+    "card-lp": (state.posGuide?.active && "calib") || (state.posTest?.active && "test"),
+    "card-media": state.media?.active && "test",
+  };
+  return Object.fromEntries(Object.entries(r).filter(([, v]) => v));
 }
 
 // Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
@@ -989,6 +1011,7 @@ async function pollHealth() {
     next.grabberStuck = nowStuck;
     next.noGrabber = !info.device;
     next.noSignal = nowNoSignal;
+    next.nsCalibrating = info.calibrating === true;
     healthKnown = true;
   }
   if (JSON.stringify(next) !== JSON.stringify(health)) { health = next; broadcast(); }
@@ -1574,6 +1597,12 @@ function exclusive(task) {
 
 // one authorized JSON-API command (system commands, the RGB wizard's color)
 const RGB_WIZARD_PRIORITY = 1;
+let rgbWizard = false; // the RGB byte order wizard shows its colors on the LEDs
+function setRgbWizard(on) {
+  if (rgbWizard === on) return;
+  rgbWizard = on;
+  broadcast();
+}
 async function hyperionCommand(cmd) {
   const api = await openHyperion();
   try {
@@ -2023,6 +2052,7 @@ function pauseTests() {
   addNotice("paused", "critical", { tests: keys }, keys.length ? "" : "card-ts");
   // a color of the RGB wizard stays on the LEDs without the page that alternates it
   hyperionCommand({ command: "clear", priority: RGB_WIZARD_PRIORITY }).catch(() => {});
+  rgbWizard = false;
   broadcast();
   scheduleGuard();
 }
@@ -2213,7 +2243,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/notices") {
       const lang = url.searchParams.get("lang") === "en" ? "en" : "de";
       const list = notices.map((n) => ({ id: n.id, ts: n.ts, level: n.level, kind: n.kind, ...NoticeText.info(n, lang) }));
-      return sendJson(res, 200, { notices: list, health, tvConnected: hasTv() });
+      return sendJson(res, 200, { notices: list, health, tvConnected: hasTv(), running: runningCards() });
     }
     if (req.method === "POST" && p === "/api/notices") {
       needTvtestHeader(req);
@@ -2310,6 +2340,7 @@ const server = http.createServer(async (req, res) => {
     }
     // sent by the page when it is left during the wizard (sendBeacon, no body)
     if (req.method === "POST" && p === "/api/hyperion/rgbwizard-clear") {
+      setRgbWizard(false);
       await hyperionCommand({ command: "clear", priority: RGB_WIZARD_PRIORITY }).catch(() => {});
       return sendJson(res, 200, { ok: true });
     }
@@ -2318,9 +2349,11 @@ const server = http.createServer(async (req, res) => {
       if (action === "color") {
         if (!Array.isArray(color) || color.length !== 3 || !color.every((v) => Number.isInteger(v) && v >= 0 && v <= 255)) return sendJson(res, 400, { error: "Ungültige Farbe" });
         await hyperionCommand({ command: "color", color, priority: RGB_WIZARD_PRIORITY, origin: "TV-Testseite" });
+        setRgbWizard(true);
         return sendJson(res, 200, { ok: true });
       }
       if (action === "clear") {
+        setRgbWizard(false);
         await hyperionCommand({ command: "clear", priority: RGB_WIZARD_PRIORITY });
         return sendJson(res, 200, { ok: true });
       }

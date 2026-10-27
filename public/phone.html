@@ -241,7 +241,17 @@
   :root.has-side #pv-fab svg { width: 16px; height: 16px; }
   :root.has-side #pv-fab .pv-label { display: inline; }
   :root.has-side #pv-fab[aria-pressed="false"] { background: var(--btn); color: var(--btn-text); border: 1px solid var(--btn-line); }
-  .side-list .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: auto; }
+  /* symbol next to the eye: a test or calibration of the card runs (blue, pulsing), or the grabber gives
+     no picture (the icons of the grabber preview: yellow no signal, red no grabber) */
+  .side-list .side-st { flex: none; display: flex; align-items: center; height: 18px; margin: -2px 0 -2px auto; color: var(--accent); }
+  .side-list .side-st[hidden] { display: none; }
+  .side-list .side-st svg { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .side-list .side-st.run svg .fill { fill: currentColor; }
+  .side-list .side-st.run { animation: side-st-pulse 1.6s ease-in-out infinite; }
+  .side-list .side-st.warn { color: #f2c200; }
+  .side-list .side-st.bad { color: var(--danger); }
+  @keyframes side-st-pulse { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .side-list .side-st.run { animation: none; } }
   .card-close svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
   .sub { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line); }
@@ -1778,9 +1788,11 @@
     const a = document.createElement("a");
     a.href = "#" + card.id;
     a.textContent = card.querySelector(".card-toggle .ttl").textContent;
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    a.appendChild(dot);
+    // symbol of a running test or a grabber without picture (renderSideStatus)
+    const st = document.createElement("span");
+    st.className = "side-st";
+    st.hidden = true;
+    a.appendChild(st);
     a.addEventListener("click", (ev) => {
       ev.preventDefault();
       window.showCard?.(card);
@@ -1790,11 +1802,6 @@
     });
     li.appendChild(a);
     side.querySelector(".side-list").appendChild(li);
-    // the dot follows the card's "running" badge
-    const badge = card.querySelector(".card-toggle .badge");
-    const sync = () => { dot.hidden = !badge || badge.hidden; };
-    if (badge) new MutationObserver(sync).observe(badge, { attributes: true, attributeFilter: ["hidden"] });
-    sync();
     return a;
   });
 
@@ -2389,6 +2396,7 @@ function renderState() {
   renderGrabberCorrection();
   renderGrabberColors();
   renderCardBadges();
+  renderSideStatus();
 }
 
 // a closed card still shows when its test is on the TV right now
@@ -2416,6 +2424,53 @@ function renderCardBadges() {
     badge.hidden = !text;
     badge.textContent = text || "";
   }
+}
+
+// what runs now, per card: "test" | "calib" — the same rules as runningCards() in server.mjs (which
+// tells the WebUI), plus the white point and the RGB wizard of this page
+function sideRunning() {
+  const pattern = testPatternActive() || state.posGuide?.active;
+  const fullScreen = (state.grabberRun?.running && state.grabberRun.color) || state.gcGuide?.active;
+  return {
+    "card-gx": state.grabberRun?.running && "calib",
+    "card-ns": state.health?.nsCalibrating && "calib",
+    "card-color": (wpRun && "calib") || (state.colorActive !== false && !pattern && !fullScreen && !state.media?.active && "test"),
+    "card-gcg": state.gcGuide?.active && "calib",
+    "card-rgb": (state.rgbWizard || window.rgbWizardRunning?.()) && "test",
+    "card-bars": EDGES.some((e) => (state.bars ?? {})[e] > 0) && "test",
+    "card-gs": state.grayTest?.active && "test",
+    "card-dt": state.depthTest?.active && "test",
+    "card-ft": state.fracTest?.active && "test",
+    "card-lp": (state.posGuide?.active && "calib") || (state.posTest?.active && "test"),
+    "card-media": state.media?.active && "test",
+  };
+}
+const SIDE_RUN_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path class="fill" d="M10 8.5v7l5.5-3.5z"/></svg>';
+// the menu entry of each card: running symbol, or the grabber preview icon when the grabber gives no
+// picture and the card needs it (a running test, the grabber color test, the no signal detection)
+function renderSideStatus() {
+  if (!state) return;
+  const run = new Map();
+  for (const [id, kind] of Object.entries(sideRunning())) {
+    const card = document.getElementById(id)?.closest("main > section.card");
+    if (kind && card && run.get(card.id) !== "calib") run.set(card.id, kind);
+  }
+  const h = state.health ?? {};
+  const red = h.noGrabber === true || h.grabberStuck === true;
+  const grab = red ? "off" : h.noSignal === true ? "x" : "";
+  document.querySelectorAll("#side .side-st").forEach((st) => {
+    const id = st.parentElement.hash.slice(1);
+    const kind = run.get(id);
+    const showGrab = grab && (kind || id === "card-gx" || id === "card-ns");
+    const cls = showGrab ? (red ? "bad" : "warn") : kind ? "run" : "";
+    const tipText = [showGrab && tr(red ? "Kein Grabber erkannt" : "Kein Signal am Grabber"), kind && tr(kind === "calib" ? "Kalibrierung läuft" : "Test läuft")].filter(Boolean).join(" · ");
+    st.hidden = !cls;
+    if (st.dataset.key === cls + tipText) return;
+    st.dataset.key = cls + tipText;
+    st.className = "side-st " + cls;
+    st.innerHTML = showGrab ? `<svg viewBox="0 0 24 24" aria-hidden="true">${PREVIEW_ICONS[grab]}</svg>` : kind ? SIDE_RUN_ICON : "";
+    if (tipText) { st.dataset.tip = tipText; st.setAttribute("aria-label", tipText); st.setAttribute("role", "img"); }
+  });
 }
 
 // ---------- test colors: list ----------
@@ -4603,6 +4658,7 @@ async function gcgSend(body) {
     state = { ...state, gcGuide: out.gcGuide };
     renderGcGuide();
     renderCardBadges();
+  renderSideStatus();
     return out;
   } catch (e) {
     $("gcg-warn").textContent = e instanceof TypeError ? tr("Die Testseite auf dem Hyperion-Server ist nicht erreichbar.") : e.message;
@@ -4750,6 +4806,7 @@ const wpCorners = (start, gains) => WP_CORNERS.map((c) => ({ field: c, value: st
 
 function renderWhitePoint() {
   const running = !!wpRun;
+  renderSideStatus();
   $("wp-start").hidden = running;
   $("wp-start").disabled = !hyperionConnected || !wpWhite();
   $("wp-run").hidden = !running;
@@ -6054,6 +6111,7 @@ function renderBar() {
     prev.querySelector("svg").innerHTML = PREVIEW_ICONS[kind];
   }
   prev.dataset.tip = !alert ? tr("Grabber-Vorschau") : (red ? tr("Kein Grabber erkannt") : tr("Kein Signal am Grabber")) + " · " + tr("Grabber-Vorschau");
+  renderSideStatus();
 }
 (function () {
   const btn = $("tb-bell");
@@ -6164,6 +6222,7 @@ async function grabberTestAction(kind) {
     if (body.action === "start" && $("pv-panel").hidden) setPanel(true);
     renderGrabberRun();
     renderCardBadges();
+  renderSideStatus();
   } catch (e) {
     showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
   }
@@ -6240,6 +6299,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
   };
   const fail = (e) => showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
   const running = () => timer !== null;
+  window.rgbWizardRunning = running;
 
   const show = async (c) => {
     color = c;
@@ -6253,6 +6313,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
   const render = () => {
     $("rgb-start").innerHTML = running() ? `${ICON.stop}<span>${I18N.t("Beenden")}</span>` : `${ICON.play}<span>${I18N.t("Assistent starten")}</span>`;
     $("rgb-start").classList.toggle("running", running());
+    renderSideStatus();
     $("rgb-run").hidden = !running();
     $("rgb-current").textContent = tr("Aktuelle Reihenfolge der LED-Hardware: {o}", { o: current.toUpperCase() });
   };
@@ -6427,6 +6488,7 @@ async function init() {
   renderGrabberCorrection();
   renderGrabberColors();
   renderCardBadges();
+  renderSideStatus();
   loadGrabberReport();
   setPanel(store.get("tvtest-preview") === "1");
   // role=phone tells the TV to hide its QR code

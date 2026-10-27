@@ -260,6 +260,8 @@ window.I18N_EN = {
  "Stumm": "Muted",
  "Alle löschen": "Clear all",
  "Kein Signal am Grabber": "No signal at the grabber",
+ "Test läuft": "Test running",
+ "Kalibrierung läuft": "Calibration running",
  "Testserver": "Test server",
  "Zustand der Testseite, der Verbindung zu Hyperion, der Funktionen in Hyperion, die Tests beeinflussen, und der Tests selbst. Unten legst du fest, was der Testschutz während eines Tests ausschaltet.": "State of the test page, the connection to Hyperion, the Hyperion features that affect tests, and the tests themselves. Below you choose what the test guard switches off during a test.",
  "Status": "Status",
