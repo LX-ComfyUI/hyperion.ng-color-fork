@@ -2205,7 +2205,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    if (req.method === "GET" && (p === "/" || p === "/phone")) return servePage(req, res, "phone.html");
+    if (req.method === "GET" && p === "/") return servePage(req, res, "phone.html");
     if (req.method === "GET" && p === "/tv") return servePage(req, res, "tv.html");
     if (await media.handle(req, res, p, sendJson, readBody)) return;
     if (await sources.handle(req, res, p, sendJson, readBody)) return;
