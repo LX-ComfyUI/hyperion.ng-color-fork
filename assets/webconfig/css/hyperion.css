@@ -1620,8 +1620,7 @@ nav.navbar-static-top .navbar-toggle {
 }
 
 /* Fork-Erweiterung: Symbol im Seitenmenü (content_index.js, forkSideStatus): Test oder Kalibrierung
-   läuft (blau, pulsierend), kein Signal am Grabber (gelb), kein Grabber (rot); am Obereintrag nur,
-   solange sein Untermenü zugeklappt ist */
+   läuft (blau, pulsierend); am Obereintrag nur, solange sein Untermenü zugeklappt ist */
 #side-menu .side-st {
   float: right;
   display: inline-flex;
@@ -1640,11 +1639,11 @@ nav.navbar-static-top .navbar-toggle {
 }
 #side-menu .side-st.run svg .fill { fill: currentColor; }
 #side-menu .side-st.run { animation: side-st-pulse 1.6s ease-in-out infinite; }
-#side-menu .side-st.warn { color: #f2c200; }
-#side-menu .side-st.bad { color: #d9534f; }
 #side-menu li:has(> ul.mm-show, > ul.in) > a > .side-st.sum { display: none; }
 @keyframes side-st-pulse { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { #side-menu .side-st.run { animation: none; } }
-/* Knopf der LED-Visualisierung: Grabber ohne Signal (gelb) bzw. ohne Bilder (rot) */
+/* Knopf der LED-Visualisierung: etwas kleiner als die übrigen Linien-Symbole; Grabber ohne Signal (gelb)
+   bzw. ohne Bilder (rot) */
+#btn_open_ledsim .tb-svg { width: 17px; height: 17px; }
 #top-navbar a.tb-warn .tb-svg { color: #f2c200; }
 #top-navbar a.tb-bad .tb-svg { color: #d9534f; }

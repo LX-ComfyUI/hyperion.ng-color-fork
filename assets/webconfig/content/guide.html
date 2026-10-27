@@ -5,7 +5,7 @@
 
 <script type="text/javascript">
   // Fork-Erweiterung: die Anleitung der TV-Testseite (Ersteinrichtung), angepasst für die WebUI. Jeder
-  // Schritt verlinkt die Karte der Testseite (/phone#card-…, die Testseite öffnet und zeigt sie) und,
+  // Schritt verlinkt die Karte der Testseite (/#card-…, die Testseite öffnet und zeigt sie) und,
   // wo es passt, die Seite hier in der WebUI (Klick auf den Menüpunkt, damit das Menü mitgeht).
   performTranslation();
 
@@ -44,7 +44,7 @@
     const link = (href, text) => '<a href="' + href + '" target="_blank" rel="noopener">' + text + '</a>';
     const menuName = (id) => $('#' + id + ' > span').first().text().trim();
 
-    let html = '<p>' + $.i18n('guide_intro', link(base + '/tv', base + '/tv'), link(base + '/phone', base + '/phone')) + '</p>'
+    let html = '<p>' + $.i18n('guide_intro', link(base + '/tv', base + '/tv'), link(base + '/', base + '/')) + '</p>'
       + '<p>' + $.i18n('guide_foundation') + '</p>';
     let number = 1;
     for (const sec of sections) {
@@ -52,7 +52,7 @@
       html += '<h4>' + $.i18n(sec.title) + '</h4><' + tag + (tag === 'ol' ? ' start="' + number + '"' : '') + '>';
       for (const step of sec.steps) {
         const links = [];
-        if (step.card) links.push('<a href="' + base + '/phone#' + step.card + '" target="_blank" rel="noopener"><i class="fa fa-external-link fa-fw"></i>' + $.i18n('guide_open_testpage') + '</a>');
+        if (step.card) links.push('<a href="' + base + '/#' + step.card + '" target="_blank" rel="noopener"><i class="fa fa-external-link fa-fw"></i>' + $.i18n('guide_open_testpage') + '</a>');
         for (const id of step.webui || []) links.push('<a href="#" data-guide-goto="' + id + '"><i class="fa fa-arrow-right fa-fw"></i>' + $.i18n('guide_in_webui', menuName(id)) + '</a>');
         html += '<li>' + $.i18n(step.key) + (links.length ? '<div class="guide-links">' + links.join('') + '</div>' : '') + '</li>';
         if (tag === 'ol') number++;

@@ -571,7 +571,7 @@ function SwitchToMenuItem(target, item) {
     const base = tvBase();
     for (const n of tvNotes.slice().reverse()) {
       html += '<li class="nt-item' + (n.level === 'critical' ? ' nt-crit' : '') + (n.id > seen ? ' nt-fresh' : '') + '"'
-        + (n.target && base ? ' data-nt-open="' + esc(base + '/phone#' + n.target) + '"' : '') + '>'
+        + (n.target && base ? ' data-nt-open="' + esc(base + '/#' + n.target) + '"' : '') + '>'
         + '<time>' + esc(timeText(n.ts)) + '</time><b>' + esc(n.title) + '</b>' + (n.text ? '<p>' + esc(n.text) + '</p>' : '') + '</li>';
     }
     if (!notes.length && !tvNotes.length) {
@@ -654,7 +654,7 @@ function SwitchToMenuItem(target, item) {
       clearTimeout(timer);
     }
     $('.tp-only').toggle(tvUp);
-    $('#btn_open_testpage > a').attr('href', base + '/phone');
+    $('#btn_open_testpage > a').attr('href', base + '/');
     render();
   }
 
@@ -686,14 +686,13 @@ function SwitchToMenuItem(target, item) {
   });
 })();
 
-// Fork-Erweiterung: Symbole im Seitenmenü und am Knopf der LED-Visualisierung, wie auf der TV-Testseite.
-// - Blau (pulsierend): an der WebUI-Seite eines Tests oder einer Kalibrierung, die gerade läuft. Was die
-//   TV-Testseite gerade zeigt, meldet ihr Testserver (/api/notices, "running", je Karte); die Zuordnung
-//   Karte → Menüeintrag ist die der Anleitung (content/guide.html). Die Kalibrierung der No-Signal-
-//   Erkennung meldet Hyperion selbst.
-// - Gelb (Monitor mit x) = kein Signal am Grabber, rot (durchgestrichener Bildschirm) = kein Grabber
-//   oder er liefert keine Bilder mehr: am Knopf der LED-Visualisierung, an "Aufnahme Hardware" und an
-//   jedem Eintrag mit laufendem Test (ohne Grabber-Bild sagt der Test nichts). Nur bei eingeschalteter
+// Fork-Erweiterung: Symbole wie auf der TV-Testseite.
+// - Seitenmenü, blau (pulsierend): an der WebUI-Seite eines Tests oder einer Kalibrierung, die gerade
+//   läuft. Was die TV-Testseite gerade zeigt, meldet ihr Testserver (/api/notices, "running", je Karte);
+//   die Zuordnung Karte → Menüeintrag ist die der Anleitung (content/guide.html). Die Kalibrierung der
+//   No-Signal-Erkennung meldet Hyperion selbst.
+// - Knopf der LED-Visualisierung: Monitor mit Haken = Bild da, gelb mit x = kein Signal am Grabber, rot
+//   durchgestrichen = kein Grabber oder er liefert keine Bilder mehr. Nur bei eingeschalteter
 //   USB-Aufnahme (grabberV4L2.enable), sonst gibt es keinen Grabber, dessen Bild fehlen könnte.
 (function () {
   const POLL_MS = 5000;
@@ -737,35 +736,31 @@ function SwitchToMenuItem(target, item) {
     for (const [card, kind] of Object.entries(tvRunning)) if (CARD_MENU[card]) add(CARD_MENU[card], kind);
     if (ns && ns.calibrating) add('MenuItemGrabber', 'calib');
     for (const [id, parent] of Object.entries(SUB_PARENT)) if (run[id]) add(parent, run[id]);
-    const grab = grabberState();
     const ids = ['MenuItemGuide', 'MenuItemGrabber', 'MenuItemInstLeds', 'MenuItemInstConfColors', 'MenuItemLedInstances'];
     for (const id of ids) {
       const a = document.getElementById(id);
       if (!a) continue;
       const kind = run[id];
-      const showGrab = grab && (kind || id === 'MenuItemGrabber');
-      const cls = showGrab ? (grab === 'off' ? 'bad' : 'warn') : kind ? 'run' : '';
-      const text = [showGrab && $.i18n(grab === 'off' ? 'general_st_nograbber' : 'general_st_nosignal'),
-        kind && $.i18n(kind === 'calib' ? 'general_st_calib' : 'general_st_test')].filter(Boolean).join(' · ');
       let st = a.querySelector(':scope > .side-st');
-      if (!cls) { if (st) st.remove(); continue; }
+      if (!kind) { if (st) st.remove(); continue; }
+      const text = $.i18n(kind === 'calib' ? 'general_st_calib' : 'general_st_test');
       if (!st) {
         st = document.createElement('span');
         st.setAttribute('role', 'img');
         // vor dem Pfeil des Obereintrags, sonst am Ende
         a.insertBefore(st, a.querySelector(':scope > .arrow'));
       }
-      if (st.dataset.key === cls + text) continue;
-      st.dataset.key = cls + text;
-      st.className = 'side-st ' + cls + (SUB_PARENT[id] ? ' sub' : '') + (id === 'MenuItemLedInstances' ? ' sum' : '');
-      st.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + (showGrab ? GRAB_ICONS[grab] : RUN_ICON) + '</svg>';
+      if (st.dataset.key === text) continue;
+      st.dataset.key = text;
+      st.className = 'side-st run' + (id === 'MenuItemLedInstances' ? ' sum' : '');
+      st.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + RUN_ICON + '</svg>';
       st.dataset.tip = text;
       st.setAttribute('aria-label', text);
     }
     // Knopf der LED-Visualisierung (zeigt das Grabber-Bild): dieselben Symbole wie die Grabber-Vorschau der Testseite
     const btn = document.querySelector('#btn_open_ledsim > a');
     if (btn) {
-      const kind = grab || 'ok';
+      const kind = grabberState() || 'ok';
       if (btn.dataset.grab !== kind) {
         btn.dataset.grab = kind;
         btn.innerHTML = '<svg class="tb-svg" viewBox="0 0 24 24" aria-hidden="true">' + GRAB_ICONS[kind] + '</svg>';

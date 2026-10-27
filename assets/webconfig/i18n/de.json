@@ -65,8 +65,6 @@
   "general_tip_open_testpage": "TV-Testseite öffnen",
   "general_st_test": "Test läuft",
   "general_st_calib": "Kalibrierung läuft",
-  "general_st_nosignal": "Kein Signal am Grabber",
-  "general_st_nograbber": "Kein Grabber erkannt",
   "general_tip_ledsim_nosignal": "Kein Signal am Grabber · LED-Visualisierung",
   "general_tip_ledsim_nograbber": "Kein Grabber erkannt · LED-Visualisierung",
   "general_tip_power": "System: Hyperion, Testseite, Raspberry Pi",
