@@ -29,6 +29,9 @@ const STATE_FILE = path.join(DATA_DIR, "state.json");
 const BACKUP_DIR = path.join(DATA_DIR, "backups");
 // overridable so a test copy can run against a mock Hyperion and a copy of the database
 const HYPERION_DB = process.env.TVTEST_HYPERION_DB ?? "/home/alexo/.hyperion/db/hyperion.db";
+// Hyperion writes in rollback-journal mode: a read during its write would fail at once with
+// "database is locked", so a read waits for the write to finish
+const HYPERION_DB_READ = { readOnly: true, timeout: 2000 };
 const MAX_BAR = 50; // percent of screen per edge
 const TOKEN_FILE = path.join(DATA_DIR, "hyperion-token");
 const HYPERION_HOST = "127.0.0.1";
@@ -39,7 +42,7 @@ const validPort = (v) => (Number.isInteger(Number(v)) && Number(v) >= 1024 && Nu
 function configuredPort() {
   if (process.env.TVTEST_PORT) return Number(process.env.TVTEST_PORT);
   try {
-    const db = new DatabaseSync(HYPERION_DB, { readOnly: true });
+    const db = new DatabaseSync(HYPERION_DB, HYPERION_DB_READ);
     try {
       const row = db.prepare("SELECT config FROM settings WHERE type = 'webConfig' AND hyperion_inst IS NULL").get();
       return validPort(row && JSON.parse(row.config).testPagePort) ?? DEFAULT_PORT;
@@ -564,7 +567,7 @@ function makeBackup() {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const name = `hyperion-${stamp}.db`;
   const target = path.join(BACKUP_DIR, name);
-  const db = new DatabaseSync(HYPERION_DB, { readOnly: true });
+  const db = new DatabaseSync(HYPERION_DB, HYPERION_DB_READ);
   try {
     db.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
   } finally {
@@ -826,7 +829,7 @@ async function probeGrabber(reset = false) {
 }
 
 function readGlobalSetting(type) {
-  const db = new DatabaseSync(HYPERION_DB, { readOnly: true });
+  const db = new DatabaseSync(HYPERION_DB, HYPERION_DB_READ);
   try {
     const row = db.prepare("SELECT config FROM settings WHERE type = ? AND hyperion_inst IS NULL").get(type);
     return row ? JSON.parse(row.config) : null;
@@ -1542,7 +1545,7 @@ setInterval(() => syncCurveSlot().catch((err) => console.warn("gray curve slot p
 const BB_MODES = ["default", "classic", "osd", "letterbox"];
 
 function readInstanceSetting(type, instance = 0) {
-  const db = new DatabaseSync(HYPERION_DB, { readOnly: true });
+  const db = new DatabaseSync(HYPERION_DB, HYPERION_DB_READ);
   try {
     const row = db.prepare("SELECT config FROM settings WHERE type = ? AND hyperion_inst = ?").get(type, instance);
     if (!row) throw new Error(`Einstellung ${type} nicht gefunden`);
