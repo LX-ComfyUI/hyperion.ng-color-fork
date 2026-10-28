@@ -769,7 +769,7 @@
         <button type="button" data-system="suspend">Ruhezustand</button>
         <button type="button" data-system="resume">Aktivieren</button>
         <button type="button" data-system="restart">Neustart</button>
-        <button type="button" data-system="usbResetRestart">Grabber zurücksetzen (USB) + Neustart</button>
+        <button type="button" data-system="grabberUsbReconnect">Grabber neu verbinden (USB)</button>
         <div class="tb-why" id="tb-usb-why" data-i18n-skip hidden></div>
         <hr>
         <div class="tb-group">Testseite</div>
@@ -6279,7 +6279,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
   document.addEventListener("click", (ev) => { if (!menu.hidden && !menu.contains(ev.target)) close(); });
   const ASK = {
     restart: "Hyperion jetzt neu starten? Die LEDs sind dabei kurz aus.",
-    usbResetRestart: "Den Video-Grabber per USB neu verbinden lassen (wie Aus- und Einstecken) und Hyperion neu starten? Die LEDs sind dabei kurz aus.",
+    grabberUsbReconnect: "Den Video-Grabber per USB neu verbinden lassen (wie Aus- und Einstecken)? Das Bild fehlt dabei kurz, Hyperion läuft weiter.",
   };
   const ASK_PAGE = {
     restartServer: "Den Testserver jetzt neu starten? Laufende Tests und Kalibrierungen werden abgebrochen, die Seite ist einige Sekunden nicht erreichbar.",
@@ -6291,7 +6291,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
     // the grabber reset only where Hyperion can do it (unknown with Hyperions without it: allowed)
     const u = state.usbReset;
     const usbWhy = u?.possible === false ? NoticeText.usbWhy(u.whyKey, u.why, I18N.lang === "en" ? "en" : "de") : "";
-    menu.querySelector('[data-system="usbResetRestart"]').disabled = !!usbWhy;
+    menu.querySelector('[data-system="grabberUsbReconnect"]').disabled = !!usbWhy;
     $("tb-usb-why").hidden = !usbWhy;
     $("tb-usb-why").textContent = usbWhy;
     const d = state.device;
@@ -6322,7 +6322,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
     close();
     const sub = b.dataset.system;
     if (ASK[sub] && !confirm(I18N.t(ASK[sub]))) return;
-    const kind = { restart: "hyperion", usbResetRestart: "usb" }[sub];
+    const kind = { restart: "hyperion" }[sub];
     if (kind) startLoading(kind);
     try {
       const res = await fetch("/api/hyperion/system", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subcommand: sub }) });
@@ -6340,7 +6340,6 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
 // loads anew (it may have new code then). The TV page has nothing of this.
 const LOADING_TEXTS = {
   hyperion: ["Hyperion startet neu", "Die LEDs sind kurz aus. Es geht von selbst weiter, sobald Hyperion wieder läuft."],
-  usb: ["Grabber wird zurückgesetzt", "Der Video-Grabber wird per USB neu verbunden (wie Aus- und Einstecken), und Hyperion startet neu. Die LEDs sind kurz aus."],
   server: ["Testserver startet neu", "Die Seite lädt von selbst neu, sobald der Testserver wieder läuft."],
   reboot: ["Hyperion-Gerät startet neu", "Das dauert meist etwa eine Minute. Die Seite lädt danach von selbst neu."],
   poweroff: ["Hyperion-Gerät wird heruntergefahren", "Hyperion, die LEDs und diese Seite sind weg, bis das Gerät wieder eingeschaltet wird."],
@@ -6348,7 +6347,7 @@ const LOADING_TEXTS = {
   lostServer: ["Testserver nicht erreichbar", "Die Verbindung ist abgebrochen. Die Seite versucht es weiter und macht von selbst weiter, sobald der Testserver wieder erreichbar ist."],
   lostHyperion: ["Hyperion nicht erreichbar", "Die Testbilder auf dem TV laufen weiter, Einstellungen in Hyperion gehen gerade nicht. Es geht von selbst weiter, sobald Hyperion wieder läuft."],
 };
-const LOADING_LONG_S = { hyperion: 45, usb: 45, server: 30, reboot: 180, lostServer: 30 }; // then "unusually long" + reload button
+const LOADING_LONG_S = { hyperion: 45, server: 30, reboot: 180, lostServer: 30 }; // then "unusually long" + reload button
 const LOADING_GRACE_MS = 2500; // a short break (phone wakes up, quick reconnect) shows nothing
 const LOADING_NOTHING_MS = 20_000; // a restart that never broke the connection is over
 const SERVER_KINDS = ["server", "reboot", "poweroff"]; // these take the test server down, the others only Hyperion
@@ -6415,7 +6414,7 @@ function renderLoading() {
   $("ld-time").classList.toggle("long", long);
   $("ld-spin").classList.toggle("off", kind === "off");
   // buttons only change with the case, so a focused one stays while the seconds count
-  const hide = ["hyperion", "usb", "lostHyperion"].includes(kind);
+  const hide = ["hyperion", "lostHyperion"].includes(kind);
   const reload = long || kind === "off";
   const key = [hide, reload, I18N.lang].join();
   if (key === loadingBtnKey) return;

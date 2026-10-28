@@ -2383,14 +2383,19 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "POST" && p === "/api/hyperion/system") {
-      const { subcommand } = await readBody(req);
-      if (!["suspend", "resume", "restart", "usbResetRestart"].includes(subcommand)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      let { subcommand } = await readBody(req);
+      // the former "USB reset + restart" of older pages is the reconnect now
+      if (subcommand === "usbResetRestart") subcommand = "grabberUsbReconnect";
+      if (!["suspend", "resume", "restart", "grabberUsbReconnect"].includes(subcommand)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      const usb = subcommand === "grabberUsbReconnect";
       // Hyperion refuses it too, but in English; asked fresh, the grabber may have changed since
-      if (subcommand === "usbResetRestart" && monitor) await refreshUsbReset();
-      if (subcommand === "usbResetRestart" && usbReset?.possible === false) return sendJson(res, 400, { error: NoticeText.usbWhy(usbReset.whyKey, usbReset.why, "de"), whyKey: usbReset.whyKey, why: usbReset.why });
+      if (usb && monitor) await refreshUsbReset();
+      if (usb && usbReset?.possible === false) return sendJson(res, 400, { error: NoticeText.usbWhy(usbReset.whyKey, usbReset.why, "de"), whyKey: usbReset.whyKey, why: usbReset.why });
       // the announcement goes first: Hyperion may close the connection before it answers
-      if (subcommand === "restart" || subcommand === "usbResetRestart") broadcastSystem(subcommand === "restart" ? "hyperion" : "usb");
+      if (subcommand === "restart") broadcastSystem("hyperion");
       await hyperionCommand({ command: "system", subcommand });
+      // Hyperion keeps running while it reconnects the grabber (a second or a few): its result goes to the bell
+      if (usb) for (const ms of [1500, 4000, 8000]) setTimeout(() => { if (monitor) refreshUsbReset().catch(() => {}); }, ms);
       return sendJson(res, 200, { ok: true });
     }
 
