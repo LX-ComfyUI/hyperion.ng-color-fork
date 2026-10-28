@@ -6,6 +6,7 @@
 
 #include <utils/Logger.h>
 #include <utils/Process.h>
+#include <utils/UsbReset.h>
 #include <hyperion/HyperionIManager.h>
 
 Q_LOGGING_CATEGORY(event_hyperion, "hyperion.event.hyperion");
@@ -213,7 +214,7 @@ void EventHandler::handleEvent(Event event)
 		// resetting while this process still holds the video node makes the kernel
 		// re-create it under a new number (/dev/video0 -> /dev/video1).
 		Info(_log, "USB reset of the capture device requested - runs after restart");
-		QFile(Process::usbResetMarkerPath()).open(QIODevice::WriteOnly);
+		UsbReset::request();
 		Process::restartHyperion(12);
 		break;
 

@@ -69,6 +69,9 @@ add_library(hyperion-utils
 	# Process namespace (Hyperion restart)
 	${CMAKE_SOURCE_DIR}/include/utils/Process.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/Process.cpp
+	# fork: "Reset grabber (USB) + restart"
+	${CMAKE_SOURCE_DIR}/include/utils/UsbReset.h
+	${CMAKE_SOURCE_DIR}/libsrc/utils/UsbReset.cpp
 	# Rgb single color adjustment/correction
 	${CMAKE_SOURCE_DIR}/include/utils/RgbChannelAdjustment.h
 	${CMAKE_SOURCE_DIR}/libsrc/utils/RgbChannelAdjustment.cpp

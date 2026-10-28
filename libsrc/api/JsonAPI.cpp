@@ -33,6 +33,7 @@
 #include <utils/ColorSys.h>
 #include <utils/KelvinToRgb.h>
 #include <utils/Process.h>
+#include <utils/UsbReset.h>
 #include <utils/JsonUtils.h>
 #include <utils/NoSignalDetector.h>
 #include <utils/VideoProbe.h>
@@ -1966,7 +1967,17 @@ void JsonAPI::handleSystemCommand(const QJsonObject& /*message*/, const JsonApiC
 		emit signalEvent(Event::Restart);
 	break;
 	case SubCommand::UsbResetRestart:
+	{
+		// fork: refused right away when the grabber cannot be reset here (the WebUI and the test page
+		// grey the entry out with the reason from sysinfo)
+		QString why;
+		if (!UsbReset::possible(nullptr, &why))
+		{
+			sendErrorReply("Grabber USB reset not possible: " + why, cmd);
+			return;
+		}
 		emit signalEvent(Event::UsbResetAndRestart);
+	}
 	break;
 	case SubCommand::ToggleSuspend:
 		emit signalEvent(Event::ToggleSuspend);

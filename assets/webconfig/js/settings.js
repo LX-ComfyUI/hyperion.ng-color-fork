@@ -97,8 +97,21 @@ $(document).ready(function () {
     setTimeout(initRestart, 100);
   });
 
-  //USB reset + restart (recover a stuck/hanging capture grabber, no replug needed)
+  //Reset grabber (USB) + restart (recover a stuck/hanging capture grabber, no replug needed)
+  // Fork: only where Hyperion can reset it (sysinfo usbReset: Linux, grabber on USB, the right to
+  // do it); otherwise greyed out with the reason. sysinfo is asked again when the menu opens.
+  const usbResetPossible = function () { const u = window.sysInfo && window.sysInfo.usbReset; return !u || u.possible !== false; };
+  const renderUsbReset = function () {
+    const u = window.sysInfo && window.sysInfo.usbReset;
+    $('#btn_systemUsbResetRestart').toggleClass('disabled', !usbResetPossible());
+    const why = u && u.possible === false && u.whyKey ? $.i18n('power_usbreset_why_' + u.whyKey) : '';
+    $('#power_usbreset_why').text(why).toggle(!!why);
+  };
+  $(window.hyperion).off('cmd-sysinfo.usbreset').on('cmd-sysinfo.usbreset', function () { setTimeout(renderUsbReset, 0); });
+  $('a[data-tip-key="general_tip_power"]').parent().off('show.bs.dropdown.usbreset').on('show.bs.dropdown.usbreset', function () { requestSysInfo(); });
+  renderUsbReset();
   $('#btn_systemUsbResetRestart').off().on('click', function () {
+    if (!usbResetPossible()) return false;
     requestSystemUsbResetRestart();
   });
 

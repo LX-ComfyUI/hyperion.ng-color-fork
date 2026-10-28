@@ -4,6 +4,7 @@
 #include <api/API.h>
 
 #include <utils/ColorSys.h>
+#include <utils/UsbReset.h>
 #include <leddevice/LedDeviceWrapper.h>
 #include <utils/SysInfo.h>
 #include <hyperion/AuthManager.h>
@@ -640,6 +641,8 @@ QJsonObject JsonInfo::getSystemInfo()
 	hyperionInfo["isGuiMode"] = qobject_cast<QApplication*>(app) != nullptr;
 
 	info["hyperion"] = hyperionInfo;
+	// fork: whether "Reset grabber (USB) + restart" works here, and the result of the last one
+	info["usbReset"] = UsbReset::status();
 
 	return info;
 }
