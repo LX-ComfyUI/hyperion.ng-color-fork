@@ -644,6 +644,7 @@ function SwitchToMenuItem(target, item) {
       const data = await res.json();
       tvNotes = data.notices || [];
       tvUp = true;
+      globalThis.forkHostDevice = data.device || null;
       if (globalThis.forkSideStatus) globalThis.forkSideStatus.tv(data.running || {});
       if (seen < 0) { seen = lastId(); store.set('hy-notes-seen', seen); } // erster Besuch: ohne alte Meldungen
       announce();
@@ -654,6 +655,7 @@ function SwitchToMenuItem(target, item) {
       clearTimeout(timer);
     }
     $('.tp-only').toggle(tvUp);
+    if (globalThis.forkPowerDevice) globalThis.forkPowerDevice();
     $('#btn_open_testpage > a').attr('href', base + '/');
     render();
   }

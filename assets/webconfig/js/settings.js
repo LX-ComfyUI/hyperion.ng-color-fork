@@ -114,14 +114,30 @@ $(document).ready(function () {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Tvtest': '1' },
       body: JSON.stringify({ action: action })
-    }).catch(function () {
+    }).then(function (res) {
+      if (res.ok) return;
+      return res.json().catch(function () { return {}; }).then(function (out) {
+        showNotification('danger', $.i18n('power_tp_failed', out.error || res.status));
+      });
+    }, function () {
       showNotification('danger', $.i18n('power_tp_unreachable'));
     });
   };
+  // Hyperion-Gerät: Name des Rechners und ob er von hier neu starten/herunterfahren kann (sonst Grund);
+  // kommt mit den Meldungen der Testseite (content_index.js, globalThis.forkHostDevice)
+  const powerAllowed = function () { return !!(globalThis.forkHostDevice && globalThis.forkHostDevice.power); };
+  globalThis.forkPowerDevice = function () {
+    const d = globalThis.forkHostDevice;
+    $('#power_device_name').text(d && d.name ? '(' + d.name + ')' : '');
+    $('#btn_deviceReboot, #btn_devicePoweroff').toggleClass('disabled', !powerAllowed());
+    const why = d && !d.power && d.whyKey ? $.i18n('power_device_why_' + d.whyKey) : '';
+    $('#power_device_why').text(why).toggle(!!why && $('#btn_deviceReboot').is(':visible'));
+  };
   $('#btn_tpReloadTv').off().on('click', function () { tvCommand('reloadTv'); });
   $('#btn_tpRestartServer').off().on('click', function () { tvCommand('restartServer', 'power_tp_restartServer_ask'); });
-  $('#btn_piReboot').off().on('click', function () { tvCommand('rebootPi', 'power_pi_reboot_ask'); });
-  $('#btn_piPoweroff').off().on('click', function () { tvCommand('poweroffPi', 'power_pi_poweroff_ask'); });
+  $('#btn_deviceReboot').off().on('click', function () { if (!powerAllowed()) return false; tvCommand('reboot', 'power_device_reboot_ask'); });
+  $('#btn_devicePoweroff').off().on('click', function () { if (!powerAllowed()) return false; tvCommand('poweroff', 'power_device_poweroff_ask'); });
+  globalThis.forkPowerDevice();
 
   //Lock Ui
   $('#btn_lock_ui').off().on('click', function () {

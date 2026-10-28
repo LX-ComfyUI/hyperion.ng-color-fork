@@ -1647,3 +1647,8 @@ nav.navbar-static-top .navbar-toggle {
 #btn_open_ledsim .tb-svg { width: 17px; height: 17px; }
 #top-navbar a.tb-warn .tb-svg { color: #f2c200; }
 #top-navbar a.tb-bad .tb-svg { color: #d9534f; }
+
+/* Fork: Power-Menü, Name des Hyperion-Geräts und Grund, wenn Neustart/Herunterfahren nicht gehen */
+.power-device-name { text-transform: none; font-weight: normal; }
+.dropdown-header.power-device-why { white-space: normal; max-width: 260px; text-transform: none; }
+.dropdown-menu > li.disabled > a { opacity: .45; cursor: not-allowed; }

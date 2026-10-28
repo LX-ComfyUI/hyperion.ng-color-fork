@@ -290,23 +290,24 @@
               </a>
             </li>
             <li class="divider tp-only" style="display:none"></li>
-            <li class="dropdown-header tp-only" style="display:none" data-i18n="power_group_pi">Raspberry Pi</li>
-            <li id="btn_piReboot" class="tp-only" style="display:none">
+            <li class="dropdown-header tp-only" style="display:none"><span data-i18n="power_group_device">Hyperion device</span> <span id="power_device_name" class="power-device-name"></span></li>
+            <li id="btn_deviceReboot" class="tp-only" style="display:none">
               <a>
                 <div>
                   <i class="fa fa-repeat fa-fw"></i>
-                  <span data-i18n="power_pi_reboot"></span>
+                  <span data-i18n="power_device_reboot"></span>
                 </div>
               </a>
             </li>
-            <li id="btn_piPoweroff" class="tp-only" style="display:none">
+            <li id="btn_devicePoweroff" class="tp-only" style="display:none">
               <a>
                 <div>
                   <i class="fa fa-power-off fa-fw"></i>
-                  <span data-i18n="power_pi_poweroff"></span>
+                  <span data-i18n="power_device_poweroff"></span>
                 </div>
               </a>
             </li>
+            <li id="power_device_why" class="dropdown-header power-device-why" style="display:none"></li>
           </ul>
         </li>
         <!-- /.lock-ui -->
