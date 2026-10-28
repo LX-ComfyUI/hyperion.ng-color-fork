@@ -2326,7 +2326,9 @@ const server = http.createServer(async (req, res) => {
     // starts it again after a failure exit), restart or shut down the computer
     if (req.method === "POST" && p === "/api/testpage/system") {
       needTvtestHeader(req);
-      const { action } = await readBody(req);
+      // rebootPi / poweroffPi: the names older WebUI versions of the fork send
+      const body = await readBody(req);
+      const action = { rebootPi: "reboot", poweroffPi: "poweroff" }[body.action] ?? body.action;
       if (!["reloadTv", "restartServer", "reboot", "poweroff"].includes(action)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
       if (action === "reboot" || action === "poweroff") {
         if (!hostDevice.power) return sendJson(res, 400, { error: hostDevice.why });
