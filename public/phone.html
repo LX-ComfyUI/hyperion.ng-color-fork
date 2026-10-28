@@ -709,10 +709,39 @@
   .card > h2 { margin: 0; padding: 10px 15px; background: var(--card-head); border-bottom: 1px solid var(--line); border-radius: 4px 4px 0 0; font-weight: 500; }
   .card.closed > h2 { border-bottom: none; border-radius: 4px; }
   .card > .card-body { padding: 15px; }
+
+  /* loading layer over the page while Hyperion, the test server or the device restarts, or a connection
+     is lost: like the WebUI's restart and connection lost pages, but the page stays underneath */
+  #loading { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
+    background: color-mix(in srgb, var(--bg) 80%, transparent); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+  #loading[hidden] { display: none; }
+  #loading .ld-box { width: min(420px, 100%); box-sizing: border-box; padding: 24px 22px 20px; text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 30px rgba(0, 0, 0, .2); }
+  #loading .ld-logo { margin-bottom: 18px; }
+  #loading .ld-logo img { width: 170px; max-width: 70%; height: auto; }
+  #loading .ld-spin { width: 34px; height: 34px; margin: 0 auto 14px; border-radius: 50%; border: 4px solid color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); animation: ld-spin .9s linear infinite; }
+  #loading .ld-spin.off { animation: none; border-color: var(--line); }
+  @keyframes ld-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #loading .ld-spin { animation-duration: 2.4s; } }
+  #loading h2 { font-size: 18px; font-weight: 500; margin: 0 0 8px; }
+  #loading p { font-size: 14px; color: var(--muted); margin: 0 0 6px; }
+  #loading .ld-time { font-size: 13px; font-variant-numeric: tabular-nums; }
+  #loading .ld-time.long { color: var(--warn); }
+  #loading .ld-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  #loading .ld-btns:empty { display: none; }
 </style>
 </head>
 <body>
 <div id="toasts" data-i18n-skip aria-live="polite"></div>
+<div id="loading" data-i18n-skip role="alertdialog" aria-modal="true" aria-labelledby="ld-title" aria-describedby="ld-text" hidden>
+  <div class="ld-box">
+    <div class="ld-logo"><img class="logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion"><img class="logo-dark" src="/static/hyperion-logo.png" alt="Hyperion"></div>
+    <div class="ld-spin" id="ld-spin" aria-hidden="true"></div>
+    <h2 id="ld-title"></h2>
+    <p id="ld-text"></p>
+    <p class="ld-time" id="ld-time"></p>
+    <div class="ld-btns" id="ld-btns"></div>
+  </div>
+</div>
 <nav id="topbar" aria-label="Kopfzeile">
   <div class="tb-left">
     <button type="button" class="tb-menu" id="tb-menu" aria-label="Menü"><span></span><span></span><span></span></button>
@@ -6109,6 +6138,7 @@ function renderBar() {
   prev.dataset.tip = !alert ? tr("Grabber-Vorschau") : (red ? tr("Kein Grabber erkannt") : tr("Kein Signal am Grabber")) + " · " + tr("Grabber-Vorschau");
   // the health also says whether the no signal calibration runs
   renderSideStatus();
+  renderLoading();
 }
 (function () {
   const btn = $("tb-bell");
@@ -6268,11 +6298,16 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
     close();
     const action = b.dataset.page;
     if (ASK_PAGE[action] && !confirm(I18N.t(ASK_PAGE[action]))) return;
+    const kind = { restartServer: "server", reboot: "reboot", poweroff: "poweroff" }[action];
+    if (kind) startLoading(kind);
     try {
       const res = await fetch("/api/testpage/system", { method: "POST", headers: { "Content-Type": "application/json", "X-Tvtest": "1" }, body: JSON.stringify({ action }) });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
     } catch (e) {
+      // no answer can also mean the server went down a moment too early: the layer stays then
+      if (kind && e instanceof TypeError) return;
+      if (kind) cancelLoading();
       showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
     }
   }));
@@ -6280,15 +6315,130 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
     close();
     const sub = b.dataset.system;
     if (ASK[sub] && !confirm(I18N.t(ASK[sub]))) return;
+    const kind = { restart: "hyperion", usbResetRestart: "usb" }[sub];
+    if (kind) startLoading(kind);
     try {
       const res = await fetch("/api/hyperion/system", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subcommand: sub }) });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
     } catch (e) {
+      if (kind) cancelLoading();
       showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
     }
   }));
 })();
+
+// ---------- loading layer: Hyperion, the test server or the device restarts, or a connection is lost ----------
+// It closes by itself once everything is back; after a restart of the test server or the device the page
+// loads anew (it may have new code then). The TV page has nothing of this.
+const LOADING_TEXTS = {
+  hyperion: ["Hyperion startet neu", "Die LEDs sind kurz aus. Es geht von selbst weiter, sobald Hyperion wieder läuft."],
+  usb: ["Grabber wird zurückgesetzt", "Der Grabber wird per USB neu verbunden und Hyperion startet neu. Die LEDs sind kurz aus."],
+  server: ["Testserver startet neu", "Die Seite lädt von selbst neu, sobald der Testserver wieder läuft."],
+  reboot: ["Hyperion-Gerät startet neu", "Das dauert meist etwa eine Minute. Die Seite lädt danach von selbst neu."],
+  poweroff: ["Hyperion-Gerät wird heruntergefahren", "Hyperion, die LEDs und diese Seite sind weg, bis das Gerät wieder eingeschaltet wird."],
+  off: ["Hyperion-Gerät ist aus", "Sobald es wieder eingeschaltet ist, lädt die Seite von selbst neu."],
+  lostServer: ["Testserver nicht erreichbar", "Die Verbindung ist abgebrochen. Die Seite versucht es weiter und macht von selbst weiter, sobald der Testserver wieder erreichbar ist."],
+  lostHyperion: ["Hyperion nicht erreichbar", "Die Testbilder auf dem TV laufen weiter, Einstellungen in Hyperion gehen gerade nicht. Es geht von selbst weiter, sobald Hyperion wieder läuft."],
+};
+const LOADING_LONG_S = { hyperion: 45, usb: 45, server: 30, reboot: 180, lostServer: 30 }; // then "unusually long" + reload button
+const LOADING_GRACE_MS = 2500; // a short break (phone wakes up, quick reconnect) shows nothing
+const LOADING_NOTHING_MS = 20_000; // a restart that never broke the connection is over
+const SERVER_KINDS = ["server", "reboot", "poweroff"]; // these take the test server down, the others only Hyperion
+let loadingPlan = null; // a restart that was asked for (here or on another device): { kind, since, down }
+let serverDownSince = 0;
+let linkDownSince = 0;
+let linkDismissed = false; // "Hide" while Hyperion is away: the page still works for the TV
+let loadingTimer = null;
+let loadingTicks = 0;
+let loadingBtnKey = "";
+let eventSource = null;
+
+function startLoading(kind) {
+  if (!LOADING_TEXTS[kind] || loadingPlan?.kind === kind) return;
+  loadingPlan = { kind, since: Date.now(), down: false };
+  linkDismissed = false;
+  renderLoading();
+}
+function cancelLoading() {
+  loadingPlan = null;
+  renderLoading();
+}
+const loadingSince = (secs) => (secs < 60 ? tr("seit {s} s", { s: secs }) : tr("seit {m} min {s} s", { m: Math.floor(secs / 60), s: secs % 60 }));
+
+function renderLoading() {
+  const now = Date.now();
+  const linkDown = !serverDown && state?.hyperionLink === false;
+  if (!serverDown) serverDownSince = 0; else if (!serverDownSince) serverDownSince = now;
+  if (!linkDown) linkDownSince = 0; else if (!linkDownSince) linkDownSince = now;
+  if (!linkDown && !serverDown) linkDismissed = false;
+  let kind = null;
+  let since = 0;
+  const plan = loadingPlan;
+  if (plan) {
+    const viaServer = SERVER_KINDS.includes(plan.kind);
+    const down = serverDown || (!viaServer && linkDown);
+    if (down) plan.down = true;
+    if (plan.down && !down) {
+      loadingPlan = null;
+      if (viaServer) { location.reload(); return; }
+    } else if (!plan.down && now - plan.since > LOADING_NOTHING_MS) {
+      loadingPlan = null;
+    } else if (!(linkDismissed && !viaServer)) {
+      kind = plan.kind === "poweroff" && plan.down ? "off" : plan.kind;
+      since = plan.since;
+    }
+  }
+  if (!kind && serverDown && now - serverDownSince >= LOADING_GRACE_MS) { kind = "lostServer"; since = serverDownSince; }
+  if (!kind && linkDown && !linkDismissed && !loadingPlan && now - linkDownSince >= LOADING_GRACE_MS) { kind = "lostHyperion"; since = linkDownSince; }
+
+  const pending = !!loadingPlan || serverDown || linkDown;
+  if (pending && !loadingTimer) loadingTimer = setInterval(loadingTick, 1000);
+  if (!pending && loadingTimer) { clearInterval(loadingTimer); loadingTimer = null; }
+
+  const box = $("loading");
+  box.hidden = !kind;
+  if (!kind) { loadingBtnKey = ""; return; }
+  const [title, text] = LOADING_TEXTS[kind];
+  const secs = Math.max(0, Math.floor((now - since) / 1000));
+  const long = secs >= (LOADING_LONG_S[kind] ?? Infinity);
+  $("ld-title").textContent = tr(title);
+  $("ld-text").textContent = tr(text);
+  $("ld-time").textContent = loadingSince(secs) + (long ? " · " + tr("Das dauert ungewöhnlich lange.") : "");
+  $("ld-time").classList.toggle("long", long);
+  $("ld-spin").classList.toggle("off", kind === "off");
+  // buttons only change with the case, so a focused one stays while the seconds count
+  const hide = ["hyperion", "usb", "lostHyperion"].includes(kind);
+  const reload = long || kind === "off";
+  const key = [hide, reload, I18N.lang].join();
+  if (key === loadingBtnKey) return;
+  loadingBtnKey = key;
+  const btns = $("ld-btns");
+  btns.textContent = "";
+  if (hide) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = tr("Ausblenden");
+    b.title = tr("Die Seite weiter benutzen, solange Hyperion nicht läuft");
+    b.addEventListener("click", () => { linkDismissed = true; renderLoading(); });
+    btns.append(b);
+  }
+  if (reload) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = tr("Seite neu laden");
+    b.addEventListener("click", () => location.reload());
+    btns.append(b);
+  }
+}
+
+// counts the seconds; an event stream the browser gave up on does not try again by itself, so the page
+// asks the server every 3 s and loads anew as soon as it answers
+async function loadingTick() {
+  renderLoading();
+  if (!serverDown || eventSource?.readyState !== EventSource.CLOSED || ++loadingTicks % 3) return;
+  try { if ((await fetch("/api/state", { cache: "no-store" })).ok) location.reload(); } catch {}
+}
 
 // ---------- RGB byte order wizard (like the WebUI's) ----------
 
@@ -6499,7 +6649,9 @@ async function init() {
   setPanel(store.get("tvtest-preview") === "1");
   // role=phone tells the TV to hide its QR code
   const es = new EventSource("/api/events?role=phone");
+  eventSource = es;
   es.addEventListener("move", (ev) => followMove(JSON.parse(ev.data).port));
+  es.addEventListener("system", (ev) => startLoading(JSON.parse(ev.data).kind));
   es.onerror = () => { serverDown = true; renderBar(); };
   es.onmessage = (ev) => {
     serverDown = false;

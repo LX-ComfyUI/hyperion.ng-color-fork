@@ -437,7 +437,7 @@ checkPower().then(() => broadcast());
 // the state with everything the pages show besides it
 function publicState() {
   return { ...state, tvVersion, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
-    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard, device: hostDevice };
+    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard, device: hostDevice, hyperionLink: !!monitor };
 }
 
 // what runs now, per card: { "card-…": "test" | "calib" } — for the symbols in the menu of the WebUI;
@@ -467,6 +467,13 @@ function broadcast() {
   // serverNow lets the TV time the gray test against the Pi's clock, not its own
   const payload = `data: ${JSON.stringify({ ...publicState(), phones: phoneCount(), serverNow: Date.now() })}\n\n`;
   for (const res of clients.keys()) res.write(payload);
+}
+
+// A restart or shutdown that was asked for, as a named "system" event: every control page shows its
+// loading layer with the right text, also the ones that did not press the button
+function broadcastSystem(kind) {
+  const payload = `event: system\ndata: ${JSON.stringify({ kind })}\n\n`;
+  for (const [res, role] of clients) if (role === "phone") res.write(payload);
 }
 
 // Debug data from Hyperion goes to every event stream as a named "debug" event
@@ -769,10 +776,12 @@ function connectMonitor() {
       if (w) { waiting.delete(msg.tan); w(msg); }
     }
   });
-  sock.on("connect", () => { monitor = m; syncImageStream(); });
+  // hyperionLink in the state follows this connection at once: the loading layer of the control page
+  // waits for it after a restart of Hyperion
+  sock.on("connect", () => { monitor = m; syncImageStream(); broadcast(); });
   sock.on("error", () => {});
   sock.on("close", () => {
-    if (monitor === m) monitor = null;
+    if (monitor === m) { monitor = null; broadcast(); }
     lastDebug = null;
     setTimeout(connectMonitor, 3000); // Hyperion restarts (e.g. after a restore) are expected
   });
@@ -2336,6 +2345,7 @@ const server = http.createServer(async (req, res) => {
         // systemctl returns once the job is queued, so the answer still gets out
         const result = await runQuiet(...powerCommand(action));
         if (!result.ok) return sendJson(res, 500, { error: `Fehlgeschlagen: ${result.out}` });
+        broadcastSystem(action);
         return sendJson(res, 200, { ok: true });
       }
       sendJson(res, 200, { ok: true });
@@ -2343,6 +2353,7 @@ const server = http.createServer(async (req, res) => {
         for (const [client, role] of clients) if (role === "tv") client.write("event: reload\ndata: {}\n\n");
       } else {
         console.log("Restart requested from the control page");
+        broadcastSystem("server");
         setTimeout(() => process.exit(1), 300);
       }
       return;
@@ -2357,6 +2368,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && p === "/api/hyperion/system") {
       const { subcommand } = await readBody(req);
       if (!["suspend", "resume", "restart", "usbResetRestart"].includes(subcommand)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      // the announcement goes first: Hyperion may close the connection before it answers
+      if (subcommand === "restart" || subcommand === "usbResetRestart") broadcastSystem(subcommand === "restart" ? "hyperion" : "usb");
       await hyperionCommand({ command: "system", subcommand });
       return sendJson(res, 200, { ok: true });
     }
