@@ -418,16 +418,16 @@ function webuiPort() {
 
 // the computer Hyperion and this server run on, for the power menu: its name and whether it can be
 // restarted / shut down from here (Linux with systemd, and root or sudo without a password for
-// systemctl); otherwise the reason, and the buttons stay disabled
-const hostDevice = { name: os.hostname(), power: false, why: "" };
+// systemctl); otherwise the reason (whyKey for the WebUI's texts), and the buttons stay disabled
+const hostDevice = { name: os.hostname(), power: false, why: "", whyKey: "" };
 const runQuiet = (cmd, args) => new Promise((resolve) => execFile(cmd, args, { timeout: 5000 }, (err, stdout, stderr) => resolve({ ok: !err, out: String(stderr || stdout || err?.message || "").trim() })));
 const powerCommand = (action) => (process.getuid?.() === 0 ? ["systemctl", [action]] : ["sudo", ["-n", "systemctl", action]]);
 async function checkPower() {
-  if (process.platform !== "linux") return (hostDevice.why = "Nur unter Linux möglich");
-  if (!fs.existsSync("/run/systemd/system")) return (hostDevice.why = "Kein systemd (z. B. in Docker)");
+  if (process.platform !== "linux") return Object.assign(hostDevice, { why: "Nur unter Linux möglich", whyKey: "notLinux" });
+  if (!fs.existsSync("/run/systemd/system")) return Object.assign(hostDevice, { why: "Kein systemd (z. B. in Docker)", whyKey: "noSystemd" });
   if (process.getuid?.() !== 0) {
     for (const action of ["reboot", "poweroff"]) {
-      if (!(await runQuiet("sudo", ["-n", "-l", "systemctl", action])).ok) return (hostDevice.why = "Kein Recht dazu (sudo ohne Passwort für systemctl fehlt)");
+      if (!(await runQuiet("sudo", ["-n", "-l", "systemctl", action])).ok) return Object.assign(hostDevice, { why: "Kein Recht dazu (sudo ohne Passwort für systemctl fehlt)", whyKey: "noRight" });
     }
   }
   hostDevice.power = true;
@@ -2265,7 +2265,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/notices") {
       const lang = url.searchParams.get("lang") === "en" ? "en" : "de";
       const list = notices.map((n) => ({ id: n.id, ts: n.ts, level: n.level, kind: n.kind, ...NoticeText.info(n, lang) }));
-      return sendJson(res, 200, { notices: list, health, tvConnected: hasTv(), running: runningCards() });
+      return sendJson(res, 200, { notices: list, health, tvConnected: hasTv(), running: runningCards(), device: hostDevice });
     }
     if (req.method === "POST" && p === "/api/notices") {
       needTvtestHeader(req);
