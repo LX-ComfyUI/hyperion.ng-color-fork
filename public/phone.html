@@ -6,6 +6,17 @@
 <meta name="color-scheme" content="light dark">
 <title>Hyperion TV-Testseite Steuerung</title>
 <script>
+  // Hyperion has a password of its own and this device is not (or no longer) logged in: to the login page
+  (function () {
+    const plain = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+      const res = await plain(...args);
+      if (res.status === 401 && !String(args[0]).includes("/api/login")) location.href = "/login" + location.hash;
+      return res;
+    };
+  })();
+</script>
+<script>
   // Before first paint: saved theme and the kind of device (the width decides the layout, the device name is a hint)
   try { const t = localStorage.getItem("tvtest-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
   (function () {
@@ -775,6 +786,7 @@
         <div class="tb-group">Testseite</div>
         <button type="button" data-page="reloadTv">TV-Seite neu laden</button>
         <button type="button" data-page="restartServer">Testserver neu starten</button>
+        <button type="button" id="tb-logout" hidden>Abmelden</button>
         <hr>
         <div class="tb-group">Hyperion-Gerät <span class="tb-host" id="tb-host" data-i18n-skip></span></div>
         <button type="button" data-page="reboot">Neu starten</button>
@@ -6288,6 +6300,8 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
   };
   // name of the computer, and whether it can be restarted / shut down from here (else why not)
   window.renderPowerMenu = () => {
+    // only with a Hyperion password of its own (see /login)
+    $("tb-logout").hidden = !state.authRequired;
     // the grabber reset only where Hyperion can do it (unknown with Hyperions without it: allowed)
     const u = state.usbReset;
     const usbWhy = u?.possible === false ? NoticeText.usbWhy(u.whyKey, u.why, I18N.lang === "en" ? "en" : "de") : "";
@@ -6318,6 +6332,11 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
       showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
     }
   }));
+  $("tb-logout").addEventListener("click", async () => {
+    close();
+    try { await fetch("/api/logout", { method: "POST" }); } catch {}
+    location.href = "/login";
+  });
   menu.querySelectorAll("[data-system]").forEach((b) => b.addEventListener("click", async () => {
     close();
     const sub = b.dataset.system;

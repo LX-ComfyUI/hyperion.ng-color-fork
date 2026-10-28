@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { createRequire } from "node:module";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import { createMedia } from "./media.mjs";
 import { createSources } from "./sources.mjs";
@@ -26,6 +26,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(HERE, "public");
 // TVTEST_DATA_DIR lets a test copy keep its own state and backups
 const DATA_DIR = process.env.TVTEST_DATA_DIR ?? HERE;
+// whether Hyperion has a password of its own (then the control page asks for it, see "Login" below);
+// up here because the state goes out from early on
+let authRequired = true;
+let authCheckedAt = 0;
 const STATE_FILE = path.join(DATA_DIR, "state.json");
 const BACKUP_DIR = path.join(DATA_DIR, "backups");
 // overridable so a test copy can run against a mock Hyperion and a copy of the database
@@ -437,7 +441,7 @@ checkPower().then(() => broadcast());
 // the state with everything the pages show besides it
 function publicState() {
   return { ...state, tvVersion, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
-    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard, device: hostDevice, hyperionLink: !!monitor, usbReset };
+    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard, device: hostDevice, hyperionLink: !!monitor, usbReset, authRequired };
 }
 
 // what runs now, per card: { "card-…": "test" | "calib" } — for the symbols in the menu of the WebUI;
@@ -2220,6 +2224,96 @@ async function restoreBackup(name) {
   }
 }
 
+// --- Login with the Hyperion password ---
+// Like the Hyperion WebUI: as long as Hyperion has its default password the page is open; with a password
+// of its own every device logs in once with it (Hyperion checks it, nothing is stored here) and stays
+// logged in (session cookie). The TV page only shows what it is told and stays open, with the few
+// read-only things it needs. The WebUI sends its own Hyperion login (X-Hyperion-Token) instead.
+const SESSION_FILE = path.join(DATA_DIR, "sessions.json");
+const SESSION_COOKIE = "tvtest-session";
+const SESSION_MAX_AGE_S = 365 * 24 * 3600;
+const AUTH_OPEN_PATHS = new Set(["/tv", "/login", "/api/login", "/api/qr.svg", "/api/hyperion/leds", "/api/hyperion/color", "/api/media/caps", "/api/media/tvstatus"]);
+const AUTH_OPEN_PREFIXES = ["/static/", "/media/file/", "/media/src/", "/media/thumb/"];
+const hashSession = (token) => createHash("sha256").update(token).digest("hex");
+let sessions = {};
+try { sessions = JSON.parse(fs.readFileSync(SESSION_FILE, "utf8")) ?? {}; } catch {}
+function saveSessions() {
+  try { fs.writeFileSync(SESSION_FILE, JSON.stringify(sessions, null, 1), { mode: 0o600 }); } catch (e) { console.error("sessions:", e.message); }
+}
+const sessionOf = (req) => /(?:^|;\s*)tvtest-session=([\w-]{20,80})/.exec(req.headers.cookie ?? "")?.[1] ?? null;
+
+// whether Hyperion has a password of its own; asked at most every 30 s, the last answer counts while
+// Hyperion is not reachable (and before the first answer: locked, to be safe)
+async function refreshAuthRequired() {
+  if (Date.now() - authCheckedAt < 30_000) return authRequired;
+  authCheckedAt = Date.now();
+  let api;
+  try {
+    api = await openHyperion();
+    const reply = await api.call({ command: "authorize", subcommand: "newPasswordRequired" });
+    if (reply.success) {
+      const required = !reply.info?.newPasswordRequired;
+      if (required !== authRequired) { authRequired = required; broadcast(); }
+    }
+  } catch {} finally { api?.close(); }
+  return authRequired;
+}
+
+// one Hyperion login (password or token) on a connection of its own
+async function hyperionAccepts(login) {
+  let api;
+  try {
+    api = await openHyperion();
+    return !!(await api.call({ command: "authorize", subcommand: "login", ...login })).success;
+  } catch { return false; } finally { api?.close(); }
+}
+// tokens of the WebUI that Hyperion accepted, for 5 min
+const webuiTokens = new Map();
+async function webuiTokenValid(token) {
+  if (!token || token.length > 200) return false;
+  const until = webuiTokens.get(token);
+  if (until && until > Date.now()) return true;
+  if (!(await hyperionAccepts({ token }))) { webuiTokens.delete(token); return false; }
+  webuiTokens.set(token, Date.now() + 5 * 60_000);
+  return true;
+}
+
+function authOpen(req, url) {
+  const p = url.pathname;
+  if (AUTH_OPEN_PATHS.has(p) || AUTH_OPEN_PREFIXES.some((x) => p.startsWith(x))) return req.method === "GET" || p.startsWith("/api/media/") || p === "/api/login";
+  return req.method === "GET" && p === "/api/events" && url.searchParams.get("role") !== "phone";
+}
+async function authorized(req, url) {
+  if (authOpen(req, url) || !(await refreshAuthRequired())) return true;
+  const session = sessionOf(req);
+  if (session && sessions[hashSession(session)]) return true;
+  return webuiTokenValid(String(req.headers["x-hyperion-token"] ?? ""));
+}
+
+let loginFailures = [];
+async function handleLogin(req, res) {
+  const { password } = await readBody(req);
+  // a few tries per minute, then a pause (Hyperion itself does not slow down guessing)
+  loginFailures = loginFailures.filter((t) => Date.now() - t < 60_000);
+  if (loginFailures.length >= 10) return sendJson(res, 429, { error: "Zu viele Versuche, bitte eine Minute warten." });
+  if (typeof password !== "string" || !password || password.length > 200 || !(await hyperionAccepts({ password }))) {
+    loginFailures.push(Date.now());
+    await new Promise((r) => setTimeout(r, 1000));
+    return sendJson(res, 403, { error: "Falsches Passwort" });
+  }
+  const token = randomBytes(32).toString("base64url");
+  sessions[hashSession(token)] = { created: new Date().toISOString(), ua: String(req.headers["user-agent"] ?? "").slice(0, 120) };
+  saveSessions();
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${token}; Max-Age=${SESSION_MAX_AGE_S}; Path=/; SameSite=Lax; HttpOnly`);
+  return sendJson(res, 200, { ok: true });
+}
+function handleLogout(req, res) {
+  const session = sessionOf(req);
+  if (session && sessions[hashSession(session)]) { delete sessions[hashSession(session)]; saveSessions(); }
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax; HttpOnly`);
+  return sendJson(res, 200, { ok: true });
+}
+
 // The Hyperion WebUI (same host, other port) shows the notices and the page commands of the power menu.
 // Only a page of the same host may do that; POST needs the header X-Tvtest, which a browser only sends
 // after the preflight below, so a page from elsewhere cannot trigger the commands.
@@ -2233,7 +2327,7 @@ function corsHeaders(req) {
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Tvtest",
+    "Access-Control-Allow-Headers": "Content-Type, X-Tvtest, X-Hyperion-Token",
     "Access-Control-Max-Age": "600",
     Vary: "Origin",
   };
@@ -2253,6 +2347,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    if (!(await authorized(req, url))) {
+      if (req.method === "GET" && (p === "/" || p.startsWith("/backups/"))) { res.writeHead(302, { Location: "/login", "Cache-Control": "no-store" }); return res.end(); }
+      return sendJson(res, 401, { error: "Anmeldung nötig", login: true });
+    }
+    if (req.method === "GET" && p === "/login") return serveStatic(res, "login.html");
+    if (req.method === "POST" && p === "/api/login") return handleLogin(req, res);
+    if (req.method === "POST" && p === "/api/logout") return handleLogout(req, res);
     if (req.method === "GET" && p === "/") return servePage(req, res, "phone.html");
     if (req.method === "GET" && p === "/tv") return servePage(req, res, "tv.html");
     if (await media.handle(req, res, p, sendJson, readBody)) return;

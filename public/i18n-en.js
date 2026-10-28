@@ -575,6 +575,7 @@ window.I18N_EN = {
  "Aktivieren": "Resume",
  "Neustart": "Restart",
  "Grabber neu verbinden (USB)": "Reconnect grabber (USB)",
+ "Abmelden": "Log out",
  "System: Ruhezustand, Neustart": "System: suspend, restart",
  "Hyperion jetzt neu starten? Die LEDs sind dabei kurz aus.": "Restart Hyperion now? The LEDs go off briefly.",
  "Den Video-Grabber per USB neu verbinden lassen (wie Aus- und Einstecken)? Das Bild fehlt dabei kurz, Hyperion läuft weiter.": "Have the video grabber reconnected via USB (like unplugging and plugging it in)? The picture is missing for a moment, Hyperion keeps running.",
