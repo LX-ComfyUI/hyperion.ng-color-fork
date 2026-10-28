@@ -113,7 +113,7 @@ public:
 		RenameToken,
 		RequestToken,
 		Restart,
-		UsbResetRestart,
+		GrabberUsbReconnect,
 		RestoreConfig,
 		Resume,
 		SaveName,
@@ -166,7 +166,7 @@ public:
 		case RenameToken: return "renameToken";
 		case RequestToken: return "requestToken";
 		case Restart: return "restart";
-		case UsbResetRestart: return "usbResetRestart";
+		case GrabberUsbReconnect: return "grabberUsbReconnect";
 		case RestoreConfig: return "restoreconfig";
 		case Resume: return "resume";
 		case SaveName: return "saveName";
@@ -359,7 +359,9 @@ public:
 			{ {"grabbertest", ""},                       { Command::GrabberTest,    SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"sysinfo", ""},                           { Command::SysInfo,        SubCommand::Empty,                   Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "restart"},                     { Command::System,         SubCommand::Restart,                 Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
-			{ {"system", "usbResetRestart"},             { Command::System,         SubCommand::UsbResetRestart,         Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
+			{ {"system", "grabberUsbReconnect"},         { Command::System,         SubCommand::GrabberUsbReconnect,     Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
+			// fork: the former "USB reset + restart", now the same as grabberUsbReconnect
+			{ {"system", "usbResetRestart"},             { Command::System,         SubCommand::GrabberUsbReconnect,     Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "resume"},                      { Command::System,         SubCommand::Resume,                  Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "suspend"},                     { Command::System,         SubCommand::Suspend,                 Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },
 			{ {"system", "idle"},                        { Command::System,         SubCommand::Idle,                    Authorization::Yes,    InstanceCmd::No,           InstanceCmd::MustRun_No,     NoListenerCmd::Yes } },

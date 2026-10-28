@@ -2,7 +2,13 @@
 
 #include <grabber/video/VideoWrapper.h>
 
+#include <utils/GlobalSignals.h>
+#include <utils/UsbReset.h>
+
 // qt includes
+#include <QCoreApplication>
+#include <QPointer>
+#include <QThread>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -70,6 +76,9 @@ VideoWrapper::VideoWrapper()
 
 	_reconnectTimer.setInterval(RECONNECT_INTERVAL_MS);
 	connect(&_reconnectTimer, &QTimer::timeout, this, &VideoWrapper::tryReconnect);
+
+	// fork: "Reconnect grabber (USB)" from the JSON API (other thread, hence queued)
+	connect(GlobalSignals::getInstance(), &GlobalSignals::requestGrabberUsbReconnect, this, &VideoWrapper::usbReconnect, Qt::QueuedConnection);
 }
 
 VideoWrapper::~VideoWrapper()
@@ -222,6 +231,63 @@ void VideoWrapper::tryReconnect()
 		Info(_log, "Video device is back, grabber restarted");
 		_reconnectTimer.stop();
 	}
+}
+
+void VideoWrapper::usbReconnect()
+{
+	if (_usbReconnecting)
+	{
+		return;
+	}
+	_usbReconnecting = true;
+
+	// reopen it afterwards when a LED instance uses it (isActive() does not tell: the V4L2 grabber
+	// started from the settings runs without the wrapper's timer); a switched off grabber stays off
+	const bool reopen = !GRABBER_V4L_CLIENTS.isEmpty();
+	Info(_log, "Reconnecting the video grabber via USB");
+	// closes the device first: a node still held while resetting is re-created under a new number
+	stop();
+
+	// the reset blocks for up to a few seconds, the grabber runs in this (the main) thread
+	const QPointer<VideoWrapper> self(this);
+	const QSharedPointer<Logger> log = _log;
+	QThread* thread = QThread::create([self, log, reopen]() {
+		const QString node = UsbReset::resetNow(log);
+		QMetaObject::invokeMethod(qApp, [self, node, reopen]() {
+			if (self)
+			{
+				self->usbReconnectDone(node, reopen);
+			}
+		}, Qt::QueuedConnection);
+	});
+	connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+	thread->start();
+}
+
+void VideoWrapper::usbReconnectDone(const QString& node, bool reopen)
+{
+	_usbReconnecting = false;
+	if (!reopen || !getV4lGrabberState())
+	{
+		return;
+	}
+
+#if defined(ENABLE_V4L2)
+	// the node on the same USB port, so that of two identical grabbers (same name) the right one opens
+	_grabber.setDevice(node.isEmpty() ? _devicePath : node, _deviceName);
+#else
+	Q_UNUSED(node)
+#endif
+	if (start())
+	{
+		Info(_log, "Video grabber reconnected");
+		return;
+	}
+
+	// not back (yet): wait for it like for a replugged grabber
+	Info(_log, "Waiting for the video device to reappear, retrying every %d s", RECONNECT_INTERVAL_MS / 1000);
+	_missingTimer.restart();
+	_reconnectTimer.start();
 }
 
 void VideoWrapper::offerOtherDevices()

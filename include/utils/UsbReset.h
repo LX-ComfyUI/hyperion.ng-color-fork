@@ -6,14 +6,15 @@
 
 class Logger;
 
-// Fork: "Reset grabber (USB) + restart". Resets the USB device of the video grabber, as if it was
+// Fork: "Reconnect grabber (USB)". Resets the USB device of the video grabber, as if it was
 // unplugged and plugged in again, so a capture card that hangs on a flat no-signal frame recovers
-// without a replug. Only the grabber's own USB device is reset, nothing else on the bus.
+// without a replug and without a restart of Hyperion. Only the grabber's own USB device is reset,
+// nothing else on the bus.
 //
-// The reset runs in the restarted process, before the grabber opens its device (resetting while a
-// process holds the node makes the kernel re-create it under a new number). It needs Linux, a
-// grabber on USB and either write access to its USB device node (root or a udev rule; then the
-// reset is a plain ioctl) or `usbreset` (usbutils) that sudo allows without a password.
+// The grabber is closed before (VideoWrapper::usbReconnect): resetting while a process holds the
+// node makes the kernel re-create it under a new number. It needs Linux, a grabber on USB and
+// either write access to its USB device node (root or a udev rule; then the reset is a plain
+// ioctl) or `usbreset` (usbutils) that sudo allows without a password.
 namespace UsbReset
 {
 	// The grabber setting (grabberV4L2) of the daemon; the check and the reset follow it.
@@ -23,13 +24,13 @@ namespace UsbReset
 	// noTool, noRight) and an English reason.
 	bool possible(QString* whyKey = nullptr, QString* why = nullptr);
 
-	// For sysinfo: { possible, whyKey, why, device } plus the result of the last reset of this
-	// process, last: { ok, at (ms since epoch), whyKey, error }.
+	// For sysinfo: { possible, whyKey, why, device, running } plus the result of the last reset,
+	// last: { ok, at (ms since epoch), whyKey, error }.
 	QJsonObject status();
 
-	// Asks the next start of Hyperion to reset the grabber (marker file, see Process).
-	void request();
-
-	// Called by the restarted process before the video grabber starts.
-	void runIfRequested(const QSharedPointer<Logger>& log);
+	// Resets the grabber's USB device and waits until it is back. Blocks for up to a few seconds,
+	// so it runs in a thread of its own; the caller has closed the grabber before. Returns the
+	// capture node on the same USB port afterwards (identical grabbers have identical names, the
+	// port tells them apart), empty when the reset was not possible or the device did not come back.
+	QString resetNow(const QSharedPointer<Logger>& log);
 }

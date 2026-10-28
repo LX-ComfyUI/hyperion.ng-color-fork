@@ -97,7 +97,7 @@ $(document).ready(function () {
     setTimeout(initRestart, 100);
   });
 
-  //Reset grabber (USB) + restart (recover a stuck/hanging capture grabber, no replug needed)
+  //Reconnect grabber (USB): recovers a stuck/hanging capture grabber, no replug and no restart needed
   // Fork: only where Hyperion can reset it (sysinfo usbReset: Linux, grabber on USB, the right to
   // do it); otherwise greyed out with the reason. sysinfo is asked again when the menu opens.
   const usbResetPossible = function () { const u = window.sysInfo && window.sysInfo.usbReset; return !u || u.possible !== false; };
@@ -112,11 +112,12 @@ $(document).ready(function () {
   renderUsbReset();
   $('#btn_systemUsbResetRestart').off().on('click', function () {
     if (!usbResetPossible()) return false;
-    requestSystemUsbResetRestart();
+    requestGrabberUsbReconnect();
   });
 
-  $(window.hyperion).on("cmd-system-usbResetRestart", function () {
-    setTimeout(initRestart, 100);
+  // Hyperion keeps running; the bell of the test page reports the result
+  $(window.hyperion).off('cmd-system-grabberUsbReconnect').on("cmd-system-grabberUsbReconnect", function () {
+    showNotification('info', $.i18n('power_usbreset_started'));
   });
 
   // Fork-Erweiterung: Befehle der TV-Testseite im Power-Menü (Testserver, testPageBase, siehe Glocke in

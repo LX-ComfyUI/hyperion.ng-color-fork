@@ -6,7 +6,6 @@
 
 #include <utils/Logger.h>
 #include <utils/Process.h>
-#include <utils/UsbReset.h>
 #include <hyperion/HyperionIManager.h>
 
 Q_LOGGING_CATEGORY(event_hyperion, "hyperion.event.hyperion");
@@ -204,18 +203,6 @@ void EventHandler::handleEvent(Event event)
 	case Event::Restart:
 		emit signalEvent(Event::Restart);
 		Process::restartHyperion(11);
-		break;
-
-	case Event::UsbResetAndRestart:
-		emit signalEvent(Event::UsbResetAndRestart);
-		// A USB capture card can wedge and start delivering a flat no-signal
-		// frame; a USB reset clears it without a physical replug. The reset itself
-		// runs in the restarted process (see HyperionDaemon::startGrabberServices):
-		// resetting while this process still holds the video node makes the kernel
-		// re-create it under a new number (/dev/video0 -> /dev/video1).
-		Info(_log, "USB reset of the capture device requested - runs after restart");
-		UsbReset::request();
-		Process::restartHyperion(12);
 		break;
 
 	case Event::Quit:

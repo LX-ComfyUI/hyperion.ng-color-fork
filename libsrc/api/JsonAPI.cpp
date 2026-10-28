@@ -1966,17 +1966,17 @@ void JsonAPI::handleSystemCommand(const QJsonObject& /*message*/, const JsonApiC
 	case SubCommand::Restart:
 		emit signalEvent(Event::Restart);
 	break;
-	case SubCommand::UsbResetRestart:
+	case SubCommand::GrabberUsbReconnect:
 	{
 		// fork: refused right away when the grabber cannot be reset here (the WebUI and the test page
-		// grey the entry out with the reason from sysinfo)
+		// grey the entry out with the reason from sysinfo); the result comes with sysinfo usbReset.last
 		QString why;
 		if (!UsbReset::possible(nullptr, &why))
 		{
-			sendErrorReply("Grabber USB reset not possible: " + why, cmd);
+			sendErrorReply("Grabber USB reconnect not possible: " + why, cmd);
 			return;
 		}
-		emit signalEvent(Event::UsbResetAndRestart);
+		emit GlobalSignals::getInstance()->requestGrabberUsbReconnect();
 	}
 	break;
 	case SubCommand::ToggleSuspend:

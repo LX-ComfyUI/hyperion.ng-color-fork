@@ -117,6 +117,11 @@ signals:
 	///
 	void requestSource(hyperion::Components component, int hyperionInd, bool listen);
 
+	///
+	/// @brief Fork: reconnect the video grabber via USB (close it, reset its USB device, open it again)
+	///
+	void requestGrabberUsbReconnect();
+
 	///////////////////////////////////////
 	///////////// TO FORWARDER ////////////
 	///////////////////////////////////////

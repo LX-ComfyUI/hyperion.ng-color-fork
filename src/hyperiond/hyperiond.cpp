@@ -651,9 +651,8 @@ void HyperionDaemon::startGrabberServices()
 	handleSettingsUpdate(settings::GRABBERTEST, getSetting(settings::GRABBERTEST));
 
 	// start video capture (v4l2 && media foundation)
-	// fork: "Reset grabber (USB) + restart" resets the grabber here, before it opens its device
+	// fork: "Reconnect grabber (USB)" follows the grabber setting
 	UsbReset::setGrabberSettings(getSetting(settings::V4L2).object());
-	UsbReset::runIfRequested(_log);
 	handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
 
 	// start audio capture

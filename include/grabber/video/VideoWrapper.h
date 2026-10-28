@@ -31,11 +31,18 @@ public slots:
 
 	void handleSettingsUpdate(settings::type type, const QJsonDocument& config) override;
 
+	///
+	/// @brief Fork: closes the grabber, resets its USB device (UsbReset) in a thread of its own and opens
+	/// it again on the same USB port - like unplugging and plugging it in, without a restart of Hyperion
+	///
+	void usbReconnect();
+
 private slots:
 	void newFrame(const Image<ColorRgb> & image);
 	void readError(const char* err);
 	void tryReconnect();
 	void offerOtherDevices();
+	void usbReconnectDone(const QString& node, bool reopen);
 
 	void action() override;
 
@@ -45,6 +52,7 @@ private:
 	QElapsedTimer _missingTimer; // how long the configured device has been missing
 	QString _devicePath;
 	QString _deviceName;
+	bool _usbReconnecting = false;
 
 	/// The Media Foundation or V4L2 grabber
 #if defined(ENABLE_MF)
