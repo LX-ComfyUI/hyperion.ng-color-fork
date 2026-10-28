@@ -5,6 +5,7 @@ import http from "node:http";
 import net from "node:net";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
@@ -415,10 +416,28 @@ function webuiPort() {
   return webuiPortCache.port;
 }
 
+// the computer Hyperion and this server run on, for the power menu: its name and whether it can be
+// restarted / shut down from here (Linux with systemd, and root or sudo without a password for
+// systemctl); otherwise the reason, and the buttons stay disabled
+const hostDevice = { name: os.hostname(), power: false, why: "" };
+const runQuiet = (cmd, args) => new Promise((resolve) => execFile(cmd, args, { timeout: 5000 }, (err, stdout, stderr) => resolve({ ok: !err, out: String(stderr || stdout || err?.message || "").trim() })));
+const powerCommand = (action) => (process.getuid?.() === 0 ? ["systemctl", [action]] : ["sudo", ["-n", "systemctl", action]]);
+async function checkPower() {
+  if (process.platform !== "linux") return (hostDevice.why = "Nur unter Linux möglich");
+  if (!fs.existsSync("/run/systemd/system")) return (hostDevice.why = "Kein systemd (z. B. in Docker)");
+  if (process.getuid?.() !== 0) {
+    for (const action of ["reboot", "poweroff"]) {
+      if (!(await runQuiet("sudo", ["-n", "-l", "systemctl", action])).ok) return (hostDevice.why = "Kein Recht dazu (sudo ohne Passwort für systemctl fehlt)");
+    }
+  }
+  hostDevice.power = true;
+}
+checkPower().then(() => broadcast());
+
 // the state with everything the pages show besides it
 function publicState() {
   return { ...state, tvVersion, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
-    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard };
+    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard, device: hostDevice };
 }
 
 // what runs now, per card: { "card-…": "test" | "calib" } — for the symbols in the menu of the WebUI;
@@ -2303,21 +2322,26 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/api/hyperion/color") return sendJson(res, 200, readInstanceSetting("color"));
 
     // Hyperion system commands like the power menu of the WebUI
-    // test page and Pi commands of the power menu: reload the TV page, restart this server (systemd starts
-    // it again after a failure exit), reboot or power off the Pi
+    // test page and device commands of the power menu: reload the TV page, restart this server (systemd
+    // starts it again after a failure exit), restart or shut down the computer
     if (req.method === "POST" && p === "/api/testpage/system") {
       needTvtestHeader(req);
       const { action } = await readBody(req);
-      if (!["reloadTv", "restartServer", "rebootPi", "poweroffPi"].includes(action)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      if (!["reloadTv", "restartServer", "reboot", "poweroff"].includes(action)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      if (action === "reboot" || action === "poweroff") {
+        if (!hostDevice.power) return sendJson(res, 400, { error: hostDevice.why });
+        console.log(`Device ${action} requested from the control page`);
+        // systemctl returns once the job is queued, so the answer still gets out
+        const result = await runQuiet(...powerCommand(action));
+        if (!result.ok) return sendJson(res, 500, { error: `Fehlgeschlagen: ${result.out}` });
+        return sendJson(res, 200, { ok: true });
+      }
       sendJson(res, 200, { ok: true });
       if (action === "reloadTv") {
         for (const [client, role] of clients) if (role === "tv") client.write("event: reload\ndata: {}\n\n");
-      } else if (action === "restartServer") {
+      } else {
         console.log("Restart requested from the control page");
         setTimeout(() => process.exit(1), 300);
-      } else {
-        console.log(`Pi ${action === "rebootPi" ? "reboot" : "power off"} requested from the control page`);
-        setTimeout(() => execFile("sudo", ["-n", "systemctl", action === "rebootPi" ? "reboot" : "poweroff"], () => {}), 500);
       }
       return;
     }

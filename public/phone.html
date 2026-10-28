@@ -553,6 +553,9 @@
   .tb-pop button { display: block; width: 100%; text-align: left; border: none; border-radius: 0; background: none; padding: 9px 16px; font-size: 14px; color: var(--text); }
   .tb-pop button:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
   .tb-group { padding: 6px 16px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .tb-pop button:disabled { color: var(--muted); cursor: default; background: none; }
+  .tb-host { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .tb-why { padding: 2px 16px 6px; font-size: 12px; color: var(--muted); max-width: 260px; }
   .tb-pop hr { border: none; border-top: 1px solid var(--btn-line); margin: 6px 0; }
   /* bell: count of new messages on the icon, the messages in its menu */
   .tb-bell { position: relative; }
@@ -743,9 +746,10 @@
         <button type="button" data-page="reloadTv">TV-Seite neu laden</button>
         <button type="button" data-page="restartServer">Testserver neu starten</button>
         <hr>
-        <div class="tb-group">Raspberry Pi</div>
-        <button type="button" data-page="rebootPi">Pi neu starten</button>
-        <button type="button" data-page="poweroffPi">Pi ausschalten</button>
+        <div class="tb-group">Hyperion-Gerät <span class="tb-host" id="tb-host" data-i18n-skip></span></div>
+        <button type="button" data-page="reboot">Neu starten</button>
+        <button type="button" data-page="poweroff">Herunterfahren</button>
+        <div class="tb-why" id="tb-power-why" hidden></div>
       </div>
     </div>
   </div>
@@ -2388,6 +2392,7 @@ function renderState() {
   renderTestPresets();
   renderGuard();
   renderTestServer();
+  window.renderPowerMenu?.();
   renderOverlayChecks();
   renderGrabberRun();
   renderGrabberCorrection();
@@ -6232,7 +6237,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
 (function () {
   const btn = $("tb-power");
   const menu = $("tb-power-menu");
-  btn.dataset.tip = I18N.t("System: Hyperion, Testseite, Raspberry Pi");
+  btn.dataset.tip = I18N.t("System: Hyperion, Testseite, Hyperion-Gerät");
   btn.setAttribute("aria-label", btn.dataset.tip);
   const close = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); };
   btn.addEventListener("click", (ev) => {
@@ -6247,8 +6252,17 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
   };
   const ASK_PAGE = {
     restartServer: "Den Testserver jetzt neu starten? Laufende Tests und Kalibrierungen werden abgebrochen, die Seite ist einige Sekunden nicht erreichbar.",
-    rebootPi: "Den Raspberry Pi jetzt neu starten? Hyperion, die LEDs und diese Seite sind danach etwa eine Minute weg.",
-    poweroffPi: "Den Raspberry Pi jetzt ausschalten? Er startet erst wieder, wenn du den Strom trennst und wieder anschließt.",
+    reboot: "Das Hyperion-Gerät jetzt neu starten? Hyperion, die LEDs und diese Seite sind danach etwa eine Minute weg.",
+    poweroff: "Das Hyperion-Gerät jetzt herunterfahren? Hyperion, die LEDs und diese Seite sind weg, bis das Gerät wieder eingeschaltet wird.",
+  };
+  // name of the computer, and whether it can be restarted / shut down from here (else why not)
+  window.renderPowerMenu = () => {
+    const d = state.device;
+    if (!d) return;
+    $("tb-host").textContent = d.name ? `(${d.name})` : "";
+    for (const b of menu.querySelectorAll('[data-page="reboot"], [data-page="poweroff"]')) b.disabled = !d.power;
+    $("tb-power-why").hidden = d.power || !d.why;
+    $("tb-power-why").textContent = d.power ? "" : I18N.t(d.why);
   };
   menu.querySelectorAll("[data-page]").forEach((b) => b.addEventListener("click", async () => {
     close();
