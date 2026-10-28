@@ -842,6 +842,11 @@ const GT_STABLE_DELTA = 0.4;
 const GT_MAX_SETTLE_MS = 6000;  // measured anyway after this, marked as unstable
 const GT_MEASURE_MS = 1000;     // averaged over this long
 const GT_MAX_AGE_MS = 1000;     // newest grabber frame must be younger
+const GT_BIG_CHANGE = 32;       // TV code values: a color change this big must show up in the frame
+const GT_LEAVE_MIN = 3;         // raw counts the frame mean must move away from the old color
+const GT_RECHECK_DELTA = 1.5;   // the averaged measurement must agree with the stable frame mean
+const GT_LATENCY_MAX_MS = 4000;
+let gtLatencyMs = 0;            // slowest delay TV color → grabber seen on big changes (learned per run)
 
 // transient, not in state.json: what the TV shows and how far the test is
 let grabberRun = { running: false, kind: null, index: 0, total: 0, color: null, label: null, error: null, finishedAt: 0, aborted: false };
@@ -1194,20 +1199,47 @@ function setRun(patch) {
   broadcast();
 }
 
-async function waitStable(shownAt) {
-  await sleep(GT_MIN_WAIT_MS);
+// Waits until the grabber shows the color just sent to the TV. Stable alone is not enough: a slow chain
+// still shows the OLD color, which is just as stable. After a big change (`change` = largest channel step
+// from the color before, `from` = frame mean before it) the frame mean must first leave the old value;
+// the delay seen that way sets the minimum wait of changes too small to see.
+async function waitStable(shownAt, from = null, change = 0) {
+  const expect = !!from && change >= GT_BIG_CHANGE;
+  await sleep(expect ? GT_MIN_WAIT_MS : Math.max(GT_MIN_WAIT_MS, Math.round(gtLatencyMs * 1.5)));
   let prev = null;
   let stable = 0;
+  let left = !expect;
   for (;;) {
     const s = await probeGrabber(false);
     if (s.ageMs < 0 || s.ageMs > GT_MAX_AGE_MS) throw new Error("Der Grabber liefert keine Bilder mehr");
     const m = s.last.mean;
-    if (prev) stable = Math.max(...m.map((v, i) => Math.abs(v - prev[i]))) < GT_STABLE_DELTA ? stable + 1 : 0;
-    prev = m;
-    if (stable >= GT_STABLE_POLLS) return true;
-    if (Date.now() - shownAt > GT_MAX_SETTLE_MS) return false;
+    if (!left && Math.max(...m.map((v, i) => Math.abs(v - from[i]))) >= Math.max(GT_LEAVE_MIN, change * 0.25)) {
+      left = true;
+      gtLatencyMs = Math.min(GT_LATENCY_MAX_MS, Math.max(Math.round(gtLatencyMs * 0.8), Date.now() - shownAt));
+    }
+    if (left) {
+      if (prev) stable = Math.max(...m.map((v, i) => Math.abs(v - prev[i]))) < GT_STABLE_DELTA ? stable + 1 : 0;
+      prev = m;
+    }
+    if (stable >= GT_STABLE_POLLS) return { settled: true, mean: m };
+    if (Date.now() - shownAt > GT_MAX_SETTLE_MS) return { settled: false, mean: m };
     await sleep(GT_POLL_MS);
   }
+}
+
+// the averaged measurement after waitStable; if it differs from the stable frame mean the picture still
+// changed during the averaging: once more, and if it still differs the result is marked unstable
+async function measureSettled(w) {
+  let settled = w.settled;
+  let s;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await probeGrabber(true);
+    await sleep(GT_MEASURE_MS);
+    s = await probeGrabber(false);
+    if (!s.avg?.n) throw new Error("Der Grabber liefert keine Bilder mehr");
+    if (Math.max(...s.avg.mean.map((v, i) => Math.abs(v - w.mean[i]))) <= GT_RECHECK_DELTA) return { s, settled };
+  }
+  return { s, settled: false };
 }
 
 async function runGrabberTest(kind) {
@@ -1217,18 +1249,28 @@ async function runGrabberTest(kind) {
   const results = [];
   let frame = null;
   let device = null;
+  let prevSent = null;
   try {
+    // priming: a big, certain change first, so the first step is not measured on whatever the TV showed
+    // before (a slow chain would still deliver that picture) and the chain delay is known from the start
+    const before = (await probeGrabber(false)).last.mean;
+    const mean0 = (before[0] + before[1] + before[2]) / 3;
+    const prime = mean0 < 128 ? 255 : 0;
+    setRun({ index: 0, color: toHex([prime, prime, prime]), label: "Vorbereitung" });
+    await waitStable(Date.now(), before, Math.abs(prime - mean0));
+    prevSent = [prime, prime, prime];
     for (let i = 0; i < steps.length; i++) {
       if (grabberAbort) break;
       if (![...clients.values()].includes("tv")) throw new Error("Die TV-Seite wurde geschlossen, der Test ist abgebrochen");
       const step = steps[i];
+      // the frame mean before the new color shows up, and how big the change is
+      const from = (await probeGrabber(false)).last.mean;
+      const change = Math.max(...step.sent.map((v, k) => Math.abs(v - prevSent[k])));
+      prevSent = step.sent;
       setRun({ index: i, color: toHex(step.sent), label: stepLabel(step) });
-      const settled = await waitStable(Date.now());
+      const w = await waitStable(Date.now(), from, change);
       if (grabberAbort) break;
-      await probeGrabber(true);
-      await sleep(GT_MEASURE_MS);
-      const s = await probeGrabber(false);
-      if (!s.avg?.n) throw new Error("Der Grabber liefert keine Bilder mehr");
+      const { s, settled } = await measureSettled(w);
       frame = { width: s.width, height: s.height };
       if (s.device) device = s.device;
       // got is always the uncorrected frame, corr the same frames after the grabber color correction (if on)
@@ -1266,6 +1308,7 @@ async function startGrabberTest(kind) {
   const first = await probeGrabber(false);
   if (first.ageMs < 0 || first.ageMs > GT_MAX_AGE_MS) throw new Error("Der Grabber liefert keine Bilder. Ist die USB-Aufnahme in Hyperion eingeschaltet?");
   const total = kind === "basic" ? Report.basicSteps().length : state.grabberColors.length;
+  gtLatencyMs = 0;
   grabberAbort = false;
   setRun({ running: true, kind, index: 0, total, color: null, label: null, error: null, aborted: false, startedAt: Date.now() });
   runGrabberTest(kind);
@@ -1323,12 +1366,9 @@ function gcPrediction(level) {
 // one measurement of the frame mean after the grabber color correction (raw if it is off)
 async function gcMeasureOnce(tv, job) {
   gcSet({ color: toHex([tv, tv, tv]) });
-  const settled = await waitStable(Date.now());
+  const w = await waitStable(Date.now());
   if (job !== gcJob) return null;
-  await probeGrabber(true);
-  await sleep(GT_MEASURE_MS);
-  const s = await probeGrabber(false);
-  if (!s.avg?.n) throw new Error("Der Grabber liefert keine Bilder mehr");
+  const { s, settled } = await measureSettled(w);
   const rgb = (s.avg.corrected ?? s.avg.mean).map(Number);
   return { tv, rgb, level: Math.max(...rgb) * 100 / 255, corrected: !!s.avg.corrected, settled };
 }
