@@ -126,7 +126,7 @@ $(document).ready(function () {
     if (question && !window.confirm($.i18n(question))) return;
     fetch(testPageBase() + '/api/testpage/system', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Tvtest': '1' },
+      headers: testPageHeaders({ 'Content-Type': 'application/json', 'X-Tvtest': '1' }),
       body: JSON.stringify({ action: action })
     }).then(function (res) {
       if (res.ok) return;

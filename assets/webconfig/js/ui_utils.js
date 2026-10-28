@@ -9,6 +9,13 @@ function testPageBase() {
   return 'http://' + location.hostname + ':' + port;
 }
 
+// Fork: headers for requests to the test server; with a Hyperion password of its own it accepts the
+// login of this WebUI (its token) instead of an own login
+function testPageHeaders(headers) {
+  const token = getStorage('loginToken');
+  return Object.assign({}, headers, token ? { 'X-Hyperion-Token': token } : {});
+}
+
 function removeOverlay() {
   $("#loading_overlay").removeClass("overlay");
 }

@@ -606,7 +606,7 @@ function SwitchToMenuItem(target, item) {
     });
     $(menu).find('[data-nt-clear]').on('click', async function () {
       try {
-        await fetch(base + '/api/notices', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tvtest': '1' }, body: JSON.stringify({ op: 'clear' }) });
+        await fetch(base + '/api/notices', { method: 'POST', headers: testPageHeaders({ 'Content-Type': 'application/json', 'X-Tvtest': '1' }), body: JSON.stringify({ op: 'clear' }) });
         fetchTv();
       } catch (e) { /* Testserver nicht erreichbar */ }
     });
@@ -639,7 +639,7 @@ function SwitchToMenuItem(target, item) {
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), 3000);
     try {
-      const res = await fetch(base + '/api/notices?lang=' + lang(), { cache: 'no-store', signal: abort.signal });
+      const res = await fetch(base + '/api/notices?lang=' + lang(), { cache: 'no-store', signal: abort.signal, headers: testPageHeaders({}) });
       if (!res.ok) throw new Error('status ' + res.status);
       const data = await res.json();
       tvNotes = data.notices || [];
