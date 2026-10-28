@@ -437,7 +437,7 @@ checkPower().then(() => broadcast());
 // the state with everything the pages show besides it
 function publicState() {
   return { ...state, tvVersion, mediaItem: state.media?.active ? mediaItemOf(state.media.id) : null, mediaStamp, tvCaps, tvMedia,
-    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard, device: hostDevice, hyperionLink: !!monitor };
+    webuiPort: webuiPort(), port: PORT, portFixed: !!process.env.TVTEST_PORT, grabberRun, gcGuide, colorStamp, grabberCorrection, layoutFix: layoutFixInfo, guard: guardInfo, paused, graceUntil, tvConnected: hasTv(), health, notices, rgbWizard, device: hostDevice, hyperionLink: !!monitor, usbReset };
 }
 
 // what runs now, per card: { "card-…": "test" | "calib" } — for the symbols in the menu of the WebUI;
@@ -778,7 +778,7 @@ function connectMonitor() {
   });
   // hyperionLink in the state follows this connection at once: the loading layer of the control page
   // waits for it after a restart of Hyperion
-  sock.on("connect", () => { monitor = m; syncImageStream(); broadcast(); });
+  sock.on("connect", () => { monitor = m; usbResetPolls = 0; syncImageStream(); broadcast(); });
   sock.on("error", () => {});
   sock.on("close", () => {
     if (monitor === m) { monitor = null; broadcast(); }
@@ -1010,11 +1010,28 @@ async function announceGrabber(info) {
   else addNotice("grabberKnown", "info", { name, nsSlot: info.slotName || "", colorSlot: grabberCorrection.name || "" }, "card-ns");
 }
 
+// "Reset grabber (USB) + restart": whether Hyperion can do it here (sysinfo usbReset of the fork: Linux,
+// grabber on USB, the right to do it) for the power menu, and the result of the last reset for the bell.
+// Asked after every new connection to Hyperion (the reset runs in the restarted process) and every 30 s.
+let usbReset = null;
+let usbResetPolls = 0;
+async function refreshUsbReset() {
+  let info;
+  try { info = (await monitor.call({ command: "sysinfo" })).info?.usbReset ?? null; } catch { return; }
+  const last = info?.last;
+  // the result of a reset this server has not reported yet; a server started long after it stays quiet
+  if (last?.at && last.at !== usbReset?.last?.at && Date.now() - last.at < 5 * 60_000 && !notices.some((n) => n.params?.at === last.at)) {
+    addNotice(last.ok ? "usbResetDone" : "usbResetFailed", last.ok ? "info" : "critical", { at: last.at, whyKey: last.whyKey || "", error: last.error || "", device: info.device || "" }, "card-ns");
+  }
+  if (JSON.stringify(info) !== JSON.stringify(usbReset)) { usbReset = info; broadcast(); }
+}
+
 async function pollHealth() {
   const next = { ...health };
   let info = null;
   if (monitor) {
     hyperionDownSince = 0;
+    if (usbResetPolls++ % 8 === 0) await refreshUsbReset();
     try { info = (await monitor.call({ command: "grabbertest", nosignal: "status" })).info ?? null; } catch {}
   } else if (!hyperionDownSince) {
     hyperionDownSince = Date.now();
@@ -2368,6 +2385,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && p === "/api/hyperion/system") {
       const { subcommand } = await readBody(req);
       if (!["suspend", "resume", "restart", "usbResetRestart"].includes(subcommand)) return sendJson(res, 400, { error: "Unbekannter Befehl" });
+      // Hyperion refuses it too, but in English; asked fresh, the grabber may have changed since
+      if (subcommand === "usbResetRestart" && monitor) await refreshUsbReset();
+      if (subcommand === "usbResetRestart" && usbReset?.possible === false) return sendJson(res, 400, { error: NoticeText.usbWhy(usbReset.whyKey, usbReset.why, "de"), whyKey: usbReset.whyKey, why: usbReset.why });
       // the announcement goes first: Hyperion may close the connection before it answers
       if (subcommand === "restart" || subcommand === "usbResetRestart") broadcastSystem(subcommand === "restart" ? "hyperion" : "usb");
       await hyperionCommand({ command: "system", subcommand });

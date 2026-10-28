@@ -29,6 +29,9 @@
       signalBack: ["Signal wieder da", ""],
       grabberKnown: ["Bekannter Grabber: {name}", "Er läuft mit seinen zuletzt benutzten Einstellungen. No-Signal-Erkennung: {ns}. Farbkorrektur: {color}."],
       grabberNew: ["Neuer Grabber: {name}", "Für diesen Grabber fehlt die Kalibrierung: {what}. Das bleibt für ihn aus, bis er kalibriert ist."],
+      usbResetDone: ["Grabber zurückgesetzt", "{device} wurde per USB neu verbunden (wie Aus- und Einstecken), und Hyperion ist neu gestartet."],
+      usbResetFailed: ["Grabber-Reset fehlgeschlagen", "Hyperion ist nur neu gestartet, der Grabber wurde nicht zurückgesetzt. Grund: {error}."],
+      grabberFallback: "Der Grabber",
       activeSlot: "Platz aktiv", whatNs: "No-Signal-Erkennung", whatColor: "Farbkorrektur",
     },
     en: {
@@ -58,9 +61,42 @@
       signalBack: ["Signal is back", ""],
       grabberKnown: ["Known grabber: {name}", "It runs with the settings it used last. No-signal detection: {ns}. Color correction: {color}."],
       grabberNew: ["New grabber: {name}", "This grabber is not calibrated: {what}. That stays off for it until it is calibrated."],
+      usbResetDone: ["Grabber reset", "{device} was reconnected via USB (like unplugging and plugging in), and Hyperion restarted."],
+      usbResetFailed: ["Grabber reset failed", "Hyperion only restarted, the grabber was not reset. Reason: {error}."],
+      grabberFallback: "The grabber",
       activeSlot: "active slot", whatNs: "No-signal detection", whatColor: "Color correction",
     },
   };
+  // why the grabber cannot be reset (whyKey of Hyperion's sysinfo usbReset), for the notice and the power menu
+  const USB_WHY = {
+    de: {
+      notLinux: "Geht nur unter Linux",
+      noGrabber: "Der Video-Grabber ist ausgeschaltet",
+      notFound: "Der eingestellte Video-Grabber wurde nicht gefunden",
+      notUsb: "Der Video-Grabber hängt nicht an USB",
+      noTool: "Kein Schreibrecht auf das USB-Gerät, und usbreset (Paket usbutils) fehlt",
+      noRight: "Kein Recht dazu (Schreibrecht auf das USB-Gerät oder sudo ohne Passwort für usbreset fehlt)",
+      failed: "Das Zurücksetzen ging schief",
+      notBack: "Der Grabber kam danach nicht innerhalb von 5 s wieder",
+    },
+    en: {
+      notLinux: "Only works on Linux",
+      noGrabber: "The video grabber is switched off",
+      notFound: "The configured video grabber was not found",
+      notUsb: "The video grabber is not connected via USB",
+      noTool: "No write access to the USB device, and usbreset (package usbutils) is missing",
+      noRight: "Not permitted (write access to the USB device or sudo without password for usbreset is missing)",
+      failed: "Resetting went wrong",
+      notBack: "The grabber did not come back within 5 s afterwards",
+    },
+  };
+  // the reason in lang, with Hyperion's own message where it says more (a failed reset)
+  function usbWhy(whyKey, error, lang) {
+    const text = (USB_WHY[lang] ?? USB_WHY.de)[whyKey];
+    if (!text) return error || "";
+    return whyKey === "failed" && error ? `${text} (${error})` : text;
+  }
+
   const TEST_NAMES = {
     de: { grayTest: "Graues Standbild", bars: "Schwarze Balken", depthTest: "LED-Erfassungstiefe", fracTest: "Präzise-Farbausgabe", posTest: "LED-Position", posGuide: "LED-Position kalibrieren", gcGuide: "Graukurve kalibrieren", color: "Testfarben" },
     en: { grayTest: "Gray still image", bars: "Black bars", depthTest: "LED capture depth", fracTest: "Precise color output", posTest: "LED position", posGuide: "LED position calibration", gcGuide: "Gray curve calibration", color: "Test colors" },
@@ -79,7 +115,7 @@
     if (!Array.isArray(pair)) return { title: n.kind, text: "", target: n.target || "" };
     const keys = Array.isArray(q.tests) ? q.tests : [];
     const p = {
-      name: q.name ?? "", error: q.error ?? "", slot: q.slot ?? "", port: q.port ?? "", from: q.from ?? "", to: q.to ?? "",
+      name: q.name ?? "", error: n.kind === "usbResetFailed" ? usbWhy(q.whyKey, q.error, lang) : q.error ?? "", device: q.device || t.grabberFallback, slot: q.slot ?? "", port: q.port ?? "", from: q.from ?? "", to: q.to ?? "",
       slotText: q.slot ? (lang === "en" ? ` (memory slot \u201c${q.slot}\u201d)` : ` (Speicherplatz „${q.slot}“)`) : "",
       tests: keys.length ? keys.map((k) => names[k] ?? k).join(", ") + ". " : "",
       ns: q.nsSlot || t.activeSlot, color: q.colorSlot || t.activeSlot,
@@ -87,5 +123,5 @@
     };
     return { title: fill(pair[0], p), text: fill(pair[1], p), target: n.target || TEST_CARDS[keys[0]] || "" };
   }
-  global.NoticeText = { info, TEST_CARDS };
+  global.NoticeText = { info, usbWhy, TEST_CARDS };
 })(typeof window !== "undefined" ? window : globalThis);

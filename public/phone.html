@@ -769,7 +769,8 @@
         <button type="button" data-system="suspend">Ruhezustand</button>
         <button type="button" data-system="resume">Aktivieren</button>
         <button type="button" data-system="restart">Neustart</button>
-        <button type="button" data-system="usbResetRestart">USB-Reset + Neustart</button>
+        <button type="button" data-system="usbResetRestart">Grabber zurücksetzen (USB) + Neustart</button>
+        <div class="tb-why" id="tb-usb-why" data-i18n-skip hidden></div>
         <hr>
         <div class="tb-group">Testseite</div>
         <button type="button" data-page="reloadTv">TV-Seite neu laden</button>
@@ -6278,7 +6279,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
   document.addEventListener("click", (ev) => { if (!menu.hidden && !menu.contains(ev.target)) close(); });
   const ASK = {
     restart: "Hyperion jetzt neu starten? Die LEDs sind dabei kurz aus.",
-    usbResetRestart: "Grabber per USB zurücksetzen und Hyperion neu starten? Die LEDs sind dabei kurz aus.",
+    usbResetRestart: "Den Video-Grabber per USB neu verbinden lassen (wie Aus- und Einstecken) und Hyperion neu starten? Die LEDs sind dabei kurz aus.",
   };
   const ASK_PAGE = {
     restartServer: "Den Testserver jetzt neu starten? Laufende Tests und Kalibrierungen werden abgebrochen, die Seite ist einige Sekunden nicht erreichbar.",
@@ -6287,6 +6288,12 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
   };
   // name of the computer, and whether it can be restarted / shut down from here (else why not)
   window.renderPowerMenu = () => {
+    // the grabber reset only where Hyperion can do it (unknown with Hyperions without it: allowed)
+    const u = state.usbReset;
+    const usbWhy = u?.possible === false ? NoticeText.usbWhy(u.whyKey, u.why, I18N.lang === "en" ? "en" : "de") : "";
+    menu.querySelector('[data-system="usbResetRestart"]').disabled = !!usbWhy;
+    $("tb-usb-why").hidden = !usbWhy;
+    $("tb-usb-why").textContent = usbWhy;
     const d = state.device;
     if (!d) return;
     $("tb-host").textContent = d.name ? `(${d.name})` : "";
@@ -6320,7 +6327,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
     try {
       const res = await fetch("/api/hyperion/system", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subcommand: sub }) });
       const out = await res.json();
-      if (!res.ok) throw new Error(out.error);
+      if (!res.ok) throw new Error(out.whyKey ? NoticeText.usbWhy(out.whyKey, out.why, I18N.lang === "en" ? "en" : "de") : out.error);
     } catch (e) {
       if (kind) cancelLoading();
       showError(e instanceof TypeError ? "Die Testseite auf dem Hyperion-Server ist nicht erreichbar." : e.message);
@@ -6333,7 +6340,7 @@ for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", 
 // loads anew (it may have new code then). The TV page has nothing of this.
 const LOADING_TEXTS = {
   hyperion: ["Hyperion startet neu", "Die LEDs sind kurz aus. Es geht von selbst weiter, sobald Hyperion wieder läuft."],
-  usb: ["Grabber wird zurückgesetzt", "Der Grabber wird per USB neu verbunden und Hyperion startet neu. Die LEDs sind kurz aus."],
+  usb: ["Grabber wird zurückgesetzt", "Der Video-Grabber wird per USB neu verbunden (wie Aus- und Einstecken), und Hyperion startet neu. Die LEDs sind kurz aus."],
   server: ["Testserver startet neu", "Die Seite lädt von selbst neu, sobald der Testserver wieder läuft."],
   reboot: ["Hyperion-Gerät startet neu", "Das dauert meist etwa eine Minute. Die Seite lädt danach von selbst neu."],
   poweroff: ["Hyperion-Gerät wird heruntergefahren", "Hyperion, die LEDs und diese Seite sind weg, bis das Gerät wieder eingeschaltet wird."],
