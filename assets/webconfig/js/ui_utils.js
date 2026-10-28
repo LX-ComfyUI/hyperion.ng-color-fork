@@ -75,7 +75,9 @@ function getHashtag() {
     }
 
     if (tag === "" || typeof tag === "undefined" || tag.startsWith("http")) {
-      tag = "dashboard";
+      // Fork-Erweiterung: eine frische Installation (noch kein LED-Gerät eingerichtet, Typ "file" ist
+      // die Vorgabe) startet auf der Anleitung; sonst bleibt es beim Dashboard
+      tag = (globalThis.serverConfig?.device?.type === "file") ? "guide" : "dashboard";
     }
 
     return tag;
