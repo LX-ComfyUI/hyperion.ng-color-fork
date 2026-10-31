@@ -202,15 +202,17 @@ namespace hyperion {
 				if (ledIndexList[j].contains("-"))
 				{
 					QStringList ledIndices = ledIndexList[j].split("-");
-					int startInd = ledIndices[0].toInt();
-					int endInd   = ledIndices[1].toInt();
+					int startInd = ledIndices[0].trimmed().toInt();
+					int endInd   = ledIndices[1].trimmed().toInt();
 
 					adjustment->setAdjustmentForLed(colorAdjustment->_id, startInd, endInd);
 					sStream << startInd << "-" << endInd;
 				}
 				else
 				{
-					int index = ledIndexList[i].toInt();
+					// Fork-Fix: read the j-th entry; the upstream code used the profile index i, which
+					// crashed Hyperion for a single LED number in the second or a later profile
+					int index = ledIndexList[j].trimmed().toInt();
 					adjustment->setAdjustmentForLed(colorAdjustment->_id, index, index);
 					sStream << index;
 				}
