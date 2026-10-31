@@ -157,7 +157,9 @@ const PRESET_IDS = PRESETS.map((p) => p.id);
 // curve is on belongs to the whole function, not to a slot (old slots lose their "enabled" on load).
 // "blackThreshold" likewise: its slots hold the threshold of the LED device (the switch stays global).
 // "hyColor": its slots hold the color values of a color entry (colors, brightness and saturation, gamma
-// and color temperature), the fields of the Hyperion column in the test colors card.
+// and color temperature, brightness compensation and gain) and the image processing, the fields of the
+// Hyperion column in the test colors card. The profile's name and LED range stay out: a slot is values,
+// not which LEDs they apply to.
 const PRESET_TESTS = ["bars", "grayTest", "depthTest", "fracTest", "posTest", "grayCurve", "blackThreshold", "hyColor"];
 const MAX_TEST_PRESETS = 50;
 const MAX_PRESETS = { grayCurve: 10, blackThreshold: 10, hyColor: 10 };
@@ -171,11 +173,16 @@ function grayCurveSettings(input) {
 }
 // schema-device.json: blackThreshold.threshold 0 to 10 in steps of 0.05, default 0.5
 const blackThresholdSettings = (input) => ({ threshold: num(input?.threshold, 0, 10, 0.5, 0.05) });
+// schema-color.json: imageToLedMappingType
+const MAPPING_TYPES = ["multicolor_mean", "multicolor_mean_squared", "unicolor_mean", "dominant_color", "unicolor_dominant", "dominant_color_advanced", "unicolor_dominant_advanced"];
 // ranges like COLOR_FIELDS; a field missing in the input stays out (an older Hyperion may lack one)
 const HY_COLOR_SPECS = {
   white: ["rgb"], red: ["rgb"], green: ["rgb"], blue: ["rgb"], cyan: ["rgb"], magenta: ["rgb"], yellow: ["rgb"],
   brightness: ["num", 0, 100, 1], saturationGain: ["num", 0, 10, 0.1], backlightThreshold: ["num", 0, 100, 1], backlightColored: ["bool"],
   gammaRed: ["num", 0.1, 100, 0.05], gammaGreen: ["num", 0.1, 100, 0.05], gammaBlue: ["num", 0.1, 100, 0.05], temperature: ["num", 1000, 40000, 100],
+  brightnessCompensation: ["num", 0, 100, 1], brightnessGain: ["num", 0.1, 10, 0.1],
+  imageToLedMappingType: ["enum", MAPPING_TYPES],
+  accuracyLevel: ["num", 1, 4, 1], reducedPixelSetFactorFactor: ["enum", ["0", "1", "2", "3"]],
 };
 function hyColorSettings(input) {
   const out = {};
@@ -184,6 +191,7 @@ function hyColorSettings(input) {
     if (v === undefined) continue;
     if (kind === "rgb") { if (Array.isArray(v) && v.length === 3) out[key] = v.map((c) => num(c, 0, 255, 0, 1)); }
     else if (kind === "bool") out[key] = v === true;
+    else if (kind === "enum") { if (min.includes(v)) out[key] = v; }
     else out[key] = num(v, min, max, min, step);
   }
   return out;
@@ -1766,7 +1774,33 @@ const COLOR_FIELDS = {
   // fork: capture depth of the LED areas in percent, 0 = the layout
   "ledAreaDepth.topBottom": ["num", 0, 50, 0.5],
   "ledAreaDepth.leftRight": ["num", 0, 50, 0.5],
+  // the color profile itself: its name and the LEDs it applies to
+  id: ["text"],
+  leds: ["leds"],
+  brightnessCompensation: ["num", 0, 100, 1],
+  brightnessGain: ["num", 0.1, 10, 0.1],
+  // image processing (top level of the color settings)
+  imageToLedMappingType: ["enum", MAPPING_TYPES],
+  accuracyLevel: ["num", 1, 4, 1],
+  reducedPixelSetFactorFactor: ["enum", ["0", "1", "2", "3"]],
 };
+// fields at the top level of the color settings, the others belong to a channelAdjustment entry
+const COLOR_TOP_FIELDS = new Set(["fractionalMean", "imageToLedMappingType", "accuracyLevel", "reducedPixelSetFactorFactor"]);
+
+// "*" or LED numbers and ranges like "0-99, 120". A single number is written as a range: Hyperion
+// reads single numbers of a second or later profile with the profile's index instead of the
+// number's (createLedColorsAdjustment), which crashes it; a range takes the other path.
+function normalizeLeds(value, ledCount) {
+  const s = String(value ?? "").trim();
+  if (s === "" || s === "*") return "*";
+  if (!/^\d+(-\d+)?(\s*,\s*\d+(-\d+)?)*$/.test(s)) throw new Error("LED-Bereich: * für alle oder Nummern wie 0-99, 120");
+  return s.split(",").map((part) => {
+    const [a, b = a] = part.trim().split("-").map(Number);
+    if (a > b) throw new Error(`LED-Bereich: ${a}-${b} läuft rückwärts`);
+    if (ledCount && b > ledCount - 1) throw new Error(`LED-Bereich: Das Layout hat nur die LEDs 0 bis ${ledCount - 1}`);
+    return `${a}-${b}`;
+  }).join(", ");
+}
 
 // patch = { index, field, value, stop? }: one field per save, so a half-typed value never reaches Hyperion
 function mergeColor(current, patch) {
@@ -1780,6 +1814,8 @@ function mergeColor(current, patch) {
   let key = field;
   if (field === "fractionalMean") {
     if (!("fractionalMean" in next)) throw new Error("Der Mittelwert mit Nachkommastellen braucht die neue Hyperion-Version");
+    target = next;
+  } else if (COLOR_TOP_FIELDS.has(field)) {
     target = next;
   } else if (field.startsWith("ledAreaDepth.")) {
     if (!next.ledAreaDepth) throw new Error("Die Erfassungstiefe braucht die neue Hyperion-Version");
@@ -1803,6 +1839,19 @@ function mergeColor(current, patch) {
     target[key] = rgb;
   } else if (kind === "bool") {
     target[key] = value === true;
+  } else if (kind === "enum") {
+    if (!min.includes(value)) throw new Error("Unbekannter Wert");
+    target[key] = value;
+  } else if (kind === "text") {
+    // the profile name: Hyperion finds a profile by it, so two profiles never share one
+    const name = typeof value === "string" ? value.trim().slice(0, 60) : "";
+    if (!name) throw new Error("Bitte einen Namen eingeben");
+    if (next.channelAdjustment.some((a) => a !== entry && a.id === name)) throw new Error(`Ein anderes Farbprofil heißt schon „${name}“`);
+    target[key] = name;
+  } else if (kind === "leds") {
+    let ledCount = 0;
+    try { ledCount = readInstanceSetting("leds").length; } catch {}
+    target[key] = normalizeLeds(value, ledCount);
   } else if (kind === "points") {
     // 1-12 points like in the graph, two points never share a brightness (Hyperion sorts them)
     if (!Array.isArray(value) || value.length < 1 || value.length > 12) throw new Error("Die Graukurve braucht 1 bis 12 Punkte");
@@ -1912,7 +1961,7 @@ async function readHyperionDefaults() {
   for (const field of Object.keys(COLOR_FIELDS)) {
     const [head, mid, last] = field.split(".");
     let node;
-    if (field === "fractionalMean") node = c.fractionalMean;
+    if (COLOR_TOP_FIELDS.has(field)) node = c[field];
     else if (head === "ledAreaDepth") node = sub(c[head], mid);
     else if (mid === "point") node = sub(sub(entry.grayCurve, "points")?.items, last);
     else if (head === "grayCurve") node = sub(entry[head], mid);
@@ -1925,8 +1974,43 @@ async function readHyperionDefaults() {
     if ("default" in v) blackborder[k] = v.default;
     for (const [k2, v2] of Object.entries(v.properties ?? {})) if ("default" in v2) blackborder[`${k}.${k2}`] = v2.default;
   }
-  hyperionDefaults = { color, blackborder };
+  const smoothing = {};
+  for (const [k, v] of Object.entries(props.smoothing?.properties ?? {})) if ("default" in v) smoothing[k] = v.default;
+  hyperionDefaults = { color, blackborder, smoothing };
   return hyperionDefaults;
+}
+
+// --- Hyperion smoothing (instance 0), with the ranges of schema-smoothing.json ---
+const SMOOTHING_FIELDS = {
+  enable: ["bool"],
+  type: ["enum", ["linear", "decay"]],
+  time_ms: ["num", 1, 5000, 1],
+  updateFrequency: ["num", 1, 2000, 0.1],
+  interpolationRate: ["num", 1, 1000, 0.1],
+  decay: ["num", 1, 20, 0.1],
+  dithering: ["bool"],
+  updateDelay: ["num", 0, 2048, 1],
+};
+
+// patch = { field: value, ... }; a field the Hyperion version does not know is refused
+function mergeSmoothing(current, patch) {
+  const next = structuredClone(current);
+  for (const [key, value] of Object.entries(patch ?? {})) {
+    const spec = SMOOTHING_FIELDS[key];
+    if (!spec) throw new Error("Unbekanntes Glättungsfeld");
+    if (!(key in next)) throw new Error("Diese Hyperion-Version kennt das Feld nicht");
+    const [kind, min, max, step] = spec;
+    if (kind === "bool") next[key] = value === true;
+    else if (kind === "enum") {
+      if (!min.includes(value)) throw new Error("Unbekannte Glättungsart");
+      next[key] = value;
+    } else next[key] = num(value, min, max, next[key], step);
+  }
+  return next;
+}
+
+function saveSmoothing(patch) {
+  return exclusive(() => writeInstanceSetting("smoothing", mergeSmoothing(readInstanceSetting("smoothing"), patch)));
 }
 
 // Builds the same structure as Hyperion's own export ("config getconfig") from a DB backup
@@ -2481,6 +2565,9 @@ const server = http.createServer(async (req, res) => {
       const patch = await readBody(req);
       return sendJson(res, 200, await saveBlackborder(patch));
     }
+
+    if (req.method === "GET" && p === "/api/hyperion/smoothing") return sendJson(res, 200, readInstanceSetting("smoothing"));
+    if (req.method === "POST" && p === "/api/hyperion/smoothing") return sendJson(res, 200, await saveSmoothing(await readBody(req)));
 
     if (req.method === "GET" && p === "/api/testserver/status") return sendJson(res, 200, await testServerStatus());
     if (req.method === "GET" && p === "/api/hyperion/defaults") return sendJson(res, 200, await readHyperionDefaults());

@@ -167,6 +167,10 @@
   .inputs input { width: 62px; font: inherit; font-size: 15px; padding: 7px 4px; text-align: center; box-sizing: border-box; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; font-variant-numeric: tabular-nums; }
   .inputs input:disabled { opacity: .5; }
   .inputs .wide-in { width: 90px; }
+  .inputs .text-in { width: 150px; text-align: left; padding: 7px 8px; font-variant-numeric: normal; }
+  .hy-col .field-hint { margin: 2px 0 8px; }
+  #card-sm .field-hint { margin: -6px 0 12px; }
+  .hy-col select { margin-bottom: 4px; }
   .frow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0; font-size: 14px; }
   .frow > label { flex: 1; min-width: 0; }
   .srow { margin: 12px 0 4px; }
@@ -859,6 +863,7 @@
     <h3>Abschluss</h3>
     <ol class="guide" start="13">
       <li><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a> und <a class="jump" href="#card-mm"><b>Bild messen</b></a>: Mit echten Bildern und Videos prüfen, wie die LEDs reagieren. „Bild messen“ zeigt, ob ein Bild unverfälscht beim Grabber ankommt und ob der Zuspieler es zoomt oder verschiebt.</li>
+      <li><a class="jump" href="#card-sm"><b>Glättung</b></a>: Mit einem bewegten Video beurteilen: Laufen die LEDs dem Bild hinterher, die Zeit verkürzen. Zucken sie bei Schnitten, sie verlängern.</li>
       <li><a class="jump" href="#card-backup"><b>Hyperion Backup</b></a>: Sichere den fertig kalibrierten Stand. Zu diesem Stand willst du später zurück, nicht zum Grundstand aus Schritt 2.</li>
     </ol>
     <h3>Später nachjustieren</h3>
@@ -872,6 +877,7 @@
       <li data-card="card-color"><a class="jump" href="#card-color"><b>Testfarben</b></a>: Eine Farbe als Vollbild, um TV und LEDs direkt zu vergleichen, etwa nach einer Änderung an Gamma oder Weißabgleich.</li>
       <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in den Testfarben hier kurz nachsehen.</li>
       <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
+      <li data-card="card-sm"><a class="jump" href="#card-sm"><b>Glättung</b></a>: Laufen die LEDs dem Bild hinterher oder zucken sie bei Schnitten?</li>
     </ul>
     <h3>Feinheiten der LEDs</h3>
     <ul class="guide">
@@ -972,6 +978,18 @@
           <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort. Unten legst du alle Werte zusammen in Speicherplätzen ab und holst sie wieder zurück.</p>
           <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
 
+          <div class="hy-prof">
+            <h4 class="hy-h" data-hy-group="profile"><span>Farbprofil</span></h4>
+            <div class="frow"><label for="hy-id">Name</label><span class="inputs"><input type="text" class="text-in" id="hy-id" data-cfield="id" maxlength="60" autocomplete="off"></span></div>
+            <div class="frow"><label for="hy-leds">LED-Bereich</label><span class="inputs"><input type="text" class="text-in" id="hy-leds" data-cfield="leds" placeholder="*" autocomplete="off"></span></div>
+            <p class="field-hint">Für welche LEDs dieses Profil gilt: * für alle, sonst Nummern und Bereiche wie 0-99, 120 (gezählt ab 0). Ein leeres Feld gilt als *. LEDs, die in keinem Profil stehen, bekommen ihre Farbe ohne Korrektur.</p>
+            <div class="srow"><label for="hy-brightnessCompensation">Helligkeitskompensation <span class="val" id="hy-brightnessCompensation_v"></span></label><input type="range" id="hy-brightnessCompensation" data-cfield="brightnessCompensation" data-slider min="0" max="100" step="1"></div>
+            <p class="field-hint">Bei 100 dimmt Hyperion Mischfarben und Weiß so weit, dass sie nicht heller leuchten als eine einzelne Grundfarbe. Bei 0 leuchten Weiß und Mischfarben voll: heller, aber mit bis zu dreimal so viel Strom wie eine Grundfarbe. Prüfe vor dem Senken, ob Netzteil und Leitungen das tragen.</p>
+            <div class="srow"><label for="hy-brightnessGain">Helligkeitsverstärkung <span class="val" id="hy-brightnessGain_v"></span></label><input type="range" id="hy-brightnessGain" data-cfield="brightnessGain" data-slider min="0.1" max="10" step="0.1"></div>
+            <p class="field-hint">1 = unverändert, darüber heller, darunter dunkler. Ungleich 1 bekommen die LEDs dieses Profils den ganzzahligen Mittelwert, auch wenn der Mittelwert mit Nachkommastellen an ist.</p>
+            <hr class="hy-sep">
+          </div>
+
           <div class="wp" id="wp">
             <h4 class="hy-h"><span>Weißpunkt</span></h4>
             <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
@@ -1017,12 +1035,66 @@
             <div class="frow"><label>Gamma Blau</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaBlue" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
             <div class="frow"><label>Farbtemperatur (K)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="temperature" min="1000" max="40000" step="100" inputmode="numeric"></span></div>
           </div>
+          <div class="hy-block">
+            <h4 class="hy-h" data-hy-group="image"><span>Bildverarbeitung</span></h4>
+            <p class="field-hint">Gilt für alle Farbprofile.</p>
+            <label class="field" for="hy-mapping">Zuordnungstyp</label>
+            <select id="hy-mapping" data-cfield="imageToLedMappingType">
+              <option value="multicolor_mean">Durchschnittsfarbe einfach – pro LED</option>
+              <option value="multicolor_mean_squared">Durchschnittsfarbe zum Quadrat – pro LED</option>
+              <option value="unicolor_mean">Durchschnittsfarbe Gesamtbild – alle LEDs</option>
+              <option value="dominant_color">Dominante Farbe – pro LED</option>
+              <option value="unicolor_dominant">Dominante Farbe Gesamtbild – alle LEDs</option>
+              <option value="dominant_color_advanced">Dominante Farbe (fortgeschritten) – pro LED</option>
+              <option value="unicolor_dominant_advanced">Dominante Farbe Gesamtbild (fortgeschritten) – alle LEDs</option>
+            </select>
+            <p class="field-hint" id="hy-mapping-help"></p>
+            <div class="frow" id="hy-accuracy-row"><label for="hy-accuracy">Genauigkeitsstufe (1–4)</label><span class="inputs"><input type="number" class="wide-in" id="hy-accuracy" data-cfield="accuracyLevel" min="1" max="4" step="1" inputmode="numeric"></span></div>
+            <label class="field" for="hy-reduced">Reduzierte Pixelverarbeitung</label>
+            <select id="hy-reduced" data-cfield="reducedPixelSetFactorFactor">
+              <option value="0">Aus: alle Bildpunkte</option>
+              <option value="1">Niedrig: etwa 25&nbsp;% der Bildpunkte</option>
+              <option value="2">Mittel: etwa 10&nbsp;% der Bildpunkte</option>
+              <option value="3">Hoch: etwa 6&nbsp;% der Bildpunkte</option>
+            </select>
+            <p class="field-hint">Wertet je LED nur einen Teil der Bildpunkte aus. Spart Rechenzeit, die LEDs reagieren dann aber stärker auf kleine Details.</p>
+          </div>
           </div>
           <p class="note" id="hy-note"></p>
           <div class="tp" data-test="hyColor"></div>
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- ===== Hyperion smoothing ===== -->
+  <section class="card" id="card-sm">
+    <h2>Glättung</h2>
+    <p class="help">Hyperion lässt die LEDs bei einem Bildwechsel über eine kurze Zeit zur neuen Farbe gleiten, statt sofort zu springen. Zu viel Glättung lässt die LEDs dem Bild sichtbar hinterherlaufen, zu wenig lässt sie bei Schnitten und Blitzen zucken. Beurteile es am besten mit einem bewegten Video aus <a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>. Die Werte werden direkt in Hyperion gespeichert und wirken sofort.</p>
+
+    <label class="check"><input type="checkbox" id="sm-enable"><span>Glättung aktiv</span></label>
+
+    <label class="field">Art</label>
+    <div class="seg full" role="group" aria-label="Art der Glättung" id="sm-type">
+      <button type="button" data-sm-type="linear">Linear</button>
+      <button type="button" data-sm-type="decay">Dämpfung</button>
+    </div>
+    <p class="note" id="sm-type-help"></p>
+
+    <div class="frow"><label for="sm-time_ms">Zeit (ms)</label><span class="inputs"><input type="number" class="wide-in" id="sm-time_ms" data-sfield="time_ms" min="1" max="5000" step="1" inputmode="numeric"></span></div>
+    <p class="field-hint">Wie lange die LEDs zur neuen Farbe brauchen. Kleine Werte folgen dem Bild schnell, große wirken ruhiger, aber träger.</p>
+    <div class="frow"><label for="sm-updateFrequency">Aktualisierungsfrequenz (Hz)</label><span class="inputs"><input type="number" class="wide-in" id="sm-updateFrequency" data-sfield="updateFrequency" min="1" max="2000" step="0.1" inputmode="decimal"></span></div>
+    <p class="field-hint">Wie oft pro Sekunde Hyperion neue Farben an die LEDs schickt. Mehr als die Bildrate des Grabbers bringt nur bei längerer Glättungszeit weichere Übergänge.</p>
+    <div class="frow" data-sm-decay><label for="sm-interpolationRate">Interpolationsfrequenz (Hz)</label><span class="inputs"><input type="number" class="wide-in" id="sm-interpolationRate" data-sfield="interpolationRate" min="1" max="1000" step="0.1" inputmode="decimal"></span></div>
+    <p class="field-hint" data-sm-decay>Wie oft pro Sekunde die Zwischenschritte berechnet werden.</p>
+    <div class="frow" data-sm-decay><label for="sm-decay">Dämpfungsgrad (1–20)</label><span class="inputs"><input type="number" class="wide-in" id="sm-decay" data-sfield="decay" min="1" max="20" step="0.1" inputmode="decimal"></span></div>
+    <p class="field-hint" data-sm-decay>1 mittelt alle Bilder der Glättungszeit gleich stark. Größere Werte zählen neuere Bilder stärker: Die LEDs folgen einem Wechsel schneller und laufen dann weich aus.</p>
+    <label class="check" data-sm-decay><input type="checkbox" id="sm-dithering" data-sfield="dithering"><span>Dithering<small>Wechselt bei hoher Ausgabefrequenz zwischen benachbarten Stufen, damit Zwischenfarben genauer wirken.</small></span></label>
+    <div class="frow"><label for="sm-updateDelay">Ausgabeverzögerung (Bilder)</label><span class="inputs"><input type="number" class="wide-in" id="sm-updateDelay" data-sfield="updateDelay" min="0" max="2048" step="1" inputmode="numeric"></span></div>
+    <p class="field-hint">Hält die LEDs um so viele Ausgaben zurück. Nur nötig, wenn die LEDs dem TV-Bild vorauslaufen.</p>
+
+    <div class="card-reset"><button type="button" data-card-reset="sm">Auf Standard zurücksetzen</button></div>
+    <p class="note" id="sm-cfg-note"></p>
   </section>
 
   <!-- ===== Hyperion gray curve (own card below the test colors) ===== -->
@@ -1882,8 +1954,8 @@
   // or Eigene (dragged in this menu). Kept per device like the open cards. The guide always stays on
   // top and shows the text for the chosen order.
   const ORDERS = {
-    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media"],
-    standard: ["card-color", "card-p-gc", "card-p-media", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
+    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
+    standard: ["card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
   const ORDER_KEY = "tvtest-card-order";
   const CUSTOM_KEY = "tvtest-card-order-custom";
@@ -2294,7 +2366,7 @@ const BB_MODE_HELP = {
 };
 // Hyperion's own German labels (assets/webconfig/i18n/de.json)
 const COLOR_RGB = [["white", "Weiß"], ["red", "Rot"], ["green", "Grün"], ["blue", "Blau"], ["cyan", "Cyan"], ["magenta", "Magenta"], ["yellow", "Gelb"]];
-const COLOR_SLIDER_UNITS = { brightness: [" %", 0], saturationGain: ["×", 1], backlightThreshold: [" %", 0] };
+const COLOR_SLIDER_UNITS = { brightness: [" %", 0], saturationGain: ["×", 1], backlightThreshold: [" %", 0], brightnessCompensation: [" %", 0], brightnessGain: ["×", 1] };
 const BB_NUMBERS = [
   { id: "bb-unknown", key: "unknownFrameCnt" },
   { id: "bb-border", key: "borderFrameCnt" },
@@ -2845,8 +2917,11 @@ async function removeCustom(color) {
 // ---------- Hyperion color values (right column) ----------
 
 // current value of one editable field, same paths as COLOR_FIELDS on the server
+// fields at the top level of the color settings (image processing), the others belong to the entry
+const HY_TOP_FIELDS = new Set(["imageToLedMappingType", "accuracyLevel", "reducedPixelSetFactorFactor"]);
 function readField(entry, field, stop) {
   if (!entry) return undefined;
+  if (HY_TOP_FIELDS.has(field)) return colorConfig?.[field];
   if (field.startsWith("grayCurve.point.")) return entry.grayCurve?.points?.[stop]?.[field.split(".")[2]];
   if (field.startsWith("grayCurve.")) return entry.grayCurve?.[field.split(".")[1]];
   return entry[field];
@@ -3066,6 +3141,10 @@ function renderColorEditor() {
     }
     el.disabled = !writable;
   });
+  // like in the WebUI: the accuracy level only counts for the advanced dominant color
+  const mapping = colorConfig?.imageToLedMappingType;
+  $("hy-accuracy-row").hidden = !String(mapping).endsWith("_advanced");
+  $("hy-mapping-help").textContent = MAPPING_HELP[mapping] ? tr(MAPPING_HELP[mapping]) : "";
 
   updateSendButtons();
   renderDepthConfig();
@@ -3101,6 +3180,17 @@ async function loadColorConfig() {
   }
   renderColorEditor();
 }
+
+// what each image-to-LED assignment does (Hyperion's ImageToLedsMap)
+const MAPPING_HELP = {
+  multicolor_mean: "Jede LED bekommt den Mittelwert ihres Bildbereichs. Die übliche Wahl.",
+  multicolor_mean_squared: "Wie der einfache Mittelwert, aber helle Bildpunkte zählen stärker. Die LEDs wirken etwas heller.",
+  unicolor_mean: "Alle LEDs zeigen dieselbe Farbe: den Mittelwert des ganzen Bildes.",
+  dominant_color: "Jede LED bekommt die häufigste Farbe ihres Bildbereichs statt des Mittelwerts. Liefert immer ganze Zahlen, der Mittelwert mit Nachkommastellen wirkt dann nicht.",
+  unicolor_dominant: "Alle LEDs zeigen dieselbe Farbe: die häufigste Farbe des ganzen Bildes.",
+  dominant_color_advanced: "Wie Dominante Farbe, aber genauer und rechenintensiver. Die Genauigkeitsstufe legt fest, wie fein. Am besten mit reduzierter Pixelverarbeitung kombinieren.",
+  unicolor_dominant_advanced: "Alle LEDs zeigen die genauer bestimmte häufigste Farbe des ganzen Bildes. Am besten mit reduzierter Pixelverarbeitung kombinieren.",
+};
 
 // one save per field: { index, field, value, stop }
 // the gray curve has its own card and note
@@ -3148,6 +3238,8 @@ document.querySelectorAll(".hy-scope").forEach((scope) => scope.addEventListener
   const el = ev.target;
   if (!el.dataset.cfield) return;
   if (el.type === "checkbox") return saveColor(el.dataset.cfield, el.checked);
+  // choices and texts (profile name, LED range) go as they are, the server checks them
+  if (el.tagName === "SELECT" || el.type === "text") return saveColor(el.dataset.cfield, el.value);
   // an emptied field takes the standard value shown as placeholder
   const empty = el.value.trim() === "";
   const v = empty ? hyDefault(el.dataset.cfield) : Number(el.value);
@@ -3899,8 +3991,9 @@ const TP_SEND = {
 const TP_MAX = { grayCurve: 10, blackThreshold: 10, hyColor: 10 };
 const TP_SLOTS = ["grayCurve", "blackThreshold", "hyColor"];
 const TP_TITLES = { grayCurve: "Gespeicherte Graukurven", blackThreshold: "Gespeicherte Schwellen", hyColor: "Gespeicherte Farbwerte" };
-// the color values of a slot: the three groups of the Hyperion column in the test colors card
-const HY_SLOT_FIELDS = () => [...HY_GROUP_FIELDS.colors, ...HY_GROUP_FIELDS.light, ...HY_GROUP_FIELDS.gamma];
+// the color values of a slot: the groups of the Hyperion column in the test colors card (without the
+// profile's name and LED range: a slot holds values, not which LEDs they apply to)
+const HY_SLOT_FIELDS = () => Object.values(HY_GROUP_FIELDS).flat();
 let testDefaults = null;
 const tpOpen = new Set();      // tests whose list is unfolded
 const tpEditing = {};          // test -> preset id being renamed, or "new" for the save form
@@ -3909,7 +4002,7 @@ function tpCurrent(test) {
   if (test === "blackThreshold") return deviceBlack ? { threshold: deviceBlack.threshold } : null;
   if (test === "hyColor") {
     const e = colorConfig?.channelAdjustment?.[colorIndex];
-    return e ? Object.fromEntries(HY_SLOT_FIELDS().filter((f) => f in e).map((f) => [f, e[f]])) : null;
+    return e ? Object.fromEntries(HY_SLOT_FIELDS().map((f) => [f, readField(e, f)]).filter(([, v]) => v !== undefined)) : null;
   }
   if (test === "grayCurve") {
     const c = colorConfig?.channelAdjustment?.[colorIndex]?.grayCurve;
@@ -5379,6 +5472,9 @@ const HY_GROUP_FIELDS = {
   colors: ["white", "red", "green", "blue", "cyan", "magenta", "yellow"],
   light: ["brightness", "saturationGain", "backlightThreshold", "backlightColored"],
   gamma: ["gammaRed", "gammaGreen", "gammaBlue", "temperature"],
+  // the profile's name and LED range have no standard to go back to
+  profile: ["brightnessCompensation", "brightnessGain"],
+  image: ["imageToLedMappingType", "accuracyLevel", "reducedPixelSetFactorFactor"],
 };
 const BB_RESET_KEYS = ["enable", "mode", "threshold", "unknownFrameCnt", "borderFrameCnt", "maxInconsistentCnt", "blurRemoveCnt"];
 const hyDefault = (field) => hyDefaults?.color?.[field];
@@ -5393,6 +5489,7 @@ async function loadHyDefaults() {
   } catch { return; }
   renderColorEditor();
   renderBbConfig();
+  renderSmConfig();
 }
 
 function applyPlaceholders() {
@@ -5476,6 +5573,10 @@ document.addEventListener("click", (ev) => {
   }
   if (c.dataset.cardReset === "dtd") saveColorBatch(["ledAreaDepth.topBottom", "ledAreaDepth.leftRight"], $("dp-cfg-note"));
   if (c.dataset.cardReset === "fmd") saveColorBatch(["fractionalMean"], $("fm-cfg-note"));
+  if (c.dataset.cardReset === "sm") {
+    const d = hyDefaults.smoothing ?? {};
+    saveSm(Object.fromEntries(Object.entries(d).filter(([k]) => smConfig && k in smConfig)), null, tr("Standardwerte gespeichert, wirken sofort auf die LEDs."));
+  }
 });
 
 // ---------- Hyperion settings: black-border detector and gray still detector ----------
@@ -5598,6 +5699,93 @@ document.querySelectorAll("[data-gs-mode]").forEach(b => b.addEventListener("cli
   saveBb({ grayStillImageDetector: { mode: b.dataset.gsMode } }, "Reaktion")));
 document.querySelectorAll("[data-gs-edge]").forEach(b => b.addEventListener("click", () =>
   saveBb({ grayStillImageDetector: { edgeWidthPercent: Number(b.dataset.gsEdge) } }, "Randbereich")));
+
+// ---------- Hyperion settings: smoothing ----------
+
+let smConfig = null;           // Hyperion's smoothing settings
+const SM_TYPE_HELP = {
+  linear: "Linear: Die LEDs gleiten gleichmäßig über die eingestellte Zeit zur neuen Farbe.",
+  decay: "Dämpfung: Neuere Bilder zählen stärker, mit eigener Frequenz für die Zwischenschritte und Dithering.",
+};
+const SM_STATUS_NOTE = /^(Einstellungen nicht lesbar|Zum Ändern zuerst|Settings not readable|To change values)/;
+
+function renderSmConfig() {
+  const writable = hyperionConnected && !!smConfig;
+  $("sm-enable").checked = !!smConfig?.enable;
+  $("sm-enable").disabled = !writable;
+  document.querySelectorAll("[data-sm-type]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.smType === smConfig?.type));
+    b.disabled = !writable;
+  });
+  $("sm-type-help").textContent = SM_TYPE_HELP[smConfig?.type] ? tr(SM_TYPE_HELP[smConfig.type]) : "";
+  // like in the WebUI: interpolation rate, decay and dithering only count for the decay type
+  document.querySelectorAll("#card-sm [data-sm-decay]").forEach((el) => { el.hidden = smConfig?.type !== "decay"; });
+  document.querySelectorAll("#card-sm [data-sfield]").forEach((el) => {
+    const v = smConfig?.[el.dataset.sfield];
+    if (el.type === "checkbox") el.checked = v === true;
+    else {
+      if (v !== undefined && document.activeElement !== el) el.value = v;
+      const d = hyDefaults?.smoothing?.[el.dataset.sfield];
+      el.placeholder = d === undefined ? "" : fmtDefault(d);
+    }
+    // a field this Hyperion version does not know stays locked
+    el.disabled = !writable || v === undefined;
+  });
+  document.querySelector('[data-card-reset="sm"]').disabled = !writable || !hyDefaults?.smoothing;
+  const note = $("sm-cfg-note");
+  const problem = !smConfig ? (/^(Einstellungen nicht lesbar|Settings not readable)/.test(note.textContent) ? note.textContent : "Lade Einstellungen …")
+    : !hyperionConnected ? "Zum Ändern zuerst unten bei Hyperion Backup „Mit Hyperion verbinden“." : null;
+  if (problem) note.textContent = problem;
+  else if (SM_STATUS_NOTE.test(note.textContent) || /^(Lade Einstellungen|Loading settings)/.test(note.textContent)) note.textContent = "";
+}
+
+async function loadSmConfig() {
+  try {
+    const res = await fetch("/api/hyperion/smoothing");
+    if (!res.ok) throw new Error((await res.json()).error);
+    smConfig = await res.json();
+  } catch (e) {
+    smConfig = null;
+    $("sm-cfg-note").textContent = "Einstellungen nicht lesbar: " + e.message;
+  }
+  renderSmConfig();
+}
+
+// what = the changed thing for the message, done = a whole message instead
+async function saveSm(patch, what, done) {
+  const note = $("sm-cfg-note");
+  note.textContent = "Speichere in Hyperion …";
+  try {
+    const res = await fetch("/api/hyperion/smoothing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    smConfig = body;
+    note.textContent = done ?? tr("{a} in Hyperion gespeichert, wirkt sofort auf die LEDs.", { a: what });
+  } catch (e) {
+    note.textContent = "Speichern fehlgeschlagen: " + e.message;
+    await loadSmConfig();
+    return;
+  }
+  renderSmConfig();
+}
+
+$("sm-enable").addEventListener("change", (ev) => saveSm({ enable: ev.target.checked }, ev.target.checked ? tr("Glättung an") : tr("Glättung aus")));
+document.querySelectorAll("[data-sm-type]").forEach((b) => b.addEventListener("click", () => {
+  smConfig = { ...smConfig, type: b.dataset.smType };
+  renderSmConfig();
+  saveSm({ type: b.dataset.smType }, tr("Art „{a}“", { a: b.textContent }));
+}));
+document.querySelectorAll('#card-sm input[type="number"][data-sfield]').forEach((el) => el.addEventListener("change", () => {
+  // an emptied field takes the standard value shown as placeholder
+  const empty = el.value.trim() === "";
+  const v = empty ? hyDefaults?.smoothing?.[el.dataset.sfield] : Number(el.value);
+  if (typeof v !== "number" || !Number.isFinite(v)) {
+    $("sm-cfg-note").textContent = "Bitte eine Zahl eingeben.";
+    return renderSmConfig();
+  }
+  saveSm({ [el.dataset.sfield]: v }, tr("Wert"));
+}));
+$("sm-dithering").addEventListener("change", (ev) => saveSm({ dithering: ev.target.checked }, ev.target.checked ? tr("Dithering an") : tr("Dithering aus")));
 
 // ---------- live debug data ----------
 
@@ -5820,6 +6008,7 @@ async function checkHyperion() {
     $("connect").hidden = st.connected || req.status === "pending";
     document.querySelectorAll("#backups .linkbtn").forEach(btn => { btn.disabled = !hyperionConnected; });
     renderBbConfig();
+    renderSmConfig();
     renderColorEditor();
     return req.status;
   } catch (e) {
@@ -5847,7 +6036,7 @@ async function restoreBackup(name) {
     if (!res.ok) throw new Error(body.error);
     $("status").textContent = tr("Wiederhergestellt: Backup vom {a}. Der vorherige Stand ist als Backup vom {b} gesichert. Hyperion startet neu.", { a: backupDate(body.restored), b: backupDate(body.safety) });
     loadBackups();
-    setTimeout(() => { loadBbConfig(); loadColorConfig(); loadLedAreas(); }, 5000);
+    setTimeout(() => { loadBbConfig(); loadSmConfig(); loadColorConfig(); loadLedAreas(); }, 5000);
   } catch (e) {
     $("status").textContent = "Wiederherstellen fehlgeschlagen: " + e.message;
     loadBackups();
@@ -6662,6 +6851,7 @@ async function init() {
   buildColorList();
   await checkHyperion();
   loadBbConfig();
+  loadSmConfig();
   loadColorConfig();
   loadLedAreas();
   loadBackups();
