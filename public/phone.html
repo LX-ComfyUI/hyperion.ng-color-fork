@@ -435,12 +435,12 @@
   .gck-table th { font-weight: 600; color: var(--muted); }
   /* guided position test */
   .lg-q { margin: 12px 0 6px; font-size: 14px; }
-  .wp-step { margin: 12px 0 0; font-size: 14px; font-weight: 600; }
-  .wp-status { margin-bottom: 4px; }
-  .wp-status.flash { animation: wpflash 1.4s ease-out; }
-  @keyframes wpflash { from { background: color-mix(in srgb, var(--accent) 30%, var(--bg)); } to { background: var(--bg); } }
-  .wp-log { margin: 12px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .wp-log div + div { margin-top: 3px; }
+  .gck-step { margin: 12px 0 0; font-size: 14px; font-weight: 600; }
+  .gck-status { margin-bottom: 4px; }
+  .gck-status.flash { animation: gckflash 1.4s ease-out; }
+  @keyframes gckflash { from { background: color-mix(in srgb, var(--accent) 30%, var(--bg)); } to { background: var(--bg); } }
+  .gck-log { margin: 12px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .gck-log div + div { margin-top: 3px; }
   .wp-log:empty { display: none; }
   .lg-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
   .lg-row .lg-dir { flex: 0 0 74px; font-size: 13px; color: var(--muted); }
@@ -721,7 +721,29 @@
     main { padding: 12px; }
   }
   /* page title like the WebUI's page header; the old header tools are driven by the bar icons */
-  main > header { display: block; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  main > header { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  main > header .titles { flex: 1; }
+  .hdr-dock { flex: none; }
+  /* menu on the right for one card (Testbilder & Videos): the header button moves the card there and
+     hides it in the middle like the eye in the left menu. Wide windows share the space beside the left
+     menu half and half, narrower ones open it as a drawer from the right over the page. */
+  #dock { position: fixed; top: var(--bar-h); right: 0; bottom: 0; z-index: 44; width: var(--dock-w); box-sizing: border-box; overflow-y: auto; scrollbar-width: thin;
+          background: var(--page); border-left: 1px solid var(--bar-line); padding: 8px 12px 24px; }
+  #dock[hidden] { display: none; }
+  .dock-head { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
+  .dock-head .dock-back { padding: 5px 12px; font-size: 13px; }
+  .dock-head .dock-x { width: 32px; height: 32px; }
+  #dock .card { margin-bottom: 0; }
+  :root { --dock-w: min(440px, 92vw); }
+  @media (min-width: 1200px) {
+    :root.docked { --dock-w: calc((100vw - var(--side-w)) / 2); }
+    :root.docked.side-collapsed { --dock-w: 50vw; }
+    :root.docked main { margin-right: var(--dock-w); }
+  }
+  @media (max-width: 1199.98px) {
+    #dock { transform: translateX(100%); transition: transform .25s, box-shadow .25s; }
+    :root.dock-open #dock { transform: none; box-shadow: 0 3px 9px rgba(0, 0, 0, .5); }
+  }
   main > header .hdr-tools { display: none; }
   main > header h1 { font-size: 24px; font-weight: 500; }
   .pv-fab, #pv-fab { display: none !important; }
@@ -813,6 +835,7 @@
       <h1>Hyperion TV-Testseite</h1>
       <div class="devicelabel">Dieses Gerät: <span id="dev-label"></span></div>
     </div>
+    <button type="button" class="tb-icon hdr-dock" id="hdr-dock" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
     <div class="hdr-tools">
       <div class="seg" role="group" aria-label="Sprache" id="lang-switch">
         <button data-lang-choice="de" lang="de">DE</button>
@@ -1002,24 +1025,24 @@
             <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Das läuft in Runden: antworten, neu hinschauen, wieder antworten, bis das Licht neutral wirkt. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
             <button type="button" class="primary wide" id="wp-start">Weißpunkt einstellen</button>
             <div id="wp-run" hidden>
-              <div class="status wp-status" id="wp-status" aria-live="polite"></div>
+              <div class="status gck-status" id="wp-status" aria-live="polite"></div>
               <p class="lg-q" id="wp-q"></p>
               <button type="button" class="primary wide" id="wp-done">Neutral, fertig</button>
               <p class="gck-sub">Nicht neutral? Dann in drei Teilen antworten:</p>
-              <p class="wp-step">1. Das Licht hat …</p>
+              <p class="gck-step">1. Das Licht hat …</p>
               <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="wp-dir">
                 <button type="button" data-dir="more">zu viel</button>
                 <button type="button" data-dir="less">zu wenig</button>
               </div>
-              <p class="wp-step">2. Wie stark?</p>
+              <p class="gck-step">2. Wie stark?</p>
               <div class="seg full gck-seg" role="group" aria-label="Stärke" id="wp-strength">
                 <button type="button" data-strength="1">leicht</button>
                 <button type="button" data-strength="2">deutlich</button>
                 <button type="button" data-strength="3">stark</button>
               </div>
-              <p class="wp-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
+              <p class="gck-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
               <div class="gck-tints" id="wp-tints"></div>
-              <div class="wp-log" id="wp-log"></div>
+              <div class="gck-log" id="wp-log"></div>
               <div class="seg full" role="group" aria-label="Weißpunkt steuern" style="margin-top:8px">
                 <button type="button" id="wp-back">Zurück</button>
                 <button type="button" id="wp-cancel">Abbrechen</button>
@@ -1233,18 +1256,24 @@
         <div class="status" id="gcg-progress"></div>
         <div class="status gck-measure" id="gcg-measure"></div>
         <div id="gcg-ask">
-          <p class="lg-q">Wie wirkt das Licht der LEDs an der Wand neben dem Grau auf dem TV?</p>
+          <div class="status gck-status" id="gcg-status" aria-live="polite" hidden></div>
+          <p class="lg-q" id="gcg-q"></p>
           <button type="button" class="primary wide" id="gcg-neutral">Neutral, weiter</button>
+          <p class="gck-sub">Nicht neutral? Dann in drei Teilen antworten:</p>
+          <p class="gck-step">1. Das Licht hat …</p>
           <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="gcg-dir">
             <button type="button" data-dir="more">zu viel</button>
             <button type="button" data-dir="less">zu wenig</button>
           </div>
-          <div class="gck-tints" id="gcg-tints"></div>
+          <p class="gck-step">2. Wie stark?</p>
           <div class="seg full gck-seg" role="group" aria-label="Stärke" id="gcg-strength">
             <button type="button" data-strength="1">leicht</button>
             <button type="button" data-strength="2">deutlich</button>
             <button type="button" data-strength="3">stark</button>
           </div>
+          <p class="gck-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
+          <div class="gck-tints" id="gcg-tints"></div>
+          <div class="gck-log" id="gcg-log"></div>
           <p class="note" id="gcg-gains"></p>
           <div class="seg full" role="group" aria-label="Vergleichen" style="margin-top:8px">
             <button type="button" id="gcg-compare">Vorher zeigen</button>
@@ -1252,7 +1281,7 @@
           </div>
         </div>
         <div class="seg full" role="group" aria-label="Kalibrierung steuern" style="margin-top:8px">
-          <button type="button" id="gcg-back">Zurück</button>
+          <button type="button" id="gcg-back">Vorige Stufe</button>
           <button type="button" id="gcg-skip">Überspringen</button>
           <button type="button" id="gcg-finish" hidden>Fertig</button>
           <button type="button" id="gcg-stop">Abbrechen</button>
@@ -1785,7 +1814,8 @@
   const KEY = "tvtest-cards-" + (document.documentElement.dataset.device || "desktop");
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { saved = {}; }
-  const cards = () => [...document.querySelectorAll("main > section.card")];
+  // the card in the menu on the right (#dock) keeps its open state too
+  const cards = () => [...document.querySelectorAll("main > section.card, #dock section.card")];
   const save = () => {
     const open = {};
     cards().forEach((c) => { open[c.id] = !c.classList.contains("closed"); });
@@ -2012,6 +2042,7 @@
     else arrange(customGuide, items);
   };
 
+  let docked = null;   // the card in the menu on the right: { card, slot } (slot keeps its place in the middle)
   const applyOrder = () => {
     const ids = mode === "custom" ? readCustom() : ORDERS[mode];
     // unknown ids are skipped, cards missing in a saved order (new ones) go to the end
@@ -2019,7 +2050,7 @@
     for (const id of byId.keys()) if (!seq.includes(id)) seq.push(id);
     seq.forEach((id, i) => {
       const [card, a] = byId.get(id);
-      main.appendChild(card);
+      main.appendChild(docked?.card === card ? docked.slot : card);
       cards[i] = card;
       links[i] = a;
     });
@@ -2108,11 +2139,93 @@
     const eye = document.createElement("button");
     eye.type = "button";
     eye.className = "side-eye";
-    eye.addEventListener("click", () => setHidden(card, !card.classList.contains("user-hidden")));
+    eye.addEventListener("click", () => {
+      if (docked?.card === card) return undock();
+      setHidden(card, !card.classList.contains("user-hidden"));
+    });
     a.after(eye);
     setHidden(card, hidden.has(id), false);
   }
-  window.showCard = (card) => { if (card?.classList.contains("user-hidden")) setHidden(card, false); };
+  window.showCard = (card) => {
+    if (docked?.card === card) return setDockOpen(true);
+    if (card?.classList.contains("user-hidden")) setHidden(card, false);
+  };
+
+  // menu on the right (see CSS #dock): the header button moves "Testbilder & Videos" there and
+  // triggers its eye, so the middle shows it hidden. Wide windows: the button moves it back. Narrow
+  // ones: the button opens and closes the drawer, "In die Mitte holen" or the eye moves it back.
+  // Kept per device.
+  const DOCK_CARD = "card-p-media";
+  const DOCK_KEY = "tvtest-dock";
+  const dockWide = matchMedia("(min-width: 1200px)");
+  const X_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+  const dock = document.createElement("aside");
+  dock.id = "dock";
+  dock.hidden = true;
+  dock.setAttribute("aria-label", "Seitenleiste rechts");
+  dock.innerHTML = `<div class="dock-head"><button type="button" class="dock-back">In die Mitte holen</button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><div class="dock-body"></div>`;
+  document.body.appendChild(dock);
+  const dockBtn = document.getElementById("hdr-dock");
+  const dockBack = dock.querySelector(".dock-back");
+  const dockX = dock.querySelector(".dock-x");
+  const setTip = (el, text) => { el.dataset.tip = I18N.t(text); el.setAttribute("aria-label", el.dataset.tip); };
+  const renderDock = () => {
+    const on = !!docked;
+    const open = root.classList.contains("dock-open");
+    dock.hidden = !on;
+    root.classList.toggle("docked", on);
+    dockBtn.setAttribute("aria-pressed", String(on));
+    setTip(dockBtn, !on ? "Testbilder & Videos in die Seitenleiste rechts"
+      : dockWide.matches ? "Testbilder & Videos zurück in die Mitte"
+      : open ? "Seitenleiste rechts schließen" : "Seitenleiste rechts öffnen");
+    dockBack.hidden = dockWide.matches;
+    setTip(dockX, dockWide.matches ? "Testbilder & Videos zurück in die Mitte" : "Seitenleiste rechts schließen");
+  };
+  const setDockOpen = (open) => {
+    root.classList.toggle("dock-open", open && !!docked && !dockWide.matches);
+    renderDock();
+  };
+  const dockCard = () => {
+    const card = byId.get(DOCK_CARD)?.[0];
+    if (!card || docked) return;
+    const slot = document.createElement("div");
+    slot.hidden = true;
+    card.replaceWith(slot);
+    docked = { card, slot };
+    dock.querySelector(".dock-body").appendChild(card);
+    setHidden(card, true);
+    store.set(DOCK_KEY, "1");
+    renderDock();
+  };
+  const undock = () => {
+    if (!docked) return;
+    const { card, slot } = docked;
+    slot.replaceWith(card);
+    docked = null;
+    root.classList.remove("dock-open");
+    setHidden(card, false);
+    store.set(DOCK_KEY, "0");
+    renderDock();
+  };
+  dockBtn.addEventListener("click", () => {
+    if (!docked) {
+      dockCard();
+      if (docked) setCardOpen(docked.card, true);
+      setDockOpen(true);
+    }
+    else if (dockWide.matches) undock();
+    else setDockOpen(!root.classList.contains("dock-open"));
+  });
+  dockBack.addEventListener("click", undock);
+  dockX.addEventListener("click", () => (dockWide.matches ? undock() : setDockOpen(false)));
+  // a tap beside the drawer closes it, like the menu on the left (the path is taken when the click
+  // starts: a list inside the drawer may redraw the button that was tapped)
+  document.addEventListener("click", (ev) => {
+    if (root.classList.contains("dock-open") && !ev.composedPath().some((n) => n === dock || n === dockBtn)) setDockOpen(false);
+  });
+  dockWide.addEventListener("change", () => setDockOpen(false));
+  if (store.get(DOCK_KEY) === "1") dockCard();
+  renderDock();
 
   // dragging: hold an entry (not the guide) for a moment, it sinks in a little, then lifts off like a
   // card in the hand: bigger, with a shadow, tilted in the direction it moves. It follows the finger,
@@ -4743,12 +4856,26 @@ $("mm-run").addEventListener("click", async () => {
 // changes the gray curve point per answer. A tap on a tint sends "too much" or "too little" of it with
 // the chosen strength.
 const GCG_TINT_NAMES = { red: "Rot", orange: "Orange", yellow: "Gelb", green: "Grün", cyan: "Türkis", blue: "Blau", purple: "Lila", magenta: "Rosa" };
+const GCK_STRENGTH_NAMES = { 1: "leicht", 2: "deutlich", 3: "stark" };
+// one answer as words, e.g. "zu viel Rot, deutlich" (white point and gray curve)
+function gckAnswerText(tint, dir, strength) {
+  let name = tr(GCG_TINT_NAMES[tint] ?? tint);
+  if (I18N.lang === "en") name = name.toLowerCase();
+  return tr(dir === "more" ? "zu viel {a}, {b}" : "zu wenig {a}, {b}", { a: name, b: tr(GCK_STRENGTH_NAMES[strength] ?? "") });
+}
+// the answer box of a guided calibration: blinks when it shows a new answer
+function gckFlash(el) {
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+}
 let gcgOwnLevels = [];
 let gcgChosen = null;       // Set of chosen levels: the ones where the LEDs light, until the user picks
 let gcgTouched = false;
 let gcgDir = "more";
 let gcgStrength = 1;
 let gcgBusy = false;
+let gcgSeen = null;          // run/level/answers shown last, so only a new answer blinks
 const gcgFmt = (v, d = 0) => Number(v).toLocaleString(I18N.locale, { minimumFractionDigits: d, maximumFractionDigits: d });
 const gcgGains = (g) => g.map((v) => gcgFmt(v, 2)).join(" / ");
 
@@ -4862,6 +4989,22 @@ function renderGcGuide() {
     $("gcg-finish").hidden = g.round !== "control";
     const r = g.results?.[level];
     const gains = g.measure?.gains;
+    const log = r?.log ?? [];
+    const round = log.length + 1;
+    $("gcg-q").textContent = round === 1
+      ? tr("Runde 1: Wie wirkt das Licht der LEDs an der Wand neben dem Grau auf dem TV?")
+      : tr("Runde {a}: Und jetzt? Wie wirkt das Licht der LEDs neben dem Grau auf dem TV?", { a: round });
+    const last = log[log.length - 1];
+    $("gcg-status").hidden = !last;
+    if (last) {
+      $("gcg-status").textContent = tr("Antwort {a} bei {b} % übernommen: {c}. Die LEDs zeigen es schon. Schau noch einmal hin und antworte neu: Oft ist danach eine andere Farbe zu viel oder zu wenig. Schlägt es in die Gegenrichtung um, antworte einfach so, die Schritte werden dann von selbst kleiner. Wirkt das Grau neutral, geht es mit „Neutral, weiter“ zur nächsten Stufe.", { a: log.length, b: gcgFmt(level), c: gckAnswerText(last.tint, last.dir, last.strength) });
+      const key = `${g.runId}/${level}/${log.length}`;
+      if (gcgSeen !== null && gcgSeen !== key) gckFlash($("gcg-status"));
+      gcgSeen = key;
+    } else gcgSeen = `${g.runId}/${level}/0`;
+    $("gcg-log").innerHTML = log.length
+      ? `<div><b>${escHtml(tr("Bisherige Antworten bei {a} %", { a: gcgFmt(level) }))}</b></div>` + log.map((l, i) => `<div>${escHtml(tr("{n}. {a} → Faktoren {b}", { n: i + 1, a: gckAnswerText(l.tint, l.dir, l.strength), b: gcgGains(l.gains) }))}</div>`).join("")
+      : "";
     $("gcg-gains").textContent = before ? tr("Gerade wirkt die Kurve von vor der Kalibrierung.")
       : gains ? tr("Faktoren bei {a} %: R / G / B {b}{c}", { a: gcgFmt(level), b: gcgGains(gains), c: r?.answers ? tr(" (vorher {a})", { a: gcgGains(r.before) }) : "" }) : "";
   }
@@ -4942,7 +5085,6 @@ $("gcg-save").addEventListener("click", async () => {
 // different tint). Zurück steps back through the answers, Abbrechen restores the corner colors from
 // the start.
 const WP_CORNERS = ["white", "red", "green", "blue", "cyan", "magenta", "yellow"];
-const WP_STRENGTH_NAMES = { 1: "leicht", 2: "deutlich", 3: "stark" };
 let wpRun = null;          // { start: {corner: [r, g, b]}, gains: [r, g, b], steps: [gains …], log: [{ text, white }], memo }
 let wpDir = "more";
 let wpStrength = 1;
@@ -4950,18 +5092,9 @@ const wpFmt = (w) => w.join(" / ");
 const wpEntry = () => colorConfig?.channelAdjustment?.[colorIndex] ?? null;
 const wpWhite = () => wpEntry()?.white?.map(Number) ?? null;
 const wpCorners = (start, gains) => WP_CORNERS.map((c) => ({ field: c, value: start[c].map((v, ch) => Math.min(255, Math.max(0, Math.round(v * gains[ch])))) }));
-function wpAnswerText(tint, dir, strength) {
-  let name = tr(GCG_TINT_NAMES[tint]);
-  if (I18N.lang === "en") name = name.toLowerCase();
-  return tr(dir === "more" ? "zu viel {a}, {b}" : "zu wenig {a}, {b}", { a: name, b: tr(WP_STRENGTH_NAMES[strength]) });
-}
 function wpStatus(text, flash) {
-  const el = $("wp-status");
-  el.textContent = text;
-  if (!flash) return;
-  el.classList.remove("flash");
-  void el.offsetWidth;
-  el.classList.add("flash");
+  $("wp-status").textContent = text;
+  if (flash) gckFlash($("wp-status"));
 }
 
 function renderWhitePoint() {
@@ -5003,7 +5136,7 @@ $("wp-tints").addEventListener("click", async (ev) => {
   if (!b || !wpRun) return;
   const before = wpRun.gains;
   const round = wpRun.steps.length + 1;
-  const text = wpAnswerText(b.dataset.tint, wpDir, wpStrength);
+  const text = gckAnswerText(b.dataset.tint, wpDir, wpStrength);
   wpRun.gains = GrayCal.applyAnswer(before, b.dataset.tint, wpDir, wpStrength, wpRun.memo);
   wpRun.steps.push(before);
   const white = wpCorners(wpRun.start, wpRun.gains)[0].value;

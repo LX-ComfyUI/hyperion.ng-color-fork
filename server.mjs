@@ -1520,7 +1520,7 @@ async function gcAnswer({ tint, dir, strength }) {
   await gcWritePoints(next);
   const r = gcGuide.results[level] ?? { before: GrayCal.gainsAt(gcGuide.startPoints ?? [], level).map((v) => Math.round(v * 100) / 100), answers: 0 };
   gcSet({
-    results: { ...gcGuide.results, [level]: { ...r, after: gains, answers: r.answers + 1 } },
+    results: { ...gcGuide.results, [level]: { ...r, after: gains, answers: r.answers + 1, log: [...(r.log ?? []), { tint: String(tint), dir: dir === "less" ? "less" : "more", strength: Number(strength), gains }] } },
     measure: { ...gcGuide.measure, gains, ...((p) => ({ ledOn: p.on, coarse: p.coarse, counts: p.counts }))(gcPrediction(gcGuide.measure?.got ?? level)) },
   });
 }
