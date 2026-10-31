@@ -454,7 +454,8 @@ function publicState() {
 
 // what runs now, per card: { "card-…": "test" | "calib" } — for the symbols in the menu of the WebUI;
 // the control page has the same rules in sideRunning() (plus the white point, which only it knows).
-// The ids are the ones of the guide (content/guide.html in the WebUI).
+// The ids are the ones of the guide (content/guide.html in the WebUI). The test colors count for
+// the color calibration there (the WebUI's guide has no entry of their own; the page uses card-tc).
 function runningCards() {
   const pattern = ["grayTest", "depthTest", "fracTest", "posTest"].some((t) => state[t]?.active) || state.posGuide?.active;
   const fullScreen = (grabberRun.running && grabberRun.color) || gcGuide.active;
@@ -1626,7 +1627,7 @@ async function syncCurveSlot() {
       return;
     }
     // a grabber without a slot of its own keeps the curve of the one before
-    if (!want) addNotice("gcNewGrabber", "info", { name: Report.displayName(device), slot: slots.find((s) => sameCurve(curve, s.settings))?.name ?? "" }, "card-color");
+    if (!want) addNotice("gcNewGrabber", "info", { name: Report.displayName(device), slot: slots.find((s) => sameCurve(curve, s.settings))?.name ?? "" }, "card-tc");
   }
   const match = slots.find((s) => sameCurve(curve, s.settings));
   if (match && state.grayCurveByGrabber?.[device] !== match.id) {

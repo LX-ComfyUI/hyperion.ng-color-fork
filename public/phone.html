@@ -147,17 +147,15 @@
   .crow.add .chip { display: flex; align-items: center; justify-content: center; background: transparent; font-size: 22px; line-height: 1; }
   .ibtn.trash:hover { color: var(--danger); }
 
-  /* two columns for the test colors: list left, Hyperion values right */
-  .color-grid { display: grid; gap: var(--gap); grid-template-columns: 1fr; }
-  @media (min-width: 760px) { :root:not([data-device="phone"]) .color-grid { grid-template-columns: minmax(300px, 380px) 1fr; } }
-  .col { min-width: 0; }
   /* the row tools stay clear of the floating preview button's corner, which floats on top of
      whatever scrolls underneath it and would otherwise hide/steal taps from the rightmost icon */
   #crow-presets, #crow-custom, #gx-colors { box-sizing: border-box; }
-  .hy-col { background: var(--inset); border-radius: 10px; padding: 12px; box-sizing: border-box; min-width: 0; }
+  .hy-col { min-width: 0; }
   /* settings in Hyperion: after the colors a line, then the groups two side by side, a line, the gray curve */
   .hy-sep { border: none; border-top: 1px solid var(--line); margin: 16px 0 4px; }
   .hy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 20px; align-items: start; }
+  /* in the menu on the right the groups stand one below the other, the middle keeps the room */
+  #dock .hy-grid { grid-template-columns: minmax(0, 1fr); }
   .hy-block { min-width: 0; }
   .rgbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
   .rgbrow .rgbname { font-size: 14px; min-width: 64px; }
@@ -519,8 +517,10 @@
   .gx-bar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
   #gx-colors { margin-top: 4px; }
   #gx-report { margin-top: 4px; }
-  /* cards with a test for the TV and the matching Hyperion setting: side by side on wide windows,
-     one below the other on narrow ones; each column keeps the id of its former card */
+  /* cards with a test for the TV and the matching Hyperion setting: side by side in wide cards, one
+     below the other in narrow ones (the card's own width counts, not the window's: the menu on the
+     right takes room from the middle) and always in the menu on the right; each column keeps the id
+     of its former card */
   .pair { display: grid; grid-template-columns: 1fr; gap: 20px; }
   /* a test the server paused because no control page was connected for a while */
   .paused { outline: 3px solid var(--warn); outline-offset: 4px; border-radius: 8px; }
@@ -528,10 +528,10 @@
   .pair-col { min-width: 0; scroll-margin-top: calc(var(--bar-h, 0px) + 8px); }
   .pair-col + .pair-col { border-top: 1px solid var(--btn-line); padding-top: 16px; }
   h3.pair-ttl { margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--text); }
-  @media (min-width: 1180px) {
-    :root:not([data-device="phone"]) .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; }
-    :root:not([data-device="phone"]) .pair-col { padding: 0 24px 0 0; }
-    :root:not([data-device="phone"]) .pair-col + .pair-col { border-top: none; border-left: 1px solid var(--btn-line); padding: 0 0 0 24px; }
+  @container (min-width: 850px) {
+    :root:not([data-device="phone"]) main .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; }
+    :root:not([data-device="phone"]) main .pair-col { padding: 0 24px 0 0; }
+    :root:not([data-device="phone"]) main .pair-col + .pair-col { border-top: none; border-left: 1px solid var(--btn-line); padding: 0 0 0 24px; }
   }
   #gx-slots { margin: 8px 0 4px; }
   /* guide card: one line per tool, the name opens its card */
@@ -724,8 +724,8 @@
   main > header { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
   main > header .titles { flex: 1; }
   .hdr-dock { flex: none; }
-  /* menu on the right for one card (Testbilder & Videos): the header button moves the card there and
-     hides it in the middle like the eye in the left menu. Wide windows share the space beside the left
+  /* menu on the right for the cards Testfarben and Testbilder & Videos: the header button moves them
+     there and hides them in the middle like the eye in the left menu. Wide windows share the space beside the left
      menu half and half, narrower ones open it as a drawer from the right over the page. */
   #dock { position: fixed; top: var(--bar-h); right: 0; bottom: 0; z-index: 44; width: var(--dock-w); box-sizing: border-box; overflow-y: auto; scrollbar-width: thin;
           background: var(--page); border-left: 1px solid var(--bar-line); padding: 8px 12px 24px; }
@@ -733,7 +733,8 @@
   .dock-head { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
   .dock-head .dock-back { padding: 5px 12px; font-size: 13px; }
   .dock-head .dock-x { width: 32px; height: 32px; }
-  #dock .card { margin-bottom: 0; }
+  #dock .card { margin-bottom: 12px; }
+  #dock .card:last-child { margin-bottom: 0; }
   :root { --dock-w: min(440px, 92vw); }
   @media (min-width: 1200px) {
     :root.docked { --dock-w: calc((100vw - var(--side-w)) / 2); }
@@ -749,7 +750,7 @@
   .pv-fab, #pv-fab { display: none !important; }
 
   /* cards look like the WebUI's panels: border, gray head, body */
-  .card { border: 1px solid var(--line); border-radius: 4px; padding: 0; box-shadow: var(--shadow); margin-bottom: 20px; scroll-margin-top: calc(var(--bar-h) + 8px); }
+  .card { border: 1px solid var(--line); border-radius: 4px; padding: 0; box-shadow: var(--shadow); margin-bottom: 20px; scroll-margin-top: calc(var(--bar-h) + 8px); container-type: inline-size; }
   .card > h2 { margin: 0; padding: 10px 15px; background: var(--card-head); border-bottom: 1px solid var(--line); border-radius: 4px 4px 0 0; font-weight: 500; }
   .card.closed > h2 { border-bottom: none; border-radius: 4px; }
   .card > .card-body { padding: 15px; }
@@ -875,7 +876,7 @@
     <ol class="guide" start="3">
       <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Bei der Ersteinrichtung der wichtigste Test, denn solange die Farbkanäle vertauscht sind, ist jeder weitere Test sinnlos. Später nur nach einem Wechsel der LED-Hardware nötig.</li>
       <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Ohne diesen Schritt gleichst du später Fehler des Grabbers mit Gamma oder Graukurve aus.</li>
-      <li><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Hier zuerst nur 100&nbsp;% Weiß und die Grundfarben. Mit <b>Weißpunkt einstellen</b> zeigt der TV Weiß, und du sagst, welche Farbe das Licht der LEDs zu viel oder zu wenig hat. Die Seite stellt daraus den Weißwert ein. Die Farbtemperatur verschiebt alle Helligkeiten gleich stark und passt deshalb zu 100&nbsp;% Weiß: Nimm sie danach nur, wenn du es insgesamt wärmer oder kälter magst. Graustufen und Gamma fasst du hier noch nicht an.</li>
+      <li><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> und <a class="jump" href="#card-tc"><b>Testfarben</b></a>: Hier zuerst nur 100&nbsp;% Weiß und die Grundfarben. Mit <b>Weißpunkt einstellen</b> zeigt der TV Weiß, und du sagst, welche Farbe das Licht der LEDs zu viel oder zu wenig hat. Die Seite stellt daraus den Weißwert ein. Die Farbtemperatur verschiebt alle Helligkeiten gleich stark und passt deshalb zu 100&nbsp;% Weiß: Nimm sie danach nur, wenn du es insgesamt wärmer oder kälter magst. Graustufen und Gamma fasst du hier noch nicht an.</li>
       <li><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve einschalten, damit du dort die dunklen Stufen fein aufgelöst siehst.</li>
       <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Danach rechnet <b>In Grundeinstellung übernehmen</b> die Kurve in Weißwert und Gamma je Kanal um. Das wirkt dann auch auf farbige Bilder, die Graukurve behält nur den Rest.</li>
     </ol>
@@ -904,7 +905,8 @@
     <p class="help" style="margin:0 0 10px">Für den Alltag, wenn die Ersteinrichtung erledigt ist. Oben stehen die Karten, mit denen du Farbe und Bild am TV prüfst, darunter die Feinheiten der LEDs und die Erkennungen, unten die selten nötigen Kalibrierungen und die Werkzeuge. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
     <h3>Farbe und Bild</h3>
     <ul class="guide">
-      <li data-card="card-color"><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Testfarben als Vollbild, um TV und LEDs direkt zu vergleichen, daneben alle Farbwerte von Hyperion: Farbprofil, Weißpunkt, Gamma und Bildverarbeitung.</li>
+      <li data-card="card-tc"><a class="jump" href="#card-tc"><b>Testfarben</b></a>: Farben als Vollbild, um TV und LEDs direkt zu vergleichen. In der Seitenleiste rechts stehen sie neben der Farbkalibrierung.</li>
+      <li data-card="card-color"><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Alle Farbwerte von Hyperion: Farbprofil, Weißpunkt, Gamma und Bildverarbeitung.</li>
       <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in der Farbkalibrierung hier kurz nachsehen.</li>
       <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
       <li data-card="card-sm"><a class="jump" href="#card-sm"><b>Glättung</b></a>: Laufen die LEDs dem Bild hinterher oder zucken sie bei Schnitten?</li>
@@ -952,7 +954,7 @@
     <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
     <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
     <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.</p>
-    <p class="help"><b>Nach dem Test:</b> Unten erscheint das Ergebnis. Zeigt es einen Farbfehler, setze direkt über dem Ergebnis den Haken <b>Grabber-Farbkorrektur aktiv</b>. Prüfe danach unter <a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV? Mit dem Schalter <b>Grabber-Farbkorrektur</b> in der Farbkalibrierung schaltest du die Korrektur bei laufender Farbe ein und aus und siehst den Unterschied sofort.</p>
+    <p class="help"><b>Nach dem Test:</b> Unten erscheint das Ergebnis. Zeigt es einen Farbfehler, setze direkt über dem Ergebnis den Haken <b>Grabber-Farbkorrektur aktiv</b>. Prüfe danach unter <a class="jump" href="#card-tc"><b>Testfarben</b></a> Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV? Mit dem Schalter <b>Grabber-Farbkorrektur</b> bei den Testfarben schaltest du die Korrektur bei laufender Farbe ein und aus und siehst den Unterschied sofort.</p>
 
     <h3>Eigene Farben</h3>
     <p class="help">Lege Farben an, die du zusätzlich messen willst, zum Beispiel typische Farben aus Filmen. Sie werden nacheinander gemessen und getrennt vom Grundtest gespeichert.</p>
@@ -980,10 +982,10 @@
     <div id="ns-ui" data-i18n-skip></div>
   </section>
 
-  <!-- ===== test colors ===== -->
-  <section class="card" id="card-color">
-    <h2>Farbkalibrierung</h2>
-    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne.</p>
+  <!-- ===== test colors: full screen on the TV (own card, fits the menu on the right beside the color calibration) ===== -->
+  <section class="card" id="card-tc">
+    <h2>Testfarben</h2>
+    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion unter <a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne. Das Symbol rechts neben dem Seitentitel legt diese Karte in die Seitenleiste rechts, dann stehen die Testfarben neben der Farbkalibrierung.</p>
     <p class="note guard-note" hidden></p>
     <div class="gc-row">
       <span class="gc-label">Grabber-Farbkorrektur</span>
@@ -994,112 +996,109 @@
       <small class="gc-note" id="gc-note"></small>
     </div>
     <p class="note" id="list-note"></p>
+    <div id="crow-presets"></div>
+    <h3>Eigene Farben</h3>
+    <div id="crow-custom"></div>
+  </section>
 
-    <div class="color-grid">
-      <div class="col">
-        <div id="crow-presets"></div>
-        <h3>Eigene Farben</h3>
-        <div id="crow-custom"></div>
+  <!-- ===== Hyperion color values (the test colors for comparing are their own card above) ===== -->
+  <section class="card" id="card-color">
+    <h2>Farbkalibrierung</h2>
+    <p class="help">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort. Unten legst du alle Werte zusammen in Speicherplätzen ab und holst sie wieder zurück. Zum Vergleichen zeigst du unter <a class="jump" href="#card-tc"><b>Testfarben</b></a> eine Farbe auf dem TV.</p>
+    <p class="note guard-note" hidden></p>
+    <div class="hy-col hy-scope" id="hy-col">
+      <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
+
+      <div class="hy-prof">
+        <h4 class="hy-h" data-hy-group="profile"><span>Farbprofil</span></h4>
+        <div class="frow"><label for="hy-id">Name</label><span class="inputs"><input type="text" class="text-in" id="hy-id" data-cfield="id" maxlength="60" autocomplete="off"></span></div>
+        <div class="frow"><label for="hy-leds">LED-Bereich</label><span class="inputs"><input type="text" class="text-in" id="hy-leds" data-cfield="leds" placeholder="*" autocomplete="off"></span></div>
+        <p class="field-hint">Für welche LEDs dieses Profil gilt: * für alle, sonst Nummern und Bereiche wie 0-99, 120 (gezählt ab 0). Ein leeres Feld gilt als *. LEDs, die in keinem Profil stehen, bekommen ihre Farbe ohne Korrektur.</p>
+        <div class="srow"><label for="hy-brightnessCompensation">Helligkeitskompensation <span class="val" id="hy-brightnessCompensation_v"></span></label><input type="range" id="hy-brightnessCompensation" data-cfield="brightnessCompensation" data-slider min="0" max="100" step="1"></div>
+        <p class="field-hint">Bei 100 dimmt Hyperion Mischfarben und Weiß so weit, dass sie nicht heller leuchten als eine einzelne Grundfarbe. Bei 0 leuchten Weiß und Mischfarben voll: heller, aber mit bis zu dreimal so viel Strom wie eine Grundfarbe. Prüfe vor dem Senken, ob Netzteil und Leitungen das tragen.</p>
+        <div class="srow"><label for="hy-brightnessGain">Helligkeitsverstärkung <span class="val" id="hy-brightnessGain_v"></span></label><input type="range" id="hy-brightnessGain" data-cfield="brightnessGain" data-slider min="0.1" max="10" step="0.1"></div>
+        <p class="field-hint">1 = unverändert, darüber heller, darunter dunkler. Ungleich 1 bekommen die LEDs dieses Profils den ganzzahligen Mittelwert, auch wenn der Mittelwert mit Nachkommastellen an ist.</p>
+        <hr class="hy-sep">
       </div>
 
-      <div class="col">
-        <div class="hy-col hy-scope" id="hy-col">
-          <h3 style="margin-top:0">Farben in Hyperion</h3>
-          <p class="help" style="margin-bottom:6px">Die Werte, die Hyperion auf die LEDs anwendet. Änderungen wirken sofort. Unten legst du alle Werte zusammen in Speicherplätzen ab und holst sie wieder zurück.</p>
-          <div id="hy-entry-row" hidden style="margin-bottom:8px"><select id="hy-entry" aria-label="Farbeintrag"></select></div>
-
-          <div class="hy-prof">
-            <h4 class="hy-h" data-hy-group="profile"><span>Farbprofil</span></h4>
-            <div class="frow"><label for="hy-id">Name</label><span class="inputs"><input type="text" class="text-in" id="hy-id" data-cfield="id" maxlength="60" autocomplete="off"></span></div>
-            <div class="frow"><label for="hy-leds">LED-Bereich</label><span class="inputs"><input type="text" class="text-in" id="hy-leds" data-cfield="leds" placeholder="*" autocomplete="off"></span></div>
-            <p class="field-hint">Für welche LEDs dieses Profil gilt: * für alle, sonst Nummern und Bereiche wie 0-99, 120 (gezählt ab 0). Ein leeres Feld gilt als *. LEDs, die in keinem Profil stehen, bekommen ihre Farbe ohne Korrektur.</p>
-            <div class="srow"><label for="hy-brightnessCompensation">Helligkeitskompensation <span class="val" id="hy-brightnessCompensation_v"></span></label><input type="range" id="hy-brightnessCompensation" data-cfield="brightnessCompensation" data-slider min="0" max="100" step="1"></div>
-            <p class="field-hint">Bei 100 dimmt Hyperion Mischfarben und Weiß so weit, dass sie nicht heller leuchten als eine einzelne Grundfarbe. Bei 0 leuchten Weiß und Mischfarben voll: heller, aber mit bis zu dreimal so viel Strom wie eine Grundfarbe. Prüfe vor dem Senken, ob Netzteil und Leitungen das tragen.</p>
-            <div class="srow"><label for="hy-brightnessGain">Helligkeitsverstärkung <span class="val" id="hy-brightnessGain_v"></span></label><input type="range" id="hy-brightnessGain" data-cfield="brightnessGain" data-slider min="0.1" max="10" step="0.1"></div>
-            <p class="field-hint">1 = unverändert, darüber heller, darunter dunkler. Ungleich 1 bekommen die LEDs dieses Profils den ganzzahligen Mittelwert, auch wenn der Mittelwert mit Nachkommastellen an ist.</p>
-            <hr class="hy-sep">
+      <div class="wp" id="wp">
+        <h4 class="hy-h"><span>Weißpunkt</span></h4>
+        <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Das läuft in Runden: antworten, neu hinschauen, wieder antworten, bis das Licht neutral wirkt. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
+        <button type="button" class="primary wide" id="wp-start">Weißpunkt einstellen</button>
+        <div id="wp-run" hidden>
+          <div class="status gck-status" id="wp-status" aria-live="polite"></div>
+          <p class="lg-q" id="wp-q"></p>
+          <button type="button" class="primary wide" id="wp-done">Neutral, fertig</button>
+          <p class="gck-sub">Nicht neutral? Dann in drei Teilen antworten:</p>
+          <p class="gck-step">1. Das Licht hat …</p>
+          <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="wp-dir">
+            <button type="button" data-dir="more">zu viel</button>
+            <button type="button" data-dir="less">zu wenig</button>
           </div>
-
-          <div class="wp" id="wp">
-            <h4 class="hy-h"><span>Weißpunkt</span></h4>
-            <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Das läuft in Runden: antworten, neu hinschauen, wieder antworten, bis das Licht neutral wirkt. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
-            <button type="button" class="primary wide" id="wp-start">Weißpunkt einstellen</button>
-            <div id="wp-run" hidden>
-              <div class="status gck-status" id="wp-status" aria-live="polite"></div>
-              <p class="lg-q" id="wp-q"></p>
-              <button type="button" class="primary wide" id="wp-done">Neutral, fertig</button>
-              <p class="gck-sub">Nicht neutral? Dann in drei Teilen antworten:</p>
-              <p class="gck-step">1. Das Licht hat …</p>
-              <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="wp-dir">
-                <button type="button" data-dir="more">zu viel</button>
-                <button type="button" data-dir="less">zu wenig</button>
-              </div>
-              <p class="gck-step">2. Wie stark?</p>
-              <div class="seg full gck-seg" role="group" aria-label="Stärke" id="wp-strength">
-                <button type="button" data-strength="1">leicht</button>
-                <button type="button" data-strength="2">deutlich</button>
-                <button type="button" data-strength="3">stark</button>
-              </div>
-              <p class="gck-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
-              <div class="gck-tints" id="wp-tints"></div>
-              <div class="gck-log" id="wp-log"></div>
-              <div class="seg full" role="group" aria-label="Weißpunkt steuern" style="margin-top:8px">
-                <button type="button" id="wp-back">Zurück</button>
-                <button type="button" id="wp-cancel">Abbrechen</button>
-              </div>
-            </div>
-            <p class="note" id="wp-note"></p>
-            <hr class="hy-sep">
+          <p class="gck-step">2. Wie stark?</p>
+          <div class="seg full gck-seg" role="group" aria-label="Stärke" id="wp-strength">
+            <button type="button" data-strength="1">leicht</button>
+            <button type="button" data-strength="2">deutlich</button>
+            <button type="button" data-strength="3">stark</button>
           </div>
-
-          <h4 class="hy-h" data-hy-group="colors"><span>Farben</span></h4>
-          <div id="hy-rgb"></div>
-
-          <hr class="hy-sep">
-          <div class="hy-grid">
-          <div class="hy-block">
-            <h4 class="hy-h" data-hy-group="light"><span>Helligkeit und Sättigung</span></h4>
-            <div class="srow"><label for="hy-brightness">Helligkeit <span class="val" id="hy-brightness_v"></span></label><input type="range" id="hy-brightness" data-cfield="brightness" data-slider min="0" max="100" step="1"></div>
-            <div class="srow"><label for="hy-saturationGain">Sättigungsverstärkung <span class="val" id="hy-saturationGain_v"></span></label><input type="range" id="hy-saturationGain" data-cfield="saturationGain" data-slider min="0" max="10" step="0.1"></div>
-            <div class="srow"><label for="hy-backlightThreshold">Hintergrundbeleuchtung ab <span class="val" id="hy-backlightThreshold_v"></span></label><input type="range" id="hy-backlightThreshold" data-cfield="backlightThreshold" data-slider min="0" max="100" step="1"></div>
-            <label class="check"><input type="checkbox" data-cfield="backlightColored"><span>Farbige Hintergrundbeleuchtung</span></label>
+          <p class="gck-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
+          <div class="gck-tints" id="wp-tints"></div>
+          <div class="gck-log" id="wp-log"></div>
+          <div class="seg full" role="group" aria-label="Weißpunkt steuern" style="margin-top:8px">
+            <button type="button" id="wp-back">Zurück</button>
+            <button type="button" id="wp-cancel">Abbrechen</button>
           </div>
-          <div class="hy-block">
-            <h4 class="hy-h" data-hy-group="gamma"><span>Gamma und Farbtemperatur</span></h4>
-            <div class="frow"><label>Gamma Rot</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaRed" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
-            <div class="frow"><label>Gamma Grün</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaGreen" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
-            <div class="frow"><label>Gamma Blau</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaBlue" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
-            <div class="frow"><label>Farbtemperatur (K)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="temperature" min="1000" max="40000" step="100" inputmode="numeric"></span></div>
-          </div>
-          <div class="hy-block">
-            <h4 class="hy-h" data-hy-group="image"><span>Bildverarbeitung</span></h4>
-            <p class="field-hint">Gilt für alle Farbprofile.</p>
-            <label class="field" for="hy-mapping">Zuordnungstyp</label>
-            <select id="hy-mapping" data-cfield="imageToLedMappingType">
-              <option value="multicolor_mean">Durchschnittsfarbe einfach – pro LED</option>
-              <option value="multicolor_mean_squared">Durchschnittsfarbe zum Quadrat – pro LED</option>
-              <option value="unicolor_mean">Durchschnittsfarbe Gesamtbild – alle LEDs</option>
-              <option value="dominant_color">Dominante Farbe – pro LED</option>
-              <option value="unicolor_dominant">Dominante Farbe Gesamtbild – alle LEDs</option>
-              <option value="dominant_color_advanced">Dominante Farbe (fortgeschritten) – pro LED</option>
-              <option value="unicolor_dominant_advanced">Dominante Farbe Gesamtbild (fortgeschritten) – alle LEDs</option>
-            </select>
-            <p class="field-hint" id="hy-mapping-help"></p>
-            <div class="frow" id="hy-accuracy-row"><label for="hy-accuracy">Genauigkeitsstufe (1–4)</label><span class="inputs"><input type="number" class="wide-in" id="hy-accuracy" data-cfield="accuracyLevel" min="1" max="4" step="1" inputmode="numeric"></span></div>
-            <label class="field" for="hy-reduced">Reduzierte Pixelverarbeitung</label>
-            <select id="hy-reduced" data-cfield="reducedPixelSetFactorFactor">
-              <option value="0">Aus: alle Bildpunkte</option>
-              <option value="1">Niedrig: etwa 25&nbsp;% der Bildpunkte</option>
-              <option value="2">Mittel: etwa 10&nbsp;% der Bildpunkte</option>
-              <option value="3">Hoch: etwa 6&nbsp;% der Bildpunkte</option>
-            </select>
-            <p class="field-hint">Wertet je LED nur einen Teil der Bildpunkte aus. Spart Rechenzeit, die LEDs reagieren dann aber stärker auf kleine Details.</p>
-          </div>
-          </div>
-          <p class="note" id="hy-note"></p>
-          <div class="tp" data-test="hyColor"></div>
         </div>
+        <p class="note" id="wp-note"></p>
+        <hr class="hy-sep">
       </div>
+
+      <h4 class="hy-h" data-hy-group="colors"><span>Farben</span></h4>
+      <div id="hy-rgb"></div>
+
+      <hr class="hy-sep">
+      <div class="hy-grid">
+      <div class="hy-block">
+        <h4 class="hy-h" data-hy-group="light"><span>Helligkeit und Sättigung</span></h4>
+        <div class="srow"><label for="hy-brightness">Helligkeit <span class="val" id="hy-brightness_v"></span></label><input type="range" id="hy-brightness" data-cfield="brightness" data-slider min="0" max="100" step="1"></div>
+        <div class="srow"><label for="hy-saturationGain">Sättigungsverstärkung <span class="val" id="hy-saturationGain_v"></span></label><input type="range" id="hy-saturationGain" data-cfield="saturationGain" data-slider min="0" max="10" step="0.1"></div>
+        <div class="srow"><label for="hy-backlightThreshold">Hintergrundbeleuchtung ab <span class="val" id="hy-backlightThreshold_v"></span></label><input type="range" id="hy-backlightThreshold" data-cfield="backlightThreshold" data-slider min="0" max="100" step="1"></div>
+        <label class="check"><input type="checkbox" data-cfield="backlightColored"><span>Farbige Hintergrundbeleuchtung</span></label>
+      </div>
+      <div class="hy-block">
+        <h4 class="hy-h" data-hy-group="gamma"><span>Gamma und Farbtemperatur</span></h4>
+        <div class="frow"><label>Gamma Rot</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaRed" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
+        <div class="frow"><label>Gamma Grün</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaGreen" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
+        <div class="frow"><label>Gamma Blau</label><span class="inputs"><input type="number" class="wide-in" data-cfield="gammaBlue" min="0.1" max="100" step="0.05" inputmode="decimal"></span></div>
+        <div class="frow"><label>Farbtemperatur (K)</label><span class="inputs"><input type="number" class="wide-in" data-cfield="temperature" min="1000" max="40000" step="100" inputmode="numeric"></span></div>
+      </div>
+      <div class="hy-block">
+        <h4 class="hy-h" data-hy-group="image"><span>Bildverarbeitung</span></h4>
+        <p class="field-hint">Gilt für alle Farbprofile.</p>
+        <label class="field" for="hy-mapping">Zuordnungstyp</label>
+        <select id="hy-mapping" data-cfield="imageToLedMappingType">
+          <option value="multicolor_mean">Durchschnittsfarbe einfach – pro LED</option>
+          <option value="multicolor_mean_squared">Durchschnittsfarbe zum Quadrat – pro LED</option>
+          <option value="unicolor_mean">Durchschnittsfarbe Gesamtbild – alle LEDs</option>
+          <option value="dominant_color">Dominante Farbe – pro LED</option>
+          <option value="unicolor_dominant">Dominante Farbe Gesamtbild – alle LEDs</option>
+          <option value="dominant_color_advanced">Dominante Farbe (fortgeschritten) – pro LED</option>
+          <option value="unicolor_dominant_advanced">Dominante Farbe Gesamtbild (fortgeschritten) – alle LEDs</option>
+        </select>
+        <p class="field-hint" id="hy-mapping-help"></p>
+        <div class="frow" id="hy-accuracy-row"><label for="hy-accuracy">Genauigkeitsstufe (1–4)</label><span class="inputs"><input type="number" class="wide-in" id="hy-accuracy" data-cfield="accuracyLevel" min="1" max="4" step="1" inputmode="numeric"></span></div>
+        <label class="field" for="hy-reduced">Reduzierte Pixelverarbeitung</label>
+        <select id="hy-reduced" data-cfield="reducedPixelSetFactorFactor">
+          <option value="0">Aus: alle Bildpunkte</option>
+          <option value="1">Niedrig: etwa 25&nbsp;% der Bildpunkte</option>
+          <option value="2">Mittel: etwa 10&nbsp;% der Bildpunkte</option>
+          <option value="3">Hoch: etwa 6&nbsp;% der Bildpunkte</option>
+        </select>
+        <p class="field-hint">Wertet je LED nur einen Teil der Bildpunkte aus. Spart Rechenzeit, die LEDs reagieren dann aber stärker auf kleine Details.</p>
+      </div>
+      </div>
+      <p class="note" id="hy-note"></p>
+      <div class="tp" data-test="hyColor"></div>
     </div>
   </section>
 
@@ -1889,7 +1888,7 @@
   // links to a card (like "Backup") open it first
   document.addEventListener("click", (ev) => {
     const a = ev.target.closest('a[href^="#card-"]');
-    const card = a && document.querySelector(a.getAttribute("href"))?.closest("main > section.card");
+    const card = a && document.querySelector(a.getAttribute("href"))?.closest("section.card");
     if (card) { window.showCard?.(card); setCardOpen(card, true); }
   });
 })();
@@ -1997,8 +1996,8 @@
   // or Eigene (dragged in this menu). Kept per device like the open cards. The guide always stays on
   // top and shows the text for the chosen order.
   const ORDERS = {
-    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
-    standard: ["card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
+    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
+    standard: ["card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
   const ORDER_KEY = "tvtest-card-order";
   const CUSTOM_KEY = "tvtest-card-order-custom";
@@ -2042,7 +2041,7 @@
     else arrange(customGuide, items);
   };
 
-  let docked = null;   // the card in the menu on the right: { card, slot } (slot keeps its place in the middle)
+  const docked = new Map();   // the cards in the menu on the right: card -> slot (keeps its place in the middle)
   const applyOrder = () => {
     const ids = mode === "custom" ? readCustom() : ORDERS[mode];
     // unknown ids are skipped, cards missing in a saved order (new ones) go to the end
@@ -2050,10 +2049,13 @@
     for (const id of byId.keys()) if (!seq.includes(id)) seq.push(id);
     seq.forEach((id, i) => {
       const [card, a] = byId.get(id);
-      main.appendChild(docked?.card === card ? docked.slot : card);
+      main.appendChild(docked.get(card) ?? card);
       cards[i] = card;
       links[i] = a;
     });
+    // the menu on the right lists its cards in the same order
+    const dockBody = document.querySelector("#dock .dock-body");
+    if (dockBody) cards.forEach((card) => { if (docked.has(card)) dockBody.appendChild(card); });
     arrange(list, links.map((a) => a.parentElement));
     renderCustomGuide(false);
     spy();
@@ -2140,22 +2142,23 @@
     eye.type = "button";
     eye.className = "side-eye";
     eye.addEventListener("click", () => {
-      if (docked?.card === card) return undock();
+      if (docked.has(card)) return undock(card);
       setHidden(card, !card.classList.contains("user-hidden"));
     });
     a.after(eye);
     setHidden(card, hidden.has(id), false);
   }
   window.showCard = (card) => {
-    if (docked?.card === card) return setDockOpen(true);
+    if (docked.has(card)) return setDockOpen(true);
     if (card?.classList.contains("user-hidden")) setHidden(card, false);
   };
 
-  // menu on the right (see CSS #dock): the header button moves "Testbilder & Videos" there and
-  // triggers its eye, so the middle shows it hidden. Wide windows: the button moves it back. Narrow
-  // ones: the button opens and closes the drawer, "In die Mitte holen" or the eye moves it back.
+  // menu on the right (see CSS #dock): the header button moves "Testfarben" and "Testbilder & Videos"
+  // there and triggers their eyes, so the middle shows them hidden. Wide windows: the button moves them
+  // back. Narrow ones: the button opens and closes the drawer, "In die Mitte holen" moves them back. The
+  // eye of one of them moves only that card back, the button then brings it to the menu again.
   // Kept per device.
-  const DOCK_CARD = "card-p-media";
+  const DOCK_CARDS = ["card-tc", "card-p-media"];
   const DOCK_KEY = "tvtest-dock";
   const dockWide = matchMedia("(min-width: 1200px)");
   const X_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
@@ -2169,62 +2172,75 @@
   const dockBack = dock.querySelector(".dock-back");
   const dockX = dock.querySelector(".dock-x");
   const setTip = (el, text) => { el.dataset.tip = I18N.t(text); el.setAttribute("aria-label", el.dataset.tip); };
+  const dockable = () => DOCK_CARDS.map((id) => byId.get(id)?.[0]).filter(Boolean);
+  const allDocked = () => dockable().every((card) => docked.has(card));
   const renderDock = () => {
-    const on = !!docked;
+    const on = docked.size > 0;
     const open = root.classList.contains("dock-open");
     dock.hidden = !on;
     root.classList.toggle("docked", on);
     dockBtn.setAttribute("aria-pressed", String(on));
-    setTip(dockBtn, !on ? "Testbilder & Videos in die Seitenleiste rechts"
-      : dockWide.matches ? "Testbilder & Videos zurück in die Mitte"
+    setTip(dockBtn, !allDocked() ? "Testfarben und Testbilder & Videos in die Seitenleiste rechts"
+      : dockWide.matches ? "Testfarben und Testbilder & Videos zurück in die Mitte"
       : open ? "Seitenleiste rechts schließen" : "Seitenleiste rechts öffnen");
     dockBack.hidden = dockWide.matches;
-    setTip(dockX, dockWide.matches ? "Testbilder & Videos zurück in die Mitte" : "Seitenleiste rechts schließen");
+    setTip(dockX, dockWide.matches ? "Testfarben und Testbilder & Videos zurück in die Mitte" : "Seitenleiste rechts schließen");
   };
   const setDockOpen = (open) => {
-    root.classList.toggle("dock-open", open && !!docked && !dockWide.matches);
+    root.classList.toggle("dock-open", open && docked.size > 0 && !dockWide.matches);
     renderDock();
   };
-  const dockCard = () => {
-    const card = byId.get(DOCK_CARD)?.[0];
-    if (!card || docked) return;
-    const slot = document.createElement("div");
-    slot.hidden = true;
-    card.replaceWith(slot);
-    docked = { card, slot };
-    dock.querySelector(".dock-body").appendChild(card);
-    setHidden(card, true);
-    store.set(DOCK_KEY, "1");
+  const saveDock = () => store.set(DOCK_KEY, JSON.stringify([...docked.keys()].map((card) => card.id)));
+  // moves the cards (all that can go there when none is given) to the menu, in the order of the page
+  const dockCards = (ids = DOCK_CARDS) => {
+    const body = dock.querySelector(".dock-body");
+    for (const card of cards) {
+      if (!ids.includes(card.id) || docked.has(card)) continue;
+      const slot = document.createElement("div");
+      slot.hidden = true;
+      card.replaceWith(slot);
+      docked.set(card, slot);
+      setHidden(card, true);
+    }
+    cards.forEach((card) => { if (docked.has(card)) body.appendChild(card); });
+    saveDock();
     renderDock();
   };
-  const undock = () => {
-    if (!docked) return;
-    const { card, slot } = docked;
-    slot.replaceWith(card);
-    docked = null;
-    root.classList.remove("dock-open");
-    setHidden(card, false);
-    store.set(DOCK_KEY, "0");
+  // moves one card back to the middle, or all of them
+  const undock = (one) => {
+    for (const card of one ? [one] : [...docked.keys()]) {
+      if (!docked.has(card)) continue;
+      docked.get(card).replaceWith(card);
+      docked.delete(card);
+      setHidden(card, false);
+    }
+    if (!docked.size) root.classList.remove("dock-open");
+    saveDock();
     renderDock();
   };
   dockBtn.addEventListener("click", () => {
-    if (!docked) {
-      dockCard();
-      if (docked) setCardOpen(docked.card, true);
+    if (!allDocked()) {
+      const add = dockable().filter((card) => !docked.has(card));
+      dockCards(add.map((card) => card.id));
+      add.forEach((card) => setCardOpen(card, true));
       setDockOpen(true);
     }
     else if (dockWide.matches) undock();
     else setDockOpen(!root.classList.contains("dock-open"));
   });
-  dockBack.addEventListener("click", undock);
+  dockBack.addEventListener("click", () => undock());
   dockX.addEventListener("click", () => (dockWide.matches ? undock() : setDockOpen(false)));
   // a tap beside the drawer closes it, like the menu on the left (the path is taken when the click
-  // starts: a list inside the drawer may redraw the button that was tapped)
+  // starts: a list inside the drawer may redraw the button that was tapped). Capture phase: a link to
+  // a card in the drawer opens it again afterwards with the same tap.
   document.addEventListener("click", (ev) => {
     if (root.classList.contains("dock-open") && !ev.composedPath().some((n) => n === dock || n === dockBtn)) setDockOpen(false);
-  });
+  }, true);
   dockWide.addEventListener("change", () => setDockOpen(false));
-  if (store.get(DOCK_KEY) === "1") dockCard();
+  // saved: the ids in the menu ("1" from before: the whole menu)
+  const savedDock = store.get(DOCK_KEY);
+  if (savedDock === "1") dockCards();
+  else { try { const ids = JSON.parse(savedDock); if (Array.isArray(ids) && ids.length) dockCards(ids); } catch {} }
   renderDock();
 
   // dragging: hold an entry (not the guide) for a moment, it sinks in a little, then lifts off like a
@@ -2591,7 +2607,7 @@ function showError(text) {
 }
 
 // test -> its card
-const PAUSED_CARDS = { grayTest: "card-gs", bars: "card-bars", depthTest: "card-dt", fracTest: "card-ft", posTest: "card-lp", posGuide: "card-lg", gcGuide: "card-gcg", color: "card-color" };
+const PAUSED_CARDS = { grayTest: "card-gs", bars: "card-bars", depthTest: "card-dt", fracTest: "card-ft", posTest: "card-lp", posGuide: "card-lg", gcGuide: "card-gcg", color: "card-tc" };
 function renderPaused() {
   for (const [test, id] of Object.entries(PAUSED_CARDS)) {
     const card = $(id);
@@ -2657,7 +2673,7 @@ function renderCardBadges() {
   };
   const perCard = new Map();
   for (const [id, text] of Object.entries(badges)) {
-    const card = document.getElementById(id)?.closest("main > section.card");
+    const card = document.getElementById(id)?.closest("section.card");
     if (card && !perCard.get(card)) perCard.set(card, text);
   }
   for (const [card, text] of perCard) {
@@ -2669,14 +2685,16 @@ function renderCardBadges() {
 }
 
 // what runs now, per card: "test" | "calib" — the same rules as runningCards() in server.mjs (which
-// tells the WebUI), plus the white point and the RGB wizard of this page
+// tells the WebUI; there the test colors count for the color calibration, the WebUI's guide has no
+// entry of their own), plus the white point and the RGB wizard of this page
 function sideRunning() {
   const pattern = testPatternActive() || state.posGuide?.active;
   const fullScreen = (state.grabberRun?.running && state.grabberRun.color) || state.gcGuide?.active;
   return {
     "card-gx": state.grabberRun?.running && "calib",
     "card-ns": state.health?.nsCalibrating && "calib",
-    "card-color": (wpRun && "calib") || (state.colorActive !== false && !pattern && !fullScreen && !state.media?.active && "test"),
+    "card-color": wpRun && "calib",
+    "card-tc": state.colorActive !== false && !pattern && !fullScreen && !state.media?.active && "test",
     "card-gcg": state.gcGuide?.active && "calib",
     "card-rgb": (state.rgbWizard || window.rgbWizardRunning?.()) && "test",
     "card-bars": EDGES.some((e) => (state.bars ?? {})[e] > 0) && "test",
@@ -2693,7 +2711,7 @@ function renderSideStatus() {
   if (!state) return;
   const run = new Map();
   for (const [id, kind] of Object.entries(sideRunning())) {
-    const card = document.getElementById(id)?.closest("main > section.card");
+    const card = document.getElementById(id)?.closest("section.card");
     if (kind && card && run.get(card.id) !== "calib") run.set(card.id, kind);
   }
   document.querySelectorAll("#side .side-st").forEach((st) => {
@@ -3949,7 +3967,7 @@ const TS_FEATURE_LABELS = {
   grayStill: "Graues-Standbild-Erkennung", blackborder: "Schwarzbalken-Erkennung", backlight: "Hintergrundbeleuchtung",
   signal: "No-Signal-Erkennung des Grabbers", depth: "Erfassungstiefe 3 % / 2 %",
 };
-const TS_TESTS = [["color", "Farbkalibrierung"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "LED-Erfassungstiefe"], ["frac", "Präzise-Farbausgabe"], ["pos", "LED-Position"]];
+const TS_TESTS = [["color", "Testfarben"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "LED-Erfassungstiefe"], ["frac", "Präzise-Farbausgabe"], ["pos", "LED-Position"]];
 const TS_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
 const TS_LOCK = {
   closed: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
@@ -6379,7 +6397,7 @@ function noteTime(ts) {
 function jumpToCard(id) {
   const el = id ? $(id) : null;
   if (!el) return;
-  const section = el.closest("main > section.card");
+  const section = el.closest("section.card");
   window.showCard?.(section);
   if (section && section.classList.contains("closed")) window.setCardOpen?.(section, true);
   el.scrollIntoView({ behavior: "smooth", block: "start" });
