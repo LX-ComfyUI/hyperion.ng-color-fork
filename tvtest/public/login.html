@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Hyperion TV-Testseite Anmeldung</title>
+<script>
+  // same theme and language as the control page of this device
+  try { const t = localStorage.getItem("tvtest-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+</script>
+<style>
+  :root {
+    --bg: #f8f8f8; --card: #ffffff; --text: #333333; --muted: #6b6b6b; --line: #cccccc;
+    --accent: #0e83e7; --accent-text: #ffffff; --bad: #c9302c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #212121; --card: #424242; --text: #ececec; --muted: #cdcdcd; --line: #5c5c5c; --accent: #2b93ef; --bad: #ff6b66; }
+  }
+  :root[data-theme="dark"] { --bg: #212121; --card: #424242; --text: #ececec; --muted: #cdcdcd; --line: #5c5c5c; --accent: #2b93ef; --bad: #ff6b66; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 48px 16px; }
+  main { width: 100%; max-width: 380px; background: var(--card); border-radius: 6px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .logo { display: block; width: 220px; max-width: 100%; margin: 0 auto 20px; }
+  .logo-dark { display: none; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
+  :root[data-theme="dark"] .logo-dark { display: block; } :root[data-theme="dark"] .logo-light { display: none; }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 6px; }
+  p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+  label { display: block; font-size: 14px; margin-bottom: 4px; }
+  input { width: 100%; font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--text); }
+  button { width: 100%; margin-top: 14px; font: inherit; padding: 10px; border: 0; border-radius: 4px; background: var(--accent); color: var(--accent-text); cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  .err { color: var(--bad); font-size: 14px; margin-top: 10px; min-height: 1.4em; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo logo-light" src="/static/hyperion-logo-light.png" alt="Hyperion">
+  <img class="logo logo-dark" src="/static/hyperion-logo.png" alt="Hyperion">
+  <h1 id="title">Anmelden</h1>
+  <p id="hint">Die Testseite nutzt das Passwort von Hyperion (wie die Hyperion-WebUI). Dieses Gerät bleibt danach angemeldet.</p>
+  <form id="form">
+    <label for="pw" id="pwlabel">Hyperion-Passwort</label>
+    <input id="pw" type="password" autocomplete="current-password" autofocus required>
+    <button id="go" type="submit">Anmelden</button>
+    <div class="err" id="err" role="alert"></div>
+  </form>
+</main>
+<script>
+  let en = false;
+  try { en = (localStorage.getItem("tvtest-lang") ?? (navigator.language.startsWith("de") ? "de" : "en")) === "en"; } catch {}
+  const T = en ? {
+    title: "Log in", hint: "The test page uses the Hyperion password (like the Hyperion WebUI). This device stays logged in afterwards.",
+    pwlabel: "Hyperion password", go: "Log in", "Falsches Passwort": "Wrong password",
+    "Zu viele Versuche, bitte eine Minute warten.": "Too many tries, please wait a minute.", net: "The test server is not reachable.",
+  } : { net: "Der Testserver ist nicht erreichbar." };
+  if (en) {
+    document.documentElement.lang = "en";
+    for (const id of ["title", "hint", "pwlabel", "go"]) document.getElementById(id).textContent = T[id];
+  }
+  const $ = (id) => document.getElementById(id);
+  $("form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    $("go").disabled = true;
+    $("err").textContent = "";
+    try {
+      const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("pw").value }) });
+      const out = await res.json();
+      if (res.ok) { location.replace("/" + location.hash); return; }
+      $("err").textContent = T[out.error] ?? out.error;
+      $("pw").select();
+    } catch {
+      $("err").textContent = T.net;
+    }
+    $("go").disabled = false;
+  });
+</script>
+</body>
+</html>

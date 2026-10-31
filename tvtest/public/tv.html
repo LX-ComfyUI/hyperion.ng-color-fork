@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyperion TV-Testseite</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: system-ui, sans-serif; }
+  #screen { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: #000; }
+  .bar { position: fixed; background: #000; }
+  #bar-top    { top: 0;    left: 0; right: 0;  height: 0; }
+  #bar-bottom { bottom: 0; left: 0; right: 0;  height: 0; }
+  #bar-left   { left: 0;   top: 0;  bottom: 0; width: 0; }
+  #bar-right  { right: 0;  top: 0;  bottom: 0; width: 0; }
+
+  /* capture depth test: a band (frame) or a running line (sweep) along all four edges */
+  #depth { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+  #depth .band { position: absolute; }
+  #depth .band.t { top: 0; left: 0; right: 0; }
+  #depth .band.b { bottom: 0; left: 0; right: 0; }
+  #depth .band.l { left: 0; top: 0; bottom: 0; }
+  #depth .band.r { right: 0; top: 0; bottom: 0; }
+  #depth .sweep { position: absolute; box-sizing: border-box; border-style: solid; }
+
+  /* fractional LED mean test: canvas in device pixels, so the dither is never smoothed by scaling */
+  /* LED position test: markers in the sampling areas of the chosen LEDs */
+  #pos { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+  #pos .mark { position: absolute; }
+  /* guided position test: a ruler with the neighbouring LEDs, drawn inside the picture beyond the
+     sampling areas, so the grabber does not light LEDs with it */
+  #pos .tick { position: absolute; background: #8a8a8a; }
+  #pos .tick.zero { background: #e8e8e8; }
+  #pos .arrow { position: absolute; width: 0; height: 0; transform: translate(-50%, -50%); border: 1.6vh solid transparent; transition: left .12s, top .12s; }
+  #pos .arrow.down { border-bottom: none; border-top: 2.4vh solid #ffb020; }
+  #pos .arrow.up { border-top: none; border-bottom: 2.4vh solid #ffb020; }
+  #pos .arrow.left { border-left: none; border-right: 2.4vh solid #ffb020; }
+  #pos .arrow.right { border-right: none; border-left: 2.4vh solid #ffb020; }
+  #pos .arrow.dim { opacity: .35; }
+  #pos .tlabel { position: absolute; transform: translate(-50%, -50%); color: #b0b0b0; font: 600 2.4vh/1 system-ui, sans-serif; }
+
+  #frac { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
+
+  /* Connect hint: kept in the middle, so the screen edges (what the LEDs sample) stay free */
+  #connect {
+    /* left/right 0 + auto margins: centered without halving the available width like left: 50% would */
+    position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0 auto;
+    width: max-content; max-width: 86vw;
+    display: flex; align-items: center; gap: 4vh; box-sizing: border-box;
+    padding: 4vh; border-radius: 2vh; background: rgba(20, 20, 24, .94); color: #eee;
+  }
+  #connect[hidden] { display: none; }
+  #qr { width: 42vh; height: 42vh; flex: none; background: #fff; border-radius: 2vh; overflow: hidden; }
+  #qr svg { display: block; width: 100%; height: 100%; }
+  #connect .logo { display: block; height: 6vh; width: auto; margin: 0 0 2.4vh; }
+  #connect h1 { font-size: 4vh; margin: 0 0 2vh; color: #fff; }
+  #connect p { font-size: 2.6vh; line-height: 1.45; margin: 0 0 1.6vh; max-width: 80vh; }
+  #connect .url { font-size: 3vh; font-weight: 700; color: #fff; }
+
+  /* connection lost: same place as the connect hint, orange frame */
+  #grace {
+    position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0 auto;
+    width: max-content; max-width: 70vw; box-sizing: border-box; text-align: center;
+    padding: 3.6vh 4.6vh; border-radius: 2vh; background: rgba(20, 20, 24, .96); color: #eee;
+    border: .6vh solid #ffb020;
+  }
+  #grace[hidden] { display: none; }
+  #grace h1 { font-size: 4vh; margin: 0 0 1.6vh; color: #ffb020; }
+  #grace p { font-size: 2.4vh; line-height: 1.45; margin: 0 0 1vh; color: #ddd; }
+  #grace .count { font-size: 3.2vh; font-weight: 700; color: #fff; }
+
+  /* idle hint: a control page is connected, but nothing is on the TV; same place as the connect hint */
+  #idle {
+    position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0 auto;
+    width: max-content; max-width: 86vw; box-sizing: border-box; text-align: center;
+    padding: 3.6vh 7vh; border-radius: 2vh; background: rgba(20, 20, 24, .94); color: #eee;
+  }
+  /* the logo picture has some empty space below the lettering: no margin, so the gap to the title
+     looks the same as the one between title and text */
+  #idle .logo { display: block; height: 6.4vh; width: auto; margin: 0 auto; }
+  #idle h1 { font-size: 2.8vh; margin: 0 0 1vh; color: #fff; position: relative; display: inline-block; }
+  /* the check mark hangs outside, so the text itself stays centered under the logo */
+  #idle h1 .ok { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: .45em; display: flex; }
+  #idle h1 .ok svg { width: 1.05em; height: 1.05em; fill: #2fa36b; }
+  #idle p { font-size: 2.1vh; margin: 0; color: #bbb; }
+
+  /* debug views (only when switched on for the TV on the phone) */
+  #bb-overlay, #gs-area, #dp-area { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+  #bb-overlay svg, #gs-area svg, #dp-area svg { width: 100%; height: 100%; display: block; }
+  .dbg-box {
+    position: fixed; left: 50%; transform: translateX(-50%); box-sizing: border-box; max-width: 60vw;
+    padding: 1.4vh 2vh; border-radius: 1.2vh; background: rgba(10, 10, 14, .85); color: #fff;
+    font-size: 2.2vh; line-height: 1.4; pointer-events: none;
+  }
+  /* above 2/3 of the height, so the bottom-up center scan line stays visible */
+  #bb-text { top: 29vh; }
+  #gs-box { top: 36vh; width: 56vh; }
+  /* grabber test: the measured color covers everything, also the connect hint */
+  #gtest { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="screen"></div>
+<div id="depth" hidden>
+  <div class="band t"></div><div class="band b"></div><div class="band l"></div><div class="band r"></div>
+  <div class="sweep"></div>
+</div>
+<canvas id="frac" hidden></canvas>
+<div id="pos" hidden></div>
+<div class="bar" id="bar-top"></div>
+<div class="bar" id="bar-bottom"></div>
+<div class="bar" id="bar-left"></div>
+<div class="bar" id="bar-right"></div>
+
+<div id="gs-area" hidden></div>
+<div id="dp-area" hidden></div>
+<div id="bb-overlay" hidden></div>
+<div class="dbg-box" id="bb-text" hidden></div>
+<div class="dbg-box" id="gs-box" hidden></div>
+
+<div id="gtest" hidden></div>
+
+<div id="connect">
+  <div id="qr" role="img" aria-label="QR-Code zur Steuerung"></div>
+  <div>
+    <img class="logo" src="/static/hyperion-logo.png" alt="Hyperion">
+    <h1>Mit Smartphone, Tablet oder PC steuern</h1>
+    <p>Der Test wird über ein Smartphone, Tablet oder einen PC gesteuert. Scanne den QR‑Code mit der Kamera oder öffne diese Adresse im Browser des Geräts:</p>
+    <p class="url" id="url"></p>
+    <p>Sobald ein Gerät verbunden ist, verschwindet dieser Hinweis und das Testbild ist frei.</p>
+  </div>
+</div>
+
+<!-- the control page is gone while a test is shown: countdown instead of the QR code, then the tests pause -->
+<div id="grace" hidden>
+  <h1>Keine Verbindung zur Testseite</h1>
+  <p class="count" id="grace-count"></p>
+  <p>Zum Verbinden die Testseite auf dem Smartphone, Tablet oder PC wieder öffnen. Der Testserver läuft weiter.</p>
+</div>
+
+<div id="idle" hidden>
+  <img class="logo" src="/static/hyperion-logo.png" alt="Hyperion">
+  <h1><span>Hyperion TV-Testseite verbunden</span><span class="ok" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/></svg></span></h1>
+  <p>Aktuell läuft kein Test.</p>
+</div>
+
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
+<script>I18N.start();</script>
+<script src="/static/testimages.js"></script>
+<script src="/static/tvmedia.js"></script>
+<script type="module">
+import { blackborderSvg, blackborderText, grayStillHtml, grayStillAreaSvg, depthAreaSvg, applyLedAreaDepth, posTestIndices, ledSegments, GRAY_STILL_CSS } from "/static/overlay.js";
+
+const style = document.createElement("style");
+style.textContent = GRAY_STILL_CSS;
+document.head.appendChild(style);
+
+const $ = (id) => document.getElementById(id);
+const screenEl = $("screen");
+const barEls = { top: $("bar-top"), bottom: $("bar-bottom"), left: $("bar-left"), right: $("bar-right") };
+const connectEl = $("connect");
+
+let state = { color: "#000000", colorActive: false, bars: { top: 0, bottom: 0, left: 0, right: 0 } };
+let phones = 0;
+let clockOffset = 0;      // Pi clock minus TV clock
+let grayTimer = null;
+let debug = null;
+let ledAreas = null;      // LED sampling areas from Hyperion's layout
+let areaDepth = null;     // color.ledAreaDepth from Hyperion ({ topBottom, leftRight }, 0 = layout)
+let sweepFrame = null;
+let fracFrame = null;
+let posFrame = null;
+let posDrawn = "";
+let fracDrawn = null;     // [level in 1/64 steps, tint, canvas size] of the picture on the canvas
+
+$("url").textContent = location.host + "/";
+
+function renderBars() {
+  barEls.top.style.height = state.bars.top + "%";
+  barEls.bottom.style.height = state.bars.bottom + "%";
+  barEls.left.style.width = state.bars.left + "%";
+  barEls.right.style.width = state.bars.right + "%";
+}
+
+// Gray test: show the tone, and dim it after dropAfter seconds like a paused player fading out
+function renderGrayTest() {
+  clearTimeout(grayTimer);
+  const g = state.grayTest;
+  if (!g?.active) {
+    screenEl.style.transition = "";
+    screenEl.style.background = state.colorActive === false ? "#000000" : state.color;
+    return;
+  }
+  const gray = (v) => `rgb(${v}, ${v}, ${v})`;
+  const dimmed = Math.round(g.tone * (1 - g.dropPercent / 100));
+  const dropAt = g.startedAt + g.dropAfter * 1000 - clockOffset; // in TV clock
+  const wait = dropAt - Date.now();
+  if (!g.dropEnabled || wait > 0) {
+    screenEl.style.transition = "";
+    screenEl.style.background = gray(g.tone);
+    if (g.dropEnabled) grayTimer = setTimeout(() => {
+      screenEl.style.transition = `background-color ${g.dropDuration ?? 0.4}s linear`;
+      screenEl.style.background = gray(dimmed);
+    }, wait);
+  } else {
+    screenEl.style.transition = "";
+    screenEl.style.background = gray(dimmed);
+  }
+}
+
+// Capture depth test. frame: the edges in the outer color, topBottom % of the height and leftRight %
+// of the width deep. sweep: a line of the outer color runs from the edges inwards to sweepMax % in
+// sweepSeconds (timed against the Pi's clock like the gray test), then starts at the edge again.
+function renderDepthTest() {
+  cancelAnimationFrame(sweepFrame);
+  const d = state.depthTest;
+  const el = $("depth");
+  el.hidden = !d?.active || state.grayTest?.active;
+  if (el.hidden) return;
+  el.style.background = d.inner;
+  const frame = d.pattern !== "sweep";
+  const [t, b, l, r] = el.querySelectorAll(".band");
+  for (const band of [t, b, l, r]) { band.hidden = !frame; band.style.background = d.outer; }
+  t.style.height = b.style.height = d.topBottom + "%";
+  l.style.width = r.style.width = d.leftRight + "%";
+  const sweep = el.querySelector(".sweep");
+  sweep.hidden = frame;
+  if (frame) return;
+  // the line is lineWidth % of the screen height thick on all four sides
+  sweep.style.borderColor = d.outer;
+  sweep.style.borderWidth = d.lineWidth + "vh";
+  const step = () => {
+    const elapsed = (Date.now() + clockOffset - d.startedAt) / 1000;
+    const p = ((elapsed % d.sweepSeconds) + d.sweepSeconds) % d.sweepSeconds / d.sweepSeconds;
+    const pos = p * d.sweepMax; // percent of height (top/bottom) and of width (sides)
+    sweep.style.top = sweep.style.bottom = pos + "%";
+    sweep.style.left = sweep.style.right = pos + "%";
+    sweepFrame = requestAnimationFrame(step);
+  };
+  step();
+}
+
+// Fractional LED mean test. A level like 25.375 is drawn as an ordered dither (8x8 Bayer matrix) of
+// 25 and 26 with 24 of 64 pixels at 26, so every LED area averages to the level with its fractions.
+// ramp: from -> to and back, rampSeconds per way; toggle: base and base + delta, toggleSeconds each.
+const BAYER8 = (() => {
+  const m = [[0]];
+  let n = 1;
+  let out = m;
+  while (n < 8) {
+    out = Array.from({ length: n * 2 }, (_, y) => Array.from({ length: n * 2 }, (_, x) => 4 * out[y % n][x % n] + [0, 2, 3, 1][(y >= n) * 2 + (x >= n)]));
+    n *= 2;
+  }
+  return out;
+})();
+const TINTS = { gray: [1, 1, 1], red: [1, 0, 0], green: [0, 1, 0], blue: [0, 0, 1] };
+
+function fracLevel(f, now) {
+  const elapsed = Math.max(0, (now + clockOffset - f.startedAt) / 1000);
+  if (f.pattern === "toggle") return Math.floor(elapsed / f.toggleSeconds) % 2 ? f.base + f.delta : f.base;
+  const p = (elapsed % (2 * f.rampSeconds)) / f.rampSeconds; // 0..2
+  return f.from + (f.to - f.from) * (p <= 1 ? p : 2 - p);
+}
+
+function drawFrac(canvas, level, tint) {
+  const steps = Math.round(Math.min(255, Math.max(0, level)) * 64);
+  const key = [steps, tint, canvas.width, canvas.height].join();
+  if (fracDrawn === key) return;
+  fracDrawn = key;
+  const base = Math.floor(steps / 64);
+  const high = steps - base * 64; // pixels per 64 at base + 1
+  const t = TINTS[tint] ?? TINTS.gray;
+  const tile = document.createElement("canvas");
+  tile.width = tile.height = 8;
+  const tctx = tile.getContext("2d");
+  const img = tctx.createImageData(8, 8);
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+    const v = Math.min(255, base + (BAYER8[y][x] < high ? 1 : 0));
+    const i = (y * 8 + x) * 4;
+    img.data[i] = v * t[0]; img.data[i + 1] = v * t[1]; img.data[i + 2] = v * t[2]; img.data[i + 3] = 255;
+  }
+  tctx.putImageData(img, 0, 0);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = ctx.createPattern(tile, "repeat");
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function renderFracTest() {
+  cancelAnimationFrame(fracFrame);
+  const f = state.fracTest;
+  const canvas = $("frac");
+  canvas.hidden = !f?.active || state.grayTest?.active || state.depthTest?.active;
+  if (canvas.hidden) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(window.innerWidth * dpr), h = Math.round(window.innerHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const step = () => {
+    drawFrac(canvas, fracLevel(f, Date.now()), f.tint);
+    fracFrame = requestAnimationFrame(step);
+  };
+  step();
+}
+window.addEventListener("resize", () => { fracDrawn = null; if (state.fracTest?.active) renderFracTest(); });
+
+// LED position test: the marker covers exactly the sampling area of the chosen LEDs (layout with
+// Hyperion's capture depth), the grabber sees it there and lights exactly those LEDs
+const POS_BACKGROUND = { black: "#000000", gray: "rgb(20, 20, 20)" };
+function renderPosTest() {
+  cancelAnimationFrame(posFrame);
+  const p = state.posTest;
+  const el = $("pos");
+  el.hidden = !p?.active || state.grayTest?.active || state.depthTest?.active || state.fracTest?.active;
+  if (el.hidden) { posDrawn = ""; return; }
+  el.style.background = POS_BACKGROUND[p.background] ?? "#000000";
+  const areas = applyLedAreaDepth(ledAreas ?? [], areaDepth?.topBottom, areaDepth?.leftRight);
+  const step = () => {
+    const ids = posTestIndices(p, areas.length, Date.now() + clockOffset);
+    const key = ids.join() + p.color + areas.length + JSON.stringify(areaDepth) + JSON.stringify(ids.map((i) => areas[i])) + !!state.posGuide?.active + (state.posGuide?.cursor ?? 0);
+    if (key !== posDrawn) {
+      posDrawn = key;
+      el.innerHTML = ids.map((i) => {
+        const [x1, x2, y1, y2] = areas[i];
+        return `<div class="mark" style="left:${x1 * 100}%;top:${y1 * 100}%;width:${(x2 - x1) * 100}%;height:${(y2 - y1) * 100}%;background:${p.color}"></div>`;
+      }).join("") + (state.posGuide?.active && p.mode === "single" ? rulerHtml(areas, ids[Math.floor(ids.length / 2)]) : "");
+    }
+    if (p.mode === "run") posFrame = requestAnimationFrame(step);
+  };
+  step();
+}
+
+// Ruler of the guided test: a tick at each of the 5 neighbouring LEDs on both sides of the marked
+// one (same edge run), numbered by distance, between the sampling areas and the middle of the
+// picture. A tick that would fall into any sampling area is left out (corners).
+const RULER_REACH = 5;
+function rulerHtml(areas, i) {
+  const run = ledSegments(areas).find((s) => i >= s.start && i <= s.end);
+  if (!run || run.edge === "other") return "";
+  const horizontal = run.edge === "top" || run.edge === "bottom";
+  const gap = 0.015, len = horizontal ? 0.04 : 0.025, labelGap = horizontal ? 0.03 : 0.018;
+  const thin = 0.0012;
+  const hits = (r) => areas.some((a) => r[0] < a[1] && r[1] > a[0] && r[2] < a[3] && r[3] > a[2]);
+  let out = "";
+  for (let k = -RULER_REACH; k <= RULER_REACH; k++) {
+    const j = i + k;
+    if (j < run.start || j > run.end) continue;
+    const a = areas[j];
+    const cx = (a[0] + a[1]) / 2, cy = (a[2] + a[3]) / 2;
+    let r, lx, ly;
+    if (run.edge === "bottom") { r = [cx - thin, cx + thin, a[2] - gap - len, a[2] - gap]; lx = cx; ly = r[2] - labelGap; }
+    else if (run.edge === "top") { r = [cx - thin, cx + thin, a[3] + gap, a[3] + gap + len]; lx = cx; ly = r[3] + labelGap; }
+    else if (run.edge === "left") { r = [a[1] + gap, a[1] + gap + len, cy - thin, cy + thin]; lx = r[1] + labelGap; ly = cy; }
+    else { r = [a[0] - gap - len, a[0] - gap, cy - thin, cy + thin]; lx = r[0] - labelGap; ly = cy; }
+    // like a ruler: the marked LED and 5 long, 1 to 4 short (the ticks are only a few pixels apart,
+    // so only the 5 carries a number)
+    const short = k !== 0 && Math.abs(k) !== RULER_REACH;
+    if (short) {
+      if (run.edge === "bottom") r[2] += len / 2;
+      else if (run.edge === "top") r[3] -= len / 2;
+      else if (run.edge === "left") r[1] -= len / 2;
+      else r[0] += len / 2;
+    }
+    if (hits(r)) continue;
+    out += `<div class="tick${k === 0 ? " zero" : ""}" style="left:${r[0] * 100}%;top:${r[2] * 100}%;width:${(r[1] - r[0]) * 100}%;height:${(r[3] - r[2]) * 100}%"></div>`;
+    if (Math.abs(k) === RULER_REACH) out += `<div class="tlabel" style="left:${lx * 100}%;top:${ly * 100}%">${RULER_REACH}</div>`;
+  }
+  return out + arrowHtml(areas, run, i);
+}
+
+// The arrow the control page moves: above the ruler (seen from the edge), pointing to the edge, at
+// the LED that many numbers from the marked one. Near a corner it may lie in a sampling area of
+// the other edge; it is drawn faint there, so it hardly tints that LED.
+function arrowHtml(areas, run, i) {
+  const cursor = Number(state.posGuide?.cursor) || 0;
+  const j = i + cursor;
+  const a = j >= run.start && j <= run.end ? areas[j] : null;
+  let x, y;
+  if (a) { x = (a[0] + a[1]) / 2; y = (a[2] + a[3]) / 2; }
+  else {
+    // beyond the end of the run: continue with the spacing of the last two LEDs
+    const k = j < run.start ? run.start : run.end, k2 = j < run.start ? run.start + 1 : run.end - 1;
+    const c = (n) => [(areas[n][0] + areas[n][1]) / 2, (areas[n][2] + areas[n][3]) / 2];
+    const [p, q] = [c(k), c(k2)], steps = Math.abs(j - k);
+    x = p[0] + (p[0] - q[0]) * steps; y = p[1] + (p[1] - q[1]) * steps;
+  }
+  const base = areas[i];
+  const off = 0.015 + (run.edge === "top" || run.edge === "bottom" ? 0.04 : 0.025) + 0.05;
+  let dir, ax = x, ay = y;
+  if (run.edge === "bottom") { dir = "down"; ay = base[2] - off; }
+  else if (run.edge === "top") { dir = "up"; ay = base[3] + off; }
+  else if (run.edge === "left") { dir = "left"; ax = base[1] + off; }
+  else { dir = "right"; ax = base[0] - off; }
+  const box = [ax - 0.012, ax + 0.012, ay - 0.022, ay + 0.022];
+  const dim = areas.some((r) => box[0] < r[1] && box[1] > r[0] && box[2] < r[3] && box[3] > r[2]);
+  return `<div class="arrow ${dir}${dim ? " dim" : ""}" style="left:${ax * 100}%;top:${ay * 100}%"></div>`;
+}
+
+function renderDebug() {
+  const o = state.overlays ?? {};
+  const bb = debug?.ok ? debug.blackborder : null;
+  const gs = debug?.ok ? debug.grayStill : null;
+  $("bb-overlay").hidden = !o.bbTv;
+  $("bb-text").hidden = !o.bbTv;
+  if (o.bbTv) {
+    $("bb-overlay").innerHTML = blackborderSvg(bb);
+    $("bb-text").textContent = debug?.ok ? blackborderText(bb) : I18N.tr("Keine Daten von Hyperion") + (debug?.error ? ` (${debug.error})` : "");
+  }
+  $("gs-box").hidden = !o.gsTv;
+  if (o.gsTv) $("gs-box").innerHTML = grayStillHtml(gs);
+  $("gs-area").hidden = !o.gsTv;
+  if (o.gsTv) $("gs-area").innerHTML = grayStillAreaSvg(gs, ledAreas, bb, areaDepth);
+  $("dp-area").hidden = !o.dpTv;
+  if (o.dpTv) $("dp-area").innerHTML = depthAreaSvg(ledAreas, bb, areaDepth);
+}
+
+// grabber test (run by the server): full screen test color, nothing else may be in the picture
+// the gray of the gray curve calibration (also run by the server) is shown the same way
+const fullScreenColor = () => (state.grabberRun?.running && state.grabberRun.color) || (state.gcGuide?.active && state.gcGuide.color) || null;
+const grabberTestRunning = () => !!fullScreenColor();
+function renderGrabberTest() {
+  const el = $("gtest");
+  el.hidden = !grabberTestRunning();
+  if (!el.hidden) el.style.background = fullScreenColor();
+}
+// nothing on the TV: no test, no test color switched on (black too, it is a test color), no black bars, no debug view
+function nothingShown() {
+  const o = state.overlays ?? {};
+  const bars = state.bars ?? {};
+  const colorShown = state.colorActive !== false;
+  return !grabberTestRunning() && !TvMedia.active() && !colorShown && !["top", "bottom", "left", "right"].some((e) => bars[e] > 0)
+    && !state.grayTest?.active && !state.depthTest?.active && !state.fracTest?.active && !state.posTest?.active
+    && !o.bbTv && !o.gsTv && !o.dpTv;
+}
+// the connect hint while no control page is connected, otherwise the idle hint while nothing is shown
+function renderHints() {
+  const connected = phones > 0;
+  // the QR code only while nothing is shown, so it never lands in a test picture (and the LEDs)
+  const shown = !nothingShown();
+  const left = (state.graceUntil ?? 0) - (Date.now() + clockOffset);
+  // the grabber test goes on without a control page, the gray curve calibration does not
+  const warn = !connected && shown && state.graceUntil > 0 && !(state.grabberRun?.running && state.grabberRun.color);
+  connectEl.hidden = connected || shown || grabberTestRunning();
+  $("grace").hidden = !warn;
+  if (warn) $("grace-count").textContent = I18N.tr("Der Test wird in {a} s pausiert, wenn sich kein Gerät verbindet.", { a: Math.max(0, Math.ceil(left / 1000)) });
+  $("idle").hidden = !connected || !nothingShown();
+}
+setInterval(() => { if (!$("grace").hidden) renderHints(); }, 500);
+
+const renderMedia = () => TvMedia.render(state, () => Date.now() + clockOffset);
+function render() {
+  renderMedia();
+  renderGrabberTest();
+  renderGrayTest();
+  renderDepthTest();
+  renderFracTest();
+  renderPosTest();
+  renderBars();
+  renderHints();
+  renderDebug();
+}
+
+async function loadQr() {
+  try {
+    $("qr").innerHTML = await (await fetch("/api/qr.svg")).text();
+  } catch { /* the URL text next to the code still works */ }
+}
+
+// the server has newer files for this page: reload, but only while nothing is shown (no test, no
+// test color, no picture or video), so a running test is never interrupted
+let reloadTimer = null;
+function checkVersion() {
+  const stale = window.TVTEST_VERSION && state.tvVersion && state.tvVersion !== window.TVTEST_VERSION;
+  if (!stale || reloadTimer) return;
+  if (!nothingShown()) return;
+  reloadTimer = setTimeout(() => {
+    reloadTimer = null;
+    if (nothingShown()) location.reload();
+  }, 3000);
+}
+
+function connectEvents() {
+  const es = new EventSource("/api/events?role=tv");
+  es.addEventListener("reload", () => location.reload());
+  // the test server moves to another port: go there once it answers
+  es.addEventListener("move", (ev) => {
+    const base = `${location.protocol}//${location.hostname}:${JSON.parse(ev.data).port}`;
+    const go = async () => {
+      try { await fetch(base + "/api/state", { mode: "no-cors", cache: "no-store" }); location.href = base + "/tv"; }
+      catch { setTimeout(go, 1500); }
+    };
+    setTimeout(go, 2000);
+  });
+  es.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    // the TV page shows the language chosen last on a control page
+    if ((msg.lang === "de" || msg.lang === "en") && msg.lang !== I18N.lang) {
+      try { localStorage.setItem("tvtest-lang", msg.lang); location.reload(); return; } catch {}
+    }
+    phones = msg.phones ?? 0;
+    if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
+    const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || JSON.stringify(msg.depthTest) !== JSON.stringify(state.depthTest)
+      || JSON.stringify(msg.fracTest) !== JSON.stringify(state.fracTest)
+      || JSON.stringify(msg.posTest) !== JSON.stringify(state.posTest)
+      || msg.posGuide?.active !== state.posGuide?.active || msg.posGuide?.cursor !== state.posGuide?.cursor
+      || msg.color !== state.color || msg.colorActive !== state.colorActive;
+    // a layout correction was written: read the LED areas again right away
+    if (msg.layoutFix?.stamp && msg.layoutFix.stamp !== state.layoutFix?.stamp && state.layoutFix) loadLedAreas();
+    state = msg;
+    if (grayChanged) render();
+    else { renderMedia(); renderBars(); renderDebug(); renderGrabberTest(); renderHints(); }
+    checkVersion();
+  };
+  es.addEventListener("debug", (ev) => {
+    debug = JSON.parse(ev.data);
+    renderDebug();
+  });
+}
+
+async function loadLedAreas() {
+  try {
+    const next = await (await fetch("/api/hyperion/leds")).json();
+    if (JSON.stringify(next) === JSON.stringify(ledAreas)) return;
+    ledAreas = next;
+    renderDebug();
+    renderPosTest();
+  } catch { /* without the layout only the status box is shown */ }
+}
+
+// the capture depth changes from the phone; it is part of Hyperion's color settings, so it is read
+// again whenever the depth overlay is on (cheap: one small DB read every few seconds)
+async function loadAreaDepth() {
+  try {
+    const color = await (await fetch("/api/hyperion/color")).json();
+    const next = color.ledAreaDepth ?? null;
+    if (JSON.stringify(next) !== JSON.stringify(areaDepth)) { areaDepth = next; renderDebug(); renderPosTest(); }
+  } catch { /* the layout areas are drawn then */ }
+}
+setInterval(() => { if (state.overlays?.dpTv || state.overlays?.gsTv || state.posTest?.active) loadAreaDepth(); }, 3000);
+// the layout can change while the position test runs (e.g. a new LED count), so it is read again
+setInterval(() => { if (state.posTest?.active) loadLedAreas(); }, 10000);
+
+loadQr();
+loadLedAreas();
+loadAreaDepth();
+render();
+connectEvents();
+</script>
+</body>
+</html>
