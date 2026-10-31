@@ -435,6 +435,13 @@
   .gck-table th { font-weight: 600; color: var(--muted); }
   /* guided position test */
   .lg-q { margin: 12px 0 6px; font-size: 14px; }
+  .wp-step { margin: 12px 0 0; font-size: 14px; font-weight: 600; }
+  .wp-status { margin-bottom: 4px; }
+  .wp-status.flash { animation: wpflash 1.4s ease-out; }
+  @keyframes wpflash { from { background: color-mix(in srgb, var(--accent) 30%, var(--bg)); } to { background: var(--bg); } }
+  .wp-log { margin: 12px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .wp-log div + div { margin-top: 3px; }
+  .wp-log:empty { display: none; }
   .lg-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
   .lg-row .lg-dir { flex: 0 0 74px; font-size: 13px; color: var(--muted); }
   .lg-row button { flex: 1; min-width: 0; padding: 10px 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -992,21 +999,27 @@
 
           <div class="wp" id="wp">
             <h4 class="hy-h"><span>Weißpunkt</span></h4>
-            <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
+            <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Das läuft in Runden: antworten, neu hinschauen, wieder antworten, bis das Licht neutral wirkt. Die Farbtemperatur bleibt, wie sie ist. Mit ihr stellst du danach nur noch nach Geschmack wärmer oder kälter.</p>
             <button type="button" class="primary wide" id="wp-start">Weißpunkt einstellen</button>
             <div id="wp-run" hidden>
-              <p class="lg-q">Wie wirkt das Licht der LEDs an der Wand neben dem Weiß auf dem TV?</p>
+              <div class="status wp-status" id="wp-status" aria-live="polite"></div>
+              <p class="lg-q" id="wp-q"></p>
               <button type="button" class="primary wide" id="wp-done">Neutral, fertig</button>
+              <p class="gck-sub">Nicht neutral? Dann in drei Teilen antworten:</p>
+              <p class="wp-step">1. Das Licht hat …</p>
               <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="wp-dir">
                 <button type="button" data-dir="more">zu viel</button>
                 <button type="button" data-dir="less">zu wenig</button>
               </div>
-              <div class="gck-tints" id="wp-tints"></div>
+              <p class="wp-step">2. Wie stark?</p>
               <div class="seg full gck-seg" role="group" aria-label="Stärke" id="wp-strength">
                 <button type="button" data-strength="1">leicht</button>
                 <button type="button" data-strength="2">deutlich</button>
                 <button type="button" data-strength="3">stark</button>
               </div>
+              <p class="wp-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
+              <div class="gck-tints" id="wp-tints"></div>
+              <div class="wp-log" id="wp-log"></div>
               <div class="seg full" role="group" aria-label="Weißpunkt steuern" style="margin-top:8px">
                 <button type="button" id="wp-back">Zurück</button>
                 <button type="button" id="wp-cancel">Abbrechen</button>
@@ -4924,16 +4937,32 @@ $("gcg-save").addEventListener("click", async () => {
 // channel keeps its value). The factors go into ALL corner colors (white, red, green, blue, cyan,
 // magenta, yellow) in the same ratio: Hyperion mixes every color from these corners and a middle gray
 // mostly from the colored ones, so a white value alone would only balance colors near white and
-// make middle gray too bright next to white. Runs on this page only; Zurück steps back through the
-// answers, Abbrechen restores the corner colors from the start.
+// make middle gray too bright next to white. Runs on this page only, in rounds: each tap on a color
+// is one answer, then the page says what it changed and asks again (the next round often shows a
+// different tint). Zurück steps back through the answers, Abbrechen restores the corner colors from
+// the start.
 const WP_CORNERS = ["white", "red", "green", "blue", "cyan", "magenta", "yellow"];
-let wpRun = null;          // { start: {corner: [r, g, b]}, gains: [r, g, b], steps: [gains …], memo }
+const WP_STRENGTH_NAMES = { 1: "leicht", 2: "deutlich", 3: "stark" };
+let wpRun = null;          // { start: {corner: [r, g, b]}, gains: [r, g, b], steps: [gains …], log: [{ text, white }], memo }
 let wpDir = "more";
 let wpStrength = 1;
 const wpFmt = (w) => w.join(" / ");
 const wpEntry = () => colorConfig?.channelAdjustment?.[colorIndex] ?? null;
 const wpWhite = () => wpEntry()?.white?.map(Number) ?? null;
 const wpCorners = (start, gains) => WP_CORNERS.map((c) => ({ field: c, value: start[c].map((v, ch) => Math.min(255, Math.max(0, Math.round(v * gains[ch])))) }));
+function wpAnswerText(tint, dir, strength) {
+  let name = tr(GCG_TINT_NAMES[tint]);
+  if (I18N.lang === "en") name = name.toLowerCase();
+  return tr(dir === "more" ? "zu viel {a}, {b}" : "zu wenig {a}, {b}", { a: name, b: tr(WP_STRENGTH_NAMES[strength]) });
+}
+function wpStatus(text, flash) {
+  const el = $("wp-status");
+  el.textContent = text;
+  if (!flash) return;
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+}
 
 function renderWhitePoint() {
   const running = !!wpRun;
@@ -4942,13 +4971,20 @@ function renderWhitePoint() {
   $("wp-start").disabled = !hyperionConnected || !wpWhite();
   $("wp-run").hidden = !running;
   if (!running) return;
+  const round = wpRun.steps.length + 1;
+  $("wp-q").textContent = round === 1
+    ? tr("Runde 1: Wie wirkt das Licht der LEDs an der Wand neben dem Weiß auf dem TV?")
+    : tr("Runde {a}: Und jetzt? Wie wirkt das Licht der LEDs neben dem Weiß auf dem TV?", { a: round });
   $("wp-dir").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dir === wpDir)));
   $("wp-strength").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.strength) === wpStrength)));
+  $("wp-log").innerHTML = wpRun.log.length
+    ? `<div><b>${escHtml(tr("Bisherige Antworten"))}</b></div>` + wpRun.log.map((l, i) => `<div>${escHtml(tr("{n}. {a} → Weißwert {b}", { n: i + 1, a: l.text, b: wpFmt(l.white) }))}</div>`).join("")
+    : "";
   $("wp-back").disabled = !wpRun.steps.length;
 }
 
 async function wpWrite(gains, doneText) {
-  await saveColorValues(wpCorners(wpRun.start, gains), $("wp-note"), doneText);
+  await saveColorValues(wpCorners(wpRun.start, gains), $("wp-status"), doneText);
 }
 
 $("wp-tints").innerHTML = GrayCal.TINTS.map((t) => `<button type="button" data-tint="${t.id}"><span class="gck-dot" style="background:${t.hex}"></span>${GCG_TINT_NAMES[t.id]}</button>`).join("");
@@ -4956,19 +4992,24 @@ $("wp-start").addEventListener("click", () => {
   const e = wpEntry();
   if (!e?.white) return;
   const start = Object.fromEntries(WP_CORNERS.map((c) => [c, (e[c] ?? [0, 0, 0]).map(Number)]));
-  wpRun = { start, gains: [1, 1, 1], steps: [], memo: { scale: 1, last: null } };
+  wpRun = { start, gains: [1, 1, 1], steps: [], log: [], memo: { scale: 1, last: null } };
   setColor("#ffffff");
-  $("wp-note").textContent = tr("Der TV zeigt 100 % Weiß. Weißwert jetzt {a}.", { a: wpFmt(start.white) });
+  $("wp-note").textContent = "";
+  wpStatus(tr("Der TV zeigt jetzt 100 % Weiß (Weißwert {a}). Vergleiche das Licht der LEDs an der Wand damit.", { a: wpFmt(start.white) }));
   renderWhitePoint();
 });
 $("wp-tints").addEventListener("click", async (ev) => {
   const b = ev.target.closest("button[data-tint]");
   if (!b || !wpRun) return;
   const before = wpRun.gains;
+  const round = wpRun.steps.length + 1;
+  const text = wpAnswerText(b.dataset.tint, wpDir, wpStrength);
   wpRun.gains = GrayCal.applyAnswer(before, b.dataset.tint, wpDir, wpStrength, wpRun.memo);
   wpRun.steps.push(before);
   const white = wpCorners(wpRun.start, wpRun.gains)[0].value;
-  await wpWrite(wpRun.gains, tr("Weißwert jetzt {a}, alle Farbwerte im selben Verhältnis angepasst, wirkt sofort.", { a: wpFmt(white) }));
+  wpRun.log.push({ text, white });
+  await wpWrite(wpRun.gains, tr("Antwort {a} übernommen: {b}. Weißwert jetzt {c}, die LEDs zeigen es schon. Schau noch einmal hin und antworte neu: Oft ist danach eine andere Farbe zu viel oder zu wenig. Schlägt es in die Gegenrichtung um, antworte einfach so, die Schritte werden dann von selbst kleiner.", { a: round, b: text, c: wpFmt(white) }));
+  wpStatus($("wp-status").textContent, true);
   renderWhitePoint();
 });
 $("wp-dir").addEventListener("click", (ev) => { const b = ev.target.closest("button[data-dir]"); if (b) { wpDir = b.dataset.dir; renderWhitePoint(); } });
@@ -4977,7 +5018,8 @@ $("wp-back").addEventListener("click", async () => {
   const prev = wpRun?.steps.pop();
   if (!prev) return;
   wpRun.gains = prev;
-  await wpWrite(prev, tr("Einen Schritt zurück: Weißwert {a}.", { a: wpFmt(wpCorners(wpRun.start, prev)[0].value) }));
+  const undone = wpRun.log.pop();
+  await wpWrite(prev, tr("Antwort „{a}“ zurückgenommen: Weißwert wieder {b}.", { a: undone?.text ?? "", b: wpFmt(wpCorners(wpRun.start, prev)[0].value) }));
   renderWhitePoint();
 });
 $("wp-cancel").addEventListener("click", async () => {
@@ -4985,6 +5027,7 @@ $("wp-cancel").addEventListener("click", async () => {
   const run = wpRun;
   wpRun = { ...run, gains: [1, 1, 1] };
   await wpWrite([1, 1, 1], tr("Abgebrochen, die Farbwerte sind wieder wie vorher (Weißwert {a}).", { a: wpFmt(run.start.white) }));
+  $("wp-note").textContent = $("wp-status").textContent;
   wpRun = null;
   renderWhitePoint();
 });
