@@ -845,7 +845,7 @@
     <ol class="guide" start="3">
       <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Bei der Ersteinrichtung der wichtigste Test, denn solange die Farbkanäle vertauscht sind, ist jeder weitere Test sinnlos. Später nur nach einem Wechsel der LED-Hardware nötig.</li>
       <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Ohne diesen Schritt gleichst du später Fehler des Grabbers mit Gamma oder Graukurve aus.</li>
-      <li><a class="jump" href="#card-color"><b>Testfarben</b></a>: Hier zuerst nur 100&nbsp;% Weiß und die Grundfarben. Mit <b>Weißpunkt einstellen</b> zeigt der TV Weiß, und du sagst, welche Farbe das Licht der LEDs zu viel oder zu wenig hat. Die Seite stellt daraus den Weißwert ein. Die Farbtemperatur verschiebt alle Helligkeiten gleich stark und passt deshalb zu 100&nbsp;% Weiß: Nimm sie danach nur, wenn du es insgesamt wärmer oder kälter magst. Graustufen und Gamma fasst du hier noch nicht an.</li>
+      <li><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Hier zuerst nur 100&nbsp;% Weiß und die Grundfarben. Mit <b>Weißpunkt einstellen</b> zeigt der TV Weiß, und du sagst, welche Farbe das Licht der LEDs zu viel oder zu wenig hat. Die Seite stellt daraus den Weißwert ein. Die Farbtemperatur verschiebt alle Helligkeiten gleich stark und passt deshalb zu 100&nbsp;% Weiß: Nimm sie danach nur, wenn du es insgesamt wärmer oder kälter magst. Graustufen und Gamma fasst du hier noch nicht an.</li>
       <li><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve einschalten, damit du dort die dunklen Stufen fein aufgelöst siehst.</li>
       <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Danach rechnet <b>In Grundeinstellung übernehmen</b> die Kurve in Weißwert und Gamma je Kanal um. Das wirkt dann auch auf farbige Bilder, die Graukurve behält nur den Rest.</li>
     </ol>
@@ -874,8 +874,8 @@
     <p class="help" style="margin:0 0 10px">Für den Alltag, wenn die Ersteinrichtung erledigt ist. Oben stehen die Karten, mit denen du Farbe und Bild am TV prüfst, darunter die Feinheiten der LEDs und die Erkennungen, unten die selten nötigen Kalibrierungen und die Werkzeuge. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
     <h3>Farbe und Bild</h3>
     <ul class="guide">
-      <li data-card="card-color"><a class="jump" href="#card-color"><b>Testfarben</b></a>: Eine Farbe als Vollbild, um TV und LEDs direkt zu vergleichen, etwa nach einer Änderung an Gamma oder Weißabgleich.</li>
-      <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in den Testfarben hier kurz nachsehen.</li>
+      <li data-card="card-color"><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Testfarben als Vollbild, um TV und LEDs direkt zu vergleichen, daneben alle Farbwerte von Hyperion: Farbprofil, Weißpunkt, Gamma und Bildverarbeitung.</li>
+      <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in der Farbkalibrierung hier kurz nachsehen.</li>
       <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
       <li data-card="card-sm"><a class="jump" href="#card-sm"><b>Glättung</b></a>: Laufen die LEDs dem Bild hinterher oder zucken sie bei Schnitten?</li>
     </ul>
@@ -922,7 +922,7 @@
     <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
     <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
     <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.</p>
-    <p class="help"><b>Nach dem Test:</b> Unten erscheint das Ergebnis. Zeigt es einen Farbfehler, setze direkt über dem Ergebnis den Haken <b>Grabber-Farbkorrektur aktiv</b>. Prüfe danach unter <a class="jump" href="#card-color"><b>Testfarben</b></a> Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV? Mit dem Schalter <b>Grabber-Farbkorrektur</b> in den Testfarben schaltest du die Korrektur bei laufender Farbe ein und aus und siehst den Unterschied sofort.</p>
+    <p class="help"><b>Nach dem Test:</b> Unten erscheint das Ergebnis. Zeigt es einen Farbfehler, setze direkt über dem Ergebnis den Haken <b>Grabber-Farbkorrektur aktiv</b>. Prüfe danach unter <a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV? Mit dem Schalter <b>Grabber-Farbkorrektur</b> in der Farbkalibrierung schaltest du die Korrektur bei laufender Farbe ein und aus und siehst den Unterschied sofort.</p>
 
     <h3>Eigene Farben</h3>
     <p class="help">Lege Farben an, die du zusätzlich messen willst, zum Beispiel typische Farben aus Filmen. Sie werden nacheinander gemessen und getrennt vom Grundtest gespeichert.</p>
@@ -952,7 +952,7 @@
 
   <!-- ===== test colors ===== -->
   <section class="card" id="card-color">
-    <h2>Testfarben</h2>
+    <h2>Farbkalibrierung</h2>
     <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Links wählst du die Farbe für den TV, rechts stellst du die Farbwerte in Hyperion ein. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne.</p>
     <p class="note guard-note" hidden></p>
     <div class="gc-row">
@@ -3823,7 +3823,7 @@ const TS_FEATURE_LABELS = {
   grayStill: "Graues-Standbild-Erkennung", blackborder: "Schwarzbalken-Erkennung", backlight: "Hintergrundbeleuchtung",
   signal: "No-Signal-Erkennung des Grabbers", depth: "Erfassungstiefe 3 % / 2 %",
 };
-const TS_TESTS = [["color", "Testfarben"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "LED-Erfassungstiefe"], ["frac", "Präzise-Farbausgabe"], ["pos", "LED-Position"]];
+const TS_TESTS = [["color", "Farbkalibrierung"], ["bars", "Schwarze Balken"], ["gray", "Graues Standbild"], ["depth", "LED-Erfassungstiefe"], ["frac", "Präzise-Farbausgabe"], ["pos", "LED-Position"]];
 const TS_FIXED = { bars: ["blackborder"], gray: ["grayStill"], depth: ["depth"] };
 const TS_LOCK = {
   closed: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',

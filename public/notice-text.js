@@ -19,7 +19,7 @@
       portChanged: ["Testseite jetzt auf Port {to}", "Bisher Port {from}. Bitte prüfen und anpassen: Lesezeichen oder Startseite auf dem TV-Gerät (neu: Adresse des Servers mit :{to}/tv), Lesezeichen und Verknüpfungen auf Handy, Tablet und PC (:{to}), Portfreigaben im Router, Firewall-Regeln und Einträge in einem Reverse-Proxy, die noch auf {from} zeigen. Von selbst ziehen mit: offene Testseiten, der QR-Code auf dem TV, die Links im Hyperion-WebUI und die Einstellungen dieser Seite."],
       portTaken: ["Port {port} belegt", "Die Testseite läuft deshalb auf dem Standard-Port 8093. Einen freien Port in der Karte Testserver einstellen."],
       gcSlotLoaded: ["Graukurve für {name}", "Speicherplatz „{slot}“ geladen, den dieser Grabber zuletzt benutzt hat."],
-      gcNewGrabber: ["Graukurve bei neuem Grabber: {name}", "Es läuft weiter die Graukurve des bisherigen Grabbers{slotText}. Prüfe die Grautöne mit den Testfarben. Eine neue Kalibrierung der Graukurve ist kein Muss."],
+      gcNewGrabber: ["Graukurve bei neuem Grabber: {name}", "Es läuft weiter die Graukurve des bisherigen Grabbers{slotText}. Prüfe die Grautöne in der Farbkalibrierung. Eine neue Kalibrierung der Graukurve ist kein Muss."],
       paused: ["Tests pausiert", "{tests}Keine Testseite war mehr verbunden. Zum Weitermachen neu starten."],
       hyperionDown: ["Hyperion nicht erreichbar", "Die Testseite erreicht Hyperion nicht mehr. Läuft der Dienst noch?"],
       hyperionUp: ["Hyperion wieder erreichbar", ""],
@@ -51,7 +51,7 @@
       portChanged: ["Test page now on port {to}", "Port {from} before. Please check and change: the bookmark or start page on the TV device (new: the server's address with :{to}/tv), bookmarks and shortcuts on phone, tablet and PC (:{to}), port forwardings in the router, firewall rules and reverse proxy entries that still point to {from}. These follow by themselves: open test pages, the QR code on the TV, the links in the Hyperion WebUI and the settings of this page."],
       portTaken: ["Port {port} taken", "So the test page runs on the standard port 8093. Set a free port in the card Test server."],
       gcSlotLoaded: ["Gray curve for {name}", "Loaded memory slot \u201c{slot}\u201d, the one this grabber used last."],
-      gcNewGrabber: ["Gray curve with a new grabber: {name}", "The gray curve of the previous grabber keeps running{slotText}. Check the gray tones with the test colors. A new calibration of the gray curve is not a must."],
+      gcNewGrabber: ["Gray curve with a new grabber: {name}", "The gray curve of the previous grabber keeps running{slotText}. Check the gray tones in the color calibration. A new calibration of the gray curve is not a must."],
       paused: ["Tests paused", "{tests}No control page was connected any more. Start again to continue."],
       hyperionDown: ["Hyperion not reachable", "The test page can no longer reach Hyperion. Is the service still running?"],
       hyperionUp: ["Hyperion reachable again", ""],
@@ -98,8 +98,8 @@
   }
 
   const TEST_NAMES = {
-    de: { grayTest: "Graues Standbild", bars: "Schwarze Balken", depthTest: "LED-Erfassungstiefe", fracTest: "Präzise-Farbausgabe", posTest: "LED-Position", posGuide: "LED-Position kalibrieren", gcGuide: "Graukurve kalibrieren", color: "Testfarben" },
-    en: { grayTest: "Gray still image", bars: "Black bars", depthTest: "LED capture depth", fracTest: "Precise color output", posTest: "LED position", posGuide: "LED position calibration", gcGuide: "Gray curve calibration", color: "Test colors" },
+    de: { grayTest: "Graues Standbild", bars: "Schwarze Balken", depthTest: "LED-Erfassungstiefe", fracTest: "Präzise-Farbausgabe", posTest: "LED-Position", posGuide: "LED-Position kalibrieren", gcGuide: "Graukurve kalibrieren", color: "Farbkalibrierung" },
+    en: { grayTest: "Gray still image", bars: "Black bars", depthTest: "LED capture depth", fracTest: "Precise color output", posTest: "LED position", posGuide: "LED position calibration", gcGuide: "Gray curve calibration", color: "Color calibration" },
   };
   // the card of the test page that belongs to a paused test
   const TEST_CARDS = { grayTest: "card-gs", bars: "card-bars", depthTest: "card-dt", fracTest: "card-ft", posTest: "card-lp", posGuide: "card-lg", gcGuide: "card-gcg", color: "card-color" };
