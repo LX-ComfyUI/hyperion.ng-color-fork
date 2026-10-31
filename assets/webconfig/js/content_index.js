@@ -183,6 +183,11 @@ function waitForSuccessfulAuthorization() {
     const onLogin = (event) => {
       if (!loginResolved) {
         loginResolved = true;
+        // Fork-Fix: Anmeldung mit eigenem Passwort (Login-Seite) lieferte das Token, aber nur der
+        // Standardpasswort-Zweig speicherte es -> nach jedem Neuladen wieder das Passwort verlangt.
+        if (event.response?.info?.token) {
+          setStorage("loginToken", event.response.info.token);
+        }
         $(window.hyperion).off("cmd-authorize-login", onLogin);
         resolve(event);
       }
