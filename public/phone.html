@@ -37,6 +37,7 @@
     --btn: #ffffff; --btn-text: #333333; --btn-line: #cccccc; --accent: #0e83e7; --accent-text: #ffffff;
     --chip-line: rgba(0, 0, 0, .18); --danger: #d93025; --warn: #9a5b00; --shadow: 0 1px 1px rgba(0, 0, 0, .05);
     --gap: 16px;
+    --menu-btn: #d0d0d0; --menu-btn-open: transparent; --menu-btn-hover: #dddddd; --menu-bar: #4c4c4c;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -45,6 +46,7 @@
       --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
       --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
       --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
+      --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
     }
   }
   :root[data-theme="dark"] {
@@ -53,6 +55,7 @@
     --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
     --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
     --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
+    --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
   }
 
   html { scroll-behavior: smooth; }
@@ -560,17 +563,17 @@
             background: var(--bg); border-bottom: 1px solid var(--bar-line); }
   .tb-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
   @media (min-width: 768px) { .tb-left { gap: 12px; padding-left: 4px; } }
-  /* menu button like the WebUI's: three bars without a box, gray only under the mouse; an open drawer turns them into an x */
-  .tb-menu { width: 44px; height: 36px; padding: 0; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-             border-radius: 4px; border: none; background: none; }
-  .tb-menu:hover { background: color-mix(in srgb, var(--text) 10%, transparent); }
-  .tb-menu span { display: block; width: 22px; height: 2px; border-radius: 1px; background: var(--text); transition: transform .2s, opacity .2s; }
-  :root.side-open .tb-menu span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  /* menu button the same as the WebUI's (.navbar-toggle): size, box and bar colors from its css; an open
+     drawer turns the bars into an x the way the WebUI does it */
+  .tb-menu { width: 44px; height: 34px; padding: 0; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+             border-radius: 4px; border: 1px solid transparent; background: var(--menu-btn); }
+  .tb-menu:hover { background: var(--menu-btn-hover); }
+  .tb-menu span { display: block; width: 22px; height: 2px; border-radius: 1px; background: var(--menu-bar); transition: all .2s; }
+  :root.side-open .tb-menu { background: var(--menu-btn-open); }
+  :root.side-open .tb-menu:hover { background: var(--menu-btn-hover); }
+  :root.side-open .tb-menu span:nth-child(1) { transform: rotate(45deg); transform-origin: 10% 10%; }
   :root.side-open .tb-menu span:nth-child(2) { opacity: 0; }
-  :root.side-open .tb-menu span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
-  /* the button of the menu on the right at the far end of the bar, in a gray box of its own */
-  .tb-icon.tb-box { width: 44px; height: 36px; margin-left: 6px; background: color-mix(in srgb, var(--text) 10%, transparent); }
-  .tb-icon.tb-box:hover { background: color-mix(in srgb, var(--text) 18%, transparent); }
+  :root.side-open .tb-menu span:nth-child(3) { transform: rotate(-45deg); transform-origin: 10% 90%; }
   .tb-home { display: block; flex: 0 1 auto; min-width: 96px; }
   .tb-logo { display: block; height: auto; width: 150px; max-width: 100%; }
   @media (max-width: 767.98px) { .tb-logo { width: 116px; } }
@@ -835,7 +838,7 @@
         <div class="tb-why" id="tb-power-why" hidden></div>
       </div>
     </div>
-    <button type="button" class="tb-icon tb-box" id="hdr-dock" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+    <button type="button" class="tb-icon" id="hdr-dock" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
   </div>
 </nav>
 <main id="main">
