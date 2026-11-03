@@ -440,6 +440,8 @@ window.I18N_EN = {
  "Gilt für die ganze Funktion. Ein Speicherplatz wechselt nur die Kurve, nicht diesen Schalter.": "Applies to the whole function. A slot only switches the curve, not this switch.",
  "Letzte Änderung zurückgenommen, wirkt sofort auf die LEDs.": "Last change undone, applies to the LEDs right away.",
  "Änderung wiederhergestellt, wirkt sofort auf die LEDs.": "Change restored, applies to the LEDs right away.",
+ "Letzte Änderung zurücknehmen": "Undo last change",
+ "Zurückgenommene Änderung wiederherstellen": "Redo undone change",
  "Speichern …": "Save …",
  "Alle ({a})": "All ({a})",
  "Liste zu": "Close list",

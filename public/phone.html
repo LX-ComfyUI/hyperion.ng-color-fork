@@ -175,7 +175,29 @@
   .hy-swatch { width: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--inset); border: 1px solid var(--btn-line); border-radius: 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .hy-swatch i { width: 16px; height: 16px; border: 1px solid var(--chip-line); border-radius: 2px; }
   .hy-swatch:disabled { opacity: .5; cursor: default; }
-  .hy-swatch-gap { width: 42px; }
+  /* per row: reset to the standard color, right of the color field */
+  .rgbrow .ibtn.rgb-reset { width: 32px; height: auto; align-self: stretch; flex: none; }
+  .rgbrow .ibtn.rgb-reset svg { width: 17px; height: 17px; }
+  /* narrow cards (phone): smaller fields so a row with color field and reset stays on one line */
+  @container (max-width: 400px) {
+    .rgbrow .inputs { gap: 4px; }
+    .rgbrow .inputs input { width: 50px; -moz-appearance: textfield; appearance: textfield; }
+    .rgbrow .inputs input::-webkit-inner-spin-button, .rgbrow .inputs input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .hy-swatch { width: 36px; }
+    .rgbrow .ibtn.rgb-reset { width: 28px; }
+  }
+  @container (max-width: 340px) {
+    .rgbrow .inputs input { width: 44px; font-size: 14px; }
+    .rgbrow .rgbname { min-width: 0; }
+  }
+  @container (max-width: 300px) {
+    .rgbrow { gap: 4px; }
+    .rgbrow .inputs { gap: 3px; }
+    .rgbrow .inputs input { width: 40px; font-size: 13px; }
+    .rgbrow .rgbname { font-size: 13px; }
+    .hy-swatch { width: 32px; }
+    .rgbrow .ibtn.rgb-reset { width: 24px; }
+  }
   /* the picker itself, sizes as bootstrap-colorpicker with the WebUI's "colorpicker-2x" */
   #hy-cpick { position: fixed; z-index: 3000; padding: 4px; background: var(--pop-bg); border: 1px solid var(--pop-line); border-radius: 4px; box-shadow: 0 6px 12px rgba(0, 0, 0, .175); user-select: none; -webkit-user-select: none; }
   #hy-cpick[hidden] { display: none; }
@@ -304,6 +326,11 @@
   .hy-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .hy-reset { width: 32px; height: 32px; flex: none; }
   .hy-reset svg { width: 17px; height: 17px; }
+  /* undo / redo of the color rows, left of the group's reset */
+  .hy-hbtn { width: 32px; height: 32px; flex: none; }
+  .hy-hbtn svg { width: 17px; height: 17px; }
+  .hy-h .hy-undo { margin-left: auto; }
+  .hy-h .hy-redo { margin-right: -8px; }
   .card-reset { display: flex; justify-content: flex-end; margin-top: 8px; }
   /* hint on the standard values and the reset button in one row */
   .std-row { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; margin-top: 6px; }
@@ -2571,6 +2598,9 @@ const ICON = {
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon class="solid" points="7 4 20 12 7 20 7 4"/></svg>',
   stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect class="solid" x="6" y="6" width="12" height="12" rx="1"/></svg>',
   send: '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+  // the same arrows as the gray curve graph
+  undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+  redo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
 };
 
 let state = null;
@@ -2820,7 +2850,7 @@ function makeRow({ color, name, kind, id, edited }) {
     const label = `${name} in Hyperion übernehmen`;
     const sendBtn = makeTool("send", label, async (btn) => {
       btn.disabled = true;
-      const ok = await saveColor(id, hexToRgb(row.dataset.color));
+      const ok = await saveRgb(id, hexToRgb(row.dataset.color));
       btn.classList.toggle("done", ok);
       btn.title = ok ? "Übernommen" : "Nicht übernommen";
       if (ok) flashRgbRow(id);
@@ -3117,9 +3147,13 @@ function buildColorEditor() {
   $("hy-rgb").innerHTML = COLOR_RGB.map(([key, label]) => `
     <div class="rgbrow">
       <span class="rgbname">${label}</span>
-      <span class="inputs">${[0, 1, 2].map(ch => `<input type="number" inputmode="numeric" min="0" max="255" step="1" data-rgb="${key}" data-ch="${ch}" aria-label="${label} ${"RGB"[ch]}">`).join("")}${HY_SWATCH.has(key) ? `<button type="button" class="hy-swatch" data-swatch="${key}" title="Farbwähler öffnen" aria-label="Farbwähler öffnen" aria-expanded="false"><i></i></button>` : `<span class="hy-swatch-gap" aria-hidden="true"></span>`}</span>
+      <span class="inputs">${[0, 1, 2].map(ch => `<input type="number" inputmode="numeric" min="0" max="255" step="1" data-rgb="${key}" data-ch="${ch}" aria-label="${label} ${"RGB"[ch]}">`).join("")}<button type="button" class="hy-swatch" data-swatch="${key}" title="Farbwähler öffnen" aria-label="Farbwähler öffnen" aria-expanded="false"><i></i></button><button type="button" class="ibtn rgb-reset" data-rgb-reset="${key}" title="Auf Standard zurücksetzen" aria-label="Auf Standard zurücksetzen">${ICON.reset}</button></span>
     </div>`).join("");
   $("hy-rgb").querySelectorAll(".hy-swatch").forEach(b => b.addEventListener("click", () => toggleColorPick(b)));
+  $("hy-rgb").querySelectorAll(".rgb-reset").forEach(b => b.addEventListener("click", () => {
+    const rgb = hyDefault(b.dataset.rgbReset);
+    if (Array.isArray(rgb)) saveRgb(b.dataset.rgbReset, rgb).then(ok => { if (ok) flashRgbRow(b.dataset.rgbReset); });
+  }));
   $("hy-rgb").querySelectorAll("input").forEach(inp => {
     inp.addEventListener("change", () => saveRgbRow(inp.dataset.rgb));
     inp.addEventListener("paste", (ev) => pasteRgb(ev, inp.dataset.rgb));
@@ -3150,10 +3184,9 @@ function pasteRgb(ev, field) {
 }
 
 // ---------- color picker of an RGB row, built like the WebUI's bootstrap-colorpicker (2x size) ----------
-// for now only white has one, the other rows keep the room so the fields stay in line
-const HY_SWATCH = new Set(["white"]);
 const rgbCss = (rgb) => Array.isArray(rgb) ? `rgb(${rgb.join(",")})` : "transparent";
-let cpick = null; // { field, button, h, s, v, drag, sending, queued, sent }
+let cpick = null; // { field, button, h, s, v, drag, sending, queued, sent, base }
+let cpickFlush = Promise.resolve(); // the picker's saves still on their way
 
 function rgbToHsv([r, g, b]) {
   r /= 255; g /= 255; b /= 255;
@@ -3216,22 +3249,26 @@ function paintColorPick() {
 function syncColorPick(rgb) {
   if (!Array.isArray(rgb) || cpickRgb().join() === rgb.join()) return;
   const hsv = rgbToHsv(rgb);
-  Object.assign(cpick, { s: hsv.s, v: hsv.v, sent: rgb.join() }, hsv.s && hsv.v ? { h: hsv.h } : {});
+  Object.assign(cpick, { s: hsv.s, v: hsv.v, sent: rgb.join(), base: rgb }, hsv.s && hsv.v ? { h: hsv.h } : {});
   paintColorPick();
 }
 
 // while dragging only one save at a time goes to Hyperion, the newest color follows when it is done
-async function sendColorPick() {
+function sendColorPick() {
   if (!cpick) return;
   const pick = cpick;
   if (pick.sending) { pick.queued = true; return; }
-  const rgb = cpickRgb();
-  if (rgb.join() === pick.sent) return;
   pick.sending = true;
-  pick.sent = rgb.join();
-  await saveColor(pick.field, rgb);
-  pick.sending = false;
-  if (pick.queued) { pick.queued = false; sendColorPick(); }
+  cpickFlush = (async () => {
+    do {
+      pick.queued = false;
+      const rgb = hsvToRgb(pick.h, pick.s, pick.v);
+      if (rgb.join() === pick.sent) continue;
+      pick.sent = rgb.join();
+      await saveColor(pick.field, rgb);
+    } while (pick.queued);
+    pick.sending = false;
+  })();
 }
 
 function placeColorPick() {
@@ -3251,7 +3288,7 @@ function toggleColorPick(button) {
   if (same) return;
   const field = button.dataset.swatch;
   const rgb = colorConfig?.channelAdjustment?.[colorIndex]?.[field] ?? [255, 255, 255];
-  cpick = { field, button, ...rgbToHsv(rgb), drag: false, sending: false, queued: false, sent: rgb.join() };
+  cpick = { field, button, ...rgbToHsv(rgb), drag: false, sending: false, queued: false, sent: rgb.join(), base: rgb };
   button.setAttribute("aria-expanded", "true");
   cpickEl().hidden = false;
   paintColorPick();
@@ -3264,6 +3301,8 @@ function closeColorPick() {
   const pick = cpick;
   cpick = null;
   $("hy-cpick").hidden = true;
+  // everything moved in the picker since it opened (or since a typed value) is one undo step
+  rgbStep([{ field: pick.field, before: pick.base, after: hsvToRgb(pick.h, pick.s, pick.v) }]);
   // a save still running ends with renderColorEditor, otherwise the row shows Hyperion's value now
   if (!pick.sending) renderColorEditor();
 }
@@ -3279,6 +3318,50 @@ document.addEventListener("scroll", () => {
   if (!cpick.button.isConnected || !cpick.button.getClientRects().length) return closeColorPick();
   placeColorPick();
 }, true);
+
+// ---------- undo / redo of the color rows: typed, pasted, picked, taken over or reset, whichever row ----------
+// kept on this page only and for the chosen entry; a step holds every row it changed
+const RGB_HISTORY_MAX = 100;
+let rgbHistory = { undo: [], redo: [] };
+let rgbHistoryBusy = false;
+const rgbNow = (field) => colorConfig?.channelAdjustment?.[colorIndex]?.[field];
+
+function rgbStep(changes) {
+  const step = changes.filter(c => Array.isArray(c.before) && Array.isArray(c.after) && c.before.join() !== c.after.join());
+  if (!step.length) return;
+  rgbHistory.undo.push(step);
+  if (rgbHistory.undo.length > RGB_HISTORY_MAX) rgbHistory.undo.shift();
+  rgbHistory.redo = [];
+  renderRgbHistory();
+}
+
+// one row to a new color, as one undo step
+async function saveRgb(field, rgb) {
+  const before = rgbNow(field);
+  const ok = await saveColor(field, rgb);
+  if (ok) rgbStep([{ field, before, after: rgb }]);
+  return ok;
+}
+
+function renderRgbHistory() {
+  const writable = hyperionConnected && !!colorConfig?.channelAdjustment?.[colorIndex];
+  document.querySelectorAll(".hy-hbtn[data-rgb-hist]").forEach(b => { b.disabled = !writable || rgbHistoryBusy || !rgbHistory[b.dataset.rgbHist].length; });
+}
+
+async function moveRgbHistory(dir) {
+  const from = rgbHistory[dir], to = rgbHistory[dir === "undo" ? "redo" : "undo"];
+  const step = from.at(-1);
+  if (!step || rgbHistoryBusy) return;
+  rgbHistoryBusy = true;
+  renderRgbHistory();
+  // a color still on its way from the picker goes first, the step comes after it
+  await cpickFlush;
+  const ok = await saveColorValues(step.map(c => ({ field: c.field, value: dir === "undo" ? c.before : c.after })), $("hy-note"),
+    dir === "undo" ? tr("Letzte Änderung zurückgenommen, wirkt sofort auf die LEDs.") : tr("Änderung wiederhergestellt, wirkt sofort auf die LEDs."));
+  if (ok) { from.pop(); to.push(step); step.forEach(c => flashRgbRow(c.field)); }
+  rgbHistoryBusy = false;
+  renderRgbHistory();
+}
 
 // gray curve rows, one per point Hyperion has (the server sorts them by brightness)
 function buildCurve(n) {
@@ -3454,6 +3537,11 @@ function renderColorEditor() {
     b.disabled = !writable;
     if (!(cpick?.drag && cpick.field === b.dataset.swatch)) b.firstElementChild.style.background = rgbCss(entry?.[b.dataset.swatch]);
   });
+  document.querySelectorAll("#hy-rgb .rgb-reset").forEach(b => {
+    const def = hyDefault(b.dataset.rgbReset), cur = entry?.[b.dataset.rgbReset];
+    b.disabled = !writable || !Array.isArray(def) || (Array.isArray(cur) && def.join() === cur.join());
+  });
+  renderRgbHistory();
   if (cpick && !writable) closeColorPick();
   else if (cpick && !cpick.drag) syncColorPick(entry?.[cpick.field]);
   document.querySelectorAll(".hy-scope [data-cfield]").forEach(el => {
@@ -3547,7 +3635,7 @@ async function saveRgbRow(field) {
     $("hy-note").textContent = "RGB braucht drei ganze Zahlen von 0 bis 255.";
     return renderColorEditor();
   }
-  return saveColor(field, rgb);
+  return saveRgb(field, rgb);
 }
 
 // one delegated listener for every field in the Hyperion column
@@ -3573,7 +3661,12 @@ document.querySelectorAll(".hy-scope").forEach((scope) => scope.addEventListener
   if (empty) el.value = v;
   saveColor(el.dataset.cfield, v, el.dataset.stop === undefined ? undefined : Number(el.dataset.stop));
 }));
-$("hy-entry").addEventListener("change", (ev) => { colorIndex = Number(ev.target.value); renderColorEditor(); });
+$("hy-entry").addEventListener("change", (ev) => {
+  closeColorPick();
+  colorIndex = Number(ev.target.value);
+  rgbHistory = { undo: [], redo: [] };
+  renderColorEditor();
+});
 
 // ---------- black bars ----------
 
@@ -5881,6 +5974,18 @@ function applyPlaceholders() {
   }
   document.querySelectorAll(".hy-h[data-hy-group]").forEach((h) => {
     if (h.querySelector(".hy-reset")) return;
+    if (h.dataset.hyGroup === "colors") {
+      for (const [dir, label] of [["undo", "Letzte Änderung zurücknehmen"], ["redo", "Zurückgenommene Änderung wiederherstellen"]]) {
+        const u = document.createElement("button");
+        u.type = "button";
+        u.className = `ibtn hy-hbtn hy-${dir}`;
+        u.dataset.rgbHist = dir;
+        u.title = u.ariaLabel = tr(label);
+        u.innerHTML = ICON[dir];
+        u.addEventListener("click", () => moveRgbHistory(dir));
+        h.appendChild(u);
+      }
+    }
     const b = document.createElement("button");
     b.type = "button";
     b.className = "ibtn hy-reset";
@@ -5890,12 +5995,13 @@ function applyPlaceholders() {
     h.appendChild(b);
   });
   document.querySelectorAll(".hy-reset").forEach((b) => { b.disabled = !hyperionConnected || !colorConfig; });
+  renderRgbHistory();
   document.querySelectorAll("[data-card-reset]").forEach((b) => { b.disabled = !hyperionConnected; });
 }
 
 async function saveColorBatch(fields, note) {
   const batch = fields.filter((f) => hyDefault(f) !== undefined).map((f) => ({ field: f, value: hyDefault(f) }));
-  await saveColorValues(batch, note, tr("Standardwerte gespeichert, wirken sofort auf die LEDs."));
+  return saveColorValues(batch, note, tr("Standardwerte gespeichert, wirken sofort auf die LEDs."));
 }
 
 // a saved gray curve (slot or standard) goes to Hyperion in one write
@@ -5910,7 +6016,7 @@ const saveHyColor = (s) => saveColorValues(HY_SLOT_FIELDS().filter((f) => f in s
   $("hy-note"), tr("Farbwerte geladen, wirken sofort auf die LEDs."));
 
 async function saveColorValues(batch, note, doneText) {
-  if (!batch.length) return;
+  if (!batch.length) return false;
   note.textContent = "Speichere in Hyperion …";
   try {
     const res = await fetch("/api/hyperion/color", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ index: colorIndex, batch }) });
@@ -5922,16 +6028,20 @@ async function saveColorValues(batch, note, doneText) {
   } catch (e) {
     note.textContent = "Speichern fehlgeschlagen: " + e.message;
     await loadColorConfig();
-    return;
+    return false;
   }
   renderColorEditor();
+  return true;
 }
 
 document.addEventListener("click", (ev) => {
   const g = ev.target.closest("[data-hy-reset]");
   if (g) {
     const name = g.closest(".hy-h")?.querySelector("span")?.textContent ?? "";
-    if (confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: name }))) saveColorBatch(HY_GROUP_FIELDS[g.dataset.hyReset], $("hy-note"));
+    if (!confirm(tr("„{a}“ in Hyperion auf die Standardwerte zurücksetzen?", { a: name }))) return;
+    const fields = HY_GROUP_FIELDS[g.dataset.hyReset];
+    const before = g.dataset.hyReset === "colors" ? fields.map(f => ({ field: f, before: rgbNow(f), after: hyDefault(f) })) : null;
+    saveColorBatch(fields, $("hy-note")).then(ok => { if (ok && before) rgbStep(before); });
     return;
   }
   const c = ev.target.closest("[data-card-reset]");
