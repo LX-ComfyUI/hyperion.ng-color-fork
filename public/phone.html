@@ -38,6 +38,7 @@
     --chip-line: rgba(0, 0, 0, .18); --danger: #d93025; --warn: #9a5b00; --shadow: 0 1px 1px rgba(0, 0, 0, .05);
     --gap: 16px;
     --menu-btn: #d0d0d0; --menu-btn-open: transparent; --menu-btn-hover: #dddddd; --menu-bar: #4c4c4c;
+    --pop-bg: #ffffff; --pop-line: rgba(0, 0, 0, .15);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -47,6 +48,7 @@
       --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
       --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
       --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
+      --pop-bg: #212121; --pop-line: #424242;
     }
   }
   :root[data-theme="dark"] {
@@ -56,6 +58,7 @@
     --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
     --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
     --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
+    --pop-bg: #212121; --pop-line: #424242;
   }
 
   html { scroll-behavior: smooth; }
@@ -168,6 +171,27 @@
   .inputs input { width: 62px; font: inherit; font-size: 15px; padding: 7px 4px; text-align: center; box-sizing: border-box; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; font-variant-numeric: tabular-nums; }
   .inputs input:disabled { opacity: .5; }
   .inputs .wide-in { width: 90px; }
+  /* color field at the end of an RGB row, opens the picker like the color fields of the Hyperion WebUI */
+  .hy-swatch { width: 42px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--inset); border: 1px solid var(--btn-line); border-radius: 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .hy-swatch i { width: 16px; height: 16px; border: 1px solid var(--chip-line); border-radius: 2px; }
+  .hy-swatch:disabled { opacity: .5; cursor: default; }
+  .hy-swatch-gap { width: 42px; }
+  /* the picker itself, sizes as bootstrap-colorpicker with the WebUI's "colorpicker-2x" */
+  #hy-cpick { position: fixed; z-index: 3000; padding: 4px; background: var(--pop-bg); border: 1px solid var(--pop-line); border-radius: 4px; box-shadow: 0 6px 12px rgba(0, 0, 0, .175); user-select: none; -webkit-user-select: none; }
+  #hy-cpick[hidden] { display: none; }
+  #hy-cpick::before, #hy-cpick::after { content: ""; position: absolute; border-left: 7px solid transparent; border-right: 7px solid transparent; }
+  #hy-cpick::before { right: 6px; top: -7px; border-bottom: 7px solid var(--pop-line); }
+  #hy-cpick::after { right: 7px; top: -6px; border-left-width: 6px; border-right-width: 6px; border-bottom: 6px solid var(--pop-bg); }
+  #hy-cpick.up::before { top: auto; bottom: -7px; border-bottom: none; border-top: 7px solid var(--pop-line); }
+  #hy-cpick.up::after { top: auto; bottom: -6px; border-bottom: none; border-top: 6px solid var(--pop-bg); }
+  #hy-cpick .cp-row { display: flex; gap: 4px; }
+  #hy-cpick .cp-sat, #hy-cpick .cp-hue { position: relative; height: 200px; touch-action: none; }
+  #hy-cpick .cp-sat { width: 200px; cursor: crosshair; }
+  #hy-cpick .cp-hue { width: 30px; cursor: row-resize; background: linear-gradient(to bottom, #f00, #f0f, #00f, #0ff, #0f0, #ff0, #f00); }
+  #hy-cpick .cp-sat i { position: absolute; width: 5px; height: 5px; margin: -4px 0 0 -4px; border: 1px solid #000; border-radius: 5px; pointer-events: none; }
+  #hy-cpick .cp-sat i b { display: block; width: 5px; height: 5px; border: 1px solid #fff; border-radius: 5px; box-sizing: border-box; }
+  #hy-cpick .cp-hue i { position: absolute; left: 0; width: 100%; height: 1px; margin-top: -1px; background: #000; border-top: 1px solid #fff; pointer-events: none; }
+  #hy-cpick .cp-color { height: 30px; margin-top: 4px; }
   .inputs .text-in { width: 150px; text-align: left; padding: 7px 8px; font-variant-numeric: normal; }
   .hy-col .field-hint { margin: 2px 0 8px; }
   #card-sm .field-hint { margin: -6px 0 12px; }
@@ -3093,8 +3117,9 @@ function buildColorEditor() {
   $("hy-rgb").innerHTML = COLOR_RGB.map(([key, label]) => `
     <div class="rgbrow">
       <span class="rgbname">${label}</span>
-      <span class="inputs">${[0, 1, 2].map(ch => `<input type="number" inputmode="numeric" min="0" max="255" step="1" data-rgb="${key}" data-ch="${ch}" aria-label="${label} ${"RGB"[ch]}">`).join("")}</span>
+      <span class="inputs">${[0, 1, 2].map(ch => `<input type="number" inputmode="numeric" min="0" max="255" step="1" data-rgb="${key}" data-ch="${ch}" aria-label="${label} ${"RGB"[ch]}">`).join("")}${HY_SWATCH.has(key) ? `<button type="button" class="hy-swatch" data-swatch="${key}" title="Farbwähler öffnen" aria-label="Farbwähler öffnen" aria-expanded="false"><i></i></button>` : `<span class="hy-swatch-gap" aria-hidden="true"></span>`}</span>
     </div>`).join("");
+  $("hy-rgb").querySelectorAll(".hy-swatch").forEach(b => b.addEventListener("click", () => toggleColorPick(b)));
   $("hy-rgb").querySelectorAll("input").forEach(inp => {
     inp.addEventListener("change", () => saveRgbRow(inp.dataset.rgb));
     inp.addEventListener("paste", (ev) => pasteRgb(ev, inp.dataset.rgb));
@@ -3123,6 +3148,137 @@ function pasteRgb(ev, field) {
   ev.target.blur();
   saveRgbRow(field).then(ok => { if (ok) flashRgbRow(field); });
 }
+
+// ---------- color picker of an RGB row, built like the WebUI's bootstrap-colorpicker (2x size) ----------
+// for now only white has one, the other rows keep the room so the fields stay in line
+const HY_SWATCH = new Set(["white"]);
+const rgbCss = (rgb) => Array.isArray(rgb) ? `rgb(${rgb.join(",")})` : "transparent";
+let cpick = null; // { field, button, h, s, v, drag, sending, queued, sent }
+
+function rgbToHsv([r, g, b]) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+  let h = 0;
+  if (d) h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: h * 60, s: max ? d / max : 0, v: max };
+}
+function hsvToRgb(h, s, v) {
+  const f = (n) => { const k = (n + h / 60) % 6; return Math.round(255 * (v - v * s * Math.max(0, Math.min(k, 4 - k, 1)))); };
+  return [f(5), f(3), f(1)];
+}
+
+function cpickEl() {
+  let el = $("hy-cpick");
+  if (el) return el;
+  el = document.createElement("div");
+  el.id = "hy-cpick";
+  el.hidden = true;
+  el.innerHTML = `<div class="cp-row"><div class="cp-sat"><i><b></b></i></div><div class="cp-hue"><i></i></div></div><div class="cp-color"></div>`;
+  document.body.append(el);
+  const drag = (area, apply) => {
+    const move = (ev) => {
+      const r = area.getBoundingClientRect();
+      apply(Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height)));
+      paintColorPick();
+      sendColorPick();
+    };
+    area.addEventListener("pointerdown", (ev) => {
+      if (!cpick) return;
+      ev.preventDefault();
+      area.setPointerCapture(ev.pointerId);
+      cpick.drag = true;
+      move(ev);
+    });
+    area.addEventListener("pointermove", (ev) => { if (cpick?.drag && area.hasPointerCapture(ev.pointerId)) move(ev); });
+    const end = () => { if (!cpick?.drag) return; cpick.drag = false; sendColorPick(); };
+    area.addEventListener("pointerup", end);
+    area.addEventListener("pointercancel", end);
+  };
+  drag(el.querySelector(".cp-sat"), (x, y) => { cpick.s = x; cpick.v = 1 - y; });
+  // top is red at 360°, going down through magenta and blue to red at 0°, as in the WebUI
+  drag(el.querySelector(".cp-hue"), (x, y) => { cpick.h = (1 - y) * 360; });
+  return el;
+}
+
+const cpickRgb = () => hsvToRgb(cpick.h, cpick.s, cpick.v);
+
+function paintColorPick() {
+  const el = cpickEl(), rgb = cpickRgb();
+  el.querySelector(".cp-sat").style.background = `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent), hsl(${cpick.h}, 100%, 50%)`;
+  Object.assign(el.querySelector(".cp-sat i").style, { left: `${cpick.s * 100}%`, top: `${(1 - cpick.v) * 100}%` });
+  el.querySelector(".cp-hue i").style.top = `${(1 - cpick.h / 360) * 100}%`;
+  el.querySelector(".cp-color").style.background = rgbCss(rgb);
+  cpick.button.firstElementChild.style.background = rgbCss(rgb);
+  document.querySelectorAll(`#hy-rgb input[data-rgb="${cpick.field}"]`).forEach((inp, ch) => { inp.value = rgb[ch]; });
+}
+
+// a value from Hyperion or typed into the row; the hue stays where it was for gray tones
+function syncColorPick(rgb) {
+  if (!Array.isArray(rgb) || cpickRgb().join() === rgb.join()) return;
+  const hsv = rgbToHsv(rgb);
+  Object.assign(cpick, { s: hsv.s, v: hsv.v, sent: rgb.join() }, hsv.s && hsv.v ? { h: hsv.h } : {});
+  paintColorPick();
+}
+
+// while dragging only one save at a time goes to Hyperion, the newest color follows when it is done
+async function sendColorPick() {
+  if (!cpick) return;
+  const pick = cpick;
+  if (pick.sending) { pick.queued = true; return; }
+  const rgb = cpickRgb();
+  if (rgb.join() === pick.sent) return;
+  pick.sending = true;
+  pick.sent = rgb.join();
+  await saveColor(pick.field, rgb);
+  pick.sending = false;
+  if (pick.queued) { pick.queued = false; sendColorPick(); }
+}
+
+function placeColorPick() {
+  if (!cpick) return;
+  const el = cpickEl(), b = cpick.button.getBoundingClientRect();
+  const w = el.offsetWidth, h = el.offsetHeight;
+  const up = b.bottom + 8 + h > innerHeight && b.top - 8 - h >= 0;
+  el.classList.toggle("up", up);
+  // the arrow points at the color field, the picker opens to the left of its right edge
+  el.style.left = `${Math.max(8, Math.min(b.right - w, innerWidth - 8 - w))}px`;
+  el.style.top = `${up ? b.top - 8 - h : b.bottom + 8}px`;
+}
+
+function toggleColorPick(button) {
+  const same = cpick?.button === button;
+  closeColorPick();
+  if (same) return;
+  const field = button.dataset.swatch;
+  const rgb = colorConfig?.channelAdjustment?.[colorIndex]?.[field] ?? [255, 255, 255];
+  cpick = { field, button, ...rgbToHsv(rgb), drag: false, sending: false, queued: false, sent: rgb.join() };
+  button.setAttribute("aria-expanded", "true");
+  cpickEl().hidden = false;
+  paintColorPick();
+  placeColorPick();
+}
+
+function closeColorPick() {
+  if (!cpick) return;
+  cpick.button.setAttribute("aria-expanded", "false");
+  const pick = cpick;
+  cpick = null;
+  $("hy-cpick").hidden = true;
+  // a save still running ends with renderColorEditor, otherwise the row shows Hyperion's value now
+  if (!pick.sending) renderColorEditor();
+}
+
+// the picker closes on a tap outside of it, on Escape and when its row leaves the page (menu closed)
+document.addEventListener("pointerdown", (ev) => {
+  if (cpick && !ev.target.closest("#hy-cpick, .hy-swatch")) closeColorPick();
+}, true);
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && cpick) closeColorPick(); });
+addEventListener("resize", placeColorPick);
+document.addEventListener("scroll", () => {
+  if (!cpick) return;
+  if (!cpick.button.isConnected || !cpick.button.getClientRects().length) return closeColorPick();
+  placeColorPick();
+}, true);
 
 // gray curve rows, one per point Hyperion has (the server sorts them by brightness)
 function buildCurve(n) {
@@ -3290,9 +3446,16 @@ function renderColorEditor() {
   document.querySelectorAll("#hy-curve button.showgray").forEach(b => { b.disabled = !writable; });
 
   document.querySelectorAll("#hy-rgb input").forEach(inp => {
-    if (document.activeElement !== inp) inp.value = entry?.[inp.dataset.rgb]?.[Number(inp.dataset.ch)] ?? "";
+    // while the picker is dragged its row shows the picker's color, not the last answer of Hyperion
+    if (document.activeElement !== inp && !(cpick?.drag && cpick.field === inp.dataset.rgb)) inp.value = entry?.[inp.dataset.rgb]?.[Number(inp.dataset.ch)] ?? "";
     inp.disabled = !writable;
   });
+  document.querySelectorAll("#hy-rgb .hy-swatch").forEach(b => {
+    b.disabled = !writable;
+    if (!(cpick?.drag && cpick.field === b.dataset.swatch)) b.firstElementChild.style.background = rgbCss(entry?.[b.dataset.swatch]);
+  });
+  if (cpick && !writable) closeColorPick();
+  else if (cpick && !cpick.drag) syncColorPick(entry?.[cpick.field]);
   document.querySelectorAll(".hy-scope [data-cfield]").forEach(el => {
     const value = readField(entry, el.dataset.cfield, Number(el.dataset.stop));
     if (el.type === "checkbox") el.checked = value === true;
