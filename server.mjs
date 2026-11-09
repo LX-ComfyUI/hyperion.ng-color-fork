@@ -920,6 +920,7 @@ function stepLabel(step) {
 // slot of that grabber. Every few seconds the server asks Hyperion which grabber delivers frames
 // (fork command "grabbertest" with peek) and broadcasts the state for the switches, the memory
 // slots and the bell; the WebUI can change the setting too, so it is read again each time.
+let grabberYuv = null; // the YUV color standard of the grabber as the fork reports it
 let grabberDevice = null; // name of the grabber that delivers frames, kept while none arrive
 let peekSupported = null; // false: this Hyperion knows no per-grabber calibrations yet
 let grabberCorrection = { available: false, enable: false, basedOn: null, device: null, slot: -1, name: "", stamp: "", notifications: [] };
@@ -930,6 +931,7 @@ async function peekGrabber() {
     const reply = await monitor.call({ command: "grabbertest", peek: true });
     peekSupported = !!reply.success;
     if (reply.success && reply.info?.device) grabberDevice = reply.info.device;
+    if (reply.success) grabberYuv = reply.info?.yuv ?? null;
   } catch {}
 }
 
@@ -952,12 +954,12 @@ function readGrabberCorrection() {
     const c = Report.currentCorrection(gt, device);
     const g = Report.grabberEntry(gt, device);
     const basic = gt.basic?.steps?.length ? gt.basic : null;
-    const canFit = !!(basic && Report.sameGrabber(Report.testDevice(basic), device) && !Report.fitCorrection(basic).error);
+    const canFit = !!(basic && Report.basicFits(gt, device));
     const available = !!(c.matrix || g?.slots?.some(Boolean) || canFit);
     // changes whenever the slots or the last test change, so the page reloads them
     const stamp = createHash("sha1").update(JSON.stringify(Report.migrated(gt).grabbers ?? {}) + "|" + (basic?.date ?? "")).digest("hex").slice(0, 12);
-    const notifications = Report.notifications(gt, device).map(({ id, kind, device: d, name }) => ({ id, kind, device: d, name }));
-    return { available, enable: c.enable === true, basedOn: c.basedOn ?? null, device, deviceName: device ? Report.displayName(device) : null, filled: (g?.slots ?? []).filter(Boolean).length, slot: c.slot ?? -1, name: c.name ?? "", perGrabber: peekSupported === true, stamp, notifications };
+    const notifications = Report.notifications(gt, device).map(({ id, kind, device: d, name, params }) => ({ id, kind, device: d, name, params }));
+    return { available, enable: c.enable === true, blocked: c.blocked === true, basedOn: c.basedOn ?? null, device, deviceName: device ? Report.displayName(device) : null, filled: (g?.slots ?? []).filter(Boolean).length, slot: c.slot ?? -1, name: c.name ?? "", perGrabber: peekSupported === true, stamp, notifications };
   } catch {
     return grabberCorrection;
   }
@@ -1258,6 +1260,7 @@ async function runGrabberTest(kind) {
   const results = [];
   let frame = null;
   let device = null;
+  let yuv = null;
   let prevSent = null;
   try {
     // priming: a big, certain change first, so the first step is not measured on whatever the TV showed
@@ -1282,6 +1285,7 @@ async function runGrabberTest(kind) {
       const { s, settled } = await measureSettled(w);
       frame = { width: s.width, height: s.height };
       if (s.device) device = s.device;
+      if (s.yuv) yuv = s.yuv;
       // got is always the uncorrected frame, corr the same frames after the grabber color correction (if on)
       results.push({ ...step, got: s.avg.mean, ...(s.avg.corrected ? { corr: s.avg.corrected } : {}), noise: s.avg.noise, spread: s.avg.spread, n: s.avg.n, ...(settled ? {} : { unstable: true }) });
     }
@@ -1297,7 +1301,7 @@ async function runGrabberTest(kind) {
       if (device) grabber.name = device;
       const used = Report.currentCorrection(current, grabber.name);
       const correction = used.enable ? { correction: used } : {};
-      const result = { version: 1, date: new Date().toISOString(), grabber, frame, ...correction, steps: results };
+      const result = { version: 1, date: new Date().toISOString(), grabber, frame, ...(yuv ? { yuv } : {}), ...correction, steps: results };
       await writeGlobalSetting("grabberTest", { ...current, basic: current.basic ?? {}, custom: current.custom ?? {}, [kind]: result });
     });
     setRun({ running: false, color: null, finishedAt: Date.now() });
@@ -2803,7 +2807,7 @@ const server = http.createServer(async (req, res) => {
 
     // grabber test: the stored results (Hyperion's global setting), start and stop
     if (req.method === "GET" && p === "/api/grabbertest") {
-      return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2"), device: selectedGrabber() });
+      return sendJson(res, 200, { ...(readGlobalSetting("grabberTest") ?? {}), current: readGlobalSetting("grabberV4L2"), device: selectedGrabber(), yuvInfo: grabberYuv });
     }
     if (req.method === "GET" && p === "/api/grabbers") return sendJson(res, 200, await grabberList());
     if (req.method === "POST" && p === "/api/grabbers") {
