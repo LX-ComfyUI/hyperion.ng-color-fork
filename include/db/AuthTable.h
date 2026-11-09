@@ -95,9 +95,10 @@ public:
 	/// @param[in]  token   The token id as plaintext
 	/// @param[in]  comment The comment for the token (eg a human readable identifier)
 	/// @param[in]  identifier      The identifier for the token
+	/// @param[in]  expiresAt       Fork: end date (ISO, UTC) after which the token is removed, empty = never
 	/// @return     true on success else false
 	///
-	bool createToken(const QString& token, const QString& comment, const QString& identifier);
+	bool createToken(const QString& token, const QString& comment, const QString& identifier, const QString& expiresAt = QString());
 
 	///
 	/// @brief      Delete token record by identifier
@@ -115,10 +116,15 @@ public:
 	bool renameToken(const QString &identifier, const QString &comment);
 
 	///
-	/// @brief Get all 'comment', 'last_use' and 'id' column entries
+	/// @brief Get all 'comment', 'last_use', 'id' and 'expires_at' column entries
 	/// @return            A vector of all lists
 	///
 	const QVector<QVariantMap> getTokenList();
+
+	///
+	/// @brief Fork: remove the tokens whose end date has passed
+	///
+	void deleteExpiredTokens();
 
 	///
 	/// @brief      Test if identifier exists

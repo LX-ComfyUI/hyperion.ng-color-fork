@@ -1,3 +1,11 @@
+<style>
+  /* keep the table inside the window: long build ids and the library list wrap, the system info scrolls in its box */
+  #about_cont table { table-layout: fixed; width: 100%; }
+  #about_cont td:first-child { width: 220px; }
+  #about_cont td { overflow-wrap: anywhere; }
+  #about_cont pre { overflow-x: auto; word-break: normal; overflow-wrap: normal; }
+  @media (max-width: 767px) { #about_cont td:first-child { width: 35%; } }
+</style>
 <div class="container-fluid">
   <h3 class="page-header">
     <i class="fa fa-info-circle fa-fw"></i><span data-i18n="main_menu_about_token">

@@ -486,7 +486,7 @@ bool API::updateHyperionPassword(const QString &password, const QString &newPass
 	return isPwUpdated;
 }
 
-QString API::createToken(const QString &comment, AuthManager::AuthDefinition &def)
+QString API::createToken(const QString &comment, AuthManager::AuthDefinition &def, int expiresIn)
 {
 	if (!_adminAuthorized)
 	{
@@ -499,7 +499,7 @@ QString API::createToken(const QString &comment, AuthManager::AuthDefinition &de
 	}
 	if (auto auth = _authManagerWeak.toStrongRef())
 	{
-		QMetaObject::invokeMethod(auth.get(), "createToken", Qt::BlockingQueuedConnection, Q_RETURN_ARG(AuthManager::AuthDefinition, def), Q_ARG(QString, comment));
+		QMetaObject::invokeMethod(auth.get(), "createToken", Qt::BlockingQueuedConnection, Q_RETURN_ARG(AuthManager::AuthDefinition, def), Q_ARG(QString, comment), Q_ARG(int, expiresIn));
 	}
 	return "";
 }

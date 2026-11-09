@@ -325,8 +325,8 @@ function requestTokenAuthorization(token) {
   sendToHyperion("authorize", "login", { token });
 }
 
-function requestToken(comment) {
-  sendToHyperion("authorize", "createToken", { comment });
+function requestToken(comment, expiresIn) {
+  sendToHyperion("authorize", "createToken", expiresIn ? { comment, expiresIn } : { comment });
 }
 
 function requestTokenInfo() {

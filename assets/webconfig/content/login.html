@@ -8,12 +8,28 @@
         <div class="panel-body">
           <form>
             <div class="form-group">
-              <input type="name="username" class="form-control" type="text" id="username" value="Hyperion" disabled/></br>
-              <input name="password" class="form-control" type="password" id="password" placeholder="Password" autocomplete="off"/>
-              <input name="show_pw" type="checkbox" id="show_pw" /><label for="show_pw">Show/Hide Password</label>
+              <!-- Fork: user name readonly instead of disabled and autocomplete hints, so password managers offer to save -->
+              <input name="username" class="form-control" type="text" id="username" value="Hyperion" readonly autocomplete="username"/></br>
+              <input name="password" class="form-control" type="password" id="password" placeholder="Password" autocomplete="current-password"/>
+              <input name="show_pw" type="checkbox" id="show_pw" /><label for="show_pw" data-i18n="login_show_password">Show/Hide Password</label>
+            </div>
+            <!-- Fork: remember this device (own token with end date, content_index.js storeLogin) -->
+            <div class="form-group" style="text-align:left">
+              <label style="font-weight:normal;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <input type="checkbox" id="remember_device" style="margin:0"/>
+                <span data-i18n="login_remember">Remember this device for</span>
+                <select id="remember_days" class="form-control" style="display:inline-block;width:auto;height:auto;padding:4px 8px">
+                  <option value="1" data-i18n="login_remember_1d">1 day</option>
+                  <option value="7" data-i18n="login_remember_7d">7 days</option>
+                  <option value="30" data-i18n="login_remember_30d">30 days</option>
+                  <option value="90" data-i18n="login_remember_90d">90 days</option>
+                  <option value="365" data-i18n="login_remember_365d">1 year</option>
+                </select>
+              </label>
+              <p class="help-block" id="remember_hint" data-i18n="login_remember_hint_off">Without the tick the login ends when the browser is closed.</p>
             </div>
             <div class="form-group">
-              <button type="submit" class="btn btn-sm btn-success" id="btn_password" disabled onclick="requestAuthorization(document.getElementById('password').value); return false;"><i class="fa fa-fw fa-unlock"></i>Login</button>
+              <button type="submit" class="btn btn-sm btn-success" id="btn_password" disabled><i class="fa fa-fw fa-unlock"></i>Login</button>
             </div>
           </form>
         </div>
@@ -24,6 +40,20 @@
 
 <script>
   removeOverlay();
+  performTranslation();
+
+  // last choice of this browser, 30 days when nothing was chosen yet
+  $('#remember_device').prop('checked', getStorage('rememberDevice') === 'true');
+  $('#remember_days').val(getStorage('rememberDays') || '30');
+  if (!$('#remember_days').val()) $('#remember_days').val('30');
+
+  const showRememberHint = function () {
+    const on = $('#remember_device').prop('checked');
+    $('#remember_hint').attr('data-i18n', on ? 'login_remember_hint_on' : 'login_remember_hint_off')
+      .text($.i18n(on ? 'login_remember_hint_on' : 'login_remember_hint_off'));
+  };
+  $('#remember_device').off().on('change', showRememberHint);
+  showRememberHint();
 
   $('#password').off().on('input', function (e) {
     if (e.currentTarget.value.length >= 8) {
@@ -36,5 +66,15 @@
 
   $('#show_pw').off().on('change', function (e) {
     (e.currentTarget.checked ? $('#password').attr('type', 'text') : $('#password').attr('type', 'password'))
+  });
+
+  $('#btn_password').off().on('click', function () {
+    const remember = $('#remember_device').prop('checked');
+    const days = Number($('#remember_days').val()) || 30;
+    setStorage('rememberDevice', remember);
+    setStorage('rememberDays', days);
+    globalThis.forkRememberSeconds = remember ? days * 86400 : 0;
+    requestAuthorization(document.getElementById('password').value);
+    return false;
   });
 </script>

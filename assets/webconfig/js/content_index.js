@@ -180,15 +180,15 @@ function waitForSuccessfulAuthorization() {
   return new Promise((resolve, reject) => {
     let loginResolved = false;
 
-    const onLogin = (event) => {
+    const onLogin = async (event) => {
       if (!loginResolved) {
         loginResolved = true;
+        $(window.hyperion).off("cmd-authorize-login", onLogin);
         // Fork-Fix: Anmeldung mit eigenem Passwort (Login-Seite) lieferte das Token, aber nur der
         // Standardpasswort-Zweig speicherte es -> nach jedem Neuladen wieder das Passwort verlangt.
         if (event.response?.info?.token) {
-          setStorage("loginToken", event.response.info.token);
+          await storeLogin(event.response.info.token);
         }
-        $(window.hyperion).off("cmd-authorize-login", onLogin);
         resolve(event);
       }
     };
@@ -203,8 +203,8 @@ function waitForSuccessfulAuthorization() {
 
     const onError = (event) => {
       const error = event.reason;
-      if (error?.message === "No Authorization" && getStorage("loginToken")) {
-        removeStorage("loginToken");
+      if (error?.message === "No Authorization" && getLoginToken()) {
+        clearLogin();
         requestRequiresDefaultPasswortChange(); // Retry trigger
       }
     };
@@ -216,6 +216,42 @@ function waitForSuccessfulAuthorization() {
     // Kick off the process (non-async call)
     requestRequiresDefaultPasswortChange();
   });
+}
+
+// Fork: after a login with the password. "Remember this device" (login page) asks Hyperion for an own
+// token with the chosen end date — Hyperion makes its user token new on every start, so only such a
+// token survives restarts. Without it the login lasts until the browser is closed.
+async function storeLogin(userToken) {
+  const seconds = Number(globalThis.forkRememberSeconds) || 0;
+  globalThis.forkRememberSeconds = 0;
+  clearLogin();
+  if (seconds > 0) {
+    try {
+      const until = new Date(Date.now() + seconds * 1000).toLocaleDateString();
+      requestToken($.i18n('login_remember_token_comment', deviceName(), until), seconds);
+      const event = await waitForEventWithTimeout("cmd-authorize-createToken", 5000);
+      const info = event.response?.info;
+      if (event.response?.success && info?.token) {
+        setStorage("loginToken", info.token);
+        setStorage("loginTokenId", info.id);
+        setStorage("loginTokenExpires", info.expires ?? "");
+        return;
+      }
+    } catch (err) {
+      console.warn("Remember device failed, login only for this browser session:", err);
+    }
+  }
+  setSessionLogin(userToken);
+}
+
+// short name of this browser for the token list, e.g. "Firefox, Windows"
+function deviceName() {
+  const ua = navigator.userAgent;
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox"
+    : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const os = /Android/.test(ua) ? "Android" : /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows"
+    : /Mac OS X/.test(ua) ? "macOS" : /CrOS/.test(ua) ? "ChromeOS" : /Linux/.test(ua) ? "Linux" : "";
+  return os ? browser + ", " + os : browser;
 }
 
 async function initializeApp() {
@@ -274,7 +310,7 @@ async function loadEssentialContent() {
 }
 
 async function handlePasswordRequirement(event) {
-  const token = getStorage("loginToken");
+  const token = getLoginToken();
 
   if (event.response.info.newPasswordRequired) {
     window.defaultPasswordIsSet = true;

@@ -1520,12 +1520,16 @@ void JsonAPI::handleCreateToken(const QJsonObject &message, const JsonApiCommand
 {
 	const QString &comment = message["comment"].toString().trimmed();
 	AuthManager::AuthDefinition def;
-	const QString createTokenResult = API::createToken(comment, def);
+	const QString createTokenResult = API::createToken(comment, def, message["expiresIn"].toInt(0));
 	if (createTokenResult.isEmpty()) {
 		QJsonObject newTok;
 		newTok["comment"] = def.comment;
 		newTok["id"] = def.id;
 		newTok["token"] = def.token;
+		if (!def.expiresAt.isEmpty())
+		{
+			newTok["expires"] = def.expiresAt;
+		}
 
 		sendSuccessDataReply(newTok, cmd);
 	} else {
@@ -1610,6 +1614,10 @@ void JsonAPI::handleGetTokenList(const JsonApiCommand& cmd)
 			token["comment"] = entry.comment;
 			token["id"] = entry.id;
 			token["last_use"] = entry.lastUse;
+			if (!entry.expiresAt.isEmpty())
+			{
+				token["expires"] = entry.expiresAt;
+			}
 
 			tokenList.append(token);
 		}

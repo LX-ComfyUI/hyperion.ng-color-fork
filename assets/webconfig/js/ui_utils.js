@@ -12,7 +12,7 @@ function testPageBase() {
 // Fork: headers for requests to the test server; with a Hyperion password of its own it accepts the
 // login of this WebUI (its token) instead of an own login
 function testPageHeaders(headers) {
-  const token = getStorage('loginToken');
+  const token = getLoginToken();
   return Object.assign({}, headers, token ? { 'X-Hyperion-Token': token } : {});
 }
 
@@ -45,6 +45,25 @@ function removeStorage(item) {
   if (storageComp()) {
     localStorage.removeItem(item);
   }
+}
+
+// Fork: login of this browser. "Remember this device" keeps an own Hyperion token with an end date in
+// localStorage (survives closing the browser and restarts of Hyperion); otherwise the login lives in a
+// cookie without date, which the browser drops when it is closed.
+function getLoginToken() {
+  const session = document.cookie.match(/(?:^|;\s*)hyperionSession=([^;]+)/);
+  return getStorage('loginToken') || (session ? session[1] : null);
+}
+
+function setSessionLogin(token) {
+  document.cookie = 'hyperionSession=' + token + '; path=/; SameSite=Strict';
+}
+
+function clearLogin() {
+  removeStorage('loginToken');
+  removeStorage('loginTokenId');
+  removeStorage('loginTokenExpires');
+  document.cookie = 'hyperionSession=; path=/; max-age=0; SameSite=Strict';
 }
 
 function debugMessage(msg) {

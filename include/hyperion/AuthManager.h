@@ -34,6 +34,7 @@ public:
 		uint64_t timeoutTime;
 		QString token;
 		QString lastUse;
+		QString expiresAt;
 	};
 
 	///
@@ -111,7 +112,7 @@ public slots:
 	/// @param  comment The comment that should be used for
 	/// @return         The new Auth definition
 	///
-	AuthManager::AuthDefinition createToken(const QString &comment);
+	AuthManager::AuthDefinition createToken(const QString &comment, int expiresIn = 0);
 
 	///
 	/// @brief Rename a token by id

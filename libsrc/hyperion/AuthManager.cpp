@@ -65,17 +65,20 @@ void AuthManager::destroyInstance()
 	_instance.reset();
 }
 
-AuthManager::AuthDefinition AuthManager::createToken(const QString &comment)
+AuthManager::AuthDefinition AuthManager::createToken(const QString &comment, int expiresIn)
 {
 	const QString token = QUuid::createUuid().toString().mid(1, 36);
 	const QString id = QUuid::createUuid().toString().mid(1, 36).left(5);
+	// Fork: expiresIn seconds > 0 gives the token an end date (WebUI "remember this device")
+	const QString expiresAt = expiresIn > 0 ? QDateTime::currentDateTimeUtc().addSecs(expiresIn).toString(Qt::ISODate) : QString();
 
-	_authTable->createToken(token, comment, id);
+	_authTable->createToken(token, comment, id, expiresAt);
 
 	AuthDefinition def;
 	def.comment = comment;
 	def.token = token;
 	def.id = id;
+	def.expiresAt = expiresAt;
 
 	emit tokenChange(getTokenList());
 	return def;
@@ -91,6 +94,7 @@ QVector<AuthManager::AuthDefinition> AuthManager::getTokenList() const
 		def.comment = entry["comment"].toString();
 		def.id = entry["id"].toString();
 		def.lastUse = entry["last_use"].toString();
+		def.expiresAt = entry["expires_at"].toString();
 
 		// don't add empty ids
 		if (!entry["id"].toString().isEmpty())

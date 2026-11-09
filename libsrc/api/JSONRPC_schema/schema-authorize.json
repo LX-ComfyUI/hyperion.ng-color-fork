@@ -38,6 +38,10 @@
 		},
 		"accept" : {
 			"type" : "boolean"
+		},
+		"expiresIn" : {
+			"type" : "integer",
+			"minimum" : 60
 		}
 	},
 	"additionalProperties": false

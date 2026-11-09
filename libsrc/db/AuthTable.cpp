@@ -15,7 +15,7 @@ AuthTable::AuthTable(QObject* parent)
 	_log = Logger::getInstance("DB-AUTH");
 	
 	// init Auth table and create table columns
-	createTable(QStringList()<<"user TEXT"<<"password BLOB"<<"token BLOB"<<"salt BLOB"<<"comment TEXT"<<"id TEXT"<<"created_at TEXT"<<"last_use TEXT");
+	createTable(QStringList()<<"user TEXT"<<"password BLOB"<<"token BLOB"<<"salt BLOB"<<"comment TEXT"<<"id TEXT"<<"created_at TEXT"<<"last_use TEXT"<<"expires_at TEXT");
 };
 
 bool AuthTable::createUser(const QString& user, const QString& password)
@@ -103,6 +103,8 @@ bool AuthTable::tokenExist(const QString& token)
 
 	VectorPair cond;
 	cond.append(CPair("token", hashToken(token)));
+	// Fork: a token with an end date (WebUI "remember this device") is gone after that date
+	deleteExpiredTokens();
 	if(recordExists(cond))
 	{
 		// update it
@@ -112,12 +114,16 @@ bool AuthTable::tokenExist(const QString& token)
 	return false;
 }
 
-bool AuthTable::createToken(const QString& token, const QString& comment, const QString& identifier)
+bool AuthTable::createToken(const QString& token, const QString& comment, const QString& identifier, const QString& expiresAt)
 {
 	QVariantMap map;
 	map["comment"] = comment;
 	map["id"] = identifierExist(identifier) ? QUuid::createUuid().toString().remove("{").remove("}").left(5) : identifier;
 	map["created_at"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+	if (!expiresAt.isEmpty())
+	{
+		map["expires_at"] = expiresAt;
+	}
 
 	return createRecord({{"token", hashToken(token)}}, map);
 }
@@ -137,10 +143,23 @@ bool AuthTable::renameToken(const QString &identifier, const QString &comment)
 
 const QVector<QVariantMap> AuthTable::getTokenList()
 {
+	deleteExpiredTokens();
 	QVector<QVariantMap> results;
-	getRecords(results, QStringList() << "comment" << "id" << "last_use");
+	getRecords(results, QStringList() << "comment" << "id" << "last_use" << "expires_at");
 
 	return results;
+}
+
+void AuthTable::deleteExpiredTokens()
+{
+	// ISO dates in UTC compare as text; tokens without end date and the user row stay
+	QVector<QVariantMap> expired;
+	getRecords("expires_at IS NOT NULL AND expires_at <> '' AND expires_at <= ?", { QDateTime::currentDateTimeUtc().toString(Qt::ISODate) }, expired, QStringList() << "id");
+	for (const auto &entry : std::as_const(expired))
+	{
+		Info(_log, "Token %s expired, removed", QSTRING_CSTR(entry["id"].toString()));
+		deleteToken(entry["id"].toString());
+	}
 }
 
 bool AuthTable::identifierExist(const QString& identifier)

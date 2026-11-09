@@ -154,8 +154,14 @@ $(document).ready(function () {
   globalThis.forkPowerDevice();
 
   //Lock Ui
-  $('#btn_lock_ui').off().on('click', function () {
-    removeStorage('loginToken');
+  $('#btn_lock_ui').off().on('click', async function () {
+    // Fork: a remembered device gives its token back, so it is not left valid on the server
+    const id = getStorage('loginTokenId');
+    if (id) {
+      requestTokenDelete(id);
+      await waitForEventWithTimeout("cmd-authorize-deleteToken", 3000).catch(() => {});
+    }
+    clearLogin();
     location.replace('/');
   });
 

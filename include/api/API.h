@@ -282,9 +282,10 @@ protected:
 	/// @brief Get a new token from AuthManager. Requires ADMIN ACCESS
 	/// @param comment   The comment of the request
 	/// @param def       The final definition
+	/// @param expiresIn Fork: seconds until the token ends, 0 = never
 	/// @return Empty string on success else error message
 	///
-	QString createToken(const QString &comment, AuthManager::AuthDefinition &def);
+	QString createToken(const QString &comment, AuthManager::AuthDefinition &def, int expiresIn = 0);
 
 	///
 	/// @brief Rename a token by given id. Requires ADMIN ACCESS
