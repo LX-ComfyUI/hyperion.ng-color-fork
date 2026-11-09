@@ -448,6 +448,22 @@
   .src-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; margin-bottom: 6px; }
   .src-crumbs button { padding: 3px 8px; font-size: 13px; }
   .src-crumbs span { color: var(--muted); }
+  .md-flag.ok { color: var(--accent); }
+  .src-form .frow > label { flex: 0 0 34%; }
+  .src-form .frow > .inputs { flex: 1; min-width: 0; display: flex; justify-content: flex-end; }
+  .src-form .inputs .wide-in { width: 100%; max-width: 320px; }
+  .src-path-in { display: flex; gap: 6px; flex: 1; min-width: 0; }
+  .src-path-in input { flex: 1; min-width: 0; }
+  .src-sub { border: 1px solid var(--btn-line); border-radius: 9px; padding: 8px 10px; margin: 8px 0; }
+  .src-sub h5 { margin: 0 0 6px; font-size: 14px; }
+  .src-pick-path { font-size: 13px; color: var(--muted); word-break: break-all; margin-bottom: 6px; }
+  .src-step { margin: 10px 0 0; }
+  .src-step p { margin: 0 0 4px; font-size: 13px; }
+  .src-step pre { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: all; }
+  .src-step .small-btn { margin-top: 4px; }
+  .src-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .src-tools input { flex: 1 1 140px; min-width: 0; }
+  .src-tools select { flex: 0 1 auto; }
   .md-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   /* picture measurement */
   #mm-pick { max-width: 100%; }
@@ -974,7 +990,7 @@
       <li data-card="card-tc"><a class="jump" href="#card-tc"><b>Testfarben</b></a>: Farben als Vollbild, um TV und LEDs direkt zu vergleichen. In der Seitenleiste rechts stehen sie neben der Farbkalibrierung.</li>
       <li data-card="card-color"><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Alle Farbwerte von Hyperion: Farbprofil, Weißpunkt, Gamma und Bildverarbeitung.</li>
       <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in der Farbkalibrierung hier kurz nachsehen.</li>
-      <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
+      <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt. Unter „Weitere Quellen“ lassen sich auch Ordner auf einem NAS, Plex und Jellyfin einbinden.</li>
       <li data-card="card-sm"><a class="jump" href="#card-sm"><b>Glättung</b></a>: Laufen die LEDs dem Bild hinterher oder zucken sie bei Schnitten?</li>
     </ul>
     <h3>Feinheiten der LEDs</h3>
@@ -1265,14 +1281,55 @@
       <h4 class="hy-h"><span>Video-Links</span></h4>
       <ul class="md-list" id="md-links"></ul>
       <h4 class="hy-h"><span>Weitere Quellen</span></h4>
-      <p class="help">Ein Ordner auf dem Server (zum Beispiel eine dort eingebundene NAS-Freigabe), Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Zugangsschlüssel bleiben auf dem Server.</p>
+      <p class="help">Ein Ordner auf dem Server oder einem NAS im Netzwerk, Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Passwörter und Zugangsschlüssel bleiben auf dem Server.</p>
       <ul class="md-list" id="src-list"></ul>
       <div class="src-form" id="src-form" hidden>
-        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner / NAS</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option></select></span></div>
+        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner / NAS</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option><option value="webdav">WebDAV (z. B. Nextcloud)</option></select></span></div>
         <div class="frow"><label for="src-name">Name</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
-        <div class="frow" id="src-path-row"><label for="src-path">Pfad auf dem Server</label><span class="inputs"><input type="text" id="src-path" class="wide-in" placeholder="/mnt/nas/videos" autocomplete="off"></span></div>
-        <div class="frow" id="src-url-row"><label for="src-url">Adresse</label><span class="inputs"><input type="url" id="src-url" class="wide-in" autocomplete="off"></span></div>
+        <div class="frow" id="src-path-row"><label for="src-path">Ordner</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
+        <div class="src-sub" id="src-pick" hidden>
+          <h5>Ordner auf dem Server wählen</h5>
+          <div class="src-pick-path" id="src-pick-path"></div>
+          <ul class="md-list" id="src-pick-list"></ul>
+          <p class="note" id="src-pick-note"></p>
+          <div class="lg-actions">
+            <button type="button" class="primary" id="src-pick-take" hidden>Diesen Ordner nehmen</button>
+            <button type="button" id="src-pick-close">Schließen</button>
+          </div>
+        </div>
+        <div class="src-sub" id="src-mnt" hidden>
+          <h5>Netzwerkfreigabe einbinden</h5>
+          <p class="help">Die Testseite liest eine NAS-Freigabe über einen Ordner auf dem Server. Diesen Ordner richtet einmal jemand mit Administratorrechten ein: Die Testseite schreibt die passenden Befehle, die du im Terminal des Servers (zum Beispiel per SSH) nacheinander ausführst. Die Testseite selbst führt nichts davon aus.</p>
+          <div class="frow"><label for="src-mnt-proto">Art</label><span class="inputs"><select id="src-mnt-proto"><option value="smb">Windows-Freigabe (SMB)</option><option value="nfs">NFS</option></select></span></div>
+          <div class="frow"><label for="src-mnt-host">NAS-Adresse</label><span class="inputs"><input type="text" id="src-mnt-host" class="wide-in" placeholder="192.168.1.20 · NAS-Name" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow"><span></span><span class="inputs"><button type="button" id="src-mnt-find" class="small-btn">NAS im Netz suchen</button></span></div>
+          <ul class="md-list" id="src-mnt-found" hidden></ul>
+          <p class="note" id="src-mnt-find-note"></p>
+          <div class="frow"><label for="src-mnt-share" id="src-mnt-share-label">Freigabe</label><span class="inputs"><input type="text" id="src-mnt-share" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow"><label for="src-mnt-sub">Unterordner</label><span class="inputs"><input type="text" id="src-mnt-sub" class="wide-in" placeholder="Videos/Urlaub" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow" id="src-mnt-user-row"><label for="src-mnt-user">Benutzer am NAS</label><span class="inputs"><input type="text" id="src-mnt-user" class="wide-in" placeholder="wird sonst abgefragt" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow" id="src-mnt-guest-row"><label for="src-mnt-guest">Ohne Anmeldung (Gast)</label><span class="inputs"><input type="checkbox" id="src-mnt-guest"></span></div>
+          <div class="frow"><label for="src-mnt-target">Einbinden unter</label><span class="inputs"><input type="text" id="src-mnt-target" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+          <div id="src-mnt-warn"></div>
+          <div id="src-mnt-steps"></div>
+          <details class="more">
+            <summary>Wenn es nicht klappt</summary>
+            <p class="help"><b>mount error(13)</b> oder „Permission denied“: Benutzer oder Passwort falsch. Den Schritt mit den Zugangsdaten noch einmal ausführen, dann den letzten Schritt.<br><b>mount error(2)</b>: Den Namen der Freigabe gibt es nicht. Manche NAS zeigen im Explorer einen anderen Namen als den der Freigabe.<br><b>mount error(112)</b>, „Host is down“ oder es dauert lange: NAS aus oder Adresse falsch. Sehr alte NAS können nur SMB 1: dann in /etc/fstab bei den Optionen <code>vers=1.0</code> ergänzen (unsicher, nur wenn nötig).<br>Genauere Meldungen zeigt <code>sudo dmesg | tail</code>.<br><b>Wieder entfernen</b>: die Zeile aus /etc/fstab löschen (die Sicherung liegt in /etc/fstab.bak-tvtest), <code>sudo systemctl daemon-reload</code> ausführen und die Datei mit den Zugangsdaten in /etc/tvtest-shares löschen.</p>
+          </details>
+          <div class="lg-actions">
+            <button type="button" class="primary" id="src-mnt-done">Fertig, prüfen</button>
+            <button type="button" id="src-mnt-close">Schließen</button>
+          </div>
+        </div>
+        <button type="button" id="src-mnt-btn" class="small-btn">Netzwerkfreigabe einbinden …</button>
+        <div class="frow" id="src-url-row"><label for="src-url">Adresse</label><span class="inputs"><input type="url" id="src-url" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+        <div class="frow" id="src-find-row"><span></span><span class="inputs"><button type="button" id="src-find" class="small-btn">Im Netz suchen</button></span></div>
+        <ul class="md-list" id="src-found" hidden></ul>
+        <div class="frow" id="src-plex-row"><span></span><span class="inputs"><button type="button" id="src-plex" class="small-btn">Mit Plex-Konto anmelden</button></span></div>
+        <div class="src-sub" id="src-plex-box" hidden></div>
         <div class="frow" id="src-token-row"><label for="src-token" id="src-token-label">Token</label><span class="inputs"><input type="password" id="src-token" class="wide-in" autocomplete="off"></span></div>
+        <div class="frow" id="src-user-row"><label for="src-user" id="src-user-label">oder Benutzer</label><span class="inputs"><input type="text" id="src-user" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+        <div class="frow" id="src-pass-row"><label for="src-pass">Passwort</label><span class="inputs"><input type="password" id="src-pass" class="wide-in" autocomplete="new-password"></span></div>
         <p class="help" id="src-help"></p>
         <div class="lg-actions">
           <button type="button" id="src-test">Verbindung prüfen</button>
@@ -1284,8 +1341,15 @@
       <button type="button" id="src-add" style="margin-top:6px">Quelle hinzufügen</button>
       <div class="src-browser" id="src-browser" hidden>
         <div class="src-crumbs" id="src-crumbs"></div>
+        <div class="src-tools" id="src-tools" hidden>
+          <input type="search" id="src-q" placeholder="Suchen" aria-label="Suchen" autocomplete="off">
+          <select id="src-sort" aria-label="Sortieren"><option value="name">Name</option><option value="new">Neueste zuerst</option><option value="old">Älteste zuerst</option><option value="big">Größte zuerst</option></select>
+          <select id="src-filter" aria-label="Zeigen"><option value="all">Alles</option><option value="video">Nur Videos</option><option value="image">Nur Bilder</option></select>
+        </div>
         <ul class="md-list" id="src-entries"></ul>
+        <button type="button" id="src-more" class="small-btn" hidden></button>
         <p class="note" id="src-browse-note"></p>
+        <p class="note" id="src-rate-note" hidden>Videos mit hoher Datenrate laufen von der Quelle über den Server zum TV, also zweimal durchs Netz. Über WLAN kann das ruckeln, per Kabel ist es am sichersten.</p>
       </div>
       <p class="warn" id="md-warn" hidden></p>
     </div>
@@ -4928,20 +4992,27 @@ $("md-file").addEventListener("change", async () => {
 
 // ---------- more sources: folder/NAS, Plex, Jellyfin (sources.mjs browses and streams them) ----------
 const SRC_FOLDER = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>';
-const SRC_TYPE = { folder: "Ordner / NAS", plex: "Plex", jellyfin: "Jellyfin" };
+const SRC_TYPE = { folder: "Ordner / NAS", dlna: "Medienserver im Netz (DLNA)", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", webdav: "WebDAV (z. B. Nextcloud)" };
 const SRC_HELP = {
-  folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern. Eine NAS-Freigabe muss dort vorher eingebunden sein (zum Beispiel über /etc/fstab, dafür braucht es einmal Administratorrechte). Die Testseite liest nur.",
-  plex: "Adresse des Plex-Servers mit Port, z. B. http://192.168.1.10:32400. Den Token zeigt Plex Web: bei einem Film „Medieninfo“ → „XML anzeigen“, in der Adresse steht X-Plex-Token=…",
-  jellyfin: "Adresse des Jellyfin-Servers mit Port, z. B. http://192.168.1.10:8096. Den API-Schlüssel legst du im Jellyfin-Dashboard unter „API-Schlüssel“ mit „+“ an.",
+  folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern, oder ein Netzwerkpfad wie \\\\NAS\\Freigabe\\Ordner (so wie ihn der Explorer kopiert). Ist die Freigabe auf dem Server schon eingebunden, findet die Testseite den Ordner selbst, sonst hilft „Netzwerkfreigabe einbinden“. Die Testseite liest nur.",
+  dlna: "Ein Medienserver im Heimnetz (DLNA/UPnP), wie ihn viele NAS, Router und Windows anbieten. „Im Netz suchen“ findet ihn selbst, eine Anmeldung braucht es nicht. Der Server muss im selben Netz sein wie die Testseite.",
+  plex: "Am einfachsten „Mit Plex-Konto anmelden“: Die Testseite zeigt einen Code, den du auf plex.tv/link eingibst. Oder selbst: Adresse des Plex-Servers mit Port, z. B. http://192.168.1.10:32400, und den Token (Plex Web: bei einem Film „Medieninfo“ → „XML anzeigen“, in der Adresse steht X-Plex-Token=…).",
+  jellyfin: "Adresse des Jellyfin-Servers mit Port, z. B. http://192.168.1.10:8096. Dann entweder einen API-Schlüssel (Jellyfin-Dashboard → „API-Schlüssel“ → „+“) oder Benutzer und Passwort. Das Passwort wird nur einmal zum Anmelden benutzt und nicht gespeichert.",
+  webdav: "Adresse des WebDAV-Ordners, z. B. https://cloud.example.org/remote.php/dav/files/NAME/Videos bei Nextcloud, dazu Benutzer und Passwort (bei Nextcloud am besten ein App-Passwort: Einstellungen → Sicherheit). Benutzer und Passwort bleiben auf dem Server, weil jeder Abruf sie braucht.",
+  emby: "Adresse des Emby-Servers mit Port, z. B. http://192.168.1.10:8096. Dann entweder einen API-Schlüssel (Emby-Einstellungen → „API-Schlüssel“) oder Benutzer und Passwort. Das Passwort wird nur einmal zum Anmelden benutzt und nicht gespeichert.",
 };
 let srcList = [];
 let srcEditing = null;   // null = closed, "new" or the id of the source being edited
 let srcOpen = null;      // { id, stack: [{ key, name }] } of the source being browsed
 let srcEntries = [];
+let srcTruncated = false;
+const srcView = { q: "", sort: "name", filter: "all", limit: 100 };
+const SRC_PAGE = 100;
+const SRC_HIGH_RATE = 40; // Mbit/s
 
-async function srcLoad() {
+async function srcLoad(check = true) {
   try {
-    const r = await fetch("/api/sources");
+    const r = await fetch(check ? "/api/sources?check=1" : "/api/sources");
     if (r.ok) srcList = (await r.json()).sources ?? [];
   } catch {}
   renderSources();
@@ -4950,9 +5021,10 @@ async function srcLoad() {
 function renderSources() {
   const rows = srcList.map((s) => {
     const open = srcOpen?.id === s.id;
-    const flag = s.status && !s.status.ok ? `<span class="md-flag bad">${tr("Fehler")}</span>` : "";
-    return `<li data-id="${s.id}"><button type="button" class="md-show" data-src="open" aria-pressed="${open}"><span class="md-thumb">${s.type === "folder" ? SRC_FOLDER : s.type === "plex" ? "P" : "J"}</span>` +
-      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.path ?? s.url ?? "")}</small></span>${flag}</button>` +
+    const flag = !s.status ? "" : s.status.ok ? `<span class="md-flag ok">${tr("erreichbar")}</span>`
+      : `<span class="md-flag bad" title="${escHtml(I18N.t(s.status.error ?? ""))}">${tr("nicht erreichbar")}</span>`;
+    return `<li data-id="${s.id}"><button type="button" class="md-show" data-src="open" aria-pressed="${open}"><span class="md-thumb">${s.type === "folder" ? SRC_FOLDER : s.type === "dlna" ? "D" : s.type[0].toUpperCase()}</span>` +
+      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.remote ?? s.path ?? (s.type === "dlna" ? srcHost(s.url) : s.url) ?? "")}${s.user ? " · " + escHtml(s.user) : ""}</small></span>${flag}</button>` +
       `<button type="button" class="ibtn" data-src="edit" title="${tr("Bearbeiten")}" aria-label="${tr("Bearbeiten")}">${MD_ICON.pencil}</button>` +
       `<button type="button" class="ibtn trash" data-src="remove" title="${tr("Entfernen")}" aria-label="${tr("Entfernen")}">${MD_ICON.trash}</button></li>`;
   }).join("");
@@ -4963,13 +5035,26 @@ function renderSources() {
   renderSrcBrowser();
 }
 
+const srcHost = (u) => { try { return new URL(u).host; } catch { return u ?? ""; } };
 function srcFormType() {
   const t = $("src-type").value;
+  const mb = t === "jellyfin" || t === "emby";
+  const dav = t === "webdav";
+  $("src-user-label").textContent = tr(dav ? "Benutzer" : "oder Benutzer");
+  if ($("src-found").dataset.kind !== t) { $("src-found").innerHTML = ""; $("src-found").dataset.kind = t; }
+  $("src-find-row").hidden = t === "folder" || t === "webdav";
+  $("src-found").hidden = !$("src-found").innerHTML;
+  $("src-plex-row").hidden = t !== "plex";
+  if (t !== "plex") srcPlexStop();
+  $("src-user-row").hidden = !mb && !dav;
+  $("src-pass-row").hidden = !mb && !dav;
   $("src-path-row").hidden = t !== "folder";
+  $("src-mnt-btn").hidden = t !== "folder";
+  if (t !== "folder") { $("src-pick").hidden = true; $("src-mnt").hidden = true; }
   $("src-url-row").hidden = t === "folder";
-  $("src-token-row").hidden = t === "folder";
+  $("src-token-row").hidden = t === "folder" || t === "dlna" || dav;
   $("src-token-label").textContent = tr(t === "plex" ? "Token" : "API-Schlüssel");
-  $("src-url").placeholder = t === "plex" ? "http://192.168.1.10:32400" : "http://192.168.1.10:8096";
+  $("src-url").placeholder = t === "plex" ? "http://192.168.1.10:32400" : t === "dlna" ? "http://192.168.1.10:8200/rootDesc.xml" : dav ? "https://cloud.example.org/remote.php/dav/files/NAME/Videos" : "http://192.168.1.10:8096";
   $("src-help").textContent = tr(SRC_HELP[t]);
 }
 $("src-type").addEventListener("change", srcFormType);
@@ -4980,21 +5065,39 @@ function srcEdit(id) {
   $("src-type").value = s?.type ?? "folder";
   $("src-type").disabled = !!s;
   $("src-name").value = s?.name ?? "";
-  $("src-path").value = s?.path ?? "";
+  $("src-path").value = s?.remote ?? s?.path ?? "";
+  $("src-pick").hidden = true;
+  $("src-mnt").hidden = true;
   $("src-url").value = s?.url ?? "";
   $("src-token").value = "";
   $("src-token").placeholder = s?.hasToken ? tr("gespeichert, leer lassen = unverändert") : "";
+  $("src-user").value = s?.type === "webdav" ? s.user ?? "" : "";
+  $("src-user").placeholder = s?.user ?? "";
+  $("src-pass").value = "";
+  $("src-pass").placeholder = s?.type === "webdav" && s.hasToken ? tr("gespeichert, leer lassen = unverändert") : "";
+  $("src-found").innerHTML = "";
+  srcPlexLink = null;
+  srcPlexStop();
   $("src-note").textContent = "";
   srcFormType();
   renderSources();
 }
-const srcFormData = () => ({ type: $("src-type").value, name: $("src-name").value, path: $("src-path").value, url: $("src-url").value, token: $("src-token").value });
+const srcFormData = () => ({ type: $("src-type").value, name: $("src-name").value, path: $("src-path").value, url: $("src-url").value, token: $("src-token").value,
+  user: $("src-user").value, password: $("src-pass").value, plexLink: $("src-type").value === "plex" && srcPlexLink && $("src-url").value === srcPlexLink.url ? srcPlexLink : undefined });
 
 async function srcPost(body) {
   const r = await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const out = await r.json();
-  if (!r.ok) throw new Error(out.error);
+  if (!r.ok) throw Object.assign(new Error(out.error), { data: out });
   return out;
+}
+// a network path the server has not mounted: the helper for mounting opens with what was typed
+function srcFailed(e) {
+  $("src-note").textContent = I18N.t(e.message);
+  if (e.data?.notMounted) srcMountOpen(e.data.notMounted);
+}
+function srcFound(out) {
+  return out.remote && out.path ? " · " + tr("eingebunden unter {a}", { a: out.path }) : "";
 }
 $("src-add").addEventListener("click", () => srcEdit("new"));
 $("src-cancel").addEventListener("click", () => { srcEditing = null; renderSources(); });
@@ -5002,9 +5105,9 @@ $("src-test").addEventListener("click", async () => {
   $("src-note").textContent = tr("Prüfe …");
   try {
     const out = await srcPost({ op: "test", id: srcEditing === "new" ? undefined : srcEditing, source: srcFormData() });
-    $("src-note").textContent = "✓ " + tr(out.message);
+    $("src-note").textContent = "✓ " + I18N.t(out.message) + srcFound(out);
   } catch (e) {
-    $("src-note").textContent = tr(e.message);
+    srcFailed(e);
   }
 });
 $("src-save").addEventListener("click", async () => {
@@ -5013,9 +5116,237 @@ $("src-save").addEventListener("click", async () => {
     srcList = out.sources;
     srcEditing = null;
     renderSources();
+    srcLoad();
   } catch (e) {
-    $("src-note").textContent = tr(e.message);
+    srcFailed(e);
   }
+});
+
+// ---- servers in the network: DLNA (SSDP), Plex (GDM), Jellyfin/Emby (their UDP discovery) ----
+$("src-find").addEventListener("click", async () => {
+  const kind = $("src-type").value;
+  $("src-find").disabled = true;
+  $("src-note").textContent = tr("Suche im Netz …");
+  try {
+    const out = await srcPost({ op: "discover", kind });
+    const letter = kind === "dlna" ? "D" : kind[0].toUpperCase();
+    $("src-found").innerHTML = out.servers.map((x) => `<li><button type="button" class="md-show" data-found="${escHtml(x.url)}" data-name="${escHtml(x.name)}"><span class="md-thumb">${letter}</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml([x.model, srcHost(x.url)].filter(Boolean).join(" · "))}</small></span></button></li>`).join("");
+    $("src-found").hidden = !out.servers.length;
+    $("src-note").textContent = out.servers.length ? tr("Gefunden: {a}. Zum Übernehmen antippen.", { a: out.servers.length })
+      : kind === "dlna" ? tr("Kein Medienserver gefunden. Ist DLNA/UPnP am NAS oder Router eingeschaltet? Läuft die Testseite in einem Container, sieht sie das Netz oft nicht (dann die Adresse selbst eintragen).")
+      : tr("Nichts gefunden. Läuft der Server im selben Netz? Sonst die Adresse selbst eintragen.");
+  } catch (e) {
+    $("src-note").textContent = I18N.t(e.message);
+  }
+  $("src-find").disabled = false;
+});
+$("src-found").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-found]");
+  if (!b) return;
+  $("src-url").value = b.dataset.found;
+  if (!$("src-name").value) $("src-name").value = b.dataset.name;
+  // DLNA needs nothing more; the others still need a key, a login or the Plex sign-in
+  if ($("src-type").value === "dlna") $("src-test").click();
+  else $("src-note").textContent = tr($("src-type").value === "plex" ? "Adresse übernommen. Jetzt „Mit Plex-Konto anmelden“ oder den Token eintragen." : "Adresse übernommen. Jetzt API-Schlüssel oder Benutzer und Passwort eintragen.");
+});
+
+// ---- NAS with shares for the mount helper: mDNS in the home network and Tailscale devices ----
+$("src-mnt-find").addEventListener("click", async () => {
+  $("src-mnt-find").disabled = true;
+  $("src-mnt-find-note").textContent = tr("Suche im Netz …");
+  try {
+    const out = await srcPost({ op: "discover", kind: "shares" });
+    $("src-mnt-found").innerHTML = out.servers.map((x) => `<li><button type="button" class="md-show" data-host="${escHtml(x.host)}" data-proto="${x.proto}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml([x.host, x.proto === "nfs" ? "NFS" : "SMB", x.via === "tailscale" ? "Tailscale" : ""].filter(Boolean).join(" · "))}</small></span></button></li>`).join("");
+    $("src-mnt-found").hidden = !out.servers.length;
+    $("src-mnt-find-note").textContent = out.servers.length ? tr("Gefunden: {a}. Zum Übernehmen antippen.", { a: out.servers.length })
+      : tr("Kein NAS gefunden. Nicht jedes NAS meldet sich im Netz, dann die Adresse selbst eintragen (steht meist in der NAS-App oder im Router).");
+  } catch (e) {
+    $("src-mnt-find-note").textContent = I18N.t(e.message);
+  }
+  $("src-mnt-find").disabled = false;
+});
+$("src-mnt-found").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-host]");
+  if (!b) return;
+  $("src-mnt-host").value = b.dataset.host;
+  $("src-mnt-proto").value = b.dataset.proto;
+  $("src-mnt-found").hidden = true;
+  $("src-mnt-find-note").textContent = "";
+  srcMountPlan();
+});
+
+// ---- Plex sign-in with a code on plex.tv/link; the token stays on the server ----
+let srcPlexLink = null;   // { pin, server, url } chosen after the sign-in
+let srcPlexTimer = 0;
+function srcPlexStop() { clearTimeout(srcPlexTimer); srcPlexTimer = 0; $("src-plex-box").hidden = true; }
+$("src-plex").addEventListener("click", async () => {
+  srcPlexStop();
+  const box = $("src-plex-box");
+  box.hidden = false;
+  box.innerHTML = `<p class="note">${tr("Lade …")}</p>`;
+  let pin;
+  try {
+    const out = await srcPost({ op: "plexPin" });
+    pin = out.pin;
+    box.innerHTML = `<p class="help">${tr("Öffne auf einem beliebigen Gerät <b>plex.tv/link</b>, melde dich bei Plex an und gib diesen Code ein:")}</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:6px 0">${escHtml(out.code)}</p><p class="note" id="src-plex-wait">${tr("Warte auf die Anmeldung …")}</p>`;
+  } catch (e) {
+    box.innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+    return;
+  }
+  const started = Date.now();
+  const poll = async () => {
+    if (box.hidden) return;
+    try {
+      const out = await srcPost({ op: "plexPinCheck", pin });
+      if (!out.done) {
+        if (Date.now() - started > 10 * 60_000) { box.innerHTML = `<p class="warn">${tr("Die Plex-Anmeldung ist abgelaufen, bitte noch einmal anmelden")}</p>`; return; }
+        srcPlexTimer = setTimeout(poll, 2500);
+        return;
+      }
+      box.innerHTML = `<p class="help">${tr("Angemeldet. Welcher Plex-Server?")}</p><ul class="md-list">` + out.servers.map((x, i) => `<li><button type="button" class="md-show" data-plex="${i}"><span class="md-thumb">P</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml(x.url)}${x.owned ? "" : " · " + tr("geteilt")}</small></span></button></li>`).join("") + "</ul>";
+      box.onclick = (ev) => {
+        const b = ev.target.closest("[data-plex]");
+        if (!b) return;
+        const x = out.servers[Number(b.dataset.plex)];
+        srcPlexLink = { pin, server: Number(b.dataset.plex), url: x.url };
+        $("src-url").value = x.url;
+        if (!$("src-name").value) $("src-name").value = x.name;
+        $("src-token").placeholder = tr("von der Plex-Anmeldung");
+        box.hidden = true;
+        $("src-test").click();
+      };
+    } catch (e) {
+      box.innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+    }
+  };
+  srcPlexTimer = setTimeout(poll, 2500);
+});
+
+// ---- folder picker: shares, /mnt, /media and the home folder of the server, then folder by folder ----
+let srcPickAt = null; // null = start points
+async function srcPick(at) {
+  srcPickAt = at;
+  $("src-pick").hidden = false;
+  $("src-pick-note").textContent = tr("Lade …");
+  $("src-pick-take").hidden = true;
+  try {
+    const r = await fetch("/api/sources/dirs" + (at ? "?path=" + encodeURIComponent(at) : ""));
+    const out = await r.json();
+    if (!r.ok) throw new Error(out.error);
+    let rows;
+    if (!at) {
+      $("src-pick-path").textContent = tr("Startpunkte auf dem Server");
+      rows = out.roots.map((x) => `<li><button type="button" class="md-show" data-pick="${escHtml(x.path)}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(x.path)}</b><small>${escHtml(x.kind === "net" ? tr("Netzwerkfreigabe") + (x.label ? " · " + x.label : "") : x.kind === "home" ? tr("Persönlicher Ordner") : tr("Ordner"))}</small></span></button></li>`);
+      $("src-pick-note").textContent = out.roots.length ? "" : tr("Keine Startpunkte gefunden.");
+    } else {
+      $("src-pick-path").textContent = at;
+      rows = (out.parent ? [`<li><button type="button" class="md-show" data-pick="${escHtml(out.parent)}"><span class="md-thumb">↑</span><span class="md-text"><b>${tr("Übergeordneter Ordner")}</b></span></button></li>`] : [])
+        .concat([`<li><button type="button" class="md-show" data-pick=""><span class="md-thumb">⌂</span><span class="md-text"><b>${tr("Startpunkte")}</b></span></button></li>`])
+        .concat(out.dirs.map((d) => `<li><button type="button" class="md-show" data-pick="${escHtml(at.replace(/\/$/, "") + "/" + d)}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(d)}</b></span></button></li>`));
+      $("src-pick-note").textContent = tr("Hier: {a} Videos, {b} Bilder, {c} Unterordner", { a: out.videos, b: out.images, c: out.dirs.length + out.more });
+      $("src-pick-take").hidden = false;
+    }
+    $("src-pick-list").innerHTML = rows.join("");
+  } catch (e) {
+    $("src-pick-note").textContent = I18N.t(e.message);
+    $("src-pick-take").hidden = true;
+  }
+}
+$("src-pick-btn").addEventListener("click", () => {
+  if (!$("src-pick").hidden) { $("src-pick").hidden = true; return; }
+  const typed = $("src-path").value.trim();
+  srcPick(typed.startsWith("/") ? typed : null);
+});
+$("src-pick-list").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-pick]");
+  if (b) srcPick(b.dataset.pick || null);
+});
+$("src-pick-take").addEventListener("click", () => {
+  $("src-path").value = srcPickAt;
+  $("src-pick").hidden = true;
+  $("src-test").click();
+});
+$("src-pick-close").addEventListener("click", () => { $("src-pick").hidden = true; });
+
+// ---- helper for mounting a network share: the server writes the commands, someone runs them once ----
+let srcMntTimer = 0;
+let srcMntPlan = null;
+function srcMountOpen(n) {
+  $("src-mnt").hidden = false;
+  $("src-pick").hidden = true;
+  if (n) {
+    $("src-mnt-proto").value = n.proto === "nfs" ? "nfs" : "smb";
+    $("src-mnt-host").value = n.host ?? "";
+    $("src-mnt-share").value = n.proto === "nfs" ? n.rpath ?? "" : n.share ?? "";
+    $("src-mnt-sub").value = n.proto === "nfs" ? "" : (n.sub ?? []).join("/");
+    if (n.user) $("src-mnt-user").value = n.user;
+    $("src-mnt-target").value = "";
+  }
+  srcMountPlan();
+  $("src-mnt").scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+async function srcMountPlan() {
+  const nfs = $("src-mnt-proto").value === "nfs";
+  $("src-mnt-share-label").textContent = tr(nfs ? "Export" : "Freigabe");
+  $("src-mnt-share").placeholder = nfs ? "/volume1/video" : "Video";
+  $("src-mnt-user-row").hidden = nfs || $("src-mnt-guest").checked;
+  $("src-mnt-guest-row").hidden = nfs;
+  const plan = { proto: $("src-mnt-proto").value, host: $("src-mnt-host").value, share: $("src-mnt-share").value, sub: $("src-mnt-sub").value,
+    user: $("src-mnt-user").value, guest: $("src-mnt-guest").checked, target: $("src-mnt-target").value, lang: I18N.lang === "en" ? "en" : "de" };
+  srcMntPlan = null;
+  if (!plan.host.trim() || !plan.share.trim()) {
+    $("src-mnt-warn").innerHTML = "";
+    $("src-mnt-steps").innerHTML = `<p class="note">${tr("NAS-Adresse und Freigabe eintragen, dann erscheinen hier die Befehle.")}</p>`;
+    return;
+  }
+  try {
+    const out = await srcPost({ op: "mountPlan", plan });
+    srcMntPlan = out;
+    if (!$("src-mnt-target").value) $("src-mnt-target").placeholder = out.target;
+    const fill = (t) => escHtml(tr(t, { a: out.already ?? "", b: out.target }));
+    $("src-mnt-warn").innerHTML = out.warnings.map((w) => `<p class="warn">${fill(w)}</p>`).join("");
+    $("src-mnt-steps").innerHTML = out.steps.map((st, i) => `<div class="src-step"><p><b>${i + 1}.</b> ${escHtml(tr(st.title))}</p><pre>${escHtml(st.cmd)}</pre><button type="button" class="small-btn" data-copy="${i}">${tr("Kopieren")}</button></div>`).join("");
+  } catch (e) {
+    $("src-mnt-warn").innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+    $("src-mnt-steps").innerHTML = "";
+  }
+}
+for (const id of ["src-mnt-proto", "src-mnt-host", "src-mnt-share", "src-mnt-sub", "src-mnt-user", "src-mnt-guest", "src-mnt-target"]) {
+  $(id).addEventListener("input", () => { clearTimeout(srcMntTimer); srcMntTimer = setTimeout(srcMountPlan, 300); });
+}
+// copying also works on pages without https (no navigator.clipboard there)
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = Object.assign(document.createElement("textarea"), { value: text });
+  ta.style.cssText = "position:fixed;opacity:0";
+  document.body.append(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch {}
+  ta.remove();
+  return ok;
+}
+$("src-mnt-steps").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-copy]");
+  if (!b || !srcMntPlan) return;
+  const ok = await copyText(srcMntPlan.steps[Number(b.dataset.copy)].cmd);
+  b.textContent = tr(ok ? "Kopiert" : "Bitte markieren und selbst kopieren");
+  setTimeout(() => { b.textContent = tr("Kopieren"); }, 2500);
+});
+$("src-mnt-btn").addEventListener("click", () => {
+  if (!$("src-mnt").hidden) { $("src-mnt").hidden = true; return; }
+  const typed = $("src-path").value.trim();
+  srcMountOpen(null);
+  if (/^(\\\\|\/\/|smb:|nfs:)/i.test(typed)) $("src-test").click();
+});
+$("src-mnt-close").addEventListener("click", () => { $("src-mnt").hidden = true; });
+$("src-mnt-done").addEventListener("click", () => {
+  // the network path stays as typed (the server finds it now); otherwise the folder under the mount
+  const typed = $("src-path").value.trim();
+  if (!/^(\\\\|\/\/|smb:|nfs:)/i.test(typed) && srcMntPlan?.local) $("src-path").value = srcMntPlan.local;
+  else if (!typed && srcMntPlan?.local) $("src-path").value = srcMntPlan.local;
+  $("src-mnt").hidden = true;
+  $("src-test").click();
 });
 $("src-list").addEventListener("click", async (ev) => {
   const b = ev.target.closest("[data-src]");
@@ -5047,9 +5378,13 @@ async function srcBrowse() {
     const out = await r.json();
     if (!r.ok) throw new Error(out.error);
     srcEntries = out.entries ?? [];
+    srcTruncated = !!out.truncated;
+    srcView.limit = SRC_PAGE;
+    srcView.q = "";
+    $("src-q").value = "";
     $("src-browse-note").textContent = srcEntries.length ? "" : tr("Hier gibt es keine Bilder oder Videos.");
   } catch (e) {
-    $("src-browse-note").textContent = tr(e.message);
+    $("src-browse-note").textContent = I18N.t(e.message);
     srcLoad();
   }
   renderSrcBrowser();
@@ -5062,21 +5397,69 @@ function srcEntryRow(e) {
   // Plex names its picture path, Jellyfin and folders use the entry's own key
   const thumbUrl = e.thumb ? `/api/sources/thumb?id=${srcOpen.id}&key=${encodeURIComponent(typeof e.thumb === "string" ? e.thumb : e.key)}` : "";
   const thumb = thumbUrl ? `<span class="md-thumb"><img loading="lazy" src="${thumbUrl}" alt="" onerror="this.remove()"></span>` : `<span class="md-thumb">${e.kind === "folder" ? SRC_FOLDER : e.kind === "video" ? "▶" : "▣"}</span>`;
+  const rate = srcRate(e);
   const it = { kind: e.kind, codec: e.codec, bits: e.bits, file: "x." + (e.container ?? "") };
   const c = e.kind === "video" ? mdCompat(it) : null;
-  const flags = [c ? `<span class="md-flag ${c.cls}">${escHtml(c.text)}</span>` : "", e.hdr ? `<span class="md-flag maybe">${escHtml(String(e.hdr))}</span>` : ""].join("");
-  const meta = e.kind === "folder" ? tr("Ordner") : mdMeta({ ...e, kind: e.kind });
+  const flags = [c ? `<span class="md-flag ${c.cls}">${escHtml(c.text)}</span>` : "", e.hdr ? `<span class="md-flag maybe">${escHtml(String(e.hdr))}</span>` : "",
+    rate > SRC_HIGH_RATE ? `<span class="md-flag maybe">${tr("hohe Datenrate")}</span>` : ""].join("");
+  const meta = e.kind === "folder" ? tr("Ordner") : mdMeta({ ...e, kind: e.kind }) + (rate ? ` · ${rate} Mbit/s` : "");
   const badge = on ? `<span class="tp-badge">${e.kind === "video" && !m.playing ? tr("Pause") : tr("läuft")}</span>` : "";
   const tools = e.kind === "folder" ? "" : mdPlayTools(on, e.kind === "video", !!m.playing);
   return `<li data-key="${escHtml(e.key)}"><button type="button" class="md-show" data-md="show" aria-pressed="${on}">${thumb}<span class="md-text"><b>${escHtml(e.name)}</b><small>${escHtml(meta)}</small></span>${flags}${badge}</button>${tools}</li>`;
+}
+
+// Mbit/s of a video, from size and length (or what ffprobe found)
+function srcRate(e) {
+  if (e.kind !== "video") return 0;
+  const bps = e.bitrate || (e.size && e.duration ? (e.size * 8) / e.duration : 0);
+  return bps ? Math.round(bps / 1e6) : 0;
+}
+
+// search, sort, filter and a page at a time: folders of a NAS can hold thousands of files
+function srcVisible() {
+  const q = srcView.q.trim().toLocaleLowerCase();
+  const list = srcEntries.filter((e) => (srcView.filter === "all" || e.kind === "folder" || e.kind === srcView.filter) && (!q || e.name.toLocaleLowerCase().includes(q)));
+  const by = { name: (a, b) => a.name.localeCompare(b.name, I18N.locale, { numeric: true }), new: (a, b) => (b.date ?? 0) - (a.date ?? 0), old: (a, b) => (a.date ?? Infinity) - (b.date ?? Infinity), big: (a, b) => (b.size ?? 0) - (a.size ?? 0) }[srcView.sort];
+  return list.sort((a, b) => ((b.kind === "folder") - (a.kind === "folder")) || by(a, b));
 }
 
 function renderSrcBrowser() {
   $("src-browser").hidden = !srcOpen;
   if (!srcOpen) return;
   $("src-crumbs").innerHTML = srcOpen.stack.map((c, i) => (i === srcOpen.stack.length - 1 ? `<b>${escHtml(c.name)}</b>` : `<button type="button" data-crumb="${i}">${escHtml(c.name)}</button><span>›</span>`)).join("");
-  const html = srcEntries.map(srcEntryRow).join("");
+  $("src-tools").hidden = srcEntries.length < 2;
+  const all = srcVisible();
+  const shown = all.slice(0, srcView.limit);
+  const html = shown.map(srcEntryRow).join("");
   if ($("src-entries").dataset.html !== html) { $("src-entries").innerHTML = html; $("src-entries").dataset.html = html; }
+  const rest = all.length - shown.length;
+  $("src-more").hidden = rest <= 0;
+  $("src-more").textContent = tr("Weitere {a} zeigen (noch {b})", { a: Math.min(SRC_PAGE, rest), b: rest });
+  $("src-rate-note").hidden = !shown.some((e) => srcRate(e) > SRC_HIGH_RATE);
+  if (srcEntries.length) $("src-browse-note").textContent = srcTruncated ? tr("Nur die ersten 2000 Einträge dieses Ordners. Für mehr bitte Unterordner benutzen.") : all.length ? "" : tr("Nichts gefunden.");
+  srcProbeShown(shown);
+}
+$("src-q").addEventListener("input", () => { srcView.q = $("src-q").value; srcView.limit = SRC_PAGE; renderSrcBrowser(); });
+$("src-sort").addEventListener("change", () => { srcView.sort = $("src-sort").value; renderSrcBrowser(); });
+$("src-filter").addEventListener("change", () => { srcView.filter = $("src-filter").value; srcView.limit = SRC_PAGE; renderSrcBrowser(); });
+$("src-more").addEventListener("click", () => { srcView.limit += SRC_PAGE; renderSrcBrowser(); });
+
+// videos in a folder: the server asks ffprobe for codec, 10 bit and HDR (two at a time), so the list can
+// say whether the TV plays them
+const srcProbed = new Set();
+let srcProbing = 0;
+function srcProbeShown(shown) {
+  const s = srcList.find((x) => x.id === srcOpen?.id);
+  if (s?.type !== "folder" || !mdInfo.ffprobe) return;
+  for (const e of shown) {
+    const k = s.id + "\n" + e.key;
+    if (e.kind !== "video" || e.codec || srcProbed.has(k) || srcProbing >= 2) continue;
+    srcProbed.add(k);
+    srcProbing++;
+    fetch(`/api/sources/probe?id=${s.id}&key=${encodeURIComponent(e.key)}`).then((r) => r.json()).then((out) => {
+      if (out.info) Object.assign(e, out.info);
+    }).catch(() => {}).finally(() => { srcProbing--; if (srcOpen?.id === s.id) renderSrcBrowser(); });
+  }
 }
 $("src-crumbs").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-crumb]");

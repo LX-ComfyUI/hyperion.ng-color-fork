@@ -409,7 +409,7 @@ function ffmpegHint(it, when) {
   addNotice("ffmpegMissing", "info", { when }, "card-media");
 }
 // sources the user added (folder/NAS, Plex, Jellyfin): browsed and streamed through this server
-const sources = createSources({ dataDir: DATA_DIR, thumbsDir: path.join(DATA_DIR, "media", "thumbs") });
+const sources = createSources({ dataDir: DATA_DIR, thumbsDir: path.join(DATA_DIR, "media", "thumbs"), notify: (kind, level, params) => addNotice(kind, level, params, "card-media") });
 let tvCaps = null;   // what the TV page's browser can play (canPlayType), sent by the TV page
 let tvMedia = null;  // what the TV page reports about the shown media: position, length, errors
 function mediaItemOf(id) {
