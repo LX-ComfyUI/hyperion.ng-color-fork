@@ -461,6 +461,9 @@
   .src-step p { margin: 0 0 4px; font-size: 13px; }
   .src-step pre { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: all; }
   .src-step .small-btn { margin-top: 4px; }
+  .src-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .src-tools input { flex: 1 1 140px; min-width: 0; }
+  .src-tools select { flex: 0 1 auto; }
   .md-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   /* picture measurement */
   #mm-pick { max-width: 100%; }
@@ -1335,8 +1338,15 @@
       <button type="button" id="src-add" style="margin-top:6px">Quelle hinzufügen</button>
       <div class="src-browser" id="src-browser" hidden>
         <div class="src-crumbs" id="src-crumbs"></div>
+        <div class="src-tools" id="src-tools" hidden>
+          <input type="search" id="src-q" placeholder="Suchen" aria-label="Suchen" autocomplete="off">
+          <select id="src-sort" aria-label="Sortieren"><option value="name">Name</option><option value="new">Neueste zuerst</option><option value="old">Älteste zuerst</option><option value="big">Größte zuerst</option></select>
+          <select id="src-filter" aria-label="Zeigen"><option value="all">Alles</option><option value="video">Nur Videos</option><option value="image">Nur Bilder</option></select>
+        </div>
         <ul class="md-list" id="src-entries"></ul>
+        <button type="button" id="src-more" class="small-btn" hidden></button>
         <p class="note" id="src-browse-note"></p>
+        <p class="note" id="src-rate-note" hidden>Videos mit hoher Datenrate laufen von der Quelle über den Server zum TV, also zweimal durchs Netz. Über WLAN kann das ruckeln, per Kabel ist es am sichersten.</p>
       </div>
       <p class="warn" id="md-warn" hidden></p>
     </div>
@@ -4991,6 +5001,10 @@ let srcList = [];
 let srcEditing = null;   // null = closed, "new" or the id of the source being edited
 let srcOpen = null;      // { id, stack: [{ key, name }] } of the source being browsed
 let srcEntries = [];
+let srcTruncated = false;
+const srcView = { q: "", sort: "name", filter: "all", limit: 100 };
+const SRC_PAGE = 100;
+const SRC_HIGH_RATE = 40; // Mbit/s
 
 async function srcLoad(check = true) {
   try {
@@ -5326,6 +5340,10 @@ async function srcBrowse() {
     const out = await r.json();
     if (!r.ok) throw new Error(out.error);
     srcEntries = out.entries ?? [];
+    srcTruncated = !!out.truncated;
+    srcView.limit = SRC_PAGE;
+    srcView.q = "";
+    $("src-q").value = "";
     $("src-browse-note").textContent = srcEntries.length ? "" : tr("Hier gibt es keine Bilder oder Videos.");
   } catch (e) {
     $("src-browse-note").textContent = I18N.t(e.message);
@@ -5341,21 +5359,69 @@ function srcEntryRow(e) {
   // Plex names its picture path, Jellyfin and folders use the entry's own key
   const thumbUrl = e.thumb ? `/api/sources/thumb?id=${srcOpen.id}&key=${encodeURIComponent(typeof e.thumb === "string" ? e.thumb : e.key)}` : "";
   const thumb = thumbUrl ? `<span class="md-thumb"><img loading="lazy" src="${thumbUrl}" alt="" onerror="this.remove()"></span>` : `<span class="md-thumb">${e.kind === "folder" ? SRC_FOLDER : e.kind === "video" ? "▶" : "▣"}</span>`;
+  const rate = srcRate(e);
   const it = { kind: e.kind, codec: e.codec, bits: e.bits, file: "x." + (e.container ?? "") };
   const c = e.kind === "video" ? mdCompat(it) : null;
-  const flags = [c ? `<span class="md-flag ${c.cls}">${escHtml(c.text)}</span>` : "", e.hdr ? `<span class="md-flag maybe">${escHtml(String(e.hdr))}</span>` : ""].join("");
-  const meta = e.kind === "folder" ? tr("Ordner") : mdMeta({ ...e, kind: e.kind });
+  const flags = [c ? `<span class="md-flag ${c.cls}">${escHtml(c.text)}</span>` : "", e.hdr ? `<span class="md-flag maybe">${escHtml(String(e.hdr))}</span>` : "",
+    rate > SRC_HIGH_RATE ? `<span class="md-flag maybe">${tr("hohe Datenrate")}</span>` : ""].join("");
+  const meta = e.kind === "folder" ? tr("Ordner") : mdMeta({ ...e, kind: e.kind }) + (rate ? ` · ${rate} Mbit/s` : "");
   const badge = on ? `<span class="tp-badge">${e.kind === "video" && !m.playing ? tr("Pause") : tr("läuft")}</span>` : "";
   const tools = e.kind === "folder" ? "" : mdPlayTools(on, e.kind === "video", !!m.playing);
   return `<li data-key="${escHtml(e.key)}"><button type="button" class="md-show" data-md="show" aria-pressed="${on}">${thumb}<span class="md-text"><b>${escHtml(e.name)}</b><small>${escHtml(meta)}</small></span>${flags}${badge}</button>${tools}</li>`;
+}
+
+// Mbit/s of a video, from size and length (or what ffprobe found)
+function srcRate(e) {
+  if (e.kind !== "video") return 0;
+  const bps = e.bitrate || (e.size && e.duration ? (e.size * 8) / e.duration : 0);
+  return bps ? Math.round(bps / 1e6) : 0;
+}
+
+// search, sort, filter and a page at a time: folders of a NAS can hold thousands of files
+function srcVisible() {
+  const q = srcView.q.trim().toLocaleLowerCase();
+  const list = srcEntries.filter((e) => (srcView.filter === "all" || e.kind === "folder" || e.kind === srcView.filter) && (!q || e.name.toLocaleLowerCase().includes(q)));
+  const by = { name: (a, b) => a.name.localeCompare(b.name, I18N.locale, { numeric: true }), new: (a, b) => (b.date ?? 0) - (a.date ?? 0), old: (a, b) => (a.date ?? Infinity) - (b.date ?? Infinity), big: (a, b) => (b.size ?? 0) - (a.size ?? 0) }[srcView.sort];
+  return list.sort((a, b) => ((b.kind === "folder") - (a.kind === "folder")) || by(a, b));
 }
 
 function renderSrcBrowser() {
   $("src-browser").hidden = !srcOpen;
   if (!srcOpen) return;
   $("src-crumbs").innerHTML = srcOpen.stack.map((c, i) => (i === srcOpen.stack.length - 1 ? `<b>${escHtml(c.name)}</b>` : `<button type="button" data-crumb="${i}">${escHtml(c.name)}</button><span>›</span>`)).join("");
-  const html = srcEntries.map(srcEntryRow).join("");
+  $("src-tools").hidden = srcEntries.length < 2;
+  const all = srcVisible();
+  const shown = all.slice(0, srcView.limit);
+  const html = shown.map(srcEntryRow).join("");
   if ($("src-entries").dataset.html !== html) { $("src-entries").innerHTML = html; $("src-entries").dataset.html = html; }
+  const rest = all.length - shown.length;
+  $("src-more").hidden = rest <= 0;
+  $("src-more").textContent = tr("Weitere {a} zeigen (noch {b})", { a: Math.min(SRC_PAGE, rest), b: rest });
+  $("src-rate-note").hidden = !shown.some((e) => srcRate(e) > SRC_HIGH_RATE);
+  if (srcEntries.length) $("src-browse-note").textContent = srcTruncated ? tr("Nur die ersten 2000 Einträge dieses Ordners. Für mehr bitte Unterordner benutzen.") : all.length ? "" : tr("Nichts gefunden.");
+  srcProbeShown(shown);
+}
+$("src-q").addEventListener("input", () => { srcView.q = $("src-q").value; srcView.limit = SRC_PAGE; renderSrcBrowser(); });
+$("src-sort").addEventListener("change", () => { srcView.sort = $("src-sort").value; renderSrcBrowser(); });
+$("src-filter").addEventListener("change", () => { srcView.filter = $("src-filter").value; srcView.limit = SRC_PAGE; renderSrcBrowser(); });
+$("src-more").addEventListener("click", () => { srcView.limit += SRC_PAGE; renderSrcBrowser(); });
+
+// videos in a folder: the server asks ffprobe for codec, 10 bit and HDR (two at a time), so the list can
+// say whether the TV plays them
+const srcProbed = new Set();
+let srcProbing = 0;
+function srcProbeShown(shown) {
+  const s = srcList.find((x) => x.id === srcOpen?.id);
+  if (s?.type !== "folder" || !mdInfo.ffprobe) return;
+  for (const e of shown) {
+    const k = s.id + "\n" + e.key;
+    if (e.kind !== "video" || e.codec || srcProbed.has(k) || srcProbing >= 2) continue;
+    srcProbed.add(k);
+    srcProbing++;
+    fetch(`/api/sources/probe?id=${s.id}&key=${encodeURIComponent(e.key)}`).then((r) => r.json()).then((out) => {
+      if (out.info) Object.assign(e, out.info);
+    }).catch(() => {}).finally(() => { srcProbing--; if (srcOpen?.id === s.id) renderSrcBrowser(); });
+  }
 }
 $("src-crumbs").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-crumb]");

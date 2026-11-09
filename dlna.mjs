@@ -100,9 +100,13 @@ function readItem(it) {
   const small = res.filter((r) => r !== main && r.info.split(":")[2]?.startsWith("image/")).sort((a, b) => (a.size ?? Infinity) - (b.size ?? Infinity))[0];
   const [w, h] = (main.resolution ?? "").split("x").map(Number);
   const mime = main.info.split(":")[2] ?? "";
+  // the DLNA profile names the codec (AVC_MP4_…, HEVC_…)
+  const pn = /DLNA\.ORG_PN=([\w-]+)/.exec(main.info)?.[1] ?? "";
+  const codec = /^AVC/i.test(pn) ? "h264" : /^HEVC/i.test(pn) ? "hevc" : /^VP9/i.test(pn) ? "vp9" : /^AV1/i.test(pn) ? "av1" : /^MPEG/i.test(pn) ? "mpeg2video" : undefined;
   return {
     key: attr(it.attrs, "id"), kind, name: text(it.body, "title") ?? "", size: main.size, duration: main.duration, width: w || undefined, height: h || undefined,
-    container: mime.split("/")[1]?.replace(/^x-/, "").replace("matroska", "mkv").replace("quicktime", "mov"), url: main.url,
+    container: mime.split("/")[1]?.replace(/^x-/, "").replace("matroska", "mkv").replace("quicktime", "mov"), url: main.url, codec,
+    date: Date.parse(text(it.body, "date") ?? "") || undefined,
     art: /^https?:\/\//i.test(art ?? "") ? art : small ? small.url : kind === "image" ? main.url : null,
   };
 }
@@ -110,14 +114,16 @@ function readItem(it) {
 // a folder of the server ("0" = top), as entries { key, kind, name, … } plus the file addresses
 export async function browse(location, objectId = "0", max = 2000) {
   const out = [];
+  let truncated = false;
   for (let start = 0; start < max;) {
     const r = await soapBrowse(location, objectId, "BrowseDirectChildren", start, Math.min(PAGE, max - start));
     for (const c of tags(r.didl, "container")) out.push({ key: attr(c.attrs, "id"), kind: "folder", name: text(c.body, "title") ?? "" });
     for (const it of tags(r.didl, "item")) { const e = readItem(it); if (e) out.push(e); }
     start += r.returned;
     if (!r.returned || start >= r.total) break;
+    if (start >= max) truncated = true;
   }
-  return out.filter((e) => e.key);
+  return { entries: out.filter((e) => e.key), truncated };
 }
 
 // one item again (after a restart of the test server the addresses are no longer known)

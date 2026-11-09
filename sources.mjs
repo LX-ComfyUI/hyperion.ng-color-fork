@@ -209,7 +209,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     }
     if (s.type === "dlna") {
       const d = await Dlna.describe(s.url, true);
-      const top = await Dlna.browse(s.url, "0", 200);
+      const top = (await Dlna.browse(s.url, "0", 200)).entries;
       return `${d.name} verbunden, ${top.length} ${top.length === 1 ? "Eintrag" : "Einträge"} oben`;
     }
     const info = await api(s, "/System/Info");
@@ -234,11 +234,11 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       if (isDir) out.push({ key: rel, kind: "folder", name: e.name });
       else if (IMAGE_EXT.has(ext) || VIDEO_EXT.has(ext)) {
         const st = await fs.promises.stat(path.join(dir, e.name)).catch(() => null);
-        out.push({ key: rel, kind: IMAGE_EXT.has(ext) ? "image" : "video", name: e.name, size: st?.size, mtime: st ? Math.round(st.mtimeMs) : undefined, container: ext.slice(1), thumb: true });
+        out.push({ key: rel, kind: IMAGE_EXT.has(ext) ? "image" : "video", name: e.name, size: st?.size, date: st ? Math.round(st.mtimeMs) : undefined, container: ext.slice(1), thumb: true });
       }
     })), 2 * FS_TIMEOUT, slow);
     out.sort((a, b) => ((b.kind === "folder") - (a.kind === "folder")) || a.name.localeCompare(b.name, "de", { numeric: true }));
-    return { entries: out, crumbs: key ? key.split(path.sep).map((n, i, all) => ({ key: all.slice(0, i + 1).join(path.sep), name: n })) : [] };
+    return { entries: out, truncated: ents.length > MAX_ENTRIES, crumbs: key ? key.split(path.sep).map((n, i, all) => ({ key: all.slice(0, i + 1).join(path.sep), name: n })) : [] };
   }
 
   const plexKind = (m) => (["movie", "episode", "clip", "video"].includes(m.type) ? "video" : m.type === "photo" ? "image" : "folder");
@@ -249,7 +249,8 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     }
     if (!/^\/library\/(sections\/\d+\/all|metadata\/\d+\/children)$/.test(key)) throw new Error("Ungültiger Plex-Eintrag");
     const j = await api(s, key);
-    const entries = (j.MediaContainer?.Metadata ?? []).slice(0, MAX_ENTRIES).map((m) => {
+    const all = j.MediaContainer?.Metadata ?? [];
+    const entries = all.slice(0, MAX_ENTRIES).map((m) => {
       const kind = plexKind(m);
       const media = m.Media?.[0];
       const part = media?.Part?.[0];
@@ -258,10 +259,10 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       return {
         key: part.key, kind, name: m.parentTitle && m.type === "episode" ? `${m.grandparentTitle ?? ""} ${m.parentIndex != null ? "S" + m.parentIndex : ""}E${m.index ?? ""} ${m.title}`.trim() : m.title,
         size: part.size, duration: m.duration ? Math.round(m.duration / 1000) : undefined, width: media.width, height: media.height,
-        codec: media.videoCodec, container: part.container ?? media.container, thumb: m.thumb || undefined,
+        codec: media.videoCodec, container: part.container ?? media.container, thumb: m.thumb || undefined, date: m.addedAt ? m.addedAt * 1000 : undefined,
       };
     }).filter(Boolean);
-    return { entries, crumbs: [] };
+    return { entries, truncated: all.length > MAX_ENTRIES, crumbs: [] };
   }
 
   const jfKind = (it) => (["Movie", "Episode", "Video", "MusicVideo", "Trailer"].includes(it.Type) ? "video" : it.Type === "Photo" ? "image" : it.IsFolder ? "folder" : null);
@@ -278,7 +279,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   async function browseJellyfin(s, key) {
     if (!key) return { entries: await mbLibraries(s), crumbs: [] };
     if (!MB_ID.test(key)) throw new Error(`Ungültiger ${LABEL[s.type]}-Eintrag`);
-    const j = await api(s, `${s.userId ? `/Users/${s.userId}` : ""}/Items?ParentId=${key}&SortBy=IsFolder,SortName&SortOrder=Descending,Ascending&Fields=MediaStreams,MediaSources,Path&Limit=${MAX_ENTRIES}`);
+    const j = await api(s, `${s.userId ? `/Users/${s.userId}` : ""}/Items?ParentId=${key}&SortBy=IsFolder,SortName&SortOrder=Descending,Ascending&Fields=MediaStreams,MediaSources,Path,DateCreated&Limit=${MAX_ENTRIES}`);
     const entries = (j.Items ?? []).map((it) => {
       const kind = jfKind(it);
       if (!kind) return null;
@@ -288,9 +289,10 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
         duration: it.RunTimeTicks ? Math.round(it.RunTimeTicks / 1e7) : undefined, width: v?.Width, height: v?.Height,
         codec: v?.Codec, bits: v?.BitDepth, hdr: v?.VideoRange && v.VideoRange !== "SDR" ? (v.VideoRangeType ?? v.VideoRange) : undefined,
         container: it.MediaSources?.[0]?.Container ?? it.Container, size: it.MediaSources?.[0]?.Size, thumb: it.ImageTags?.Primary ? true : undefined,
+        date: Date.parse(it.DateCreated ?? "") || undefined,
       };
     }).filter(Boolean);
-    return { entries, crumbs: [] };
+    return { entries, truncated: (j.TotalRecordCount ?? 0) > entries.length, crumbs: [] };
   }
 
   // reachable or not, with a notice in the bell when a source goes away and when it is back
@@ -317,10 +319,10 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   // DLNA: the file addresses come with the listing and are kept for playing (dlnaItems)
   const dlnaItems = new Map(); // source id + object id -> { url, art }
   async function browseDlna(s, key) {
-    const entries = await Dlna.browse(s.url, key || "0", MAX_ENTRIES);
+    const { entries, truncated } = await Dlna.browse(s.url, key || "0", MAX_ENTRIES);
     for (const e of entries) if (e.kind !== "folder") dlnaItems.set(s.id + "\n" + e.key, { url: e.url, art: e.art });
     if (dlnaItems.size > 20_000) dlnaItems.clear();
-    return { entries: entries.map(({ url, art, ...e }) => ({ ...e, thumb: art ? true : undefined })), crumbs: [] };
+    return { entries: entries.map(({ url, art, ...e }) => ({ ...e, thumb: art ? true : undefined })), truncated, crumbs: [] };
   }
   async function dlnaItem(s, key) {
     const hit = dlnaItems.get(s.id + "\n" + key);
@@ -413,18 +415,19 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     }
   }
 
-  // at most two ffmpeg at a time: for a folder on a NAS each one reads over the network
+  // at most two ffmpeg/ffprobe at a time: for a folder on a NAS each one reads over the network
   let ffRunning = 0;
   const ffQueue = [];
-  function ffmpegThumb(args, done) {
-    if (ffRunning >= 2) return ffQueue.push(() => ffmpegThumb(args, done));
+  function ffRun(tool, args, timeout, done) {
+    if (ffRunning >= 2) return ffQueue.push(() => ffRun(tool, args, timeout, done));
     ffRunning++;
-    execFile("ffmpeg", args, { timeout: 60_000 }, (err) => {
+    execFile(tool, args, { timeout, maxBuffer: 4_000_000 }, (err, out) => {
       ffRunning--;
       ffQueue.shift()?.();
-      done(err);
+      done(err, out);
     });
   }
+  const ffmpegThumb = (args, done) => ffRun("ffmpeg", args, 60_000, done);
 
   // thumbnails: Plex/Jellyfin/Emby/DLNA deliver their own, a folder needs ffmpeg (cached) or gets the picture itself
   async function thumb(req, res, id, key) {
@@ -464,6 +467,36 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     } catch {
       if (!res.headersSent) { res.writeHead(404); res.end(); }
     }
+  }
+
+  // codec, 10 bit, HDR and length of a video in a folder (the list shows whether the TV can play it);
+  // ffprobe reads only the start of the file, results are kept for the session
+  const probes = new Map(); // path + mtime -> info
+  let ffprobe = null;
+  execFile("ffprobe", ["-version"], (err) => { ffprobe = !err && process.env.TVTEST_NO_FFMPEG !== "1"; });
+  async function probeVideo(id, key) {
+    const s = find(id);
+    if (!s || s.type !== "folder" || ffprobe !== true) return null;
+    const full = await folderFile(s, key);
+    const st = await within(fs.promises.stat(full), FS_TIMEOUT, "timeout");
+    const ck = full + "\n" + st.mtimeMs;
+    if (probes.has(ck)) return probes.get(ck);
+    const info = await new Promise((resolve) => ffRun("ffprobe", ["-v", "error", "-print_format", "json", "-show_streams", "-show_format", full], 20_000, (err, out) => resolve(err ? null : readProbe(out))));
+    if (probes.size > 5000) probes.clear();
+    probes.set(ck, info);
+    return info;
+  }
+  function readProbe(out) {
+    let j;
+    try { j = JSON.parse(out); } catch { return null; }
+    const v = (j.streams ?? []).find((x) => x.codec_type === "video");
+    if (!v) return null;
+    const dur = Number(j.format?.duration);
+    return {
+      codec: v.codec_name ?? null, width: v.width, height: v.height, bits: /12/.test(v.pix_fmt ?? "") ? 12 : /10/.test(v.pix_fmt ?? "") ? 10 : 8,
+      hdr: v.color_transfer === "smpte2084" ? "HDR10" : v.color_transfer === "arib-std-b67" ? "HLG" : undefined,
+      duration: Number.isFinite(dur) ? Math.round(dur) : undefined, bitrate: Number(j.format?.bit_rate) || undefined,
+    };
   }
 
   // the item the TV shows (state.media.id = "src:<source id>:<key>")
@@ -526,6 +559,10 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       return true;
     }
     if (req.method === "GET" && p === "/api/sources/thumb") { await thumb(req, res, q.get("id"), q.get("key") ?? ""); return true; }
+    if (req.method === "GET" && p === "/api/sources/probe") {
+      sendJson(res, 200, { info: await probeVideo(q.get("id"), q.get("key") ?? "").catch(() => null) });
+      return true;
+    }
     return false;
   }
 
