@@ -619,6 +619,7 @@ window.I18N_EN = {
  "{name}: Korrektur aus. Der Haken schaltet die Kalibrierung dieses Grabbers ein.": "{name}: correction off. The checkbox switches on the calibration of this grabber.",
  "{name}: Noch keine Kalibrierung gespeichert. Der Haken legt den letzten Grundtest in Platz 1 ab und schaltet die Korrektur ein.": "{name}: no calibration saved yet. The checkbox stores the last basic test in slot 1 and switches the correction on.",
  "{name}: Noch keine Kalibrierung. Zuerst einen Grundtest mit diesem Grabber machen.": "{name}: no calibration yet. Run a basic test with this grabber first.",
+ "{name}: Korrektur pausiert. Ihr Speicherplatz wurde für eine andere Farbnorm berechnet. Mach einen neuen Grundtest und speichere ihn.": "{name}: correction paused. Its memory slot was computed for another color standard. Run a new basic test and save it.",
  "Kalibrieren": "Calibrate",
  "Diese Hyperion-Version kennt noch keine Kalibrierungen je Grabber. Bitte die Hyperion-Version des Forks aktualisieren.": "This Hyperion version does not know calibrations per grabber yet. Please update the fork's Hyperion version.",
  "Kein Grabber erkannt": "No grabber detected",

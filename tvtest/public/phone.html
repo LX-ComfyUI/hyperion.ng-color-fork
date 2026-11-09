@@ -6618,10 +6618,11 @@ function renderCorrectionSwitch() {
   const c = state?.grabberCorrection ?? { available: false, enable: false };
   const slotText = c.slot >= 0 ? tr("Platz {n}", { n: c.slot + 1 }) + (c.name ? ` (${c.name})` : "") : "";
   $("gx-corr").checked = !!c.enable;
-  $("gx-corr").disabled = !c.available;
+  $("gx-corr").disabled = !c.available || !!c.blocked;
   $("gx-corr").closest("label").classList.toggle("on", !!c.enable);
   $("gx-corr").closest("label").classList.toggle("off-limits", !c.available);
   $("gx-corr-note").textContent = !c.device ? tr("Kein Grabber erkannt. Sobald der Grabber Bilder liefert, erscheint hier sein Name.")
+    : c.blocked ? tr("{name}: Korrektur pausiert. Ihr Speicherplatz wurde für eine andere Farbnorm berechnet. Mach einen neuen Grundtest und speichere ihn.", { name: c.deviceName })
     : c.enable ? tr("{name}: {slot}. Gleicht den Farbfehler von Grabber oder Splitter aus und wirkt sofort auf die LEDs.", { name: c.deviceName, slot: slotText })
     : c.available && c.filled ? tr("{name}: Korrektur aus. Der Haken schaltet die Kalibrierung dieses Grabbers ein.", { name: c.deviceName })
     : c.available ? tr("{name}: Noch keine Kalibrierung gespeichert. Der Haken legt den letzten Grundtest in Platz 1 ab und schaltet die Korrektur ein.", { name: c.deviceName })
@@ -6744,10 +6745,11 @@ function renderBell() {
     const name = { all: tr("Alle Benachrichtigungen"), critical: tr("Nur kritische Benachrichtigungen"), off: tr("Stumm") }[m];
     return `<button type="button" data-mode="${m}" aria-pressed="${m === noteMode}" data-tip="${escHtml(name)}" aria-label="${escHtml(name)}">${NOTE_ICONS[m]}</button>`;
   }).join("");
-  const grabberHtml = grabberNotes.map((n) => n.kind === "newGrabber"
-    ? `<div class="tb-note"><b>${escHtml(t.ntNewGrabber.replace("{name}", n.name ?? n.device))}</b><p>${escHtml(t.ntNewGrabberText)}</p>`
-      + `<div class="tb-note-actions"><a href="#card-gx" data-close>${escHtml(tr("Kalibrieren"))}</a><button type="button" data-seen>${escHtml(t.ntSeen)}</button></div></div>`
-    : "").join("");
+  const grabberHtml = grabberNotes.map((n) => {
+    const text = GrabberTestReport.noteText({ ...n, name: n.name ?? n.device }, I18N.lang);
+    return `<div class="tb-note"><b>${escHtml(text.title)}</b><p>${escHtml(text.text)}</p>`
+      + `<div class="tb-note-actions"><a href="#card-gx" data-close>${escHtml(tr("Kalibrieren"))}</a><button type="button" data-seen>${escHtml(t.ntSeen)}</button></div></div>`;
+  }).join("");
   const list = all.slice().reverse().map((n) => {
     const info = noteInfo(n);
     const target = info.target ?? n.target;
@@ -6873,7 +6875,7 @@ async function loadGrabberReport() {
     } catch {}
     GrabberTestReport.renderSlots($("gx-slots"), {
       grabberTest: r, device: r.device, lang: I18N.lang, onAction: grabberSlotAction,
-      devices, onSelectDevice: selectGrabber,
+      devices, onSelectDevice: selectGrabber, yuvInfo: r.yuvInfo,
     });
     renderCorrectionSwitch();
     renderGxSave(r);
@@ -6894,7 +6896,7 @@ function renderGxSave(r) {
   const entry = device ? GrabberTestReport.grabberEntry(r, device) : null;
   const slots = Array.from({ length: GrabberTestReport.SLOT_COUNT }, (_, i) => entry?.slots?.[i] ?? null);
   const pending = !!basic?.steps?.length && !!device && GrabberTestReport.sameGrabber(GrabberTestReport.testDevice(basic), device)
-    && !slots.some((sl) => sl && sl.basedOn === basic.date) && dismissed !== basic.date;
+    && !slots.some((sl) => sl && sl.basedOn === basic.date) && dismissed !== basic.date && GrabberTestReport.basicFits(r, device);
   if (!pending) { box.hidden = true; box.innerHTML = ""; delete box.dataset.key; return; }
   const key = JSON.stringify([basic.date, slots.map((sl) => !!sl), I18N.lang]);
   box.hidden = false;
