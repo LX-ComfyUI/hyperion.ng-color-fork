@@ -1153,6 +1153,7 @@
   "info_restart_rightback": "Hyperion will be right back immediately!",
   "info_restart_title": "Currently restarting...",
   "login_show_password": "Show password",
+  "login_password_too_short": "The password has at least 8 characters.",
   "login_remember": "Remember this device for",
   "login_remember_1d": "1 day",
   "login_remember_7d": "7 days",

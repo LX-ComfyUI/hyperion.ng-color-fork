@@ -29,7 +29,8 @@
               <p class="help-block" id="remember_hint" data-i18n="login_remember_hint_off">Without the tick the login ends when the browser is closed.</p>
             </div>
             <div class="form-group">
-              <button type="submit" class="btn btn-sm btn-success" id="btn_password" disabled><i class="fa fa-fw fa-unlock"></i>Login</button>
+              <button type="submit" class="btn btn-sm btn-success" id="btn_password"><i class="fa fa-fw fa-unlock"></i>Login</button>
+              <p class="help-block text-danger" id="pw_too_short" style="display:none" data-i18n="login_password_too_short">The password has at least 8 characters.</p>
             </div>
           </form>
         </div>
@@ -47,7 +48,7 @@
   $('#remember_days').val(getStorage('rememberDays') || '30');
   if (!$('#remember_days').val()) $('#remember_days').val('30');
 
-  const showRememberHint = function () {
+  var showRememberHint = function () {
     const on = $('#remember_device').prop('checked');
     $('#remember_hint').attr('data-i18n', on ? 'login_remember_hint_on' : 'login_remember_hint_off')
       .text($.i18n(on ? 'login_remember_hint_on' : 'login_remember_hint_off'));
@@ -55,13 +56,10 @@
   $('#remember_device').off().on('change', showRememberHint);
   showRememberHint();
 
-  $('#password').off().on('input', function (e) {
-    if (e.currentTarget.value.length >= 8) {
-      $('#btn_password').prop('disabled', false);
-    }
-    else {
-      $('#btn_password').prop('disabled', true);
-    }
+  // Fork: the button stays usable. A password filled in by the browser (password manager) only reaches
+  // the page with the first click and sends no input event, a disabled button never got enabled.
+  $('#password').off().on('input', function () {
+    $('#pw_too_short').hide();
   });
 
   $('#show_pw').off().on('change', function (e) {
@@ -69,6 +67,11 @@
   });
 
   $('#btn_password').off().on('click', function () {
+    if (document.getElementById('password').value.length < 8) {
+      $('#pw_too_short').show();
+      $('#password').focus();
+      return false;
+    }
     const remember = $('#remember_device').prop('checked');
     const days = Number($('#remember_days').val()) || 30;
     setStorage('rememberDevice', remember);

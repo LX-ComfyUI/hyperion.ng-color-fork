@@ -59,14 +59,15 @@ $(function() {
 			if(!mInit)
 			{
 				mInit = true;
-				$('#main-nav').removeAttr('style');
+				// only the drawer position: the login page hides the menu with display:none, that stays
+				$('#main-nav').css('left', '');
 				$(".navbar-toggle").addClass("closed");
 			}
 			topOffset = 56;
 		}
 		else
 		{
-			$( "#main-nav" ).removeAttr('style');
+			$( "#main-nav" ).css('left', '');
 			mInit = false;
 		}
 
