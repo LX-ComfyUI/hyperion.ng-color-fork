@@ -17,6 +17,9 @@ const tags = (xml, name) => [...String(xml ?? "").matchAll(new RegExp(`<(?:[\\w.
 const text = (xml, name) => { const t = tags(xml, name)[0]; return t ? xmlUnesc(t.body).trim() : null; };
 const attr = (attrs, name) => { const m = new RegExp(`(?:^|\\s)${name}\\s*=\\s*"([^"]*)"`, "i").exec(attrs ?? ""); return m ? xmlUnesc(m[1]) : null; };
 
+// the XML readers, also used for WebDAV (webdav.mjs)
+export const Xml = { tags, text, attr, unesc: xmlUnesc };
+
 async function fetchText(url, init = {}) {
   let r;
   try {

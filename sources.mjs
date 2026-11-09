@@ -1,7 +1,8 @@
 // More sources for the media library, added by the user: a folder on the server (a NAS share mounted
 // there, read only; netshare.mjs understands network paths and helps mounting), Plex (address + token,
 // or a login with a code on plex.tv/link), Jellyfin and Emby (address + API key, or user + password,
-// which is used once for a key and never kept) and DLNA media servers (dlna.mjs, no login). The pages browse them
+// which is used once for a key and never kept), DLNA media servers (dlna.mjs, no login) and WebDAV
+// (webdav.mjs, user + password kept on the server). The pages browse them
 // through this server and the TV plays them through it too (/media/src/...), so tokens never leave the
 // server and the TV needs no access to the NAS or the media server. Files are played as they are
 // (direct play); whether the TV browser can play them is marked from the codec the server knows.
@@ -11,10 +12,11 @@ import { Readable } from "node:stream";
 import { execFile } from "node:child_process";
 import { randomBytes, createHash } from "node:crypto";
 import * as Dlna from "./dlna.mjs";
+import * as Webdav from "./webdav.mjs";
 import { parseInput, netLabel, resolveNet, netMountOf, probe, within, mountPlan, countDir, pickerRoots, environment } from "./netshare.mjs";
 
-const TYPES = ["folder", "plex", "jellyfin", "emby", "dlna"];
-const LABEL = { plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", dlna: "DLNA" };
+const TYPES = ["folder", "plex", "jellyfin", "emby", "dlna", "webdav"];
+const LABEL = { plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", dlna: "DLNA", webdav: "WebDAV" };
 // Jellyfin and Emby share their API (Emby under /emby); their ids: Jellyfin GUIDs, Emby numbers
 const MB = new Set(["jellyfin", "emby"]);
 const MB_ID = /^[\w-]{1,64}$/;
@@ -53,7 +55,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   }
   const find = (id) => list.find((s) => s.id === id) ?? null;
   // what the pages see: never the token
-  const view = (s) => ({ id: s.id, type: s.type, name: s.name, path: s.path, remote: s.remote, url: s.url, hasToken: !!s.token, user: s.user, status: s.status ?? null });
+  const view = (s) => ({ id: s.id, type: s.type, name: s.name, path: s.path, remote: s.remote, url: s.url, hasToken: !!(s.token || s.password), user: s.user, status: s.status ?? null });
 
   // a typed folder: a path on the server, or a network path (\\NAS\share\…) that is looked up among the
   // shares the server has mounted
@@ -82,6 +84,11 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       out.url = cleanUrl(input?.url ?? old?.url, true);
       const d = await Dlna.describe(out.url, true).catch((e) => { throw e.message.startsWith("Antwort 404") ? new Error("Unter dieser Adresse liegt keine Gerätebeschreibung. Am einfachsten „Im Netz suchen“ benutzen.") : e; });
       if (!out.name) out.name = d.name;
+    } else if (type === "webdav") {
+      out.url = cleanUrl(input?.url ?? old?.url);
+      out.user = String(input?.user ?? "").trim() || old?.user || "";
+      out.password = String(input?.password ?? "") || old?.password || "";
+      if (!out.name) out.name = decodeURIComponent(out.url.split("/").filter(Boolean).at(-1) ?? "") || "WebDAV";
     } else if (type === "plex" && input?.plexLink) {
       // signed in with a code: the server's own token from the sign-in, the page never sees it
       const link = plexLinks.get(String(input.plexLink.pin));
@@ -111,7 +118,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   // ---- talking to Plex, Jellyfin and Emby ----
   const headers = (s) => (s.type === "plex"
     ? { "X-Plex-Token": s.token, Accept: "application/json", "X-Plex-Client-Identifier": CLIENT.id, "X-Plex-Product": CLIENT.product }
-    : MB.has(s.type) ? { "X-Emby-Token": s.token, Accept: "application/json" } : {});
+    : MB.has(s.type) ? { "X-Emby-Token": s.token, Accept: "application/json" } : s.type === "webdav" ? Webdav.auth(s) : {});
   const base = (s) => s.url + (s.type === "emby" ? "/emby" : "");
   async function api(s, p, init = {}) {
     let r;
@@ -206,6 +213,10 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       const j = await api(s, "/library/sections");
       const n = j.MediaContainer?.Directory?.length ?? 0;
       return `Plex verbunden, ${n} ${n === 1 ? "Bibliothek" : "Bibliotheken"}`;
+    }
+    if (s.type === "webdav") {
+      const top = await Webdav.list(s, "");
+      return `WebDAV verbunden, ${top.length} ${top.length === 1 ? "Eintrag" : "Einträge"} oben`;
     }
     if (s.type === "dlna") {
       const d = await Dlna.describe(s.url, true);
@@ -306,7 +317,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     const s = find(id);
     if (!s) throw new Error("Quelle nicht gefunden");
     try {
-      const out = s.type === "folder" ? await browseFolder(s, key) : s.type === "plex" ? await browsePlex(s, key) : s.type === "dlna" ? await browseDlna(s, key) : await browseJellyfin(s, key);
+      const out = s.type === "folder" ? await browseFolder(s, key) : s.type === "plex" ? await browsePlex(s, key) : s.type === "dlna" ? await browseDlna(s, key) : s.type === "webdav" ? await browseWebdav(s, key) : await browseJellyfin(s, key);
       setStatus(s, true);
       return out;
     } catch (e) {
@@ -324,6 +335,15 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     if (dlnaItems.size > 20_000) dlnaItems.clear();
     return { entries: entries.map(({ url, art, ...e }) => ({ ...e, thumb: art ? true : undefined })), truncated, crumbs: [] };
   }
+  async function browseWebdav(s, key) {
+    const all = await Webdav.list(s, key);
+    const entries = all.slice(0, MAX_ENTRIES).map((e) => {
+      if (e.dir) return { key: e.key, kind: "folder", name: e.name, date: e.date };
+      const kind = mediaKind(e.name);
+      return kind ? { key: e.key, kind, name: e.name, size: e.size, date: e.date, container: path.extname(e.name).slice(1).toLowerCase(), thumb: kind === "image" ? true : undefined } : null;
+    }).filter(Boolean);
+    return { entries, truncated: all.length > MAX_ENTRIES, crumbs: [] };
+  }
   async function dlnaItem(s, key) {
     const hit = dlnaItems.get(s.id + "\n" + key);
     if (hit) return hit;
@@ -340,6 +360,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       try {
         if (s.type === "folder") await ready(s.path);
         else if (s.type === "dlna") await Dlna.describe(s.url, true);
+        else if (s.type === "webdav") await Webdav.list(s, "");
         else await api(s, s.type === "plex" ? "/identity" : "/System/Info");
         setStatus(s, true);
       } catch (e) { setStatus(s, false, e.message); }
@@ -403,6 +424,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     try {
       if (s.type === "folder") return await serveLocal(req, res, await folderFile(s, key));
       if (s.type === "dlna") return await proxy(req, res, (await dlnaItem(s, key)).url, s);
+      if (s.type === "webdav") return await proxy(req, res, Webdav.urlOf(s, key), s);
       // Jellyfin/Emby: videos through the stream endpoint (static = the file as it is), pictures as download
       if (MB.has(s.type) && req.headers["x-kind"] !== "image") {
         if (!MB_ID.test(key)) throw new Error("not found");
@@ -418,14 +440,16 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   // at most two ffmpeg/ffprobe at a time: for a folder on a NAS each one reads over the network
   let ffRunning = 0;
   const ffQueue = [];
-  function ffRun(tool, args, timeout, done) {
-    if (ffRunning >= 2) return ffQueue.push(() => ffRun(tool, args, timeout, done));
+  // input: a stream for stdin (pipe:0), e.g. a download
+  function ffRun(tool, args, timeout, done, input = null) {
+    if (ffRunning >= 2) return ffQueue.push(() => ffRun(tool, args, timeout, done, input));
     ffRunning++;
-    execFile(tool, args, { timeout, maxBuffer: 4_000_000 }, (err, out) => {
+    const child = execFile(tool, args, { timeout, maxBuffer: 4_000_000 }, (err, out) => {
       ffRunning--;
       ffQueue.shift()?.();
       done(err, out);
     });
+    if (input) input.on("error", () => child.stdin.destroy()).pipe(child.stdin).on("error", () => {});
   }
   const ffmpegThumb = (args, done) => ffRun("ffmpeg", args, 60_000, done);
 
@@ -441,6 +465,22 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       if (MB.has(s.type)) {
         if (!MB_ID.test(key)) throw new Error("bad");
         return await proxy(req, res, `${base(s)}/Items/${key}/Images/Primary?maxWidth=320&quality=80`, s);
+      }
+      // WebDAV: pictures made small by ffmpeg from the download (kept like the folder thumbnails),
+      // without ffmpeg the picture itself; videos get none
+      if (s.type === "webdav") {
+        if (mediaKind(key) !== "image") throw new Error("bad");
+        const url = Webdav.urlOf(s, key);
+        if (ffmpeg !== true) return await proxy(req, res, url, s);
+        const out = path.join(thumbsDir, "src-" + createHash("sha1").update(s.id + url).digest("hex").slice(0, 20) + ".jpg");
+        if (!fs.existsSync(out)) {
+          const r = await fetch(url, { headers: headers(s), signal: AbortSignal.timeout(60_000) });
+          if (!r.ok || !r.body) throw new Error("bad");
+          await new Promise((resolve) => ffRun("ffmpeg", ["-v", "error", "-y", "-i", "pipe:0", "-frames:v", "1", "-vf", "scale=320:-2", out], 60_000, resolve, Readable.fromWeb(r.body)));
+        }
+        if (!fs.existsSync(out)) throw new Error("bad");
+        res.writeHead(200, { "Content-Type": "image/jpeg", "Cache-Control": "max-age=86400" });
+        return fs.createReadStream(out).pipe(res);
       }
       if (s.type === "dlna") {
         const it = await dlnaItem(s, key);
