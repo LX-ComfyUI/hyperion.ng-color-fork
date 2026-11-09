@@ -8,6 +8,7 @@
 #include <QString>
 
 #include <utils/ColorRgb.h>
+#include <utils/ColorSys.h>
 #include <utils/Image.h>
 
 class VideoProbe
@@ -25,6 +26,10 @@ public:
 	/// The device the grabber delivers frames from (also without a measurement) and how old its
 	/// newest frame is; does not start a measurement.
 	static QJsonObject current();
+
+	/// Called by the video grabber when it opens a device: whether its pixel format is YUV (only then
+	/// the YUV standard matters) and the standard the driver names ("bt601", "bt709", empty if none)
+	static void setYuvSource(bool isYuv, const QString& driverMatrix);
 };
 
 // fork: color correction of the video grabber, a 3x3 matrix the grabber test computes from the
@@ -32,9 +37,12 @@ public:
 // BT.601 decoded). Every row sums up to 1, so grays pass unchanged and gamma, white point and gray
 // curve keep their calibration.
 // Each grabber model (V4L2 device name) has its own calibrations in the global setting grabberTest:
-//   grabbers: { "<device name>": { "enable": bool, "active": slot, "slots": [ { "matrix": [9] } | null, ... ] } }
+//   grabbers: { "<device name>": { "enable": bool, "active": slot, "yuvMatrix": "bt601" | "bt709",
+//                                  "slots": [ { "matrix": [9], "yuvMatrix": "bt601" | "bt709" } | null, ... ] } }
 // The frames of a device use the active slot of that device, so a grabber change switches the
 // calibration by itself. Without "grabbers" the older single "correction" applies to every device.
+// "yuvMatrix" of a grabber is the standard Hyperion decodes its YUV frames with (default BT.601). A slot
+// was computed from frames of one standard (default BT.601) and only applies while the grabber uses it.
 class GrabberColorCorrection
 {
 public:
@@ -47,4 +55,7 @@ public:
 	/// Writes the frame of device corrected to out. Returns false and leaves out alone while that
 	/// device has no active correction.
 	static bool apply(const Image<ColorRgb>& in, Image<ColorRgb>& out, const QString& device);
+
+	/// The standard the YUV frames of device are decoded with
+	static ColorSys::YuvMatrix yuvMatrix(const QString& device);
 };

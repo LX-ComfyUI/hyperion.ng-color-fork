@@ -897,6 +897,22 @@ void V4L2Grabber::init_device(VideoStandard videoStandard)
 		return;
 	}
 
+	// fork: the YUV standard the driver names, a hint for the grabber test; Hyperion decodes with
+	// the standard set for this grabber (see GrabberColorCorrection::yuvMatrix)
+	{
+		const bool isYuv = _pixelFormat == PixelFormat::YUYV || _pixelFormat == PixelFormat::UYVY
+			|| _pixelFormat == PixelFormat::NV12 || _pixelFormat == PixelFormat::I420;
+		QString driverMatrix;
+		if (isYuv && fmt.fmt.pix.priv == V4L2_PIX_FMT_PRIV_MAGIC)
+		{
+			const unsigned int encoding = fmt.fmt.pix.ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT
+				? fmt.fmt.pix.ycbcr_enc : V4L2_MAP_YCBCR_ENC_DEFAULT(fmt.fmt.pix.colorspace);
+			driverMatrix = encoding == V4L2_YCBCR_ENC_709 ? QStringLiteral("bt709")
+				: encoding == V4L2_YCBCR_ENC_601 ? QStringLiteral("bt601") : QString();
+		}
+		VideoProbe::setYuvSource(isYuv, driverMatrix);
+	}
+
 	switch (_ioMethod)
 	{
 		case IO_METHOD_READ:
@@ -1188,6 +1204,7 @@ bool V4L2Grabber::process_image(const void *p, int size)
 			if (!_threadManager->_threads[i]->isBusy())
 			{
 				_threadManager->_threads[i]->setup(_pixelFormat, (uint8_t*)p, size, _width, _height, _lineLength, _cropLeft, _cropTop, _cropBottom, _cropRight, _videoMode, _flipMode, _pixelDecimation);
+				_threadManager->_threads[i]->setYuvMatrix(GrabberColorCorrection::yuvMatrix(_currentDeviceName));
 				_threadManager->_threads[i]->process();
 				result = true;
 				break;

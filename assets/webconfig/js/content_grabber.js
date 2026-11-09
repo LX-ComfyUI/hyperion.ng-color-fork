@@ -95,6 +95,7 @@ $(document).ready(function () {
       // im Expertenmodus wählen, speichern, umbenennen und löschen. Welcher Grabber gerade Bilder
       // liefert, fragt der Fork-Befehl "grabbertest" mit "peek" ab.
       let grabberDevice = null;
+      let grabberYuv = null;
       const lang = storedLang === 'de' ? 'de' : 'en';
       const changeSlots = function (op, args) {
         const current = globalThis.serverConfig.grabberTest || {};
@@ -114,7 +115,8 @@ $(document).ready(function () {
           lang,
           onAction: storedAccess === 'expert' ? changeSlots : null,
           toggle: true,
-          buttonClass: 'btn btn-default btn-sm'
+          buttonClass: 'btn btn-default btn-sm',
+          yuvInfo: grabberYuv
         });
         GrabberTestReport.render(document.getElementById('grabbertest_report'), {
           basic: result.basic,
@@ -135,6 +137,7 @@ $(document).ready(function () {
       sendAsyncToHyperion('grabbertest', '', { peek: true }).then(function (reply) {
         if (reply && reply.success && reply.info && reply.info.device) {
           grabberDevice = reply.info.device;
+          grabberYuv = reply.info.yuv || null;
           if (document.getElementById('grabbertest_report')) renderGrabberTest();
         }
       });

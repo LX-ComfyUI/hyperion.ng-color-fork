@@ -24,6 +24,21 @@ constexpr qint64 ACTIVE_MS = 5000;
 
 using Rgb = std::array<double, 3>;
 
+// what the grabber said about the opened device; before that the setting may matter
+QMutex yuvSourceMutex;
+bool yuvApplies = true;
+QString yuvDriverMatrix;
+
+QJsonObject yuvInfo(const QString& device)
+{
+	QJsonObject info;
+	info["matrix"] = GrabberColorCorrection::yuvMatrix(device) == ColorSys::YuvMatrix::BT709 ? "bt709" : "bt601";
+	const QMutexLocker locker(&yuvSourceMutex);
+	info["applies"] = yuvApplies;
+	info["driver"] = yuvDriverMatrix;
+	return info;
+}
+
 struct FrameStats
 {
 	Rgb mean {};
@@ -179,6 +194,7 @@ QJsonObject VideoProbe::sample(bool reset)
 	result["width"] = state.width;
 	result["height"] = state.height;
 	result["frames"] = double(state.frames);
+	result["yuv"] = yuvInfo(state.device);
 	// age of the newest measured frame, -1 before the first one
 	result["ageMs"] = state.lastFrameMs > 0 ? double(now - state.lastFrameMs) : -1.0;
 
@@ -235,10 +251,18 @@ QJsonObject VideoProbe::current()
 	{
 		const QMutexLocker locker(&seenMutex);
 		result["device"] = seenDevice;
+		result["yuv"] = yuvInfo(seenDevice);
 	}
 	result["ageMs"] = seen > 0 ? double(now - seen) : -1.0;
 	result["correctionActive"] = GrabberColorCorrection::isActive();
 	return result;
+}
+
+void VideoProbe::setYuvSource(bool isYuv, const QString& driverMatrix)
+{
+	const QMutexLocker locker(&yuvSourceMutex);
+	yuvApplies = isYuv;
+	yuvDriverMatrix = driverMatrix;
 }
 
 // --- grabber color correction ---
@@ -256,10 +280,12 @@ struct DeviceCorrection
 };
 
 std::atomic<bool> anyCorrection { false };
+std::atomic<bool> anyYuvMatrix { false };
 std::atomic<bool> correctionActive { false };
 QMutex correctionMutex;
 // key = device name; the empty key holds the older single correction that applies to every device
 QHash<QString, DeviceCorrection> correctionByDevice;
+QHash<QString, ColorSys::YuvMatrix> yuvMatrixByDevice; // only devices that differ from the default
 QString lastLogged; // device and slot of the last log line, logged again on a change
 
 void applyQ14(const uint8_t* src, uint8_t* dst, int pixels, const std::array<int16_t, 9>& k)
@@ -346,6 +372,7 @@ void GrabberColorCorrection::configure(const QJsonObject& grabberTest)
 {
 	QSharedPointer<Logger> log = Logger::getInstance("V4L2");
 	QHash<QString, DeviceCorrection> next;
+	QHash<QString, ColorSys::YuvMatrix> nextYuv;
 	const auto add = [&](const QString& device, const QJsonObject& entry, int slot) {
 		DeviceCorrection c;
 		c.slot = slot;
@@ -371,9 +398,23 @@ void GrabberColorCorrection::configure(const QJsonObject& grabberTest)
 			const QJsonObject g = it.value().toObject();
 			const int slot = g["active"].toInt(-1);
 			const QJsonArray slotList = g["slots"].toArray();
+			const QString matrix = g["yuvMatrix"].toString("bt601");
+			if (!it.key().isEmpty() && matrix == "bt709")
+			{
+				nextYuv.insert(it.key(), ColorSys::YuvMatrix::BT709);
+			}
 			if (!it.key().isEmpty() && g["enable"].toBool(false) && slot >= 0 && slot < slotList.size() && slotList[slot].isObject())
 			{
-				add(it.key(), slotList[slot].toObject(), slot);
+				const QJsonObject entry = slotList[slot].toObject();
+				// computed for the frames of the other standard it would add its own error
+				if (entry["yuvMatrix"].toString("bt601") == matrix)
+				{
+					add(it.key(), entry, slot);
+				}
+				else
+				{
+					Info(log, "Grabber color correction of %s paused: its slot %d was computed for another YUV standard", QSTRING_CSTR(it.key()), slot + 1);
+				}
 			}
 		}
 	}
@@ -389,9 +430,11 @@ void GrabberColorCorrection::configure(const QJsonObject& grabberTest)
 	{
 		const QMutexLocker locker(&correctionMutex);
 		correctionByDevice = next;
+		yuvMatrixByDevice = nextYuv;
 		lastLogged.clear();
 	}
 	anyCorrection.store(!next.isEmpty(), std::memory_order_relaxed);
+	anyYuvMatrix.store(!nextYuv.isEmpty(), std::memory_order_relaxed);
 	if (next.isEmpty())
 	{
 		correctionActive.store(false, std::memory_order_relaxed);
@@ -402,6 +445,16 @@ void GrabberColorCorrection::configure(const QJsonObject& grabberTest)
 bool GrabberColorCorrection::isActive()
 {
 	return correctionActive.load(std::memory_order_relaxed);
+}
+
+ColorSys::YuvMatrix GrabberColorCorrection::yuvMatrix(const QString& device)
+{
+	if (!anyYuvMatrix.load(std::memory_order_relaxed))
+	{
+		return ColorSys::YuvMatrix::BT601;
+	}
+	const QMutexLocker locker(&correctionMutex);
+	return yuvMatrixByDevice.value(device, ColorSys::YuvMatrix::BT601);
 }
 
 bool GrabberColorCorrection::apply(const Image<ColorRgb>& in, Image<ColorRgb>& out, const QString& device)

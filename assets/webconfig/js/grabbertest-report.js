@@ -82,6 +82,8 @@
       f_darkInvisible: "Sehr dunkle Farben gehen verloren: {list}.",
       f_darkHue: "Dunkle Farben verlieren ihren Farbton: {list}.",
       f_darkHueGood: "Auch dunkle Farben behalten ihren Farbton.",
+      f_yuvWrong: "Die Farbnorm passt nicht: Die Messwerte folgen {best}, Hyperion hat beim Test aber mit {used} umgerechnet (im Mittel {bestErr} Stufen Abstand zu {best}, {usedErr} zu {used}). Dadurch kommen Farben verfälscht und teils abgeschnitten an. Stelle oben bei den Kalibrierungen dieses Grabbers die Farbnorm auf {best} und wiederhole den Grundtest.",
+      f_yuvGood: "Die Farbnorm passt: Die Messwerte folgen {best}, und Hyperion rechnet damit um.",
       f_crosstalk: "Farben sind nicht rein: {list}. Das deutet auf eine abweichende Farbmatrix (BT.601/BT.709) oder eine Farbsättigungs-Einstellung hin.",
       f_strengthGood: "Alle Farben kommen ungefähr gleich stark an wie Grau (Abweichung höchstens {v} %).",
       f_strength: "Farben kommen unterschiedlich stark an: {list} (bei Stufe 128, Grau 128 = 100 %).{effect}",
@@ -109,10 +111,27 @@
       corrStale: "Dieser Grundtest ist neuer als die eingeschaltete Korrektur. Mit ihr bliebe hier eine Abweichung von im Mittel {mean}, höchstens {max} Stufen.",
       corrStaleBad: "Die eingeschaltete Korrektur passt nicht mehr zu diesem Grundtest. Berechne sie neu.",
       corrLost: "Nicht korrigierbar, weil der Grabber diese Werte schon abschneidet: {list}. Sie werden so gut wie möglich angenähert.",
-      corrHow: "Die Korrektur ist eine 3×3-Farbmatrix, die Hyperion direkt auf das Grabber-Bild anwendet, vor allen anderen Einstellungen. Grau bleibt dabei unverändert, Gamma, Weißpunkt und Graukurve bleiben also gültig. Prüfe nach dem Einschalten aber die Farbkalibrierung (Rot, Grün, Blau, Cyan, Magenta, Gelb).",
+      corrHow: "Die Korrektur ist eine 3×3-Farbmatrix, die Hyperion direkt auf das Grabber-Bild anwendet, vor allen anderen Einstellungen. Grau bleibt dabei unverändert, Gamma, Weißpunkt und Graukurve bleiben also gültig. Prüfe nach dem Einschalten aber die Testfarben (Rot, Grün, Blau, Cyan, Magenta, Gelb).",
       corrWhere: "Ein- und ausschalten und zwischen den Speicherplätzen wechseln kannst du oben bei den Kalibrierungen dieses Grabbers (im Hyperion-WebUI im Expertenmodus).",
       corrMatrix: "Matrix aus dem Grundtest vom {date}",
       corrSwitch: "Grabber-Farbkorrektur aktiv",
+      corrBlocked: "Die Korrektur pausiert: Ihr Speicherplatz wurde für {slot} berechnet, eingestellt ist {now}. Mach einen neuen Grundtest und speichere ihn, oder stelle die Farbnorm zurück.",
+      yuvStale: "Dieser Grundtest wurde mit {test} umgerechnet, eingestellt ist jetzt {now}. Wiederhole den Test, damit die Werte wieder stimmen.",
+      slYuvTitle: "Farbnorm (YUV)",
+      slYuvHint: "Mit dieser Norm rechnet Hyperion das YUV-Bild dieses Grabbers in RGB um. Eine falsche Norm verfälscht Farben und schneidet kräftige Farben ab, Grau bleibt gleich. Der Grundtest zeigt, welche passt. Eine Änderung wirkt sofort.",
+      slYuvRecommended: "{norm} (empfohlen)",
+      slYuvDefault: "{norm} (Standard)",
+      slYuvDriver: "Der Treiber des Grabbers nennt {norm}.",
+      slYuvAdvise: "Der letzte Grundtest folgt {best}, eingestellt ist {now}. Stelle auf {best} um und wiederhole den Grundtest.",
+      slYuvNa: "Die Farbnorm gilt nur für YUV-Bildformate. Der Grabber nutzt gerade ein anderes Format, die Einstellung wirkt deshalb nicht.",
+      slYuvNoSignal: "Trifft die No-Signal-Erkennung nach einem Wechsel nicht mehr, kalibriere sie neu: Ihr Referenzbild stammt vielleicht aus der anderen Norm.",
+      slYuvSlot: "Berechnet für {slot}. Läuft erst wieder, wenn {slot} eingestellt ist.",
+      slYuvTest: "Der letzte Grundtest wurde mit {test} umgerechnet, eingestellt ist {now}. Mach zuerst einen neuen Grundtest, um hier zu speichern.",
+      errYuvTest: "Der letzte Grundtest wurde mit einer anderen Farbnorm umgerechnet. Mach zuerst einen neuen Grundtest.",
+      ntYuvMismatch: "Farbnorm passt nicht: {name}",
+      ntYuvMismatchText: "Der letzte Grundtest folgt {best}, eingestellt ist {now}. Farben kommen dadurch verfälscht an. Stelle die Farbnorm bei den Kalibrierungen dieses Grabbers um und wiederhole den Grundtest.",
+      ntYuvPaused: "Grabber-Farbkorrektur pausiert: {name}",
+      ntYuvPausedText: "Der aktive Speicherplatz wurde für {slot} berechnet, eingestellt ist {now}. Mach einen neuen Grundtest und speichere ihn.",
       slTitle: "Kalibrierungen dieses Grabbers",
       slSelect: "Grabber",
       slSelectHint: "Der Grabber, den Hyperion verwendet (wie im WebUI unter Aufnahme Hardware → USB-Aufnahme → Gerät gefunden). Ein anderer stellt Hyperion um.",
@@ -221,6 +240,8 @@
       f_darkInvisible: "Very dark colors get lost: {list}.",
       f_darkHue: "Dark colors lose their hue: {list}.",
       f_darkHueGood: "Dark colors keep their hue too.",
+      f_yuvWrong: "The color standard does not match: the measured values follow {best}, but Hyperion converted with {used} during the test (on average {bestErr} levels away from {best}, {usedErr} from {used}). Colors therefore arrive falsified and partly clipped. Set the color standard to {best} in the calibrations of this grabber above and repeat the basic test.",
+      f_yuvGood: "The color standard matches: the measured values follow {best}, and Hyperion converts with it.",
       f_crosstalk: "Colors are not pure: {list}. This points to a different color matrix (BT.601/BT.709) or a saturation setting.",
       f_strengthGood: "All colors arrive about as strong as gray (at most {v} % off).",
       f_strength: "Colors arrive with different strength: {list} (at level 128, gray 128 = 100 %).{effect}",
@@ -248,10 +269,27 @@
       corrStale: "This basic test is newer than the active correction. With it, a deviation of {mean} on average, at most {max} levels would remain here.",
       corrStaleBad: "The active correction no longer fits this basic test. Compute it again.",
       corrLost: "Cannot be corrected because the grabber already clips these values: {list}. They are approximated as well as possible.",
-      corrHow: "The correction is a 3×3 color matrix that Hyperion applies directly to the grabber picture, before all other settings. Gray stays unchanged, so gamma, white point and gray curve stay valid. After switching it on, check the color calibration though (red, green, blue, cyan, magenta, yellow).",
+      corrHow: "The correction is a 3×3 color matrix that Hyperion applies directly to the grabber picture, before all other settings. Gray stays unchanged, so gamma, white point and gray curve stay valid. After switching it on, check the test colors though (red, green, blue, cyan, magenta, yellow).",
       corrWhere: "You switch the correction on and off and change between the memory slots above at the calibrations of this grabber (in the Hyperion WebUI in expert mode).",
       corrMatrix: "Matrix from the basic test of {date}",
       corrSwitch: "Grabber color correction active",
+      corrBlocked: "The correction is paused: its memory slot was computed for {slot}, {now} is set. Run a new basic test and save it, or set the color standard back.",
+      yuvStale: "This basic test was converted with {test}, {now} is set now. Repeat the test to get valid values again.",
+      slYuvTitle: "Color standard (YUV)",
+      slYuvHint: "Hyperion converts the YUV picture of this grabber to RGB with this standard. A wrong standard falsifies colors and clips strong colors, gray stays the same. The basic test shows which one matches. A change takes effect right away.",
+      slYuvRecommended: "{norm} (recommended)",
+      slYuvDefault: "{norm} (default)",
+      slYuvDriver: "The driver of the grabber names {norm}.",
+      slYuvAdvise: "The last basic test follows {best}, {now} is set. Switch to {best} and repeat the basic test.",
+      slYuvNa: "The color standard only applies to YUV picture formats. The grabber uses another format right now, so this setting has no effect.",
+      slYuvNoSignal: "If the no-signal detection stops matching after a change, calibrate it again: its reference picture may come from the other standard.",
+      slYuvSlot: "Computed for {slot}. Runs again once {slot} is set.",
+      slYuvTest: "The last basic test was converted with {test}, {now} is set. Run a new basic test first to save it here.",
+      errYuvTest: "The last basic test was converted with another color standard. Run a new basic test first.",
+      ntYuvMismatch: "Color standard does not match: {name}",
+      ntYuvMismatchText: "The last basic test follows {best}, {now} is set. Colors therefore arrive falsified. Change the color standard in the calibrations of this grabber and repeat the basic test.",
+      ntYuvPaused: "Grabber color correction paused: {name}",
+      ntYuvPausedText: "The active memory slot was computed for {slot}, {now} is set. Run a new basic test and save it.",
       slTitle: "Calibrations of this grabber",
       slSelect: "Grabber",
       slSelectHint: "The grabber Hyperion uses (like in the WebUI under Capturing Hardware → USB Capture → Device discovered). Choosing another one switches Hyperion over.",
@@ -336,6 +374,57 @@
   const avg = (v) => (v[0] + v[1] + v[2]) / 3;
   const isRgb = (v) => Array.isArray(v) && v.length === 3 && v.every((x) => Number.isFinite(x));
   const validSteps = (result) => (result && Array.isArray(result.steps) ? result.steps.filter((s) => isRgb(s.sent) && isRgb(s.got)) : []);
+
+  // --- YUV color standard ---
+
+  const YUV_NAMES = { bt601: "BT.601", bt709: "BT.709" };
+  const YUV_LUMA = { bt601: [0.299, 0.114], bt709: [0.2126, 0.0722] };
+  const YUV_PIXEL_FORMATS = ["YUYV", "UYVY", "NV12", "I420"];
+  const normYuv = (value) => (value === "bt709" ? "bt709" : "bt601");
+  const slotYuv = (slot) => normYuv(slot?.yuvMatrix);
+
+  // the color that arrives when the picture is encoded with one standard and decoded with another
+  function yuvRoundTrip(sent, source, decoded) {
+    const [kr, kb] = YUV_LUMA[source];
+    const y = kr * sent[0] + (1 - kr - kb) * sent[1] + kb * sent[2];
+    const cb = (sent[2] - y) / (2 * (1 - kb));
+    const cr = (sent[0] - y) / (2 * (1 - kr));
+    const [dr, db] = YUV_LUMA[decoded];
+    const r = y + 2 * (1 - dr) * cr;
+    const b = y + 2 * (1 - db) * cb;
+    const g = (y - dr * r - db * b) / (1 - dr - db);
+    return [r, g, b].map((v) => Math.min(255, Math.max(0, v)));
+  }
+
+  // the standard Hyperion decoded a test with; tests from before this setting used BT.601
+  function testYuv(result) {
+    const yuv = result?.yuv;
+    if (yuv && typeof yuv === "object") return { matrix: normYuv(yuv.matrix), applies: yuv.applies !== false, driver: yuv.driver || null };
+    return { matrix: "bt601", applies: YUV_PIXEL_FORMATS.includes(String(result?.grabber?.encoding ?? "").toUpperCase()), driver: null };
+  }
+
+  // Which standard the measured colors follow: best is only set when they stay close to one
+  // standard and clearly away from the other, other color errors of a grabber leave it open.
+  // Null when the test has no YUV picture or too few colors.
+  function detectYuv(result) {
+    const used = testYuv(result);
+    if (!used.applies) return null;
+    const steps = validSteps(result).filter((s) => !["gray", "black", "custom"].includes(s.group) && Math.max(...s.sent) >= 16);
+    if (steps.length < 12) return null;
+    const distance = (source) => {
+      let sum = 0;
+      for (const s of steps) {
+        const expected = yuvRoundTrip(s.sent, source, used.matrix);
+        for (let i = 0; i < 3; i++) sum += Math.abs(expected[i] - s.got[i]);
+      }
+      return sum / (steps.length * 3);
+    };
+    const errors = { bt601: distance("bt601"), bt709: distance("bt709") };
+    const closer = errors.bt709 < errors.bt601 ? "bt709" : "bt601";
+    const other = closer === "bt709" ? "bt601" : "bt709";
+    const best = errors[closer] <= 2.5 && errors[other] - errors[closer] >= 1.5 ? closer : null;
+    return { used: used.matrix, driver: used.driver, errors, best };
+  }
 
   function analyze(result) {
     const steps = validSteps(result);
@@ -461,7 +550,10 @@
     else if (measured.length) add("ok", "f_strengthGood", { v: Math.max(...measured.map((l) => Math.abs(l.strength - 100))) });
     const clipped = ladders.filter((l) => l.clipFrom !== null);
     if (clipped.length) add("warn", "f_strengthClip", { ladders: clipped });
-    if (impure.length && uneven.length) add("warn", "f_matrix");
+    const yuv = detectYuv(result);
+    if (yuv?.best && yuv.best !== yuv.used) add("warn", "f_yuvWrong", { best: yuv.best, used: yuv.used, bestErr: yuv.errors[yuv.best], usedErr: yuv.errors[yuv.used] });
+    else if (yuv?.best) add("ok", "f_yuvGood", { best: yuv.best });
+    if (impure.length && uneven.length && !(yuv?.best && yuv.best !== yuv.used)) add("warn", "f_matrix");
     if (unstable) add("warn", "f_unstable", { n: unstable });
 
     return { black, white, gain, drift, darkLostTo, lightLostFrom, tint, noise, ladders, findings, limited };
@@ -672,6 +764,10 @@
           return fill(t[f.key], { list: p.ladders.map((l) => (l.pureFrom === null ? fill(t.neverItem, { c: t[l.name] }) : fill(t.pureFromItem, { c: t[l.name], v: l.pureFrom }))).join(", ") });
         case "f_darkInvisible":
           return fill(t[f.key], { list: p.ladders.map((l) => (l.visibleFrom === null ? fill(t.neverItem, { c: t[l.name] }) : fill(t.visibleFromItem, { c: t[l.name], v: l.visibleFrom }))).join(", ") });
+        case "f_yuvWrong":
+          return fill(t[f.key], { best: YUV_NAMES[p.best], used: YUV_NAMES[p.used], bestErr: num(p.bestErr), usedErr: num(p.usedErr) });
+        case "f_yuvGood":
+          return fill(t[f.key], { best: YUV_NAMES[p.best] });
         case "f_crosstalk":
           return fill(t[f.key], { list: p.ladders.map((l) => fill(t.crosstalkItem, { c: t[l.name], v: num(l.crosstalk, 0) })).join(", ") });
         case "f_strengthGood":
@@ -737,6 +833,7 @@
       const dev = (d) => ({ mean: num(d.mean), max: num(d.max, 0) });
 
       line(on ? "ok" : "info", on ? fill(t.corrOn, { date: dateText(correction.basedOn) }) : t.corrOff);
+      if (correction?.blocked) line("warn", fill(t.corrBlocked, { slot: YUV_NAMES[correction.slotYuv], now: YUV_NAMES[correction.yuvMatrix] }));
       const measured = deviation(steps, (s) => (isRgb(s.corr) ? s.corr : null));
       if (measured) {
         const raw = deviation(steps, (s) => (isRgb(s.corr) ? s.got : null));
@@ -755,7 +852,7 @@
       let out = `<h4>${t.corrTitle}</h4><ul class="gtr-findings">${items.join("")}</ul>`;
 
       // the matrix the switch uses: the stored one, otherwise the one from this test
-      const stored = matrixOn({ ...correction, enable: true }) ? correction : null;
+      const stored = !correction?.blocked && matrixOn({ ...correction, enable: true }) ? correction : null;
       const shownMatrix = stored ? stored.matrix : useful ? fit.matrix : null;
       const shownDate = stored ? stored.basedOn : basic.date;
 
@@ -792,6 +889,8 @@
       let out = `<p class="gtr-meta">${metaLine(basic)}</p>`;
       const changed = changedKeys(basic, current);
       if (changed.length) out += `<p class="gtr-stale">${fill(t.stale, { keys: changed.map((k) => t.keys[k] ?? k).join(", ") })}</p>`;
+      const tested = testYuv(basic);
+      if (tested.applies && correction?.yuvMatrix && tested.matrix !== correction.yuvMatrix) out += `<p class="gtr-stale">${fill(t.yuvStale, { test: YUV_NAMES[tested.matrix], now: YUV_NAMES[correction.yuvMatrix] })}</p>`;
       out += `<ul class="gtr-findings">${a.findings.map((f) => `<li class="gtr-${f.level}"><span class="ico">${f.level === "ok" ? "✓" : f.level === "warn" ? "!" : "✕"}</span><span>${findingText(f)}</span></li>`).join("")}</ul>`;
       out += correctionHtml(basic, correction, controls, toggle);
 
@@ -1051,13 +1150,25 @@
   function currentCorrection(gt, device) {
     const g = grabberEntry(gt, device);
     const slot = g && g.active >= 0 ? (g.slots ?? [])[g.active] : null;
-    if (!slot || !validMatrix(slot.matrix)) return { enable: false };
-    return { enable: g.enable === true, matrix: slot.matrix, basedOn: slot.basedOn, before: slot.before, after: slot.after, slot: g.active, name: slot.name ?? "" };
+    const yuvMatrix = normYuv(g?.yuvMatrix);
+    if (!slot || !validMatrix(slot.matrix)) return { enable: false, yuvMatrix };
+    // Hyperion skips a slot computed for the other YUV standard
+    const blocked = slotYuv(slot) !== yuvMatrix;
+    return { enable: g.enable === true && !blocked, blocked, yuvMatrix, slotYuv: slotYuv(slot), matrix: slot.matrix, basedOn: slot.basedOn, before: slot.before, after: slot.after, slot: g.active, name: slot.name ?? "" };
+  }
+
+  // whether the last basic test can be saved for this grabber: measured with it, with the color
+  // standard that is set now, and a correction can be computed from it
+  function basicFits(gt, device) {
+    const g = migrated(gt, device);
+    const basic = g.basic;
+    if (!basic || !Array.isArray(basic.steps) || !basic.steps.length || !sameGrabber(testDevice(basic), device)) return false;
+    return testYuv(basic).matrix === normYuv(g.grabbers[device]?.yuvMatrix) && !fitCorrection(basic).error;
   }
 
   // Applies a change and returns the new setting (always in the per-grabber form); throws with a
   // text in lang when the change is not possible. ops: enable {on}, use {slot}, save {slot},
-  // rename {slot, name}, clear {slot}, forget {device}, acknowledge
+  // rename {slot, name}, clear {slot}, forget {device}, acknowledge, yuv {value}
   function applyOp(gt, device, op, args = {}, lang = "de", now = new Date().toISOString()) {
     const t = TEXT[lang] ?? TEXT.de;
     const next = structuredClone(migrated(gt, device));
@@ -1078,10 +1189,11 @@
       const basic = next.basic;
       if (!basic || !Array.isArray(basic.steps) || !basic.steps.length) fail("errNoTest");
       if (!sameGrabber(testDevice(basic), device)) fail("errOtherTest");
+      if (testYuv(basic).matrix !== normYuv(g.yuvMatrix)) fail("errYuvTest");
       const fit = fitCorrection(basic);
       if (fit.error) fail("errFit");
       const old = g.slots[i];
-      g.slots[i] = { name: old?.name ?? "", matrix: fit.matrix, basedOn: basic.date, before: fit.before, after: fit.after, savedAt: now, basic };
+      g.slots[i] = { name: old?.name ?? "", yuvMatrix: normYuv(g.yuvMatrix), matrix: fit.matrix, basedOn: basic.date, before: fit.before, after: fit.after, savedAt: now, basic };
       // the own colors measured with this grabber belong to the slot, so measurements can be compared later
       const custom = next.custom;
       if (custom && Array.isArray(custom.steps) && custom.steps.length && sameGrabber(testDevice(custom), device)) g.slots[i].custom = custom;
@@ -1090,9 +1202,16 @@
     };
 
     switch (op) {
-      case "acknowledge":
-        entry();
+      case "acknowledge": {
+        const g = entry();
+        g.yuvSeen = yuvSeenKey(next, g);
         break;
+      }
+      case "yuv": {
+        const g = entry();
+        g.yuvMatrix = normYuv(args.value);
+        break;
+      }
       case "enable": {
         const g = entry();
         if (args.on) {
@@ -1146,11 +1265,40 @@
     return next;
   }
 
-  // messages for the bell: a grabber delivers frames that has no entry yet
-  function notifications(gt, device, lang = "de") {
+  // a seen message about the color standard comes back after a new test or another setting
+  const yuvSeenKey = (gt, g) => `${gt.basic?.date ?? ""}|${normYuv(g?.yuvMatrix)}`;
+
+  // title and text of a message in lang; the page keeps them apart from the server
+  function noteText(note, lang = "de") {
     const t = TEXT[lang] ?? TEXT.de;
-    if (!device || grabberEntry(gt, device)) return [];
-    return [{ id: "newGrabber:" + device, kind: "newGrabber", device, name: displayName(device), title: t.ntNewGrabber.replace("{name}", displayName(device)), text: t.ntNewGrabberText }];
+    const p = note.params ?? {};
+    const fill = (text) => text.replace(/\{(\w+)\}/g, (m, k) => (k === "name" ? note.name : k in p ? YUV_NAMES[p[k]] : m));
+    const key = { newGrabber: "ntNewGrabber", yuvMismatch: "ntYuvMismatch", yuvPaused: "ntYuvPaused" }[note.kind];
+    return { title: fill(t[key]), text: fill(t[key + "Text"]) };
+  }
+
+  // messages for the bell: a grabber delivers frames that has no entry yet; the color standard set
+  // for the grabber does not match its last test; its active correction waits for another standard
+  function notifications(gt, device, lang = "de") {
+    if (!device) return [];
+    const note = (kind, params) => {
+      const n = { id: kind + ":" + device, kind, device, name: displayName(device), params };
+      return { ...n, ...noteText(n, lang) };
+    };
+    const g = grabberEntry(gt, device);
+    if (!g) return [note("newGrabber", {})];
+    const all = migrated(gt, device);
+    if (g.yuvSeen === yuvSeenKey(all, g)) return [];
+    const now = normYuv(g.yuvMatrix);
+    const notes = [];
+    const basic = all.basic;
+    if (basic && sameGrabber(testDevice(basic), device)) {
+      const yuv = detectYuv(basic);
+      if (yuv?.best && yuv.used === now && yuv.best !== now) notes.push(note("yuvMismatch", { best: yuv.best, now }));
+    }
+    const c = currentCorrection(gt, device);
+    if (c.blocked && g.enable === true) notes.push(note("yuvPaused", { slot: c.slotYuv, now }));
+    return notes;
   }
 
   const SLOT_CSS = `
@@ -1268,7 +1416,7 @@
   // Memory slots of the connected grabber and the other known grabbers. onAction(op, args) makes
   // them editable (null: read only); toggle adds the on/off switch for the correction. devices
   // ([{ name, label, missing }]) with onSelectDevice(name) shows the grabber as a dropdown.
-  function renderSlots(element, { grabberTest, device, lang = "de", onAction = null, toggle = false, buttonClass = "", devices = null, onSelectDevice = null } = {}) {
+  function renderSlots(element, { grabberTest, device, lang = "de", onAction = null, toggle = false, buttonClass = "", devices = null, onSelectDevice = null, yuvInfo = null } = {}) {
     if (!element) return;
     ensureStyle(element.ownerDocument);
     const doc = element.ownerDocument;
@@ -1285,7 +1433,9 @@
     const slots = Array.from({ length: SLOT_COUNT }, (_, i) => (g?.slots ?? [])[i] ?? null);
     const basic = gt.basic && Array.isArray(gt.basic.steps) && gt.basic.steps.length ? gt.basic : null;
     const basicHere = !!(basic && sameGrabber(testDevice(basic), device));
-    const canSave = !!(onAction && basicHere && !fitCorrection(basic).error);
+    const canSave = !!(onAction && basicFits(gt, device));
+    const yuvNow = normYuv(g?.yuvMatrix);
+    const activeBlocked = !!(g && g.active >= 0 && slots[g.active] && slotYuv(slots[g.active]) !== yuvNow);
     const slotName = (i) => t.slSlot.replace("{n}", i + 1);
     const ask = (text) => (typeof global.confirm === "function" ? global.confirm(text) : true);
     const btn = (action, i, label) => `<button type="button" class="${buttonClass}" data-sl="${action}" data-slot="${i}">${esc(label)}</button>`;
@@ -1301,13 +1451,30 @@
     }
     if (device) {
       out += `<p class="gtr-hint">${esc(t.slIntro)}</p>`;
+      const yuvApplies = yuvInfo?.applies !== false;
+      const detected = basicHere ? detectYuv(basic) : null;
+      const advised = detected?.best && detected.used === yuvNow && detected.best !== yuvNow ? detected.best : null;
+      out += `<div class="gtr-select"><b>${esc(t.slYuvTitle)}:</b> `;
+      if (onAction && yuvApplies) {
+        const label = (norm) => (norm === advised ? r.fill(t.slYuvRecommended, { norm: YUV_NAMES[norm] }) : norm === "bt601" ? r.fill(t.slYuvDefault, { norm: YUV_NAMES[norm] }) : YUV_NAMES[norm]);
+        out += `<select data-sl-yuv aria-label="${esc(t.slYuvTitle)}">${["bt601", "bt709"].map((norm) => `<option value="${norm}"${norm === yuvNow ? " selected" : ""}>${esc(label(norm))}</option>`).join("")}</select>`;
+      } else {
+        out += esc(YUV_NAMES[yuvNow]);
+      }
+      out += `</div>`;
+      if (advised && yuvApplies) out += `<p class="gtr-stale">${esc(r.fill(t.slYuvAdvise, { best: YUV_NAMES[advised], now: YUV_NAMES[yuvNow] }))}</p>`;
+      const noSignalRef = (gt.noSignal?.grabbers?.[device]?.slots ?? []).some(Boolean);
+      out += `<p class="gtr-hint">${esc(yuvApplies ? t.slYuvHint : t.slYuvNa)}`
+        + (yuvApplies && yuvInfo?.driver && YUV_NAMES[yuvInfo.driver] ? " " + esc(r.fill(t.slYuvDriver, { norm: YUV_NAMES[yuvInfo.driver] })) : "")
+        + (yuvApplies && noSignalRef ? " " + esc(t.slYuvNoSignal) : "") + `</p>`;
       if (toggle && onAction) {
-        const on = !!(g && g.enable && g.active >= 0 && slots[g.active]);
-        out += `<label class="gtr-switch" style="margin:4px 0 6px"><input type="checkbox" data-sl="enable"${on ? " checked" : ""}${!on && !slots.some(Boolean) && !canSave ? " disabled" : ""}> ${esc(t.corrSwitch)}</label>`;
+        const on = !!(g && g.enable && g.active >= 0 && slots[g.active] && !activeBlocked);
+        out += `<label class="gtr-switch" style="margin:4px 0 6px"><input type="checkbox" data-sl="enable"${on ? " checked" : ""}${activeBlocked || (!on && !slots.some(Boolean) && !canSave) ? " disabled" : ""}> ${esc(t.corrSwitch)}</label>`;
       }
       slots.forEach((s, i) => {
         const active = !!(g && g.active === i && s);
-        const used = active && g.enable;
+        const blocked = !!s && slotYuv(s) !== yuvNow;
+        const used = active && g.enable && !blocked;
         // like all slots: the chosen one is blue, its badge says whether the function runs
         out += `<div class="gtr-slot${active ? " on" : ""}"><div class="gtr-slot-head"><b>${esc(slotName(i))}</b>`;
         if (s) {
@@ -1319,10 +1486,11 @@
         out += `</div>`;
         if (s) {
           out += `<p class="gtr-slot-info">${esc(r.fill(t.slInfo, { date: r.dateText(s.basedOn), before: s.before ? r.num(s.before.mean) : "–", after: s.after ? r.num(s.after.mean) : "–" }))}</p>`;
+          if (blocked) out += `<p class="gtr-slot-info">${esc(r.fill(t.slYuvSlot, { slot: YUV_NAMES[slotYuv(s)] }))}</p>`;
         }
         if (onAction) {
           const acts = [];
-          if (s && !used) acts.push(btn("use", i, t.slUse));
+          if (s && !used && !blocked) acts.push(btn("use", i, t.slUse));
           if (canSave) acts.push(btn("save", i, s ? t.slOverwrite : t.slSave));
           if (s) acts.push(btn("clear", i, t.slClear));
           if (acts.length) out += `<div class="gtr-slot-actions">${acts.join("")}</div>`;
@@ -1330,7 +1498,7 @@
         out += `</div>`;
       });
       if (onAction) {
-        out += `<p class="gtr-hint">${esc(canSave ? r.fill(t.slSaveHint, { date: r.dateText(basic.date) }) : basic && !basicHere ? r.fill(t.slOtherTest, { name: displayName(testDevice(basic) ?? "?") }) : basic ? r.fill(t.corrFitNone, { why: t.corrWhyData }) : t.slNoTest)}</p>`;
+        out += `<p class="gtr-hint">${esc(canSave ? r.fill(t.slSaveHint, { date: r.dateText(basic.date) }) : basic && !basicHere ? r.fill(t.slOtherTest, { name: displayName(testDevice(basic) ?? "?") }) : basic && testYuv(basic).matrix !== yuvNow ? r.fill(t.slYuvTest, { test: YUV_NAMES[testYuv(basic).matrix], now: YUV_NAMES[yuvNow] }) : basic ? r.fill(t.corrFitNone, { why: t.corrWhyData }) : t.slNoTest)}</p>`;
       }
     }
     const others = Object.keys(gt.grabbers).filter((n) => n !== device).sort();
@@ -1339,7 +1507,7 @@
       for (const n of others) {
         const o = gt.grabbers[n];
         const filled = (o.slots ?? []).filter(Boolean).length;
-        const on = o.enable && o.active >= 0 && (o.slots ?? [])[o.active];
+        const on = o.enable && o.active >= 0 && (o.slots ?? [])[o.active] && slotYuv(o.slots[o.active]) === normYuv(o.yuvMatrix);
         const state = on ? t.slOtherOn.replace("{slot}", slotName(o.active) + (o.slots[o.active].name ? ` (${o.slots[o.active].name})` : "")) : t.slOtherOff;
         out += `<div class="gtr-other"><span><b>${esc(displayName(n))}</b><br><span class="gtr-slot-info">${esc(r.fill(t.slOtherLine, { used: filled, state }))}</span></span>`
           + (onAction ? `<button type="button" class="${buttonClass}" data-sl="forget" data-device="${esc(n)}">${esc(t.slForget)}</button>` : "") + `</div>`;
@@ -1363,6 +1531,7 @@
     }
     if (!onAction) return;
 
+    element.querySelector("select[data-sl-yuv]")?.addEventListener("change", (ev) => onAction("yuv", { value: ev.target.value }));
     element.querySelectorAll("button[data-sl]").forEach((b) => b.addEventListener("click", () => {
       const op = b.dataset.sl;
       const i = Number(b.dataset.slot);
@@ -1376,5 +1545,5 @@
   }
 
   global.GrabberTestReport = { basicSteps, analyze, changedKeys, fitCorrection, evaluateCorrection, render, make, GRABBER_KEYS, TEXT,
-    migrated, grabberEntry, currentCorrection, applyOp, notifications, renderSlots, renderCompare, compareSources, testDevice, sameGrabber, displayName, SLOT_COUNT };
+    migrated, grabberEntry, currentCorrection, applyOp, notifications, noteText, renderSlots, basicFits, detectYuv, testYuv, renderCompare, compareSources, testDevice, sameGrabber, displayName, SLOT_COUNT };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -10,6 +10,20 @@
 class ColorSys
 {
 public:
+	/// fork: the color standard of YUV data, video grabbers differ in it
+	enum class YuvMatrix { BT601, BT709 };
+
+	/// fork: the factors of yuv2rgb for limited range YUV, chosen once per frame
+	struct YuvCoefficients
+	{
+		int rv;
+		int gu;
+		int gv;
+		int bu;
+	};
+
+	static const YuvCoefficients& yuvCoefficients(YuvMatrix matrix);
+
 	///
 	///	Translates an RGB (red, green, blue) color to an HSL (hue, saturation, luminance) color
 	///
@@ -77,6 +91,21 @@ public:
 	/// @param[out] green The green RGB-component
 	/// @param[out] blue The blue RGB-component
 	static void yuv2rgb(uint8_t y, uint8_t u, uint8_t v, uint8_t & r, uint8_t & g, uint8_t & b);
+
+	///
+	/// Fork extension: yuv2rgb with the factors of a color standard (see yuvCoefficients)
+	///
+	static inline void yuv2rgb(uint8_t y, uint8_t u, uint8_t v, const YuvCoefficients & k, uint8_t & r, uint8_t & g, uint8_t & b)
+	{
+		const int c = 298 * (y - 16) + 128;
+		const int d = u - 128;
+		const int e = v - 128;
+		const auto toByte = [](int x) { return static_cast<uint8_t>((x < 0) ? 0 : ((x > 255) ? 255 : x)); };
+
+		r = toByte((c + k.rv * e) >> 8);
+		g = toByte((c - k.gu * d - k.gv * e) >> 8);
+		b = toByte((c + k.bu * d) >> 8);
+	}
 
 	///
 	/// Translates an RGB (red, green, blue) color to an Okhsv (hue, saturation, value) color

@@ -58,6 +58,8 @@ public:
 
 	bool isBusy() const { return _busy; }
 
+	void setYuvMatrix(ColorSys::YuvMatrix matrix) { _imageResampler.setYuvMatrix(matrix); }
+
 signals:
 	void newFrame(const Image<ColorRgb>& data);
 
@@ -127,6 +129,13 @@ public:
 				size, width, height, lineLength,
 				cropLeft, cropTop, cropBottom, cropRight,
 				videoMode, flipMode, pixelDecimation);
+	}
+
+	void setYuvMatrix(ColorSys::YuvMatrix matrix)
+	{
+		auto encThread = qobject_cast<EncoderThread*>(_thread);
+		if (encThread != nullptr)
+			encThread->setYuvMatrix(matrix);
 	}
 
 	bool isBusy()

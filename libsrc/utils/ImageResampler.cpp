@@ -11,6 +11,7 @@ ImageResampler::ImageResampler()
 	, _cropBottom(0)
 	, _videoMode(VideoMode::VIDEO_2D)
 	, _flipMode(FlipMode::NO_CHANGE)
+	, _yuvMatrix(ColorSys::YuvMatrix::BT601)
 {
 }
 
@@ -28,6 +29,7 @@ void ImageResampler::processImage(const uint8_t * data, int width, int height, s
 	int cropRight  = _cropRight;
 	int cropTop = _cropTop;
 	int cropBottom = _cropBottom;
+	const ColorSys::YuvCoefficients& yuv = ColorSys::yuvCoefficients(_yuvMatrix);
 
 	// handle 3D mode
 	switch (_videoMode)
@@ -93,7 +95,7 @@ void ImageResampler::processImage(const uint8_t * data, int width, int height, s
 					uint8_t y = data[index+1];
 					uint8_t u = ((xSource&1) == 0) ? data[index  ] : data[index-2];
 					uint8_t v = ((xSource&1) == 0) ? data[index+2] : data[index  ];
-					ColorSys::yuv2rgb(y, u, v, rgb.red, rgb.green, rgb.blue);
+					ColorSys::yuv2rgb(y, u, v, yuv, rgb.red, rgb.green, rgb.blue);
 				}
 			}
 			break;
@@ -110,7 +112,7 @@ void ImageResampler::processImage(const uint8_t * data, int width, int height, s
 					uint8_t y = data[index];
 					uint8_t u = ((xSource&1) == 0) ? data[index+1] : data[index-1];
 					uint8_t v = ((xSource&1) == 0) ? data[index+3] : data[index+1];
-					ColorSys::yuv2rgb(y, u, v, rgb.red, rgb.green, rgb.blue);
+					ColorSys::yuv2rgb(y, u, v, yuv, rgb.red, rgb.green, rgb.blue);
 				}
 			}
 			break;
@@ -207,7 +209,7 @@ void ImageResampler::processImage(const uint8_t * data, int width, int height, s
 					uint8_t y = data[lineLength * ySource + xSource];
 					uint8_t u = data[uOffset + ((xSource >> 1) << 1)];
 					uint8_t v = data[uOffset + ((xSource >> 1) << 1) + 1];
-					ColorSys::yuv2rgb(y, u, v, rgb.red, rgb.green, rgb.blue);
+					ColorSys::yuv2rgb(y, u, v, yuv, rgb.red, rgb.green, rgb.blue);
 				}
 			}
 			break;
@@ -225,7 +227,7 @@ void ImageResampler::processImage(const uint8_t * data, int width, int height, s
 					uint8_t y = data[lineLength * ySource + xSource];
 					uint8_t u = data[uOffset + (xSource >> 1)];
 					uint8_t v = data[vOffset + (xSource >> 1)];
-					ColorSys::yuv2rgb(y, u, v, rgb.red, rgb.green, rgb.blue);
+					ColorSys::yuv2rgb(y, u, v, yuv, rgb.red, rgb.green, rgb.blue);
 				}
 			}
 			break;
