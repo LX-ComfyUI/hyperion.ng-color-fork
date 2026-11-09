@@ -864,6 +864,7 @@ window.I18N_EN = {
  "So erkennt Hyperion ein graues Standbild im Grabber-Bild und friert die LEDs ein oder schaltet sie aus. Die Werte werden direkt in Hyperion gespeichert.": "How Hyperion detects a gray still image in the grabber picture and freezes the LEDs or turns them off. The values are saved directly in Hyperion.",
  "So funktioniert's": "How it works",
  "Anleitung": "Guide",
+ "Vom TV-Bild zu den LEDs": "From the TV picture to the LEDs",
  "Ersteinrichtung": "First setup",
  "Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Ein Tipp auf einen Namen öffnet die passende Karte.": "Go through the steps in this order. Each one builds on the previous ones, so you do not have to repeat anything. Tapping a name opens the matching card.",
  "Reihenfolge der Karten": "Order of the cards",

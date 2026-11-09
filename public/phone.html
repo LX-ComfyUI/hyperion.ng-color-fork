@@ -912,6 +912,11 @@
     </div>
   </header>
 
+  <section class="card" id="card-flow">
+    <h2>Vom TV-Bild zu den LEDs</h2>
+    <div id="flow-chart" data-i18n-skip></div>
+  </section>
+
   <section class="card" id="card-intro">
     <h2>Anleitung</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
@@ -2056,8 +2061,8 @@
   wide.addEventListener("change", () => setDrawer(false));
 
   // Order of the cards: Ersteinrichtung (the steps of the guide, the default), Standard (everyday checks)
-  // or Eigene (dragged in this menu). Kept per device like the open cards. The guide always stays on
-  // top and shows the text for the chosen order.
+  // or Eigene (dragged in this menu). Kept per device like the open cards. The flow chart and the guide
+  // always stay on top, the guide shows the text for the chosen order.
   const ORDERS = {
     setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
     standard: ["card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
@@ -2066,10 +2071,10 @@
   const CUSTOM_KEY = "tvtest-card-order-custom";
   const list = side.querySelector(".side-list");
   const main = document.querySelector("main");
-  const intro = cards[0];
+  const PINNED = ["card-flow", "card-intro"];
   const byId = new Map(cards.map((c, i) => [c.id, [c, links[i]]]));
   const readCustom = () => { try { const v = JSON.parse(store.get(CUSTOM_KEY)); return Array.isArray(v) ? v : null; } catch { return null; } };
-  const sideIds = () => [...list.children].slice(1).map((li) => li.firstChild.hash.slice(1));
+  const sideIds = () => [...list.children].slice(PINNED.length).map((li) => li.firstChild.hash.slice(1));
   let mode = store.get(ORDER_KEY);
   // the everyday order was called Testing for a short while
   if (mode === "testing") store.set(ORDER_KEY, mode = "standard");
@@ -2108,7 +2113,7 @@
   const applyOrder = () => {
     const ids = mode === "custom" ? readCustom() : ORDERS[mode];
     // unknown ids are skipped, cards missing in a saved order (new ones) go to the end
-    const seq = [intro.id, ...ids.filter((id) => id !== intro.id && byId.has(id))];
+    const seq = [...PINNED, ...ids.filter((id) => !PINNED.includes(id) && byId.has(id))];
     for (const id of byId.keys()) if (!seq.includes(id)) seq.push(id);
     seq.forEach((id, i) => {
       const [card, a] = byId.get(id);
@@ -2130,7 +2135,7 @@
   };
   const setMode = (next, ids) => {
     // "Eigene" without a saved order starts from the order shown now
-    if (next === "custom" && !ids && !readCustom()) ids = cards.slice(1).map((c) => c.id);
+    if (next === "custom" && !ids && !readCustom()) ids = cards.slice(PINNED.length).map((c) => c.id);
     if (ids) store.set(CUSTOM_KEY, JSON.stringify(ids));
     mode = next;
     store.set(ORDER_KEY, mode);
@@ -2338,7 +2343,7 @@
     const reorder = () => {
       const { li } = drag;
       const at = drag.y - drag.grab;
-      const others = [...list.children].slice(1).filter((el) => el !== li);
+      const others = [...list.children].slice(PINNED.length).filter((el) => el !== li);
       const before = others.find((el) => at < middle(el)) ?? null;
       if (li.nextElementSibling === before) return;
       glide(others, () => list.insertBefore(li, before));
@@ -2373,7 +2378,7 @@
     };
     list.addEventListener("pointerdown", (ev) => {
       const a = ev.target.closest("a");
-      if (!a || ev.button !== 0 || a === byId.get(intro.id)[1] || drag) return;
+      if (!a || ev.button !== 0 || PINNED.includes(a.hash.slice(1)) || drag) return;
       cancelHold();
       const li = a.parentElement;
       const pointer = ev.pointerId;
@@ -2544,6 +2549,8 @@
 <script src="/static/colorfit.js"></script>
 <script src="/static/testimages.js"></script>
 <script src="/static/grabbertest-report.js"></script>
+<script src="/static/flowchart.js"></script>
+<script>ForkFlow.render(document.getElementById("flow-chart"), { lang: I18N.lang, title: false });</script>
 <script src="/static/nosignal-ui.js"></script>
 <script src="/static/notice-text.js"></script>
 <script type="module">
