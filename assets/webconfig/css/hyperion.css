@@ -1611,6 +1611,14 @@ nav.navbar-static-top .navbar-toggle {
 .fork-guide #guide_cont li {
   margin-bottom: 12px;
 }
+.fork-guide #guide_flow {
+  margin: 20px 0 30px;
+}
+@media (min-width: 1200px) {
+  .fork-guide #guide_flow {
+    margin-top: 0;
+  }
+}
 .fork-guide .guide-links {
   display: flex;
   flex-wrap: wrap;

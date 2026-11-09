@@ -1,6 +1,11 @@
 <div class="container-fluid fork-guide">
   <h3 class="page-header"><i class="fa fa-book fa-fw"></i><span data-i18n="main_menu_guide_token">Anleitung</span></h3>
-  <div id="guide_cont"></div>
+  <!-- links die Anleitung, rechts der Ablauf vom TV-Bild zu den LEDs (js/flowchart.js, wie auf der
+       Testseite); schmale Fenster zeigen beides untereinander -->
+  <div class="row">
+    <div class="col-lg-6"><div id="guide_cont"></div></div>
+    <div class="col-lg-6"><div id="guide_flow"></div></div>
+  </div>
 </div>
 
 <script type="text/javascript">
@@ -61,6 +66,7 @@
     }
     html += '<h4>' + $.i18n('guide_sec_later') + '</h4><p>' + $.i18n('guide_later') + '</p>';
     $('#guide_cont').html(html);
+    ForkFlow.render(document.getElementById('guide_flow'), { lang: storedLang === 'de' ? 'de' : 'en' });
 
     // WebUI-Links: wie ein Klick im Menü (lädt die Seite und markiert den Menüpunkt)
     $('#guide_cont').on('click', '[data-guide-goto]', function (ev) {
