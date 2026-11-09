@@ -13,6 +13,7 @@ import { execFile } from "node:child_process";
 import { randomBytes, createHash } from "node:crypto";
 import * as Dlna from "./dlna.mjs";
 import * as Webdav from "./webdav.mjs";
+import * as Discover from "./discover.mjs";
 import { parseInput, netLabel, resolveNet, netMountOf, probe, within, mountPlan, countDir, pickerRoots, environment } from "./netshare.mjs";
 
 const TYPES = ["folder", "plex", "jellyfin", "emby", "dlna", "webdav"];
@@ -619,7 +620,13 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     // the commands for mounting a share (see netshare.mjs); the server runs none of them
     if (op === "mountPlan") { sendJson(res, 200, await mountPlan(body.plan ?? {})); return true; }
     if (op === "env") { sendJson(res, 200, environment()); return true; }
-    if (op === "discover") { sendJson(res, 200, { servers: await Dlna.discover() }); return true; }
+    // looking around in the network: media servers of one kind, or NAS with shares (for the mount helper)
+    if (op === "discover") {
+      const kind = body.kind ?? "dlna";
+      const servers = kind === "shares" ? await Discover.shares() : kind === "plex" ? await Discover.plex() : MB.has(kind) ? await Discover.mediaBrowser(kind) : await Dlna.discover();
+      sendJson(res, 200, { servers });
+      return true;
+    }
     if (op === "plexPin") { sendJson(res, 200, await plexPinStart()); return true; }
     if (op === "plexPinCheck") { sendJson(res, 200, await plexPinCheck(body.pin)); return true; }
     if (op === "add") {

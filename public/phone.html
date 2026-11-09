@@ -1302,6 +1302,9 @@
           <p class="help">Die Testseite liest eine NAS-Freigabe über einen Ordner auf dem Server. Diesen Ordner richtet einmal jemand mit Administratorrechten ein: Die Testseite schreibt die passenden Befehle, die du im Terminal des Servers (zum Beispiel per SSH) nacheinander ausführst. Die Testseite selbst führt nichts davon aus.</p>
           <div class="frow"><label for="src-mnt-proto">Art</label><span class="inputs"><select id="src-mnt-proto"><option value="smb">Windows-Freigabe (SMB)</option><option value="nfs">NFS</option></select></span></div>
           <div class="frow"><label for="src-mnt-host">NAS-Adresse</label><span class="inputs"><input type="text" id="src-mnt-host" class="wide-in" placeholder="192.168.1.20 · NAS-Name" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow"><span></span><span class="inputs"><button type="button" id="src-mnt-find" class="small-btn">NAS im Netz suchen</button></span></div>
+          <ul class="md-list" id="src-mnt-found" hidden></ul>
+          <p class="note" id="src-mnt-find-note"></p>
           <div class="frow"><label for="src-mnt-share" id="src-mnt-share-label">Freigabe</label><span class="inputs"><input type="text" id="src-mnt-share" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
           <div class="frow"><label for="src-mnt-sub">Unterordner</label><span class="inputs"><input type="text" id="src-mnt-sub" class="wide-in" placeholder="Videos/Urlaub" autocomplete="off" spellcheck="false"></span></div>
           <div class="frow" id="src-mnt-user-row"><label for="src-mnt-user">Benutzer am NAS</label><span class="inputs"><input type="text" id="src-mnt-user" class="wide-in" placeholder="wird sonst abgefragt" autocomplete="off" spellcheck="false"></span></div>
@@ -5038,8 +5041,9 @@ function srcFormType() {
   const mb = t === "jellyfin" || t === "emby";
   const dav = t === "webdav";
   $("src-user-label").textContent = tr(dav ? "Benutzer" : "oder Benutzer");
-  $("src-find-row").hidden = t !== "dlna";
-  $("src-found").hidden = t !== "dlna" || !$("src-found").innerHTML;
+  if ($("src-found").dataset.kind !== t) { $("src-found").innerHTML = ""; $("src-found").dataset.kind = t; }
+  $("src-find-row").hidden = t === "folder" || t === "webdav";
+  $("src-found").hidden = !$("src-found").innerHTML;
   $("src-plex-row").hidden = t !== "plex";
   if (t !== "plex") srcPlexStop();
   $("src-user-row").hidden = !mb && !dav;
@@ -5118,16 +5122,19 @@ $("src-save").addEventListener("click", async () => {
   }
 });
 
-// ---- media servers in the network (DLNA): the server asks with SSDP ----
+// ---- servers in the network: DLNA (SSDP), Plex (GDM), Jellyfin/Emby (their UDP discovery) ----
 $("src-find").addEventListener("click", async () => {
+  const kind = $("src-type").value;
   $("src-find").disabled = true;
   $("src-note").textContent = tr("Suche im Netz …");
   try {
-    const out = await srcPost({ op: "discover" });
-    $("src-found").innerHTML = out.servers.map((x) => `<li><button type="button" class="md-show" data-found="${escHtml(x.url)}" data-name="${escHtml(x.name)}"><span class="md-thumb">D</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml([x.model, srcHost(x.url)].filter(Boolean).join(" · "))}</small></span></button></li>`).join("");
+    const out = await srcPost({ op: "discover", kind });
+    const letter = kind === "dlna" ? "D" : kind[0].toUpperCase();
+    $("src-found").innerHTML = out.servers.map((x) => `<li><button type="button" class="md-show" data-found="${escHtml(x.url)}" data-name="${escHtml(x.name)}"><span class="md-thumb">${letter}</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml([x.model, srcHost(x.url)].filter(Boolean).join(" · "))}</small></span></button></li>`).join("");
     $("src-found").hidden = !out.servers.length;
     $("src-note").textContent = out.servers.length ? tr("Gefunden: {a}. Zum Übernehmen antippen.", { a: out.servers.length })
-      : tr("Kein Medienserver gefunden. Ist DLNA/UPnP am NAS oder Router eingeschaltet? Läuft die Testseite in einem Container, sieht sie das Netz oft nicht (dann die Adresse selbst eintragen).");
+      : kind === "dlna" ? tr("Kein Medienserver gefunden. Ist DLNA/UPnP am NAS oder Router eingeschaltet? Läuft die Testseite in einem Container, sieht sie das Netz oft nicht (dann die Adresse selbst eintragen).")
+      : tr("Nichts gefunden. Läuft der Server im selben Netz? Sonst die Adresse selbst eintragen.");
   } catch (e) {
     $("src-note").textContent = I18N.t(e.message);
   }
@@ -5138,7 +5145,34 @@ $("src-found").addEventListener("click", (ev) => {
   if (!b) return;
   $("src-url").value = b.dataset.found;
   if (!$("src-name").value) $("src-name").value = b.dataset.name;
-  $("src-test").click();
+  // DLNA needs nothing more; the others still need a key, a login or the Plex sign-in
+  if ($("src-type").value === "dlna") $("src-test").click();
+  else $("src-note").textContent = tr($("src-type").value === "plex" ? "Adresse übernommen. Jetzt „Mit Plex-Konto anmelden“ oder den Token eintragen." : "Adresse übernommen. Jetzt API-Schlüssel oder Benutzer und Passwort eintragen.");
+});
+
+// ---- NAS with shares for the mount helper: mDNS in the home network and Tailscale devices ----
+$("src-mnt-find").addEventListener("click", async () => {
+  $("src-mnt-find").disabled = true;
+  $("src-mnt-find-note").textContent = tr("Suche im Netz …");
+  try {
+    const out = await srcPost({ op: "discover", kind: "shares" });
+    $("src-mnt-found").innerHTML = out.servers.map((x) => `<li><button type="button" class="md-show" data-host="${escHtml(x.host)}" data-proto="${x.proto}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml([x.host, x.proto === "nfs" ? "NFS" : "SMB", x.via === "tailscale" ? "Tailscale" : ""].filter(Boolean).join(" · "))}</small></span></button></li>`).join("");
+    $("src-mnt-found").hidden = !out.servers.length;
+    $("src-mnt-find-note").textContent = out.servers.length ? tr("Gefunden: {a}. Zum Übernehmen antippen.", { a: out.servers.length })
+      : tr("Kein NAS gefunden. Nicht jedes NAS meldet sich im Netz, dann die Adresse selbst eintragen (steht meist in der NAS-App oder im Router).");
+  } catch (e) {
+    $("src-mnt-find-note").textContent = I18N.t(e.message);
+  }
+  $("src-mnt-find").disabled = false;
+});
+$("src-mnt-found").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-host]");
+  if (!b) return;
+  $("src-mnt-host").value = b.dataset.host;
+  $("src-mnt-proto").value = b.dataset.proto;
+  $("src-mnt-found").hidden = true;
+  $("src-mnt-find-note").textContent = "";
+  srcMountPlan();
 });
 
 // ---- Plex sign-in with a code on plex.tv/link; the token stays on the server ----
