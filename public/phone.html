@@ -448,6 +448,19 @@
   .src-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; margin-bottom: 6px; }
   .src-crumbs button { padding: 3px 8px; font-size: 13px; }
   .src-crumbs span { color: var(--muted); }
+  .md-flag.ok { color: var(--accent); }
+  .src-form .frow > label { flex: 0 0 34%; }
+  .src-form .frow > .inputs { flex: 1; min-width: 0; display: flex; justify-content: flex-end; }
+  .src-form .inputs .wide-in { width: 100%; max-width: 320px; }
+  .src-path-in { display: flex; gap: 6px; flex: 1; min-width: 0; }
+  .src-path-in input { flex: 1; min-width: 0; }
+  .src-sub { border: 1px solid var(--btn-line); border-radius: 9px; padding: 8px 10px; margin: 8px 0; }
+  .src-sub h5 { margin: 0 0 6px; font-size: 14px; }
+  .src-pick-path { font-size: 13px; color: var(--muted); word-break: break-all; margin-bottom: 6px; }
+  .src-step { margin: 10px 0 0; }
+  .src-step p { margin: 0 0 4px; font-size: 13px; }
+  .src-step pre { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: all; }
+  .src-step .small-btn { margin-top: 4px; }
   .md-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   /* picture measurement */
   #mm-pick { max-width: 100%; }
@@ -974,7 +987,7 @@
       <li data-card="card-tc"><a class="jump" href="#card-tc"><b>Testfarben</b></a>: Farben als Vollbild, um TV und LEDs direkt zu vergleichen. In der Seitenleiste rechts stehen sie neben der Farbkalibrierung.</li>
       <li data-card="card-color"><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Alle Farbwerte von Hyperion: Farbprofil, Weißpunkt, Gamma und Bildverarbeitung.</li>
       <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in der Farbkalibrierung hier kurz nachsehen.</li>
-      <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt.</li>
+      <li data-card="card-p-media"><a class="jump" href="#card-media"><b>Testbilder &amp; Videos</b></a>: Echte Bilder und Videos, um das Zusammenspiel wie beim Fernsehen zu prüfen. „Bild messen“ zeigt, ob das Bild unverfälscht beim Grabber ankommt. Unter „Weitere Quellen“ lassen sich auch Ordner auf einem NAS, Plex und Jellyfin einbinden.</li>
       <li data-card="card-sm"><a class="jump" href="#card-sm"><b>Glättung</b></a>: Laufen die LEDs dem Bild hinterher oder zucken sie bei Schnitten?</li>
     </ul>
     <h3>Feinheiten der LEDs</h3>
@@ -1265,12 +1278,44 @@
       <h4 class="hy-h"><span>Video-Links</span></h4>
       <ul class="md-list" id="md-links"></ul>
       <h4 class="hy-h"><span>Weitere Quellen</span></h4>
-      <p class="help">Ein Ordner auf dem Server (zum Beispiel eine dort eingebundene NAS-Freigabe), Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Zugangsschlüssel bleiben auf dem Server.</p>
+      <p class="help">Ein Ordner auf dem Server oder einem NAS im Netzwerk, Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Passwörter und Zugangsschlüssel bleiben auf dem Server.</p>
       <ul class="md-list" id="src-list"></ul>
       <div class="src-form" id="src-form" hidden>
         <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner / NAS</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option></select></span></div>
         <div class="frow"><label for="src-name">Name</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
-        <div class="frow" id="src-path-row"><label for="src-path">Pfad auf dem Server</label><span class="inputs"><input type="text" id="src-path" class="wide-in" placeholder="/mnt/nas/videos" autocomplete="off"></span></div>
+        <div class="frow" id="src-path-row"><label for="src-path">Ordner</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
+        <div class="src-sub" id="src-pick" hidden>
+          <h5>Ordner auf dem Server wählen</h5>
+          <div class="src-pick-path" id="src-pick-path"></div>
+          <ul class="md-list" id="src-pick-list"></ul>
+          <p class="note" id="src-pick-note"></p>
+          <div class="lg-actions">
+            <button type="button" class="primary" id="src-pick-take" hidden>Diesen Ordner nehmen</button>
+            <button type="button" id="src-pick-close">Schließen</button>
+          </div>
+        </div>
+        <div class="src-sub" id="src-mnt" hidden>
+          <h5>Netzwerkfreigabe einbinden</h5>
+          <p class="help">Die Testseite liest eine NAS-Freigabe über einen Ordner auf dem Server. Diesen Ordner richtet einmal jemand mit Administratorrechten ein: Die Testseite schreibt die passenden Befehle, die du im Terminal des Servers (zum Beispiel per SSH) nacheinander ausführst. Die Testseite selbst führt nichts davon aus.</p>
+          <div class="frow"><label for="src-mnt-proto">Art</label><span class="inputs"><select id="src-mnt-proto"><option value="smb">Windows-Freigabe (SMB)</option><option value="nfs">NFS</option></select></span></div>
+          <div class="frow"><label for="src-mnt-host">NAS-Adresse</label><span class="inputs"><input type="text" id="src-mnt-host" class="wide-in" placeholder="192.168.1.20 · NAS-Name" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow"><label for="src-mnt-share" id="src-mnt-share-label">Freigabe</label><span class="inputs"><input type="text" id="src-mnt-share" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow"><label for="src-mnt-sub">Unterordner</label><span class="inputs"><input type="text" id="src-mnt-sub" class="wide-in" placeholder="Videos/Urlaub" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow" id="src-mnt-user-row"><label for="src-mnt-user">Benutzer am NAS</label><span class="inputs"><input type="text" id="src-mnt-user" class="wide-in" placeholder="wird sonst abgefragt" autocomplete="off" spellcheck="false"></span></div>
+          <div class="frow" id="src-mnt-guest-row"><label for="src-mnt-guest">Ohne Anmeldung (Gast)</label><span class="inputs"><input type="checkbox" id="src-mnt-guest"></span></div>
+          <div class="frow"><label for="src-mnt-target">Einbinden unter</label><span class="inputs"><input type="text" id="src-mnt-target" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+          <div id="src-mnt-warn"></div>
+          <div id="src-mnt-steps"></div>
+          <details class="more">
+            <summary>Wenn es nicht klappt</summary>
+            <p class="help"><b>mount error(13)</b> oder „Permission denied“: Benutzer oder Passwort falsch. Den Schritt mit den Zugangsdaten noch einmal ausführen, dann den letzten Schritt.<br><b>mount error(2)</b>: Den Namen der Freigabe gibt es nicht. Manche NAS zeigen im Explorer einen anderen Namen als den der Freigabe.<br><b>mount error(112)</b>, „Host is down“ oder es dauert lange: NAS aus oder Adresse falsch. Sehr alte NAS können nur SMB 1: dann in /etc/fstab bei den Optionen <code>vers=1.0</code> ergänzen (unsicher, nur wenn nötig).<br>Genauere Meldungen zeigt <code>sudo dmesg | tail</code>.<br><b>Wieder entfernen</b>: die Zeile aus /etc/fstab löschen (die Sicherung liegt in /etc/fstab.bak-tvtest), <code>sudo systemctl daemon-reload</code> ausführen und die Datei mit den Zugangsdaten in /etc/tvtest-shares löschen.</p>
+          </details>
+          <div class="lg-actions">
+            <button type="button" class="primary" id="src-mnt-done">Fertig, prüfen</button>
+            <button type="button" id="src-mnt-close">Schließen</button>
+          </div>
+        </div>
+        <button type="button" id="src-mnt-btn" class="small-btn">Netzwerkfreigabe einbinden …</button>
         <div class="frow" id="src-url-row"><label for="src-url">Adresse</label><span class="inputs"><input type="url" id="src-url" class="wide-in" autocomplete="off"></span></div>
         <div class="frow" id="src-token-row"><label for="src-token" id="src-token-label">Token</label><span class="inputs"><input type="password" id="src-token" class="wide-in" autocomplete="off"></span></div>
         <p class="help" id="src-help"></p>
@@ -4930,7 +4975,7 @@ $("md-file").addEventListener("change", async () => {
 const SRC_FOLDER = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>';
 const SRC_TYPE = { folder: "Ordner / NAS", plex: "Plex", jellyfin: "Jellyfin" };
 const SRC_HELP = {
-  folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern. Eine NAS-Freigabe muss dort vorher eingebunden sein (zum Beispiel über /etc/fstab, dafür braucht es einmal Administratorrechte). Die Testseite liest nur.",
+  folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern, oder ein Netzwerkpfad wie \\\\NAS\\Freigabe\\Ordner (so wie ihn der Explorer kopiert). Ist die Freigabe auf dem Server schon eingebunden, findet die Testseite den Ordner selbst, sonst hilft „Netzwerkfreigabe einbinden“. Die Testseite liest nur.",
   plex: "Adresse des Plex-Servers mit Port, z. B. http://192.168.1.10:32400. Den Token zeigt Plex Web: bei einem Film „Medieninfo“ → „XML anzeigen“, in der Adresse steht X-Plex-Token=…",
   jellyfin: "Adresse des Jellyfin-Servers mit Port, z. B. http://192.168.1.10:8096. Den API-Schlüssel legst du im Jellyfin-Dashboard unter „API-Schlüssel“ mit „+“ an.",
 };
@@ -4939,9 +4984,9 @@ let srcEditing = null;   // null = closed, "new" or the id of the source being e
 let srcOpen = null;      // { id, stack: [{ key, name }] } of the source being browsed
 let srcEntries = [];
 
-async function srcLoad() {
+async function srcLoad(check = true) {
   try {
-    const r = await fetch("/api/sources");
+    const r = await fetch(check ? "/api/sources?check=1" : "/api/sources");
     if (r.ok) srcList = (await r.json()).sources ?? [];
   } catch {}
   renderSources();
@@ -4950,9 +4995,10 @@ async function srcLoad() {
 function renderSources() {
   const rows = srcList.map((s) => {
     const open = srcOpen?.id === s.id;
-    const flag = s.status && !s.status.ok ? `<span class="md-flag bad">${tr("Fehler")}</span>` : "";
+    const flag = !s.status ? "" : s.status.ok ? `<span class="md-flag ok">${tr("erreichbar")}</span>`
+      : `<span class="md-flag bad" title="${escHtml(I18N.t(s.status.error ?? ""))}">${tr("nicht erreichbar")}</span>`;
     return `<li data-id="${s.id}"><button type="button" class="md-show" data-src="open" aria-pressed="${open}"><span class="md-thumb">${s.type === "folder" ? SRC_FOLDER : s.type === "plex" ? "P" : "J"}</span>` +
-      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.path ?? s.url ?? "")}</small></span>${flag}</button>` +
+      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.remote ?? s.path ?? s.url ?? "")}</small></span>${flag}</button>` +
       `<button type="button" class="ibtn" data-src="edit" title="${tr("Bearbeiten")}" aria-label="${tr("Bearbeiten")}">${MD_ICON.pencil}</button>` +
       `<button type="button" class="ibtn trash" data-src="remove" title="${tr("Entfernen")}" aria-label="${tr("Entfernen")}">${MD_ICON.trash}</button></li>`;
   }).join("");
@@ -4966,6 +5012,8 @@ function renderSources() {
 function srcFormType() {
   const t = $("src-type").value;
   $("src-path-row").hidden = t !== "folder";
+  $("src-mnt-btn").hidden = t !== "folder";
+  if (t !== "folder") { $("src-pick").hidden = true; $("src-mnt").hidden = true; }
   $("src-url-row").hidden = t === "folder";
   $("src-token-row").hidden = t === "folder";
   $("src-token-label").textContent = tr(t === "plex" ? "Token" : "API-Schlüssel");
@@ -4980,7 +5028,9 @@ function srcEdit(id) {
   $("src-type").value = s?.type ?? "folder";
   $("src-type").disabled = !!s;
   $("src-name").value = s?.name ?? "";
-  $("src-path").value = s?.path ?? "";
+  $("src-path").value = s?.remote ?? s?.path ?? "";
+  $("src-pick").hidden = true;
+  $("src-mnt").hidden = true;
   $("src-url").value = s?.url ?? "";
   $("src-token").value = "";
   $("src-token").placeholder = s?.hasToken ? tr("gespeichert, leer lassen = unverändert") : "";
@@ -4993,8 +5043,16 @@ const srcFormData = () => ({ type: $("src-type").value, name: $("src-name").valu
 async function srcPost(body) {
   const r = await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const out = await r.json();
-  if (!r.ok) throw new Error(out.error);
+  if (!r.ok) throw Object.assign(new Error(out.error), { data: out });
   return out;
+}
+// a network path the server has not mounted: the helper for mounting opens with what was typed
+function srcFailed(e) {
+  $("src-note").textContent = I18N.t(e.message);
+  if (e.data?.notMounted) srcMountOpen(e.data.notMounted);
+}
+function srcFound(out) {
+  return out.remote && out.path ? " · " + tr("eingebunden unter {a}", { a: out.path }) : "";
 }
 $("src-add").addEventListener("click", () => srcEdit("new"));
 $("src-cancel").addEventListener("click", () => { srcEditing = null; renderSources(); });
@@ -5002,9 +5060,9 @@ $("src-test").addEventListener("click", async () => {
   $("src-note").textContent = tr("Prüfe …");
   try {
     const out = await srcPost({ op: "test", id: srcEditing === "new" ? undefined : srcEditing, source: srcFormData() });
-    $("src-note").textContent = "✓ " + tr(out.message);
+    $("src-note").textContent = "✓ " + I18N.t(out.message) + srcFound(out);
   } catch (e) {
-    $("src-note").textContent = tr(e.message);
+    srcFailed(e);
   }
 });
 $("src-save").addEventListener("click", async () => {
@@ -5013,9 +5071,137 @@ $("src-save").addEventListener("click", async () => {
     srcList = out.sources;
     srcEditing = null;
     renderSources();
+    srcLoad();
   } catch (e) {
-    $("src-note").textContent = tr(e.message);
+    srcFailed(e);
   }
+});
+
+// ---- folder picker: shares, /mnt, /media and the home folder of the server, then folder by folder ----
+let srcPickAt = null; // null = start points
+async function srcPick(at) {
+  srcPickAt = at;
+  $("src-pick").hidden = false;
+  $("src-pick-note").textContent = tr("Lade …");
+  $("src-pick-take").hidden = true;
+  try {
+    const r = await fetch("/api/sources/dirs" + (at ? "?path=" + encodeURIComponent(at) : ""));
+    const out = await r.json();
+    if (!r.ok) throw new Error(out.error);
+    let rows;
+    if (!at) {
+      $("src-pick-path").textContent = tr("Startpunkte auf dem Server");
+      rows = out.roots.map((x) => `<li><button type="button" class="md-show" data-pick="${escHtml(x.path)}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(x.path)}</b><small>${escHtml(x.kind === "net" ? tr("Netzwerkfreigabe") + (x.label ? " · " + x.label : "") : x.kind === "home" ? tr("Persönlicher Ordner") : tr("Ordner"))}</small></span></button></li>`);
+      $("src-pick-note").textContent = out.roots.length ? "" : tr("Keine Startpunkte gefunden.");
+    } else {
+      $("src-pick-path").textContent = at;
+      rows = (out.parent ? [`<li><button type="button" class="md-show" data-pick="${escHtml(out.parent)}"><span class="md-thumb">↑</span><span class="md-text"><b>${tr("Übergeordneter Ordner")}</b></span></button></li>`] : [])
+        .concat([`<li><button type="button" class="md-show" data-pick=""><span class="md-thumb">⌂</span><span class="md-text"><b>${tr("Startpunkte")}</b></span></button></li>`])
+        .concat(out.dirs.map((d) => `<li><button type="button" class="md-show" data-pick="${escHtml(at.replace(/\/$/, "") + "/" + d)}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(d)}</b></span></button></li>`));
+      $("src-pick-note").textContent = tr("Hier: {a} Videos, {b} Bilder, {c} Unterordner", { a: out.videos, b: out.images, c: out.dirs.length + out.more });
+      $("src-pick-take").hidden = false;
+    }
+    $("src-pick-list").innerHTML = rows.join("");
+  } catch (e) {
+    $("src-pick-note").textContent = I18N.t(e.message);
+    $("src-pick-take").hidden = true;
+  }
+}
+$("src-pick-btn").addEventListener("click", () => {
+  if (!$("src-pick").hidden) { $("src-pick").hidden = true; return; }
+  const typed = $("src-path").value.trim();
+  srcPick(typed.startsWith("/") ? typed : null);
+});
+$("src-pick-list").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-pick]");
+  if (b) srcPick(b.dataset.pick || null);
+});
+$("src-pick-take").addEventListener("click", () => {
+  $("src-path").value = srcPickAt;
+  $("src-pick").hidden = true;
+  $("src-test").click();
+});
+$("src-pick-close").addEventListener("click", () => { $("src-pick").hidden = true; });
+
+// ---- helper for mounting a network share: the server writes the commands, someone runs them once ----
+let srcMntTimer = 0;
+let srcMntPlan = null;
+function srcMountOpen(n) {
+  $("src-mnt").hidden = false;
+  $("src-pick").hidden = true;
+  if (n) {
+    $("src-mnt-proto").value = n.proto === "nfs" ? "nfs" : "smb";
+    $("src-mnt-host").value = n.host ?? "";
+    $("src-mnt-share").value = n.proto === "nfs" ? n.rpath ?? "" : n.share ?? "";
+    $("src-mnt-sub").value = n.proto === "nfs" ? "" : (n.sub ?? []).join("/");
+    if (n.user) $("src-mnt-user").value = n.user;
+    $("src-mnt-target").value = "";
+  }
+  srcMountPlan();
+  $("src-mnt").scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+async function srcMountPlan() {
+  const nfs = $("src-mnt-proto").value === "nfs";
+  $("src-mnt-share-label").textContent = tr(nfs ? "Export" : "Freigabe");
+  $("src-mnt-share").placeholder = nfs ? "/volume1/video" : "Video";
+  $("src-mnt-user-row").hidden = nfs || $("src-mnt-guest").checked;
+  $("src-mnt-guest-row").hidden = nfs;
+  const plan = { proto: $("src-mnt-proto").value, host: $("src-mnt-host").value, share: $("src-mnt-share").value, sub: $("src-mnt-sub").value,
+    user: $("src-mnt-user").value, guest: $("src-mnt-guest").checked, target: $("src-mnt-target").value, lang: I18N.lang === "en" ? "en" : "de" };
+  srcMntPlan = null;
+  if (!plan.host.trim() || !plan.share.trim()) {
+    $("src-mnt-warn").innerHTML = "";
+    $("src-mnt-steps").innerHTML = `<p class="note">${tr("NAS-Adresse und Freigabe eintragen, dann erscheinen hier die Befehle.")}</p>`;
+    return;
+  }
+  try {
+    const out = await srcPost({ op: "mountPlan", plan });
+    srcMntPlan = out;
+    if (!$("src-mnt-target").value) $("src-mnt-target").placeholder = out.target;
+    const fill = (t) => escHtml(tr(t, { a: out.already ?? "", b: out.target }));
+    $("src-mnt-warn").innerHTML = out.warnings.map((w) => `<p class="warn">${fill(w)}</p>`).join("");
+    $("src-mnt-steps").innerHTML = out.steps.map((st, i) => `<div class="src-step"><p><b>${i + 1}.</b> ${escHtml(tr(st.title))}</p><pre>${escHtml(st.cmd)}</pre><button type="button" class="small-btn" data-copy="${i}">${tr("Kopieren")}</button></div>`).join("");
+  } catch (e) {
+    $("src-mnt-warn").innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+    $("src-mnt-steps").innerHTML = "";
+  }
+}
+for (const id of ["src-mnt-proto", "src-mnt-host", "src-mnt-share", "src-mnt-sub", "src-mnt-user", "src-mnt-guest", "src-mnt-target"]) {
+  $(id).addEventListener("input", () => { clearTimeout(srcMntTimer); srcMntTimer = setTimeout(srcMountPlan, 300); });
+}
+// copying also works on pages without https (no navigator.clipboard there)
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = Object.assign(document.createElement("textarea"), { value: text });
+  ta.style.cssText = "position:fixed;opacity:0";
+  document.body.append(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch {}
+  ta.remove();
+  return ok;
+}
+$("src-mnt-steps").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-copy]");
+  if (!b || !srcMntPlan) return;
+  const ok = await copyText(srcMntPlan.steps[Number(b.dataset.copy)].cmd);
+  b.textContent = tr(ok ? "Kopiert" : "Bitte markieren und selbst kopieren");
+  setTimeout(() => { b.textContent = tr("Kopieren"); }, 2500);
+});
+$("src-mnt-btn").addEventListener("click", () => {
+  if (!$("src-mnt").hidden) { $("src-mnt").hidden = true; return; }
+  const typed = $("src-path").value.trim();
+  srcMountOpen(null);
+  if (/^(\\\\|\/\/|smb:|nfs:)/i.test(typed)) $("src-test").click();
+});
+$("src-mnt-close").addEventListener("click", () => { $("src-mnt").hidden = true; });
+$("src-mnt-done").addEventListener("click", () => {
+  // the network path stays as typed (the server finds it now); otherwise the folder under the mount
+  const typed = $("src-path").value.trim();
+  if (!/^(\\\\|\/\/|smb:|nfs:)/i.test(typed) && srcMntPlan?.local) $("src-path").value = srcMntPlan.local;
+  else if (!typed && srcMntPlan?.local) $("src-path").value = srcMntPlan.local;
+  $("src-mnt").hidden = true;
+  $("src-test").click();
 });
 $("src-list").addEventListener("click", async (ev) => {
   const b = ev.target.closest("[data-src]");
@@ -5049,7 +5235,7 @@ async function srcBrowse() {
     srcEntries = out.entries ?? [];
     $("src-browse-note").textContent = srcEntries.length ? "" : tr("Hier gibt es keine Bilder oder Videos.");
   } catch (e) {
-    $("src-browse-note").textContent = tr(e.message);
+    $("src-browse-note").textContent = I18N.t(e.message);
     srcLoad();
   }
   renderSrcBrowser();
