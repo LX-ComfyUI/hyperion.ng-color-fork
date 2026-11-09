@@ -1,6 +1,7 @@
 // More sources for the media library, added by the user: a folder on the server (a NAS share mounted
-// there, read only; netshare.mjs understands network paths and helps mounting), Plex (address + token)
-// and Jellyfin (address + API key). The pages browse them
+// there, read only; netshare.mjs understands network paths and helps mounting), Plex (address + token,
+// or a login with a code on plex.tv/link), Jellyfin and Emby (address + API key, or user + password,
+// which is used once for a key and never kept) and DLNA media servers (dlna.mjs, no login). The pages browse them
 // through this server and the TV plays them through it too (/media/src/...), so tokens never leave the
 // server and the TV needs no access to the NAS or the media server. Files are played as they are
 // (direct play); whether the TV browser can play them is marked from the codec the server knows.
@@ -9,9 +10,16 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { execFile } from "node:child_process";
 import { randomBytes, createHash } from "node:crypto";
+import * as Dlna from "./dlna.mjs";
 import { parseInput, netLabel, resolveNet, netMountOf, probe, within, mountPlan, countDir, pickerRoots, environment } from "./netshare.mjs";
 
-const TYPES = ["folder", "plex", "jellyfin"];
+const TYPES = ["folder", "plex", "jellyfin", "emby", "dlna"];
+const LABEL = { plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", dlna: "DLNA" };
+// Jellyfin and Emby share their API (Emby under /emby); their ids: Jellyfin GUIDs, Emby numbers
+const MB = new Set(["jellyfin", "emby"]);
+const MB_ID = /^[\w-]{1,64}$/;
+const CLIENT = { product: "Hyperion TV-Testseite", id: "hyperion-tvtest" };
+const MB_AUTH = `Client="${CLIENT.product}", Device="Testserver", DeviceId="${CLIENT.id}", Version="1.0"`;
 const IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".bmp"]);
 const VIDEO_EXT = new Set([".mp4", ".m4v", ".webm", ".mov", ".mkv", ".ogv", ".avi", ".ts", ".m2ts"]);
 const MIME = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif", ".avif": "image/avif", ".bmp": "image/bmp",
@@ -24,11 +32,11 @@ const mediaKind = (name) => { const e = path.extname(name).toLowerCase(); return
 // an error the page can act on (notMounted opens the helper for mounting the share)
 const fail = (msg, extra) => Object.assign(new Error(msg), { extra });
 
-const cleanUrl = (u) => {
+const cleanUrl = (u, whole = false) => {
   let url;
   try { url = new URL(String(u ?? "").trim()); } catch { throw new Error("Bitte eine Adresse wie http://192.168.1.10:32400 eingeben"); }
   if (!/^https?:$/.test(url.protocol)) throw new Error("Die Adresse muss mit http:// oder https:// beginnen");
-  return url.origin + url.pathname.replace(/\/+$/, "");
+  return whole ? url.href : url.origin + url.pathname.replace(/\/+$/, "");
 };
 
 export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
@@ -45,7 +53,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   }
   const find = (id) => list.find((s) => s.id === id) ?? null;
   // what the pages see: never the token
-  const view = (s) => ({ id: s.id, type: s.type, name: s.name, path: s.path, remote: s.remote, url: s.url, hasToken: !!s.token, status: s.status ?? null });
+  const view = (s) => ({ id: s.id, type: s.type, name: s.name, path: s.path, remote: s.remote, url: s.url, hasToken: !!s.token, user: s.user, status: s.status ?? null });
 
   // a typed folder: a path on the server, or a network path (\\NAS\share\…) that is looked up among the
   // shares the server has mounted
@@ -70,30 +78,104 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       out.path = f.path;
       if (f.remote) out.remote = f.remote;
       if (!out.name) out.name = path.basename(out.path) || out.path;
+    } else if (type === "dlna") {
+      out.url = cleanUrl(input?.url ?? old?.url, true);
+      const d = await Dlna.describe(out.url, true).catch((e) => { throw e.message.startsWith("Antwort 404") ? new Error("Unter dieser Adresse liegt keine Gerätebeschreibung. Am einfachsten „Im Netz suchen“ benutzen.") : e; });
+      if (!out.name) out.name = d.name;
+    } else if (type === "plex" && input?.plexLink) {
+      // signed in with a code: the server's own token from the sign-in, the page never sees it
+      const link = plexLinks.get(String(input.plexLink.pin));
+      const server = link?.servers?.[Number(input.plexLink.server)];
+      if (!server) throw new Error("Die Plex-Anmeldung ist abgelaufen, bitte noch einmal anmelden");
+      out.url = server.url;
+      out.token = server.token;
+      if (!out.name) out.name = server.name || "Plex";
     } else {
       out.url = cleanUrl(input?.url ?? old?.url);
       const token = String(input?.token ?? "").trim();
-      out.token = token || old?.token || "";
-      if (!out.token) throw new Error(type === "plex" ? "Der Plex-Token fehlt" : "Der API-Schlüssel fehlt");
-      if (!out.name) out.name = type === "plex" ? "Plex" : "Jellyfin";
+      const user = String(input?.user ?? "").trim();
+      const password = String(input?.password ?? "");
+      if (MB.has(type) && user && password) {
+        // user + password once for a key of this server; the password is not kept
+        Object.assign(out, await mbLogin({ type, url: out.url }, user, password));
+      } else {
+        out.token = token || old?.token || "";
+        if (old?.userId && !token) { out.userId = old.userId; out.user = old.user; }
+      }
+      if (!out.token) throw new Error(type === "plex" ? "Der Plex-Token fehlt" : "Der API-Schlüssel fehlt (oder Benutzer und Passwort eingeben)");
+      if (!out.name) out.name = LABEL[type];
     }
     return out;
   }
 
-  // ---- talking to Plex and Jellyfin ----
+  // ---- talking to Plex, Jellyfin and Emby ----
   const headers = (s) => (s.type === "plex"
-    ? { "X-Plex-Token": s.token, Accept: "application/json", "X-Plex-Client-Identifier": "hyperion-tvtest", "X-Plex-Product": "Hyperion TV-Testseite" }
-    : { "X-Emby-Token": s.token, Accept: "application/json" });
-  async function api(s, p) {
+    ? { "X-Plex-Token": s.token, Accept: "application/json", "X-Plex-Client-Identifier": CLIENT.id, "X-Plex-Product": CLIENT.product }
+    : MB.has(s.type) ? { "X-Emby-Token": s.token, Accept: "application/json" } : {});
+  const base = (s) => s.url + (s.type === "emby" ? "/emby" : "");
+  async function api(s, p, init = {}) {
     let r;
     try {
-      r = await fetch(s.url + p, { headers: headers(s), signal: AbortSignal.timeout(TIMEOUT) });
+      r = await fetch(base(s) + p, { ...init, headers: { ...headers(s), ...init.headers }, signal: AbortSignal.timeout(TIMEOUT) });
     } catch (e) {
-      throw new Error(`${s.type === "plex" ? "Plex" : "Jellyfin"} nicht erreichbar (${e.cause?.code ?? e.name})`);
+      throw new Error(`${LABEL[s.type]} nicht erreichbar (${e.cause?.code ?? e.name})`);
     }
-    if (r.status === 401 || r.status === 403) throw new Error(s.type === "plex" ? "Plex lehnt den Token ab" : "Jellyfin lehnt den API-Schlüssel ab");
-    if (!r.ok) throw new Error(`Antwort ${r.status} von ${s.type === "plex" ? "Plex" : "Jellyfin"}`);
+    if (r.status === 401 || r.status === 403) throw new Error(s.type === "plex" ? "Plex lehnt den Token ab" : init.login ? `${LABEL[s.type]}: Benutzer oder Passwort falsch` : `${LABEL[s.type]} lehnt den API-Schlüssel ab`);
+    if (!r.ok) throw new Error(`Antwort ${r.status} von ${LABEL[s.type]}`);
     return r.json();
+  }
+
+  // Jellyfin/Emby: a login gives a key bound to that user (seeing only what the user may see)
+  async function mbLogin(s, user, password) {
+    const j = await api({ ...s, token: "" }, "/Users/AuthenticateByName", {
+      method: "POST", login: true, body: JSON.stringify({ Username: user, Pw: password }),
+      headers: { "Content-Type": "application/json", Authorization: `MediaBrowser ${MB_AUTH}`, "X-Emby-Authorization": `Emby ${MB_AUTH}` },
+    });
+    if (!j.AccessToken) throw new Error(`${LABEL[s.type]}: Benutzer oder Passwort falsch`);
+    return { token: j.AccessToken, userId: j.User?.Id, user: j.User?.Name ?? user };
+  }
+
+  // ---- Plex sign-in with a code: plex.tv/link, then the servers of that account ----
+  const plexLinks = new Map(); // pin id -> { at, code, token, servers }
+  const plexTv = async (p, init = {}) => {
+    let r;
+    try {
+      r = await fetch("https://plex.tv" + p, { ...init, headers: { Accept: "application/json", "X-Plex-Product": CLIENT.product, "X-Plex-Client-Identifier": CLIENT.id, ...init.headers }, signal: AbortSignal.timeout(TIMEOUT) });
+    } catch (e) {
+      throw new Error(`plex.tv nicht erreichbar (${e.cause?.code ?? e.name}). Der Server braucht für die Anmeldung Internet.`);
+    }
+    if (!r.ok) throw new Error(`Antwort ${r.status} von plex.tv`);
+    return r.json();
+  };
+  async function plexPinStart() {
+    for (const [k, v] of plexLinks) if (Date.now() - v.at > 30 * 60_000) plexLinks.delete(k);
+    const j = await plexTv("/api/v2/pins", { method: "POST" });
+    plexLinks.set(String(j.id), { at: Date.now(), code: j.code });
+    return { pin: String(j.id), code: j.code };
+  }
+  // the servers of the account, each with an address that answers from here (local first)
+  async function plexPinCheck(pin) {
+    const link = plexLinks.get(String(pin));
+    if (!link) throw new Error("Die Plex-Anmeldung ist abgelaufen, bitte noch einmal anmelden");
+    if (link.servers) return { done: true, servers: link.servers.map(({ name, url, owned }) => ({ name, url, owned })) };
+    const j = await plexTv(`/api/v2/pins/${encodeURIComponent(pin)}`);
+    if (!j.authToken) return { done: false };
+    link.token = j.authToken;
+    const res = await plexTv("/api/v2/resources?includeHttps=1", { headers: { "X-Plex-Token": j.authToken } });
+    const servers = [];
+    for (const d of (Array.isArray(res) ? res : []).filter((x) => String(x.provides ?? "").includes("server"))) {
+      const conns = (d.connections ?? []).filter((c) => !c.relay).sort((a, b) => (b.local - a.local));
+      const tries = conns.flatMap((c) => [c.local && c.address && c.port ? `http://${c.address}:${c.port}` : null, c.uri]).filter(Boolean);
+      let url = null;
+      for (const u of [...new Set(tries)]) {
+        const ok = await fetch(u + "/identity", { signal: AbortSignal.timeout(3000) }).then((r) => r.ok, () => false);
+        if (ok) { url = u.replace(/\/+$/, ""); break; }
+      }
+      if (url) servers.push({ name: d.name, url, token: d.accessToken || j.authToken, owned: !!d.owned });
+    }
+    link.servers = servers;
+    if (!servers.length) throw new Error("Angemeldet, aber kein Plex-Server dieses Kontos ist von hier aus erreichbar");
+    return { done: true, servers: servers.map(({ name, url, owned }) => ({ name, url, owned })) };
   }
 
   // a folder may sit on a network share: checked in a child process first (see netshare.mjs), with a
@@ -125,10 +207,14 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       const n = j.MediaContainer?.Directory?.length ?? 0;
       return `Plex verbunden, ${n} ${n === 1 ? "Bibliothek" : "Bibliotheken"}`;
     }
+    if (s.type === "dlna") {
+      const d = await Dlna.describe(s.url, true);
+      const top = await Dlna.browse(s.url, "0", 200);
+      return `${d.name} verbunden, ${top.length} ${top.length === 1 ? "Eintrag" : "Einträge"} oben`;
+    }
     const info = await api(s, "/System/Info");
-    const libs = await api(s, "/Library/VirtualFolders").catch(() => []);
-    const n = Array.isArray(libs) ? libs.length : 0;
-    return `Jellyfin ${info.Version ?? ""} verbunden, ${n} ${n === 1 ? "Bibliothek" : "Bibliotheken"}`.replace("  ", " ");
+    const n = (await mbLibraries(s).catch(() => [])).length;
+    return `${LABEL[s.type]} ${info.Version ?? ""} verbunden, ${n} ${n === 1 ? "Bibliothek" : "Bibliotheken"}`.replace("  ", " ");
   }
 
   // ---- browsing: key "" = top level; entries { key, kind: folder|image|video, name, ... } ----
@@ -179,13 +265,20 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   }
 
   const jfKind = (it) => (["Movie", "Episode", "Video", "MusicVideo", "Trailer"].includes(it.Type) ? "video" : it.Type === "Photo" ? "image" : it.IsFolder ? "folder" : null);
-  async function browseJellyfin(s, key) {
-    if (!key) {
-      const libs = await api(s, "/Library/VirtualFolders");
-      return { entries: (libs ?? []).filter((l) => ["movies", "tvshows", "homevideos", "photos", "mixed", null, undefined].includes(l.CollectionType)).map((l) => ({ key: l.ItemId, kind: "folder", name: l.Name })), crumbs: [] };
+  // the libraries: with an API key (admin) all of them, with a user login the user's own views
+  async function mbLibraries(s) {
+    const VIDEO_LIBS = ["movies", "tvshows", "homevideos", "photos", "mixed", "musicvideos", null, undefined];
+    if (s.userId) {
+      const j = await api(s, `/Users/${s.userId}/Views`);
+      return (j.Items ?? []).filter((l) => VIDEO_LIBS.includes(l.CollectionType)).map((l) => ({ key: l.Id, kind: "folder", name: l.Name }));
     }
-    if (!/^[\da-f-]{16,40}$/i.test(key)) throw new Error("Ungültiger Jellyfin-Eintrag");
-    const j = await api(s, `/Items?ParentId=${key}&SortBy=IsFolder,SortName&SortOrder=Descending,Ascending&Fields=MediaStreams,MediaSources,Path&Limit=${MAX_ENTRIES}`);
+    const libs = await api(s, "/Library/VirtualFolders");
+    return (Array.isArray(libs) ? libs : []).filter((l) => VIDEO_LIBS.includes(l.CollectionType)).map((l) => ({ key: l.ItemId ?? l.Id, kind: "folder", name: l.Name }));
+  }
+  async function browseJellyfin(s, key) {
+    if (!key) return { entries: await mbLibraries(s), crumbs: [] };
+    if (!MB_ID.test(key)) throw new Error(`Ungültiger ${LABEL[s.type]}-Eintrag`);
+    const j = await api(s, `${s.userId ? `/Users/${s.userId}` : ""}/Items?ParentId=${key}&SortBy=IsFolder,SortName&SortOrder=Descending,Ascending&Fields=MediaStreams,MediaSources,Path&Limit=${MAX_ENTRIES}`);
     const entries = (j.Items ?? []).map((it) => {
       const kind = jfKind(it);
       if (!kind) return null;
@@ -211,14 +304,31 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     const s = find(id);
     if (!s) throw new Error("Quelle nicht gefunden");
     try {
-      const out = s.type === "folder" ? await browseFolder(s, key) : s.type === "plex" ? await browsePlex(s, key) : await browseJellyfin(s, key);
+      const out = s.type === "folder" ? await browseFolder(s, key) : s.type === "plex" ? await browsePlex(s, key) : s.type === "dlna" ? await browseDlna(s, key) : await browseJellyfin(s, key);
       setStatus(s, true);
       return out;
     } catch (e) {
       // a wrong key is no sign of a source that went away
-      if (!/^(Ordner nicht gefunden|Ungültiger (Plex|Jellyfin)-Eintrag)$/.test(e.message)) setStatus(s, false, e.message);
+      if (!/^(Ordner nicht gefunden|Ungültiger (Plex|Jellyfin|Emby|DLNA)-Eintrag)$/.test(e.message)) setStatus(s, false, e.message);
       throw e;
     }
+  }
+
+  // DLNA: the file addresses come with the listing and are kept for playing (dlnaItems)
+  const dlnaItems = new Map(); // source id + object id -> { url, art }
+  async function browseDlna(s, key) {
+    const entries = await Dlna.browse(s.url, key || "0", MAX_ENTRIES);
+    for (const e of entries) if (e.kind !== "folder") dlnaItems.set(s.id + "\n" + e.key, { url: e.url, art: e.art });
+    if (dlnaItems.size > 20_000) dlnaItems.clear();
+    return { entries: entries.map(({ url, art, ...e }) => ({ ...e, thumb: art ? true : undefined })), crumbs: [] };
+  }
+  async function dlnaItem(s, key) {
+    const hit = dlnaItems.get(s.id + "\n" + key);
+    if (hit) return hit;
+    const it = await Dlna.item(s.url, key);
+    if (!it) throw new Error("not found");
+    dlnaItems.set(s.id + "\n" + key, { url: it.url, art: it.art });
+    return it;
   }
 
   // all sources at once, when the page opens the list (no checks in the background: they would keep
@@ -227,6 +337,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     await Promise.all(list.map(async (s) => {
       try {
         if (s.type === "folder") await ready(s.path);
+        else if (s.type === "dlna") await Dlna.describe(s.url, true);
         else await api(s, s.type === "plex" ? "/identity" : "/System/Info");
         setStatus(s, true);
       } catch (e) { setStatus(s, false, e.message); }
@@ -280,8 +391,8 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
       if (!/^\/library\/parts\/\d+\//.test(key)) throw new Error("not found");
       return s.url + key;
     }
-    if (!/^[\da-f-]{16,40}$/i.test(key)) throw new Error("not found");
-    return `${s.url}/Items/${key}/Download`;
+    if (!MB_ID.test(key)) throw new Error("not found");
+    return `${base(s)}/Items/${key}/Download`;
   }
 
   async function serve(req, res, id, key) {
@@ -289,11 +400,11 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     if (!s) { res.writeHead(404); return res.end(); }
     try {
       if (s.type === "folder") return await serveLocal(req, res, await folderFile(s, key));
-      // Jellyfin: videos through the stream endpoint (static = the file as it is), pictures as download
-      if (s.type === "jellyfin" && req.headers["x-kind"] !== "image") {
-        const u = `${s.url}/Videos/${key}/stream?static=true`;
-        if (!/^[\da-f-]{16,40}$/i.test(key)) throw new Error("not found");
-        return await proxy(req, res, u, s);
+      if (s.type === "dlna") return await proxy(req, res, (await dlnaItem(s, key)).url, s);
+      // Jellyfin/Emby: videos through the stream endpoint (static = the file as it is), pictures as download
+      if (MB.has(s.type) && req.headers["x-kind"] !== "image") {
+        if (!MB_ID.test(key)) throw new Error("not found");
+        return await proxy(req, res, `${base(s)}/Videos/${key}/stream?static=true`, s);
       }
       return await proxy(req, res, streamUrl(s, key), s);
     } catch (e) {
@@ -315,7 +426,7 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     });
   }
 
-  // thumbnails: Plex/Jellyfin deliver their own, a folder needs ffmpeg (cached) or gets the picture itself
+  // thumbnails: Plex/Jellyfin/Emby/DLNA deliver their own, a folder needs ffmpeg (cached) or gets the picture itself
   async function thumb(req, res, id, key) {
     const s = find(id);
     if (!s) { res.writeHead(404); return res.end(); }
@@ -324,9 +435,14 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
         if (!/^\/library\/metadata\/\d+\/thumb\/\d+$/.test(key)) throw new Error("bad");
         return await proxy(req, res, `${s.url}/photo/:/transcode?width=320&height=180&minSize=1&url=${encodeURIComponent(key)}`, s);
       }
-      if (s.type === "jellyfin") {
-        if (!/^[\da-f-]{16,40}$/i.test(key)) throw new Error("bad");
-        return await proxy(req, res, `${s.url}/Items/${key}/Images/Primary?maxWidth=320&quality=80`, s);
+      if (MB.has(s.type)) {
+        if (!MB_ID.test(key)) throw new Error("bad");
+        return await proxy(req, res, `${base(s)}/Items/${key}/Images/Primary?maxWidth=320&quality=80`, s);
+      }
+      if (s.type === "dlna") {
+        const it = await dlnaItem(s, key);
+        if (!it.art) throw new Error("bad");
+        return await proxy(req, res, it.art, s);
       }
       const full = await folderFile(s, key);
       const st = await within(fs.promises.stat(full), FS_TIMEOUT, "timeout");
@@ -426,6 +542,9 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     // the commands for mounting a share (see netshare.mjs); the server runs none of them
     if (op === "mountPlan") { sendJson(res, 200, await mountPlan(body.plan ?? {})); return true; }
     if (op === "env") { sendJson(res, 200, environment()); return true; }
+    if (op === "discover") { sendJson(res, 200, { servers: await Dlna.discover() }); return true; }
+    if (op === "plexPin") { sendJson(res, 200, await plexPinStart()); return true; }
+    if (op === "plexPinCheck") { sendJson(res, 200, await plexPinCheck(body.pin)); return true; }
     if (op === "add") {
       if (list.length >= 20) throw new Error("Höchstens 20 Quellen");
       list.push({ id: randomBytes(6).toString("hex"), ...(await clean(body.source)) });

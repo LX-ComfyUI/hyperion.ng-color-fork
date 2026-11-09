@@ -1281,7 +1281,7 @@
       <p class="help">Ein Ordner auf dem Server oder einem NAS im Netzwerk, Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Passwörter und Zugangsschlüssel bleiben auf dem Server.</p>
       <ul class="md-list" id="src-list"></ul>
       <div class="src-form" id="src-form" hidden>
-        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner / NAS</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option></select></span></div>
+        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner / NAS</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option></select></span></div>
         <div class="frow"><label for="src-name">Name</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
         <div class="frow" id="src-path-row"><label for="src-path">Ordner</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
         <div class="src-sub" id="src-pick" hidden>
@@ -1316,8 +1316,14 @@
           </div>
         </div>
         <button type="button" id="src-mnt-btn" class="small-btn">Netzwerkfreigabe einbinden …</button>
-        <div class="frow" id="src-url-row"><label for="src-url">Adresse</label><span class="inputs"><input type="url" id="src-url" class="wide-in" autocomplete="off"></span></div>
+        <div class="frow" id="src-url-row"><label for="src-url">Adresse</label><span class="inputs"><input type="url" id="src-url" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+        <div class="frow" id="src-find-row"><span></span><span class="inputs"><button type="button" id="src-find" class="small-btn">Im Netz suchen</button></span></div>
+        <ul class="md-list" id="src-found" hidden></ul>
+        <div class="frow" id="src-plex-row"><span></span><span class="inputs"><button type="button" id="src-plex" class="small-btn">Mit Plex-Konto anmelden</button></span></div>
+        <div class="src-sub" id="src-plex-box" hidden></div>
         <div class="frow" id="src-token-row"><label for="src-token" id="src-token-label">Token</label><span class="inputs"><input type="password" id="src-token" class="wide-in" autocomplete="off"></span></div>
+        <div class="frow" id="src-user-row"><label for="src-user">oder Benutzer</label><span class="inputs"><input type="text" id="src-user" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
+        <div class="frow" id="src-pass-row"><label for="src-pass">Passwort</label><span class="inputs"><input type="password" id="src-pass" class="wide-in" autocomplete="new-password"></span></div>
         <p class="help" id="src-help"></p>
         <div class="lg-actions">
           <button type="button" id="src-test">Verbindung prüfen</button>
@@ -4973,11 +4979,13 @@ $("md-file").addEventListener("change", async () => {
 
 // ---------- more sources: folder/NAS, Plex, Jellyfin (sources.mjs browses and streams them) ----------
 const SRC_FOLDER = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>';
-const SRC_TYPE = { folder: "Ordner / NAS", plex: "Plex", jellyfin: "Jellyfin" };
+const SRC_TYPE = { folder: "Ordner / NAS", dlna: "Medienserver im Netz (DLNA)", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby" };
 const SRC_HELP = {
   folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern, oder ein Netzwerkpfad wie \\\\NAS\\Freigabe\\Ordner (so wie ihn der Explorer kopiert). Ist die Freigabe auf dem Server schon eingebunden, findet die Testseite den Ordner selbst, sonst hilft „Netzwerkfreigabe einbinden“. Die Testseite liest nur.",
-  plex: "Adresse des Plex-Servers mit Port, z. B. http://192.168.1.10:32400. Den Token zeigt Plex Web: bei einem Film „Medieninfo“ → „XML anzeigen“, in der Adresse steht X-Plex-Token=…",
-  jellyfin: "Adresse des Jellyfin-Servers mit Port, z. B. http://192.168.1.10:8096. Den API-Schlüssel legst du im Jellyfin-Dashboard unter „API-Schlüssel“ mit „+“ an.",
+  dlna: "Ein Medienserver im Heimnetz (DLNA/UPnP), wie ihn viele NAS, Router und Windows anbieten. „Im Netz suchen“ findet ihn selbst, eine Anmeldung braucht es nicht. Der Server muss im selben Netz sein wie die Testseite.",
+  plex: "Am einfachsten „Mit Plex-Konto anmelden“: Die Testseite zeigt einen Code, den du auf plex.tv/link eingibst. Oder selbst: Adresse des Plex-Servers mit Port, z. B. http://192.168.1.10:32400, und den Token (Plex Web: bei einem Film „Medieninfo“ → „XML anzeigen“, in der Adresse steht X-Plex-Token=…).",
+  jellyfin: "Adresse des Jellyfin-Servers mit Port, z. B. http://192.168.1.10:8096. Dann entweder einen API-Schlüssel (Jellyfin-Dashboard → „API-Schlüssel“ → „+“) oder Benutzer und Passwort. Das Passwort wird nur einmal zum Anmelden benutzt und nicht gespeichert.",
+  emby: "Adresse des Emby-Servers mit Port, z. B. http://192.168.1.10:8096. Dann entweder einen API-Schlüssel (Emby-Einstellungen → „API-Schlüssel“) oder Benutzer und Passwort. Das Passwort wird nur einmal zum Anmelden benutzt und nicht gespeichert.",
 };
 let srcList = [];
 let srcEditing = null;   // null = closed, "new" or the id of the source being edited
@@ -4997,8 +5005,8 @@ function renderSources() {
     const open = srcOpen?.id === s.id;
     const flag = !s.status ? "" : s.status.ok ? `<span class="md-flag ok">${tr("erreichbar")}</span>`
       : `<span class="md-flag bad" title="${escHtml(I18N.t(s.status.error ?? ""))}">${tr("nicht erreichbar")}</span>`;
-    return `<li data-id="${s.id}"><button type="button" class="md-show" data-src="open" aria-pressed="${open}"><span class="md-thumb">${s.type === "folder" ? SRC_FOLDER : s.type === "plex" ? "P" : "J"}</span>` +
-      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.remote ?? s.path ?? s.url ?? "")}</small></span>${flag}</button>` +
+    return `<li data-id="${s.id}"><button type="button" class="md-show" data-src="open" aria-pressed="${open}"><span class="md-thumb">${s.type === "folder" ? SRC_FOLDER : s.type === "dlna" ? "D" : s.type[0].toUpperCase()}</span>` +
+      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.remote ?? s.path ?? (s.type === "dlna" ? srcHost(s.url) : s.url) ?? "")}${s.user ? " · " + escHtml(s.user) : ""}</small></span>${flag}</button>` +
       `<button type="button" class="ibtn" data-src="edit" title="${tr("Bearbeiten")}" aria-label="${tr("Bearbeiten")}">${MD_ICON.pencil}</button>` +
       `<button type="button" class="ibtn trash" data-src="remove" title="${tr("Entfernen")}" aria-label="${tr("Entfernen")}">${MD_ICON.trash}</button></li>`;
   }).join("");
@@ -5009,15 +5017,23 @@ function renderSources() {
   renderSrcBrowser();
 }
 
+const srcHost = (u) => { try { return new URL(u).host; } catch { return u ?? ""; } };
 function srcFormType() {
   const t = $("src-type").value;
+  const mb = t === "jellyfin" || t === "emby";
+  $("src-find-row").hidden = t !== "dlna";
+  $("src-found").hidden = t !== "dlna" || !$("src-found").innerHTML;
+  $("src-plex-row").hidden = t !== "plex";
+  if (t !== "plex") srcPlexStop();
+  $("src-user-row").hidden = !mb;
+  $("src-pass-row").hidden = !mb;
   $("src-path-row").hidden = t !== "folder";
   $("src-mnt-btn").hidden = t !== "folder";
   if (t !== "folder") { $("src-pick").hidden = true; $("src-mnt").hidden = true; }
   $("src-url-row").hidden = t === "folder";
-  $("src-token-row").hidden = t === "folder";
+  $("src-token-row").hidden = t === "folder" || t === "dlna";
   $("src-token-label").textContent = tr(t === "plex" ? "Token" : "API-Schlüssel");
-  $("src-url").placeholder = t === "plex" ? "http://192.168.1.10:32400" : "http://192.168.1.10:8096";
+  $("src-url").placeholder = t === "plex" ? "http://192.168.1.10:32400" : t === "dlna" ? "http://192.168.1.10:8200/rootDesc.xml" : "http://192.168.1.10:8096";
   $("src-help").textContent = tr(SRC_HELP[t]);
 }
 $("src-type").addEventListener("change", srcFormType);
@@ -5034,11 +5050,18 @@ function srcEdit(id) {
   $("src-url").value = s?.url ?? "";
   $("src-token").value = "";
   $("src-token").placeholder = s?.hasToken ? tr("gespeichert, leer lassen = unverändert") : "";
+  $("src-user").value = "";
+  $("src-user").placeholder = s?.user ?? "";
+  $("src-pass").value = "";
+  $("src-found").innerHTML = "";
+  srcPlexLink = null;
+  srcPlexStop();
   $("src-note").textContent = "";
   srcFormType();
   renderSources();
 }
-const srcFormData = () => ({ type: $("src-type").value, name: $("src-name").value, path: $("src-path").value, url: $("src-url").value, token: $("src-token").value });
+const srcFormData = () => ({ type: $("src-type").value, name: $("src-name").value, path: $("src-path").value, url: $("src-url").value, token: $("src-token").value,
+  user: $("src-user").value, password: $("src-pass").value, plexLink: $("src-type").value === "plex" && srcPlexLink && $("src-url").value === srcPlexLink.url ? srcPlexLink : undefined });
 
 async function srcPost(body) {
   const r = await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -5075,6 +5098,76 @@ $("src-save").addEventListener("click", async () => {
   } catch (e) {
     srcFailed(e);
   }
+});
+
+// ---- media servers in the network (DLNA): the server asks with SSDP ----
+$("src-find").addEventListener("click", async () => {
+  $("src-find").disabled = true;
+  $("src-note").textContent = tr("Suche im Netz …");
+  try {
+    const out = await srcPost({ op: "discover" });
+    $("src-found").innerHTML = out.servers.map((x) => `<li><button type="button" class="md-show" data-found="${escHtml(x.url)}" data-name="${escHtml(x.name)}"><span class="md-thumb">D</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml([x.model, srcHost(x.url)].filter(Boolean).join(" · "))}</small></span></button></li>`).join("");
+    $("src-found").hidden = !out.servers.length;
+    $("src-note").textContent = out.servers.length ? tr("Gefunden: {a}. Zum Übernehmen antippen.", { a: out.servers.length })
+      : tr("Kein Medienserver gefunden. Ist DLNA/UPnP am NAS oder Router eingeschaltet? Läuft die Testseite in einem Container, sieht sie das Netz oft nicht (dann die Adresse selbst eintragen).");
+  } catch (e) {
+    $("src-note").textContent = I18N.t(e.message);
+  }
+  $("src-find").disabled = false;
+});
+$("src-found").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-found]");
+  if (!b) return;
+  $("src-url").value = b.dataset.found;
+  if (!$("src-name").value) $("src-name").value = b.dataset.name;
+  $("src-test").click();
+});
+
+// ---- Plex sign-in with a code on plex.tv/link; the token stays on the server ----
+let srcPlexLink = null;   // { pin, server, url } chosen after the sign-in
+let srcPlexTimer = 0;
+function srcPlexStop() { clearTimeout(srcPlexTimer); srcPlexTimer = 0; $("src-plex-box").hidden = true; }
+$("src-plex").addEventListener("click", async () => {
+  srcPlexStop();
+  const box = $("src-plex-box");
+  box.hidden = false;
+  box.innerHTML = `<p class="note">${tr("Lade …")}</p>`;
+  let pin;
+  try {
+    const out = await srcPost({ op: "plexPin" });
+    pin = out.pin;
+    box.innerHTML = `<p class="help">${tr("Öffne auf einem beliebigen Gerät <b>plex.tv/link</b>, melde dich bei Plex an und gib diesen Code ein:")}</p><p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:6px 0">${escHtml(out.code)}</p><p class="note" id="src-plex-wait">${tr("Warte auf die Anmeldung …")}</p>`;
+  } catch (e) {
+    box.innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+    return;
+  }
+  const started = Date.now();
+  const poll = async () => {
+    if (box.hidden) return;
+    try {
+      const out = await srcPost({ op: "plexPinCheck", pin });
+      if (!out.done) {
+        if (Date.now() - started > 10 * 60_000) { box.innerHTML = `<p class="warn">${tr("Die Plex-Anmeldung ist abgelaufen, bitte noch einmal anmelden")}</p>`; return; }
+        srcPlexTimer = setTimeout(poll, 2500);
+        return;
+      }
+      box.innerHTML = `<p class="help">${tr("Angemeldet. Welcher Plex-Server?")}</p><ul class="md-list">` + out.servers.map((x, i) => `<li><button type="button" class="md-show" data-plex="${i}"><span class="md-thumb">P</span><span class="md-text"><b>${escHtml(x.name)}</b><small>${escHtml(x.url)}${x.owned ? "" : " · " + tr("geteilt")}</small></span></button></li>`).join("") + "</ul>";
+      box.onclick = (ev) => {
+        const b = ev.target.closest("[data-plex]");
+        if (!b) return;
+        const x = out.servers[Number(b.dataset.plex)];
+        srcPlexLink = { pin, server: Number(b.dataset.plex), url: x.url };
+        $("src-url").value = x.url;
+        if (!$("src-name").value) $("src-name").value = x.name;
+        $("src-token").placeholder = tr("von der Plex-Anmeldung");
+        box.hidden = true;
+        $("src-test").click();
+      };
+    } catch (e) {
+      box.innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+    }
+  };
+  srcPlexTimer = setTimeout(poll, 2500);
 });
 
 // ---- folder picker: shares, /mnt, /media and the home folder of the server, then folder by folder ----
