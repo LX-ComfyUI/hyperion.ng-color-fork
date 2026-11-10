@@ -38,6 +38,12 @@
       guideNote: "Jeder Grabber hat eigene Speicherplätze. Wechselst du den Grabber, nutzt Hyperion automatisch dessen Kalibrierung. Änderungen in diesem Abschnitt werden sofort gespeichert.",
       liveTitle: "Aktuelles Grabber-Bild",
       liveNone: "Noch kein Bild vom Grabber.",
+      refTitle: "Kalibriertes Grabber-Bild",
+      refNone: "Noch nicht kalibriert.",
+      refSharp: "Gespeicherte Auflösung ({res})",
+      refGrid: "So sieht Hyperion das No-Signal-Bild ({res})",
+      refNoSharp: "Für diese Kalibrierung ist kein scharfes Bild gespeichert. Kalibriere neu, dann kannst du beide Ansichten vergleichen.",
+      refHint: "Hyperion vergleicht nur grobe Felder (Helligkeit und Farbe), nicht jedes Pixel. Darum sieht es das No-Signal-Bild weicher als das gespeicherte.",
       grabber: "Grabber: {name}",
       noDevice: "Kein Grabber erkannt.",
       stNoFrames: "Der Grabber liefert gerade keine Bilder.",
@@ -110,6 +116,12 @@
       guideNote: "Every grabber has its own slots. When you change the grabber, Hyperion uses its calibration automatically. Changes in this section are saved immediately.",
       liveTitle: "Current grabber picture",
       liveNone: "No picture from the grabber yet.",
+      refTitle: "Calibrated grabber picture",
+      refNone: "Not calibrated yet.",
+      refSharp: "Saved resolution ({res})",
+      refGrid: "How Hyperion sees the no-signal picture ({res})",
+      refNoSharp: "No sharp picture is saved for this calibration. Calibrate again to compare both views.",
+      refHint: "Hyperion only compares coarse cells (brightness and color), not every pixel. That is why it sees the no-signal picture softer than the saved one.",
       grabber: "Grabber: {name}",
       noDevice: "No grabber found.",
       stNoFrames: "The grabber delivers no pictures right now.",
@@ -171,6 +183,7 @@
     },
   };
 
+  const CHECK = '<svg class="nsd-check" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><polyline points="7 12.5 10.5 16 17 8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const fill = (s, v) => String(s).replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const clamp = (v, lo, hi, def) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
@@ -239,7 +252,7 @@
         const settings = settingsOf((g.slots[i] && g.slots[i].settings) || options(next, device));
         g.slots[i] = {
           name: String(args.name ?? "").trim().slice(0, 60), savedAt: r.savedAt || now, cols: r.cols, rows: r.rows,
-          ref: r.ref, unstable: r.unstable, featureCells: r.featureCells, unstableCells: r.unstableCells, settings,
+          ref: r.ref, unstable: r.unstable, image: r.image || undefined, featureCells: r.featureCells, unstableCells: r.unstableCells, settings,
         };
         g.active = i;
         break;
@@ -287,6 +300,16 @@
       .nsd-guide li { margin: 3px 0; display: list-item; }
       .nsd-guide p { margin: 0 0 4px; }
       .nsd-muted { opacity: .75; font-size: 13px; }
+      .nsd-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; max-width: 980px; }
+      .nsd-pair > div { min-width: 0; }
+      .nsd-pair b { display: block; font-size: 13px; margin: 0 0 4px; }
+      .nsd-pair .nsd-none { padding: 0 6px; box-sizing: border-box; text-align: center; }
+      .nsd-live canvas { display: block; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; }
+      .nsd-refbtns { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; }
+      .nsd-refbtns button { width: 100%; margin: 0; text-align: left; white-space: normal; font-size: 13px; }
+      .nsd-refbtns button[aria-pressed="true"] { outline: 2px solid #2b93ef; outline-offset: -2px; font-weight: 600; }
+      .nsd-refbtns p { margin: 2px 0 0; }
+      .nsd-check { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: 5px; }
       .nsd-live img { display: block; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 6px; }
       .nsd-live .nsd-none { display: flex; align-items: center; justify-content: center; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; background: #000; color: #bbb; border-radius: 6px; font-size: 13px; }
       .nsd-status { margin: 8px 0 0; font-size: 14px; }
@@ -339,9 +362,12 @@
         <ol>${t.guideSteps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
         <p class="nsd-muted">${esc(t.guideNote)}</p>
       </div>
-      <div class="nsd-box nsd-live"><b>${esc(t.liveTitle)}</b>
+      <div class="nsd-box nsd-live">
         <p class="nsd-muted" data-ns="device"></p>
-        <div data-ns="picture"><div class="nsd-none">${esc(t.liveNone)}</div></div>
+        <div class="nsd-pair">
+          <div><b>${esc(t.liveTitle)}</b><div data-ns="picture"><div class="nsd-none">${esc(t.liveNone)}</div></div></div>
+          <div><b>${esc(t.refTitle)}</b><div data-ns="refpic"><div class="nsd-none">${esc(t.refNone)}</div></div><div class="nsd-refbtns" data-ns="refbtns"></div></div>
+        </div>
         <p class="nsd-status" data-ns="status"></p>
       </div>
       <div data-ns="calibration"></div>
@@ -361,9 +387,60 @@
       }
       renderConfig(true);
       renderCalibration();
+      renderRef();
     };
 
+    // the calibrated picture of the chosen slot: the sharp preview taken at the calibration, or the
+    // reference cells (RGB per cell) Hyperion really compares, drawn small and scaled up
+    function renderRef() {
+      const box = $("refpic"), btns = $("refbtns");
+      const e = entry(opts.getConfig(), device());
+      const slot = e.active >= 0 ? e.slots[e.active] : null;
+      const hasGrid = !!(slot && slot.ref), hasSharp = !!(slot && slot.image);
+      const mode = hasSharp && view.refMode !== "grid" ? "sharp" : "grid";
+      const key = hasGrid ? [device(), e.active, slot.savedAt, slot.ref.length, hasSharp, mode, view.imgRes || ""].join("|") : "";
+      if (key === view.refKey) return;
+      view.refKey = key;
+      if (!key) { box.innerHTML = `<div class="nsd-none">${esc(t.refNone)}</div>`; btns.innerHTML = ""; return; }
+      const cols = slot.cols || 64, rows = slot.rows || 36;
+      try {
+        if (mode === "sharp") {
+          const img = document.createElement("img");
+          img.alt = "";
+          img.onload = () => {
+            const res = `${img.naturalWidth}×${img.naturalHeight}`;
+            if (view.imgRes !== res) { view.imgRes = res; renderRef(); }
+          };
+          img.src = slot.image;
+          box.replaceChildren(img);
+        } else {
+          const bin = atob(slot.ref);
+          const canvas = document.createElement("canvas");
+          canvas.width = cols; canvas.height = rows;
+          const ctx = canvas.getContext("2d");
+          const data = ctx.createImageData(cols, rows);
+          for (let i = 0; i < cols * rows; i++) {
+            data.data[i * 4] = bin.charCodeAt(i * 3);
+            data.data[i * 4 + 1] = bin.charCodeAt(i * 3 + 1);
+            data.data[i * 4 + 2] = bin.charCodeAt(i * 3 + 2);
+            data.data[i * 4 + 3] = 255;
+          }
+          ctx.putImageData(data, 0, 0);
+          box.replaceChildren(canvas);
+        }
+      } catch (err) {
+        view.refKey = "";
+        box.innerHTML = `<div class="nsd-none">${esc(t.refNone)}</div>`;
+        return;
+      }
+      btns.innerHTML = `<button type="button" class="${btn}" data-ns-ref="sharp" aria-pressed="${mode === "sharp"}"${hasSharp ? "" : " disabled"}>${esc(fill(t.refSharp, { res: hasSharp ? (view.imgRes || "…") : "–" }))}</button>`
+        + `<button type="button" class="${btn}" data-ns-ref="grid" aria-pressed="${mode === "grid"}">${esc(fill(t.refGrid, { res: `${cols}×${rows}` }))}</button>`
+        + `<p class="nsd-muted">${esc(hasSharp ? t.refHint : t.refNoSharp)}</p>`;
+      btns.querySelectorAll("[data-ns-ref]").forEach((b) => b.addEventListener("click", () => { view.refMode = b.dataset.nsRef; renderRef(); }));
+    }
+
     function renderStatus() {
+      renderRef();
       const s = view.status;
       $("device").textContent = s && s.device ? fill(t.grabber, { name: displayName(s.device) }) : t.noDevice;
       if (s && s.image) {
@@ -380,8 +457,16 @@
       else if (!s.calibrated) el.textContent = t.stUncalibrated;
       else if (s.noSignal) {
         const what = !o.enable ? t.whatOff : s.action === "black" ? t.whatBlack : t.whatRelease;
-        el.textContent = fill(t.stNoSignal, { time: fmtTime(s.changedMs), match: pct(s.match), what });
-        el.classList.add("bad");
+        const text = fill(t.stNoSignal, { time: fmtTime(s.changedMs), match: pct(s.match), what });
+        // detected and handled: green with a check mark, so it reads as working (switched off: still red)
+        if (o.enable) {
+          el.classList.add("ok");
+          el.innerHTML = CHECK;
+          el.append(text);
+        } else {
+          el.textContent = text;
+          el.classList.add("bad");
+        }
       } else if (s.matchSinceMs > 0) {
         const left = Math.max(0, o.delay - (s.now - s.matchSinceMs) / 1000);
         el.textContent = fill(t.stPending, { match: pct(s.match), left: left.toLocaleString(t.dateLocale, { maximumFractionDigits: 1 }) });
@@ -436,8 +521,8 @@
       else if (act === "save") {
         const e = entry(opts.getConfig(), device());
         if (e.slots[slot] && !ask(fill(t.confirmOverwrite, { slot: slot + 1 }))) return;
-        // the preview picture is only for looking at it here, the slot does not keep it
-        const { image, ...result } = view.result;
+        // the slot keeps the sharp preview picture (image) next to the cells Hyperion compares
+        const result = view.result;
         view.result = null;
         await change("save", { slot, result, name: view.resultName || "" });
         return;
