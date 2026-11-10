@@ -115,7 +115,7 @@ const DEFAULT_STATE = {
   guardRules: DEFAULT_GUARD_RULES,
   // language chosen last on a control page; the TV page follows it
   lang: "de",
-  // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the phone preview
+  // where the debug views are drawn: on the TV picture (captured by the grabber!) or on the control page preview
   overlays: { bbTv: false, bbPreview: true, gsTv: false, gsPreview: true, dpTv: false, dpPreview: true },
   // gray curve memory slot last used per grabber (device name -> slot id, "default" = standard)
   grayCurveByGrabber: {},
@@ -232,7 +232,7 @@ function applyPresetOp(op, presets) {
 }
 
 let state = loadState();
-const clients = new Map(); // response -> role ("tv" | "phone")
+const clients = new Map(); // response -> role ("tv" | "control"): "control" is the control page (testsite.html), "tv" the picture page (tv.html)
 
 fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
@@ -378,9 +378,9 @@ function saveState() {
   fs.renameSync(tmp, STATE_FILE);
 }
 
-function phoneCount() {
+function controlCount() {
   let n = 0;
-  for (const role of clients.values()) if (role === "phone") n++;
+  for (const role of clients.values()) if (role === "control") n++;
   return n;
 }
 
@@ -481,10 +481,10 @@ function runningCards() {
   return Object.fromEntries(Object.entries(r).filter(([, v]) => v));
 }
 
-// Every event carries the full state plus how many phones are connected (the TV hides its QR code then)
+// Every event carries the full state plus how many control pages are open (the TV hides its QR code then)
 function broadcast() {
   // serverNow lets the TV time the gray test against the Pi's clock, not its own
-  const payload = `data: ${JSON.stringify({ ...publicState(), phones: phoneCount(), serverNow: Date.now() })}\n\n`;
+  const payload = `data: ${JSON.stringify({ ...publicState(), controls: controlCount(), serverNow: Date.now() })}\n\n`;
   for (const res of clients.keys()) res.write(payload);
 }
 
@@ -492,7 +492,7 @@ function broadcast() {
 // loading layer with the right text, also the ones that did not press the button
 function broadcastSystem(kind) {
   const payload = `event: system\ndata: ${JSON.stringify({ kind })}\n\n`;
-  for (const [res, role] of clients) if (role === "phone") res.write(payload);
+  for (const [res, role] of clients) if (role === "control") res.write(payload);
 }
 
 // Debug data from Hyperion goes to every event stream as a named "debug" event
@@ -713,7 +713,7 @@ async function loginHyperion(api) {
   if (!reply.success) throw new Error("Hyperion hat den Token abgelehnt. Bitte neu verbinden.");
 }
 
-// One token request at a time; the phone polls its state
+// One token request at a time; the control page polls its state
 let tokenRequest = { status: "idle", id: null, error: null };
 
 async function requestToken() {
@@ -841,7 +841,7 @@ connectMonitor();
 // --- Grabber test: the TV shows known colors full screen, Hyperion measures the decoded grabber
 // frames (fork command "grabbertest", before any calibration), the result goes to Hyperion's global
 // setting "grabberTest" and is shown in the WebUI (Aufnahme Hardware). The server runs the test, so
-// it goes on when the phone's screen turns off.
+// it goes on when the screen of the device with the control page turns off.
 
 require("./public/grabbertest-report.js");
 require("./public/nosignal-ui.js");
@@ -1899,7 +1899,7 @@ function saveColor(patch) {
 
 // Undo/redo of the gray curve points, per color entry: every write from this page that changes the
 // points keeps the points before it. In its own file, so it survives a restart and every device
-// undoes the same steps (a point moved by accident on the phone can be undone at the PC).
+// undoes the same steps (a point moved by accident on the control page can be undone at the PC).
 const CURVE_HISTORY_FILE = path.join(DATA_DIR, "graycurve-history.json");
 const CURVE_HISTORY_MAX = 50;
 let curveHistory = loadCurveHistory();
@@ -2041,7 +2041,7 @@ async function testServerStatus() {
   return {
     server: { startedAt: SERVER_STARTED, port: PORT },
     hyperion: await hyperionStatus(),
-    clients: { tv: roles.filter((r) => r === "tv").length, phone: roles.filter((r) => r === "phone").length },
+    clients: { tv: roles.filter((r) => r === "tv").length, control: roles.filter((r) => r === "control").length },
     monitor: { connected: !!monitor, debugOk: !!lastDebug?.ok, debugAt: lastDebug?.at ?? null, preview: !!monitor?.imageStreaming },
     features: bb && color ? [
       feature("blackborder", "Schwarzbalken-Erkennung", bb.enable === true),
@@ -2184,7 +2184,7 @@ function scheduleGuard() {
 // countdown. If no page comes back in time, the tests are paused: the TV shows nothing, the settings
 // the tests switched off in Hyperion are restored, the guided calibration is dropped. The test
 // server itself keeps running, so a page can always connect again (the QR code on the TV).
-// The basic grabber test is no reason: it runs on the server while the phone is off.
+// The basic grabber test is no reason: it runs on the server while the control page is closed.
 const GRACE_MS = Number(process.env.GRACE_MS) || 30000;
 let graceUntil = 0;
 let graceTimer = null;
@@ -2205,7 +2205,7 @@ function updateGrace() {
   clearTimeout(graceTimer);
   graceTimer = null;
   const shown = shownTests().length > 0 || overlaysOnTv();
-  if (phoneCount() > 0 || !shown) {
+  if (controlCount() > 0 || !shown) {
     if (graceUntil) { graceUntil = 0; broadcast(); }
     return;
   }
@@ -2220,7 +2220,7 @@ function updateGrace() {
 
 function pauseTests() {
   graceTimer = null;
-  if (phoneCount() > 0 || grabberRun.running) return updateGrace();
+  if (controlCount() > 0 || grabberRun.running) return updateGrace();
   const keys = shownTests();
   graceUntil = 0;
   paused = Object.fromEntries(keys.map((k) => [k, true]));
@@ -2416,7 +2416,7 @@ async function webuiTokenValid(token) {
 function authOpen(req, url) {
   const p = url.pathname;
   if (AUTH_OPEN_PATHS.has(p) || AUTH_OPEN_PREFIXES.some((x) => p.startsWith(x))) return req.method === "GET" || p.startsWith("/api/media/") || p === "/api/login";
-  return req.method === "GET" && p === "/api/events" && url.searchParams.get("role") !== "phone";
+  return req.method === "GET" && p === "/api/events" && url.searchParams.get("role") !== "control";
 }
 async function authorized(req, url) {
   if (authOpen(req, url) || !(await refreshAuthRequired())) return true;
@@ -2541,10 +2541,10 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && p === "/api/events") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
-      clients.set(res, url.searchParams.get("role") === "phone" ? "phone" : "tv");
+      clients.set(res, url.searchParams.get("role") === "control" ? "control" : "tv");
       checkTv();
       updateGrace();
-      broadcast(); // also tells the TV that a phone joined
+      broadcast(); // also tells the TV that a control page joined
       if (lastDebug) res.write(`event: debug\ndata: ${JSON.stringify(lastDebug)}\n\n`);
       const ping = setInterval(() => res.write(": ping\n\n"), 15000);
       req.on("close", () => {
@@ -2557,7 +2557,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // Grabber preview: a separate event stream, so only phones that show the preview get the frames
+    // Grabber preview: a separate event stream, so only control pages that show the preview get the frames
     if (req.method === "GET" && p === "/api/preview") {
       res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
       res.write(": preview\n\n");
@@ -2703,7 +2703,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, await curveHistoryMove(Number(index ?? 0), dir));
     }
 
-    // QR code with the phone URL, built from the address the TV used to reach the Pi
+    // QR code with the control page URL, built from the address the TV used to reach the Pi
     if (req.method === "GET" && p === "/api/qr.svg") {
       const host = /^[\w.:\[\]-]+$/.test(req.headers.host ?? "") ? req.headers.host : `localhost:${PORT}`;
       res.writeHead(200, { "Content-Type": "image/svg+xml", "Cache-Control": "no-cache" });

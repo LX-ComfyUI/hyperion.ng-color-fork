@@ -4698,7 +4698,7 @@ function renderTestServer() {
     html += st.hyperion.connected ? tsItem("ok", "✓", tr("Verbindung zu Hyperion"), tr("angemeldet"))
       : tsItem("bad", "✕", tr("Verbindung zu Hyperion"), st.hyperion.error ? tr(st.hyperion.error) : tr("nicht verbunden"));
     html += st.clients.tv ? tsItem("ok", "✓", tr("TV-Seite"), tr("{a} verbunden", { a: st.clients.tv })) : tsItem("warn", "!", tr("TV-Seite"), tr("nicht geöffnet"));
-    html += tsItem("ok", "✓", tr("Steuerseiten"), tr("{a} verbunden", { a: st.clients.phone }));
+    html += tsItem("ok", "✓", tr("Steuerseiten"), tr("{a} verbunden", { a: st.clients.control }));
     html += st.monitor.debugOk ? tsItem("ok", "✓", tr("Live-Daten von Hyperion"), tr("kommen an"))
       : tsItem(st.monitor.connected ? "warn" : "bad", st.monitor.connected ? "!" : "✕", tr("Live-Daten von Hyperion"), st.monitor.connected ? tr("keine Daten") : tr("keine Verbindung"));
     html += tsItem(st.monitor.preview ? "run" : "off", st.monitor.preview ? "▶" : "–", tr("Grabber-Bild an Vorschau"), st.monitor.preview ? tr("läuft") : tr("aus"));
@@ -8098,8 +8098,8 @@ async function init() {
   renderSideStatus();
   loadGrabberReport();
   setPanel(store.get("tvtest-preview") === "1");
-  // role=phone tells the TV to hide its QR code
-  const es = new EventSource("/api/events?role=phone");
+  // role=control tells the TV to hide its QR code
+  const es = new EventSource("/api/events?role=control");
   eventSource = es;
   es.addEventListener("move", (ev) => followMove(JSON.parse(ev.data).port));
   es.addEventListener("system", (ev) => startLoading(JSON.parse(ev.data).kind));
