@@ -1857,6 +1857,9 @@ function applyTheme(mode) {
     btn.dataset.tipKey = 'general_tip_theme_' + mode;
     btn.dataset.tip = $.i18n(btn.dataset.tipKey);
     btn.setAttribute('aria-label', btn.dataset.tip);
+    // Handy: gleicher Eintrag im Schraubenschlüssel-Menü (index.html #mob_darkmode)
+    $('#mob_darkmode .mob-theme-icon').html(THEME_ICONS[mode]);
+    $('#mob_darkmode_text').text(btn.dataset.tip);
   }
 }
 

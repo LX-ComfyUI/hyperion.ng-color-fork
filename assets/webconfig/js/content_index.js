@@ -498,6 +498,34 @@ function bindUiHandlers() {
     applyTheme(order[(order.indexOf(themeMode()) + 1) % order.length]);
   });
 
+  // Fork-Erweiterung: Handy-Kopfzeile – Kamera, Assistenten und Darstellung stehen < 768 px im
+  // Schraubenschlüssel-Menü; die Einträge leiten den Klick an die (dort ausgeblendeten) Symbole weiter
+  // und übernehmen deren Sichtbarkeit und Zustand
+  const mobileToolbar = {
+    forward: { mob_streamer: "#btn_streamer", mob_wizard_byteorder: "#btn_wizard_byteorder",
+               mob_wizard_colorcalibration: "#btn_wizard_colorcalibration", mob_darkmode: "#btn_darkmode" },
+    sync: function () {
+      const shown = id => $(id).length && $(id)[0].style.display !== "none";
+      $("#mob_streamer").toggleClass("mob-show", !!shown("#btn_streamer"));
+      $("#mob_wizard_byteorder, #mob_wizard_colorcalibration").toggleClass("mob-show", !!shown("#NavMenuWizards"));
+      $("#mob_divider").toggleClass("mob-show", $("#mob_darkmode, #mob_streamer, #mob_wizard_byteorder").filter(".mob-show").length > 0);
+      $("#mob_streamer_icon").toggleClass("text-danger", $("#btn_streamer_icon").hasClass("text-danger"));
+    }
+  };
+  Object.keys(mobileToolbar.forward).forEach(function (id) {
+    $("#" + id).on("click", function (e) {
+      e.preventDefault();
+      $(mobileToolbar.forward[id]).trigger("click");
+      // Menü schließen (Bootstrap-Dropdown), die Kamera zeigt ihren Zustand sofort
+      $(this).closest(".dropdown").removeClass("open");
+      setTimeout(mobileToolbar.sync, 0);
+    });
+  });
+  new MutationObserver(mobileToolbar.sync).observe(document.getElementById("top-navbar"),
+    { attributes: true, attributeFilter: ["style", "class"], subtree: true });
+  window.mobileToolbarSync = mobileToolbar.sync;
+  mobileToolbar.sync();
+
   // Main navigation click handling
   document.querySelectorAll(".mnava").forEach(el => {
     el.addEventListener("click", function (e) {

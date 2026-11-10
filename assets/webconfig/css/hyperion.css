@@ -1657,3 +1657,39 @@ nav.navbar-static-top .navbar-toggle {
 .power-device-name { text-transform: none; font-weight: normal; }
 .dropdown-header.power-device-why { white-space: normal; max-width: 260px; text-transform: none; }
 .dropdown-menu > li.disabled > a { opacity: .45; cursor: not-allowed; }
+
+/* Fork-Erweiterung: Handy-Kopfzeile mit weniger Symbolen. Kamera (Bildschirm als Quelle), Assistenten
+   und Darstellung stehen < 768 px im Schraubenschlüssel-Menü (.mob-only, mobileToolbar in content_index.js) */
+.mob-only {
+  display: none !important;
+}
+@media (max-width: 767.98px) {
+  #btn_streamer,
+  #NavMenuWizards,
+  #btn_darkmode {
+    display: none !important;
+  }
+  .mob-only.mob-show {
+    display: list-item !important;
+  }
+  #mob_streamer_icon.text-danger {
+    color: #d9534f;
+  }
+  .mob-theme-icon {
+    margin-right: 5px;
+    display: inline-block;
+    width: 1.28571429em;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .mob-theme-icon svg {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
