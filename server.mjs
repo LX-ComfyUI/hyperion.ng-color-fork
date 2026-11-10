@@ -591,7 +591,7 @@ function changePrefs(req, changes) {
   savePrefs();
 }
 
-// phone.html / tv.html with the device's settings in front of everything else
+// testsite.html / tv.html with the device's settings in front of everything else
 function servePage(req, res, file) {
   let id = deviceOf(req);
   const headers = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" };
@@ -2489,7 +2489,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && p === "/login") return serveStatic(res, "login.html");
     if (req.method === "POST" && p === "/api/login") return handleLogin(req, res);
     if (req.method === "POST" && p === "/api/logout") return handleLogout(req, res);
-    if (req.method === "GET" && p === "/") return servePage(req, res, "phone.html");
+    if (req.method === "GET" && p === "/") return servePage(req, res, "testsite.html");
     if (req.method === "GET" && p === "/tv") return servePage(req, res, "tv.html");
     if (await media.handle(req, res, p, sendJson, readBody)) return;
     if (await sources.handle(req, res, p, sendJson, readBody)) return;
