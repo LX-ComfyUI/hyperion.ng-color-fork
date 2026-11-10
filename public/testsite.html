@@ -1338,8 +1338,8 @@
       <ul class="md-list" id="src-list"></ul>
       <div class="src-form" id="src-form" hidden>
         <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner (lokal)</option><option value="nas">NAS / Netzwerkordner</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option><option value="webdav">WebDAV (z. B. Nextcloud)</option></select></span></div>
-        <div class="frow"><label for="src-name">Name</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
-        <div class="frow" id="src-path-row"><label for="src-path">Ordner</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
+        <div class="frow"><label for="src-name">Name (optional)</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
+        <div class="frow" id="src-path-row"><label for="src-path">Ordnerpfad</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
         <div class="src-sub" id="src-pick" hidden>
           <h5>Ordner auf dem Server wählen</h5>
           <div class="src-pick-path" id="src-pick-path"></div>
@@ -5472,6 +5472,9 @@ function srcFormType() {
   $("src-user-row").hidden = !mb && !dav;
   $("src-pass-row").hidden = !mb && !dav;
   $("src-path-row").hidden = !dir;
+  $("src-path-row").querySelector("label").textContent = tr(t === "nas" ? "Netzwerkpfad" : "Ordnerpfad");
+  $("src-pick-btn").textContent = tr(t === "nas" ? "Überprüfen" : "Durchsuchen");
+  $("src-name").placeholder = tr(dir ? "sonst der Ordnername" : "sonst der Name des Servers");
   $("src-path").placeholder = t === "nas" ? "\\\\NAS\\Freigabe\\Ordner" : "/home/NAME/Videos";
   $("src-mnt-btn").hidden = t !== "nas" || !$("src-mnt").hidden;
   if (!dir) $("src-pick").hidden = true;
