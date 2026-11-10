@@ -459,6 +459,9 @@
   .src-sub { border: 1px solid var(--btn-line); border-radius: 9px; padding: 8px 10px; margin: 8px 0; }
   .src-sub h5 { margin: 0 0 6px; font-size: 14px; }
   .src-pick-path { font-size: 13px; color: var(--muted); word-break: break-all; margin-bottom: 6px; }
+  .src-run { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+  .src-run-allow { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  #src-run-log .src-step pre.bad { border-color: #c0392b; }
   .src-step { margin: 10px 0 0; }
   .src-step p { margin: 0 0 4px; font-size: 13px; }
   .src-step pre { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: all; }
@@ -1362,6 +1365,16 @@
           <div class="frow"><label for="src-mnt-target">Einbinden unter</label><span class="inputs"><input type="text" id="src-mnt-target" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
           <div id="src-mnt-warn"></div>
           <div id="src-mnt-steps"></div>
+          <div class="src-run" id="src-run" hidden>
+            <label class="src-run-allow"><input type="checkbox" id="src-run-allow"> <span>Einbinden direkt von hier erlauben</span></label>
+            <p class="note" id="src-run-hint">Dann führt die Testseite genau die Schritte oben selbst aus, statt dass du sie im Terminal eingibst. Dafür braucht sie einmal das Administratorpasswort des Servers. Passwörter werden nicht gespeichert, andere Befehle führt sie nie aus.</p>
+            <div id="src-run-form" hidden>
+              <div class="frow" id="src-run-sudo-row"><label for="src-run-sudo">Administratorpasswort am Server</label><span class="inputs"><input type="password" id="src-run-sudo" class="wide-in" autocomplete="off"></span></div>
+              <div class="frow" id="src-run-nas-row"><label for="src-run-nas">Passwort am NAS</label><span class="inputs"><input type="password" id="src-run-nas" class="wide-in" autocomplete="off"></span></div>
+              <div class="lg-actions"><button type="button" class="primary" id="src-run-go">Jetzt einbinden</button></div>
+              <div id="src-run-log"></div>
+            </div>
+          </div>
           <details class="more">
             <summary>Wenn es nicht klappt</summary>
             <p class="help"><b>mount error(13)</b> oder „Permission denied“: Benutzer oder Passwort falsch. Den Schritt mit den Zugangsdaten noch einmal ausführen, dann den letzten Schritt.<br><b>mount error(2)</b>: Den Namen der Freigabe gibt es nicht. Manche NAS zeigen im Explorer einen anderen Namen als den der Freigabe.<br><b>mount error(112)</b>, „Host is down“ oder es dauert lange: NAS aus oder Adresse falsch. Sehr alte NAS können nur SMB 1: dann in /etc/fstab bei den Optionen <code>vers=1.0</code> ergänzen (unsicher, nur wenn nötig).<br>Genauere Meldungen zeigt <code>sudo dmesg | tail</code>.<br><b>Wieder entfernen</b>: die Zeile aus /etc/fstab löschen (die Sicherung liegt in /etc/fstab.bak-tvtest), <code>sudo systemctl daemon-reload</code> ausführen und die Datei mit den Zugangsdaten in /etc/tvtest-shares löschen.</p>
@@ -5747,6 +5760,7 @@ async function srcMountPlan() {
   const plan = { proto: $("src-mnt-proto").value, host: $("src-mnt-host").value, share: $("src-mnt-share").value, sub: $("src-mnt-sub").value,
     user: $("src-mnt-user").value, guest: $("src-mnt-guest").checked, target: $("src-mnt-target").value, lang: I18N.lang === "en" ? "en" : "de" };
   srcMntPlan = null;
+  $("src-run").hidden = true;
   if (!plan.host.trim() || !plan.share.trim()) {
     $("src-mnt-warn").innerHTML = "";
     $("src-mnt-steps").innerHTML = `<p class="note">${tr("NAS-Adresse und Freigabe eintragen, dann erscheinen hier die Befehle.")}</p>`;
@@ -5757,6 +5771,7 @@ async function srcMountPlan() {
     srcMntPlan = out;
     if (!$("src-mnt-target").value) $("src-mnt-target").placeholder = out.target;
     const fill = (t) => escHtml(tr(t, { a: out.already ?? "", b: out.target }));
+    srcRunShow(out);
     $("src-mnt-warn").innerHTML = out.warnings.map((w) => `<p class="warn">${fill(w)}</p>`).join("");
     $("src-mnt-steps").innerHTML = out.steps.map((st, i) => `<div class="src-step"><p><b>${i + 1}.</b> ${escHtml(tr(st.title))}</p><pre>${escHtml(st.cmd)}</pre><button type="button" class="small-btn" data-copy="${i}">${tr("Kopieren")}</button></div>`).join("");
   } catch (e) {
@@ -5764,6 +5779,40 @@ async function srcMountPlan() {
     $("src-mnt-steps").innerHTML = "";
   }
 }
+// mounting from the page itself: opt-in, Linux server only; the server runs just the steps listed above
+let srcRunState = null;
+async function srcRunShow(plan) {
+  const can = plan.env?.platform === "linux" && !plan.env.docker && !plan.already;
+  $("src-run").hidden = !can;
+  if (!can) return;
+  try { srcRunState ??= await srcPost({ op: "mountRunState" }); } catch { $("src-run").hidden = true; return; }
+  $("src-run-allow").checked = srcRunState.enabled;
+  $("src-run-form").hidden = !srcRunState.enabled;
+  $("src-run-sudo-row").hidden = srcRunState.sudoFree;
+  $("src-run-nas-row").hidden = plan.proto !== "smb" || plan.guest;
+}
+$("src-run-allow").addEventListener("change", async () => {
+  try { srcRunState = await srcPost({ op: "mountRunState", enabled: $("src-run-allow").checked }); } catch (e) { $("src-note").textContent = I18N.t(e.message); }
+  $("src-run-form").hidden = !srcRunState?.enabled;
+  $("src-run-sudo-row").hidden = !!srcRunState?.sudoFree;
+  if (srcMntPlan) srcRunShow(srcMntPlan);
+});
+$("src-run-go").addEventListener("click", async () => {
+  const btn = $("src-run-go"), log = $("src-run-log");
+  btn.disabled = true;
+  log.innerHTML = `<p class="note">${tr("Läuft …")}</p>`;
+  try {
+    const out = await srcPost({ op: "mountRun", sudoPassword: $("src-run-sudo").value, nasPassword: $("src-run-nas").value,
+      plan: { proto: $("src-mnt-proto").value, host: $("src-mnt-host").value, share: $("src-mnt-share").value, sub: $("src-mnt-sub").value,
+        user: $("src-mnt-user").value, guest: $("src-mnt-guest").checked, target: $("src-mnt-target").value, lang: I18N.lang === "en" ? "en" : "de" } });
+    log.innerHTML = out.log.map((l) => `<div class="src-step"><p><b>${l.ok ? "✓" : "✗"}</b> ${escHtml(tr(l.title))}</p>${l.out ? `<pre class="${l.ok ? "" : "bad"}">${escHtml(l.out)}</pre>` : ""}</div>`).join("")
+      + `<p class="${out.ok ? "note" : "warn"}">${escHtml(tr(out.ok ? "Eingebunden. Mit „Fertig, prüfen“ geht es weiter." : "Das Einbinden hat nicht geklappt. Die Meldung steht oben."))}</p>`;
+    if (out.ok) { $("src-run-sudo").value = ""; $("src-run-nas").value = ""; }
+  } catch (e) {
+    log.innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+  }
+  btn.disabled = false;
+});
 for (const id of ["src-mnt-proto", "src-mnt-host", "src-mnt-share", "src-mnt-sub", "src-mnt-user", "src-mnt-guest", "src-mnt-target"]) {
   $(id).addEventListener("input", () => { clearTimeout(srcMntTimer); srcMntTimer = setTimeout(srcMountPlan, 300); });
 }
