@@ -737,6 +737,7 @@
           box-sizing: border-box; overflow-y: auto; background: var(--bg); padding: 0; gap: 0; }
   #side .side-list { list-style: none; margin: 0; padding: 0; }
   #side .side-list li { display: flex; align-items: center; padding: 0; border-bottom: 1px solid var(--bar-line); }
+  #side .side-list li:last-child { border-bottom: none; }
   #side .side-list li > a { flex: 1; min-width: 0; padding-right: 2px; }
   /* the mark of the current card spans the whole row, eye included */
   #side .side-list li:has(> a.current) { background: color-mix(in srgb, var(--text) 6%, transparent); }
@@ -752,12 +753,13 @@
   /* big eye under the eyes of the list (title row of the order box): shows all cards at once, a second tap restores the cards hidden before */
   .side-order-ttl { display: flex; align-items: center; }
   .side-order-ttl .side-order-fold { flex: 1; min-width: 0; width: auto; }
-  .side-eye-all, .side-dock-all { flex: none; width: 32px; height: 36px; margin: -6px -9px -6px 0; padding: 0; display: flex; align-items: center; justify-content: center;
+  .side-eye-all, .side-dock-all { flex: none; width: 32px; height: 36px; margin: -6px 0; padding: 0; display: flex; align-items: center; justify-content: center;
                   border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .85; }
   .side-dock-all { width: 28px; margin-right: 12px; }
+  .side-eye-all { margin-right: -9px; }
   .side-eye-all:hover:not(:disabled), .side-dock-all:hover:not(:disabled) { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); }
   .side-eye-all:disabled, .side-dock-all:disabled { opacity: .3; cursor: default; }
-  .side-eye-all svg, .side-dock-all svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .side-eye-all svg, .side-dock-all svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   /* arrow next to the eye: moves the card to the menu on the right (arrow to the right) or back to the middle (arrow to the left, accent) */
   .side-dock { flex: none; width: 28px; height: 36px; margin-right: 0; padding: 0; display: flex; align-items: center; justify-content: center;
                border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .7; }
@@ -772,20 +774,26 @@
   .side-list a.current { border-left-color: var(--accent); background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-weight: 600; }
     .side-foot { margin-top: auto; padding: 10px 15px; font-size: 12px; color: var(--muted); }
   /* order of the cards under the list; an entry held a moment can be dragged */
-  .side-order { padding: 12px 15px 6px; }
+  .side-order { padding: 12px 15px 6px; border-top: 1px solid var(--bar-line); }
   .side-order-ttl { margin: 0 0 6px; }
   .side-order-ttl .side-order-fold { display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: none;
                            font-size: 12px; color: var(--muted); text-align: left; }
   .side-order-fold svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
-  .side-order.folded .side-order-fold svg { transform: rotate(-90deg); }
+  .side-order-fold svg.fold-list { width: 20px; height: 20px; margin-right: 2px; transition: none; }
+  .side-order-fold svg.fold-list .dg { stroke-width: 1.4; }
+  .side-order.folded .side-order-fold svg.fold-chev { transform: rotate(-90deg); }
+  .side-order.folded .side-order-fold span { display: none; }
+  .side-order-fold span { white-space: nowrap; }
   .side-order.folded .side-order-ttl { margin: 0; }
   .side-order.folded > :not(.side-order-ttl) { display: none; }
   /* the menu is too narrow for three buttons side by side: one under the other */
-  .side-order .order-seg { flex-direction: column; }
+  .side-order .order-seg { flex-direction: column; width: var(--seg-w, auto); max-width: 100%; }
   .side-order .order-seg button { padding: 6px 10px; font-size: 13px; text-align: left; }
   /* the chosen button is only tinted here, so it stands out less from the menu */
-  .side-order .order-seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--btn)); color: var(--btn-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
-  .side-order .order-seg button + button { border-left: none; border-top: 1px solid var(--btn-line); }
+  .side-order .order-seg { border-color: var(--bar-line); }
+  .side-order .order-seg button { background: color-mix(in srgb, var(--text) 4%, var(--bg)); border-color: var(--bar-line); }
+  .side-order .order-seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 12%, var(--bg)); color: var(--text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .side-order .order-seg button + button { border-left: none; border-top: 1px solid var(--bar-line); }
   /* WebUI, language and appearance in the menu on phones: one row each, icon and name */
   .side-tools { padding: 6px 0; border-top: 1px solid var(--bar-line); }
   .side-tools[hidden] { display: none; }
@@ -2364,18 +2372,25 @@
   const ORDER_OPEN_KEY = "tvtest-side-order-open";
   const orderBox = document.createElement("div");
   orderBox.className = "side-order";
-  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><div class="side-order-hint"></div>';
+  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg class="fold-list" viewBox="0 0 24 24" aria-hidden="true"><path class="dg" d="M2.5 4.5l1.8-1.3v5.3M2.2 10.2c.3-1 3.7-1.2 3.7.4 0 1.4-3.5 2.8-3.7 4.4h3.9M2.3 16.8c.4-.8 3.5-1 3.5.6 0 1-1.2 1.4-1.8 1.4.8 0 2 .3 2 1.5 0 1.800-3 1.900-3.700.7"/><line x1="10" y1="5.5" x2="23" y2="5.5"/><line x1="10" y1="12" x2="23" y2="12"/><line x1="10" y1="18.5" x2="23" y2="18.5"/></svg><svg class="fold-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><div class="side-order-hint"></div>';
   const orderTtl = orderBox.querySelector(".side-order-fold");
   orderTtl.querySelector("span").textContent = I18N.t("Reihenfolge der Karten");
-  ["Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.",
-    "Auge: blendet eine Karte aus und wieder ein.", "Großes Auge darunter: blendet alle Karten auf einmal ein.",
-    "Pfeil links daneben: schiebt eine Karte in die Seitenleiste rechts und zurück.", "Großer Pfeil daneben: schiebt alle dort stehenden Karten."]
+  orderTtl.title = I18N.t("Reihenfolge der Karten");
+  ["Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge."]
     .forEach((t) => { const p = document.createElement("p"); p.textContent = I18N.t(t); orderBox.lastChild.appendChild(p); });
   orderBox.insertBefore(makeSeg(), orderBox.lastChild);
   const setOrderOpen = (open) => {
     orderBox.classList.toggle("folded", !open);
     orderTtl.setAttribute("aria-expanded", String(open));
+    fitSeg();
   };
+  // the buttons reach from the left edge of the box to the end of the title word only
+  const fitSeg = () => {
+    const word = orderTtl.querySelector("span"), seg = orderBox.querySelector(".order-seg");
+    if (!word.offsetWidth || !seg) return;
+    orderBox.style.setProperty("--seg-w", Math.round(word.getBoundingClientRect().right - seg.getBoundingClientRect().left) + "px");
+  };
+  addEventListener("resize", fitSeg);
   orderTtl.addEventListener("click", () => {
     const open = orderBox.classList.contains("folded");
     setOrderOpen(open);
@@ -2383,6 +2398,9 @@
   });
   setOrderOpen(store.get(ORDER_OPEN_KEY) !== "0");
   list.after(orderBox);
+  fitSeg();
+  requestAnimationFrame(fitSeg);
+  document.fonts?.ready.then(fitSeg);
   document.getElementById("order-guide")?.appendChild(makeSeg());
   applyOrder();
   syncSegs();
