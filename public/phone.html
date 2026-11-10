@@ -988,7 +988,7 @@
       <li><a class="jump" href="#card-rgb"><b>RGB-Byte-Reihenfolge</b></a>: Die LEDs leuchten in einer falschen Farbe, zum Beispiel grün statt rot. Bei der Ersteinrichtung der wichtigste Test, denn solange die Farbkanäle vertauscht sind, ist jeder weitere Test sinnlos. Später nur nach einem Wechsel der LED-Hardware nötig. <small class="flowref">Wirkt in Verarbeitungsschritt <a class="flowjump" href="#ff-step-20">20</a></small></li>
       <li><a class="jump" href="#card-gx"><b>Grabber-Farberkennung</b></a>: Der Grabber oder ein Gerät davor (etwa ein HDMI-Splitter) verfälscht die Farben, bevor Hyperion sie sieht. Schwarz kommt nicht als Schwarz an, dunkle Stufen verschwinden, Rot und Blau sind zu schwach oder Grün zu kräftig. Der Grundtest misst das, die Grabber-Farbkorrektur gleicht es aus. Dabei prüft er auch die <b>Farbnorm (YUV)</b>, mit der Hyperion das Bild des Grabbers in RGB umrechnet (BT.601 oder BT.709), und empfiehlt die passende. Passt sie nicht, stell sie zuerst um und wiederhole den Grundtest, denn eine falsche Norm verfälscht die Farben. Jeder Grabber hat eigene Speicherplätze, nach einem Grabberwechsel gilt automatisch seine Kalibrierung. Ohne diesen Schritt gleichst du später Fehler des Grabbers mit Gamma oder Graukurve aus. <small class="flowref">Wirkt in den Verarbeitungsschritten <a class="flowjump" href="#ff-step-4">4</a> und <a class="flowjump" href="#ff-step-7">7</a></small></li>
       <li><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> und <a class="jump" href="#card-tc"><b>Testfarben</b></a>: Hier zuerst nur 100&nbsp;% Weiß und die Grundfarben. Mit <b>Weißpunkt einstellen</b> zeigt der TV Weiß, und du sagst, welche Farbe das Licht der LEDs zu viel oder zu wenig hat. Die Seite stellt daraus den Weißwert ein. Stell vorher mit der <b>Farbtemperatur</b> grob ein, ob die LEDs wärmer oder kälter als das Weiß des TVs leuchten: Sie verschiebt alle Helligkeiten gleich stark, kennt aber nur wärmer und kälter. Einen Grün- oder Magentastich gleicht erst der Weißpunkt aus. Danach drehst du nicht mehr an der Farbtemperatur. Graustufen und Gamma fasst du hier noch nicht an, bei 100&nbsp;% Weiß wirkt Gamma ohnehin nicht. <b>Sättigungsverstärkung</b> und <b>Helligkeitsverstärkung</b> bleiben auf 1,0 (keine Änderung): Eine Verstärkung verändert jede Farbe, bevor Gamma und Weißwert sie bekommen, und verschiebt damit, was du hier und bei der Graukurve einstellst. Außerdem rechnet Hyperion mit einer Verstärkung ungleich 1,0 ohne Nachkommastellen. <small class="flowref">Wirkt in den Verarbeitungsschritten <a class="flowjump" href="#ff-step-14">14</a>, <a class="flowjump" href="#ff-step-16a">16a</a> und <a class="flowjump" href="#ff-step-17">17</a></small></li>
-      <li><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a> und <a class="jump" href="#card-fmd"><b>LED-Mittelwert mit Nachkommastellen</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit Nachkommastellen folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve einschalten, damit du dort die dunklen Stufen fein aufgelöst siehst. <small class="flowref">Wirkt in den Verarbeitungsschritten <a class="flowjump" href="#ff-step-11">11</a> und <a class="flowjump" href="#ff-step-22">22</a></small></li>
+      <li><a class="jump" href="#card-ft"><b>16-Bit Präzise-Farbausgabe</b></a>: In dunklen Szenen springen die LEDs in sichtbaren Stufen, etwa beim langsamen Abblenden. Mit der 16-Bit-Ausgabe folgen LEDs mit 16 Bit pro Farbe auch feinen Zwischenstufen. Vor der Graukurve einschalten, damit du dort die dunklen Stufen fein aufgelöst siehst. <small class="flowref">Wirkt in den Verarbeitungsschritten <a class="flowjump" href="#ff-step-11">11</a> und <a class="flowjump" href="#ff-step-22">22</a></small></li>
       <li><a class="jump" href="#card-gcg"><b>Graukurve kalibrieren</b></a> und <a class="jump" href="#card-gcc"><b>Graukurve</b></a>: Helles Grau ist neutral, aber mittleres oder dunkles Grau hat einen Farbstich, zum Beispiel rötlich oder grünlich. Die Kalibrierung führt dich Stufe für Stufe hindurch, du sagst nur, welche Farbe zu viel oder zu wenig ist. Danach rechnet <b>In Grundeinstellung übernehmen</b> die Kurve in Weißwert und Gamma je Kanal um. Das wirkt dann auch auf farbige Bilder, die Graukurve behält nur den Rest. <small class="flowref">Wirkt in den Verarbeitungsschritten <a class="flowjump" href="#ff-step-15">15</a>, <a class="flowjump" href="#ff-step-16a">16a</a> und <a class="flowjump" href="#ff-step-18">18</a></small></li>
     </ol>
     <h3>Wohin die LEDs schauen</h3>
@@ -1824,7 +1824,7 @@
       </div>
     </div>
     <div class="pair-col" id="card-fmd">
-      <h3 class="pair-ttl">LED-Mittelwert mit Nachkommastellen (Hyperion)</h3>
+      <h3 class="pair-ttl">16-Bit Präzise-Farbausgabe (Hyperion)</h3>
       <p class="help">Jede LED bekommt den Durchschnitt der Bildpunkte ihres Bereichs. Mit Haken geht dieser Wert samt Nachkommastellen in die 16-Bit-Ausgabe (nur bei LEDs mit 16 Bit pro Farbe, z. B. HD108). Ohne Haken wird er auf eine ganze Zahl abgeschnitten. Die Einstellung wird direkt in Hyperion gespeichert und wirkt sofort. Zum Vergleichen beim Test oben einfach an- und ausschalten.</p>
       <div class="status" id="fm-status">Warte auf Daten von Hyperion …</div>
       <label class="check"><input type="checkbox" id="fm-enabled"><span>Mittelwert mit Nachkommastellen</span></label>
@@ -2041,17 +2041,77 @@
   });
 })();
 
+// Scroll anchoring for browsers without it (Safari, so every browser on iPhone): when something above the
+// visible part changes its height (a list is rebuilt, a text grows, an image loads), the content below would
+// slide away. The element at the top of the view is remembered while scrolling; when the page's height
+// changes, the view is moved by exactly the distance that element moved.
+(function () {
+  const main = document.querySelector("main");
+  if (!main || !window.ResizeObserver) return;
+  let chain = [];
+  let touching = false;
+  const topY = () => (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bar-h")) || 0) + 12;
+  const record = () => {
+    chain = [];
+    let el = document.elementFromPoint(Math.min(innerWidth / 2, 400), topY());
+    while (el && el !== main && main.contains(el)) {
+      chain.push([el, el.getBoundingClientRect().top]);
+      el = el.parentElement;
+    }
+  };
+  const fix = () => {
+    if (touching || !chain.length) return;
+    const hit = chain.find(([el]) => el.isConnected);
+    if (!hit) return record();
+    const delta = hit[0].getBoundingClientRect().top - hit[1];
+    if (Math.abs(delta) >= 1) window.scrollBy({ top: delta, behavior: "instant" });
+    else return;
+    record();
+  };
+  addEventListener("scroll", () => record(), { passive: true });
+  addEventListener("touchstart", () => { touching = true; }, { passive: true });
+  addEventListener("touchend", () => { touching = false; }, { passive: true });
+  addEventListener("touchcancel", () => { touching = false; }, { passive: true });
+  new ResizeObserver(fix).observe(main);
+  record();
+})();
+
 // language: per device, switching reloads the page in the other language
 (function () {
+  let switching = false;
   document.querySelectorAll("[data-lang-choice]").forEach((b) => {
     b.setAttribute("aria-pressed", String(b.dataset.langChoice === I18N.lang));
-    b.addEventListener("click", () => {
-      // the TV page follows the language chosen last; keepalive lets the request outlive the reload
-      fetch("/api/state", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lang: b.dataset.langChoice }) }).catch(() => {});
-      I18N.setLang(b.dataset.langChoice);
+    b.addEventListener("click", async () => {
+      const lang = b.dataset.langChoice;
+      if (lang === I18N.lang || switching) return;
+      switching = true;
+      try { sessionStorage.setItem("tvtest-scroll", String(Math.round(window.scrollY))); } catch {}
+      // The language also lives in the server's copy of the settings, which wins when the page loads.
+      // Wait until both writes arrived, or the reload would bring the old language back (a second tap).
+      // The TV page follows the language chosen last.
+      const json = { "Content-Type": "application/json" };
+      const sent = Promise.allSettled([
+        fetch("/api/state", { method: "POST", keepalive: true, headers: json, body: JSON.stringify({ lang }) }),
+        fetch("/api/prefs", { method: "POST", keepalive: true, headers: { ...json, "X-Tvtest": "1" }, body: JSON.stringify({ changes: { "tvtest-lang": lang } }) }),
+      ]);
+      await Promise.race([sent, new Promise((r) => setTimeout(r, 1500))]);
+      I18N.setLang(lang);
     });
   });
   I18N.start();
+  // After the reload the page lands where it was: the browser's own restoring runs before the cards are
+  // built and animates (smooth scrolling), so it is done here, at once, until the user scrolls
+  let want = null;
+  try { want = Number(sessionStorage.getItem("tvtest-scroll")); sessionStorage.removeItem("tvtest-scroll"); } catch {}
+  if (want > 0) {
+    history.scrollRestoration = "manual";
+    let stop = false;
+    for (const ev of ["touchstart", "wheel", "keydown"]) addEventListener(ev, () => { stop = true; }, { once: true, passive: true });
+    const put = () => { if (!stop) window.scrollTo({ top: want, behavior: "instant" }); };
+    put();
+    addEventListener("load", put);
+    for (const ms of [150, 500, 1200]) setTimeout(put, ms);
+  }
   // links to a card (like "Backup") open it first
   document.addEventListener("click", (ev) => {
     // a processing step of the flow chart: open its card, then scroll to the step and mark it

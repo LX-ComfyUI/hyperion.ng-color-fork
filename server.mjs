@@ -2051,7 +2051,7 @@ async function testServerStatus() {
       feature("depth", "Erfassungstiefe", !!depth && (Number(depth.topBottom) > 0 || Number(depth.leftRight) > 0), depth ? `${depth.topBottom} % / ${depth.leftRight} %` : null),
       feature("smoothing", "Glättung", smoothing?.enable === true, smoothing ? `${smoothing.time_ms} ms` : null),
       feature("correction", "Grabber-Farbkorrektur", grabberCorrection.enable),
-      feature("fractional", "LED-Mittelwert mit Nachkommastellen", color.fractionalMean === true),
+      feature("fractional", "16-Bit Präzise-Farbausgabe", color.fractionalMean === true),
       feature("grayCurve", "Graukurve", entry?.grayCurve?.enabled === true),
       feature("layoutFix", "LED-Layout-Korrektur", layoutFixInfo.corrected),
     ] : [],
