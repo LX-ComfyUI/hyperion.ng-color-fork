@@ -747,6 +747,20 @@
   #side .side-list li.off > a { opacity: .45; }
   #side .side-list li.off .side-eye { opacity: 1; }
   main > section.card.user-hidden { display: none; }
+  /* big eye under the eyes of the list (title row of the order box): shows all cards at once, a second tap restores the cards hidden before */
+  .side-order-ttl { display: flex; align-items: center; }
+  .side-order-ttl .side-order-fold { flex: 1; min-width: 0; width: auto; }
+  .side-eye-all { flex: none; width: 36px; height: 36px; margin: -6px -11px -6px 0; padding: 0; display: flex; align-items: center; justify-content: center;
+                  border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .85; }
+  .side-eye-all:hover:not(:disabled) { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .side-eye-all:disabled { opacity: .3; cursor: default; }
+  .side-eye-all svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  /* wide windows (class set by the script, from the width of the page): guide on the left, flow chart on the right, like in the WebUI; narrow ones keep them one under the other */
+  main.guide-wide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; align-items: start; }
+  main.guide-wide > * { grid-column: 1 / -1; }
+  main.guide-wide > #card-intro { grid-column: 1; grid-row: 2; }
+  main.guide-wide > #card-flow { grid-column: 2; grid-row: 2; }
+  main.guide-wide:has(> #card-intro.user-hidden) > #card-flow, main.guide-wide:has(> #card-flow.user-hidden) > #card-intro { grid-column: 1 / -1; }
   .side-list a { display: flex; align-items: center; gap: 6px; padding: 10px 15px; border-left: 4px solid transparent; border-radius: 0;
                  color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.3; }
   .side-list a:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
@@ -755,10 +769,10 @@
   /* order of the cards under the list; an entry held a moment can be dragged */
   .side-order { padding: 12px 15px 6px; }
   .side-order-ttl { margin: 0 0 6px; }
-  .side-order-ttl button { display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: none;
+  .side-order-ttl .side-order-fold { display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: none;
                            font-size: 12px; color: var(--muted); text-align: left; }
-  .side-order-ttl svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
-  .side-order.folded .side-order-ttl svg { transform: rotate(-90deg); }
+  .side-order-fold svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+  .side-order.folded .side-order-fold svg { transform: rotate(-90deg); }
   .side-order.folded .side-order-ttl { margin: 0; }
   .side-order.folded > :not(.side-order-ttl) { display: none; }
   /* the menu is too narrow for three buttons side by side: one under the other */
@@ -931,17 +945,12 @@
     </div>
   </header>
 
-  <section class="card" id="card-flow">
-    <h2>Vom TV-Bild zu den LEDs</h2>
-    <div id="flow-chart" data-i18n-skip></div>
-  </section>
-
   <section class="card" id="card-intro">
     <h2>Anleitung</h2>
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
     <h3>Reihenfolge der Karten</h3>
-    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Standard</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät. Mit dem Auge neben einem Namen im Seitenmenü blendest du eine Karte aus, ein Tipp auf den Namen holt sie zurück.</p>
+    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Standard</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät. Mit dem Auge neben einem Namen im Seitenmenü blendest du eine Karte aus, ein Tipp auf den Namen holt sie zurück. Das größere Auge unter der Liste blendet alle Karten auf einmal ein, ein zweiter Tipp blendet die zuvor ausgeblendeten wieder aus.</p>
     <div id="order-guide" data-i18n-skip></div>
     <div data-order="setup">
     <h3>Ersteinrichtung</h3>
@@ -1025,6 +1034,11 @@
     <p class="help" style="margin:0 0 10px">Die Karten stehen in der Reihenfolge, die du im Seitenmenü festgelegt hast, und die Liste hier folgt ihr. Zum Ändern hältst du dort einen Eintrag gedrückt, bis er sich anhebt, und ziehst ihn dann nach oben oder unten. Karten, die nach einem Update neu dazukommen, stehen am Ende. Mit Ersteinrichtung oder Standard wechselst du zurück zu einer festen Reihenfolge, deine eigene bleibt gespeichert. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
     <ol class="guide" id="order-custom-guide" data-i18n-skip></ol>
     </div>
+  </section>
+
+  <section class="card" id="card-flow">
+    <h2>Vom TV-Bild zu den LEDs</h2>
+    <div id="flow-chart" data-i18n-skip></div>
   </section>
 
   <!-- ===== grabber test ===== -->
@@ -2154,7 +2168,7 @@
   const CUSTOM_KEY = "tvtest-card-order-custom";
   const list = side.querySelector(".side-list");
   const main = document.querySelector("main");
-  const PINNED = ["card-flow", "card-intro"];
+  const PINNED = ["card-intro", "card-flow"];
   const byId = new Map(cards.map((c, i) => [c.id, [c, links[i]]]));
   const readCustom = () => { try { const v = JSON.parse(store.get(CUSTOM_KEY)); return Array.isArray(v) ? v : null; } catch { return null; } };
   const sideIds = () => [...list.children].slice(PINNED.length).map((li) => li.firstChild.hash.slice(1));
@@ -2245,10 +2259,10 @@
   const ORDER_OPEN_KEY = "tvtest-side-order-open";
   const orderBox = document.createElement("div");
   orderBox.className = "side-order";
-  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button></p><p class="side-order-hint"></p>';
-  const orderTtl = orderBox.querySelector(".side-order-ttl button");
+  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-eye-all"></button></p><p class="side-order-hint"></p>';
+  const orderTtl = orderBox.querySelector(".side-order-fold");
   orderTtl.querySelector("span").textContent = I18N.t("Reihenfolge der Karten");
-  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge. Das Auge blendet eine Karte aus und wieder ein.");
+  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge. Das Auge blendet eine Karte aus und wieder ein, das große Auge darunter alle Karten auf einmal ein.");
   orderBox.insertBefore(makeSeg(), orderBox.lastChild);
   const setOrderOpen = (open) => {
     orderBox.classList.toggle("folded", !open);
@@ -2264,6 +2278,9 @@
   document.getElementById("order-guide")?.appendChild(makeSeg());
   applyOrder();
   syncSegs();
+
+  // the page decides from its own width whether guide and flow chart go side by side (docked sidebar, collapsed menu and window size all change it)
+  new ResizeObserver(() => requestAnimationFrame(() => main.classList.toggle("guide-wide", main.clientWidth - parseFloat(getComputedStyle(main).paddingLeft) * 2 >= 900))).observe(main);
 
   // eye next to each entry: hides its card on the page (kept per device). The entry stays in the menu,
   // dimmed with the eye crossed out; a tap on its name, a link in the guide or a bell message going to
@@ -2287,6 +2304,7 @@
     store.set(HIDDEN_KEY, JSON.stringify([...hidden]));
     window.updateFoldAll?.();
     spy();
+    renderEyeAll();
   };
   for (const [id, [card, a]] of byId) {
     const eye = document.createElement("button");
@@ -2299,6 +2317,32 @@
     a.after(eye);
     setHidden(card, hidden.has(id), false);
   }
+  // big eye (title row of the order box): shows all hidden cards and remembers which they were; once
+  // everything is shown, the next tap hides exactly those again. Hiding everything makes no sense, so
+  // there is no such button.
+  const BEFORE_KEY = "tvtest-cards-hidden-before";
+  const eyeAll = orderBox.querySelector(".side-eye-all");
+  const readBefore = () => { try { const v = JSON.parse(store.get(BEFORE_KEY)); return Array.isArray(v) ? v.filter((id) => byId.has(id)) : []; } catch { return []; } };
+  function renderEyeAll() {
+    const restore = !hidden.size && readBefore().length > 0;
+    const tip = I18N.t(hidden.size ? "Alle Karten einblenden" : restore ? "Wieder ausblenden wie zuvor" : "Alle Karten sind eingeblendet");
+    eyeAll.innerHTML = restore ? EYE_OFF : EYE;
+    eyeAll.disabled = !hidden.size && !restore;
+    eyeAll.dataset.tip = tip;
+    eyeAll.setAttribute("aria-label", tip);
+  }
+  eyeAll.addEventListener("click", () => {
+    if (hidden.size) {
+      store.set(BEFORE_KEY, JSON.stringify([...hidden]));
+      for (const id of [...hidden]) { const card = byId.get(id)?.[0]; if (card) setHidden(card, false); else hidden.delete(id); }
+    } else {
+      const before = readBefore();
+      store.set(BEFORE_KEY, "[]");
+      for (const id of before) setHidden(byId.get(id)[0], true);
+    }
+    renderEyeAll();
+  });
+  renderEyeAll();
   window.showCard = (card) => {
     if (docked.has(card)) return setDockOpen(true);
     if (card?.classList.contains("user-hidden")) setHidden(card, false);
