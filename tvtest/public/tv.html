@@ -83,7 +83,7 @@
   #idle h1 .ok svg { width: 1.05em; height: 1.05em; fill: #2fa36b; }
   #idle p { font-size: 2.1vh; margin: 0; color: #bbb; }
 
-  /* debug views (only when switched on for the TV on the phone) */
+  /* debug views (only when switched on for the TV on the control page) */
   #bb-overlay, #gs-area, #dp-area { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
   #bb-overlay svg, #gs-area svg, #dp-area svg { width: 100%; height: 100%; display: block; }
   .dbg-box {
@@ -162,7 +162,7 @@ const barEls = { top: $("bar-top"), bottom: $("bar-bottom"), left: $("bar-left")
 const connectEl = $("connect");
 
 let state = { color: "#000000", colorActive: false, bars: { top: 0, bottom: 0, left: 0, right: 0 } };
-let phones = 0;
+let controls = 0;
 let clockOffset = 0;      // Pi clock minus TV clock
 let grayTimer = null;
 let debug = null;
@@ -433,7 +433,7 @@ function nothingShown() {
 }
 // the connect hint while no control page is connected, otherwise the idle hint while nothing is shown
 function renderHints() {
-  const connected = phones > 0;
+  const connected = controls > 0;
   // the QR code only while nothing is shown, so it never lands in a test picture (and the LEDs)
   const shown = !nothingShown();
   const left = (state.graceUntil ?? 0) - (Date.now() + clockOffset);
@@ -496,7 +496,7 @@ function connectEvents() {
     if ((msg.lang === "de" || msg.lang === "en") && msg.lang !== I18N.lang) {
       try { localStorage.setItem("tvtest-lang", msg.lang); location.reload(); return; } catch {}
     }
-    phones = msg.phones ?? 0;
+    controls = msg.controls ?? 0;
     if (msg.serverNow) clockOffset = msg.serverNow - Date.now();
     const grayChanged = JSON.stringify(msg.grayTest) !== JSON.stringify(state.grayTest) || JSON.stringify(msg.depthTest) !== JSON.stringify(state.depthTest)
       || JSON.stringify(msg.fracTest) !== JSON.stringify(state.fracTest)
@@ -526,7 +526,7 @@ async function loadLedAreas() {
   } catch { /* without the layout only the status box is shown */ }
 }
 
-// the capture depth changes from the phone; it is part of Hyperion's color settings, so it is read
+// the capture depth changes from the control page; it is part of Hyperion's color settings, so it is read
 // again whenever the depth overlay is on (cheap: one small DB read every few seconds)
 async function loadAreaDepth() {
   try {

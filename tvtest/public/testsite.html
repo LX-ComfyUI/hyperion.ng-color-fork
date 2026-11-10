@@ -1318,7 +1318,7 @@
       <p class="help">Ein Ordner auf dem Server oder einem NAS im Netzwerk, Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Passwörter und Zugangsschlüssel bleiben auf dem Server.</p>
       <ul class="md-list" id="src-list"></ul>
       <div class="src-form" id="src-form" hidden>
-        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner / NAS</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option><option value="webdav">WebDAV (z. B. Nextcloud)</option></select></span></div>
+        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner (lokal)</option><option value="nas">NAS / Netzwerkordner</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option><option value="webdav">WebDAV (z. B. Nextcloud)</option></select></span></div>
         <div class="frow"><label for="src-name">Name</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
         <div class="frow" id="src-path-row"><label for="src-path">Ordner</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
         <div class="src-sub" id="src-pick" hidden>
@@ -4698,7 +4698,7 @@ function renderTestServer() {
     html += st.hyperion.connected ? tsItem("ok", "✓", tr("Verbindung zu Hyperion"), tr("angemeldet"))
       : tsItem("bad", "✕", tr("Verbindung zu Hyperion"), st.hyperion.error ? tr(st.hyperion.error) : tr("nicht verbunden"));
     html += st.clients.tv ? tsItem("ok", "✓", tr("TV-Seite"), tr("{a} verbunden", { a: st.clients.tv })) : tsItem("warn", "!", tr("TV-Seite"), tr("nicht geöffnet"));
-    html += tsItem("ok", "✓", tr("Steuerseiten"), tr("{a} verbunden", { a: st.clients.phone }));
+    html += tsItem("ok", "✓", tr("Steuerseiten"), tr("{a} verbunden", { a: st.clients.control }));
     html += st.monitor.debugOk ? tsItem("ok", "✓", tr("Live-Daten von Hyperion"), tr("kommen an"))
       : tsItem(st.monitor.connected ? "warn" : "bad", st.monitor.connected ? "!" : "✕", tr("Live-Daten von Hyperion"), st.monitor.connected ? tr("keine Daten") : tr("keine Verbindung"));
     html += tsItem(st.monitor.preview ? "run" : "off", st.monitor.preview ? "▶" : "–", tr("Grabber-Bild an Vorschau"), st.monitor.preview ? tr("läuft") : tr("aus"));
@@ -5341,9 +5341,10 @@ $("md-file").addEventListener("change", async () => {
 
 // ---------- more sources: folder/NAS, Plex, Jellyfin (sources.mjs browses and streams them) ----------
 const SRC_FOLDER = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>';
-const SRC_TYPE = { folder: "Ordner / NAS", dlna: "Medienserver im Netz (DLNA)", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", webdav: "WebDAV (z. B. Nextcloud)" };
+const SRC_TYPE = { folder: "Ordner (lokal)", nas: "NAS / Netzwerkordner", dlna: "Medienserver im Netz (DLNA)", plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", webdav: "WebDAV (z. B. Nextcloud)" };
 const SRC_HELP = {
-  folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern, oder ein Netzwerkpfad wie \\\\NAS\\Freigabe\\Ordner (so wie ihn der Explorer kopiert). Ist die Freigabe auf dem Server schon eingebunden, findet die Testseite den Ordner selbst, sonst hilft „Netzwerkfreigabe einbinden“. Die Testseite liest nur.",
+  folder: "Ein Ordner auf dem Server, auf dem die Testseite läuft, mit allen Unterordnern, z. B. /home/NAME/Videos. Die Testseite liest nur. Für ein NAS oder einen Netzwerkordner die Art „NAS / Netzwerkordner“ wählen.",
+  nas: "Ein Ordner auf einem NAS oder einem anderen Gerät im Netzwerk, mit allen Unterordnern. Ist die Freigabe auf dem Server schon eingebunden, reicht der Netzwerkpfad (so wie ihn der Explorer kopiert, z. B. \\\\NAS\\Freigabe\\Ordner) oder der Ordner dahinter. Sonst führt der Bereich „Netzwerkfreigabe einbinden“ Schritt für Schritt durch das Einbinden. Die Testseite liest nur.",
   dlna: "Ein Medienserver im Heimnetz (DLNA/UPnP), wie ihn viele NAS, Router und Windows anbieten. „Im Netz suchen“ findet ihn selbst, eine Anmeldung braucht es nicht. Der Server muss im selben Netz sein wie die Testseite.",
   plex: "Am einfachsten „Mit Plex-Konto anmelden“: Die Testseite zeigt einen Code, den du auf plex.tv/link eingibst. Oder selbst: Adresse des Plex-Servers mit Port, z. B. http://192.168.1.10:32400, und den Token (Plex Web: bei einem Film „Medieninfo“ → „XML anzeigen“, in der Adresse steht X-Plex-Token=…).",
   jellyfin: "Adresse des Jellyfin-Servers mit Port, z. B. http://192.168.1.10:8096. Dann entweder einen API-Schlüssel (Jellyfin-Dashboard → „API-Schlüssel“ → „+“) oder Benutzer und Passwort. Das Passwort wird nur einmal zum Anmelden benutzt und nicht gespeichert.",
@@ -5373,7 +5374,7 @@ function renderSources() {
     const flag = !s.status ? "" : s.status.ok ? `<span class="md-flag ok">${tr("erreichbar")}</span>`
       : `<span class="md-flag bad" title="${escHtml(I18N.t(s.status.error ?? ""))}">${tr("nicht erreichbar")}</span>`;
     return `<li data-id="${s.id}"><button type="button" class="md-show" data-src="open" aria-pressed="${open}"><span class="md-thumb">${s.type === "folder" ? SRC_FOLDER : s.type === "dlna" ? "D" : s.type[0].toUpperCase()}</span>` +
-      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[s.type]))} · ${escHtml(s.remote ?? s.path ?? (s.type === "dlna" ? srcHost(s.url) : s.url) ?? "")}${s.user ? " · " + escHtml(s.user) : ""}</small></span>${flag}</button>` +
+      `<span class="md-text"><b>${escHtml(s.name)}</b><small>${escHtml(tr(SRC_TYPE[srcKindOf(s)]))} · ${escHtml(s.remote ?? s.path ?? (s.type === "dlna" ? srcHost(s.url) : s.url) ?? "")}${s.user ? " · " + escHtml(s.user) : ""}</small></span>${flag}</button>` +
       `<button type="button" class="ibtn" data-src="edit" title="${tr("Bearbeiten")}" aria-label="${tr("Bearbeiten")}">${MD_ICON.pencil}</button>` +
       `<button type="button" class="ibtn trash" data-src="remove" title="${tr("Entfernen")}" aria-label="${tr("Entfernen")}">${MD_ICON.trash}</button></li>`;
   }).join("");
@@ -5384,34 +5385,43 @@ function renderSources() {
   renderSrcBrowser();
 }
 
+// "nas" is only a distinction in this form: the server stores both as a folder (a network share has "remote")
+const srcKindOf = (s) => (s?.type === "folder" && s.remote ? "nas" : s?.type);
 const srcHost = (u) => { try { return new URL(u).host; } catch { return u ?? ""; } };
 function srcFormType() {
   const t = $("src-type").value;
+  const dir = t === "folder" || t === "nas";
   const mb = t === "jellyfin" || t === "emby";
   const dav = t === "webdav";
   $("src-user-label").textContent = tr(dav ? "Benutzer" : "oder Benutzer");
   if ($("src-found").dataset.kind !== t) { $("src-found").innerHTML = ""; $("src-found").dataset.kind = t; }
-  $("src-find-row").hidden = t === "folder" || t === "webdav";
+  $("src-find-row").hidden = dir || t === "webdav";
   $("src-found").hidden = !$("src-found").innerHTML;
   $("src-plex-row").hidden = t !== "plex";
   if (t !== "plex") srcPlexStop();
   $("src-user-row").hidden = !mb && !dav;
   $("src-pass-row").hidden = !mb && !dav;
-  $("src-path-row").hidden = t !== "folder";
-  $("src-mnt-btn").hidden = t !== "folder";
-  if (t !== "folder") { $("src-pick").hidden = true; $("src-mnt").hidden = true; }
-  $("src-url-row").hidden = t === "folder";
-  $("src-token-row").hidden = t === "folder" || t === "dlna" || dav;
+  $("src-path-row").hidden = !dir;
+  $("src-path").placeholder = t === "nas" ? "\\\\NAS\\Freigabe\\Ordner" : "/home/NAME/Videos";
+  $("src-mnt-btn").hidden = t !== "nas" || !$("src-mnt").hidden;
+  if (!dir) $("src-pick").hidden = true;
+  if (t !== "nas") $("src-mnt").hidden = true;
+  $("src-url-row").hidden = dir;
+  $("src-token-row").hidden = dir || t === "dlna" || dav;
   $("src-token-label").textContent = tr(t === "plex" ? "Token" : "API-Schlüssel");
   $("src-url").placeholder = t === "plex" ? "http://192.168.1.10:32400" : t === "dlna" ? "http://192.168.1.10:8200/rootDesc.xml" : dav ? "https://cloud.example.org/remote.php/dav/files/NAME/Videos" : "http://192.168.1.10:8096";
   $("src-help").textContent = tr(SRC_HELP[t]);
 }
-$("src-type").addEventListener("change", srcFormType);
+$("src-type").addEventListener("change", () => {
+  srcFormType();
+  // someone choosing a NAS most likely has to mount the share first: show that part right away
+  if ($("src-type").value === "nas") srcMountOpen();
+});
 
 function srcEdit(id) {
   srcEditing = id;
   const s = srcList.find((x) => x.id === id);
-  $("src-type").value = s?.type ?? "folder";
+  $("src-type").value = srcKindOf(s) ?? "folder";
   $("src-type").disabled = !!s;
   $("src-name").value = s?.name ?? "";
   $("src-path").value = s?.remote ?? s?.path ?? "";
@@ -5431,7 +5441,7 @@ function srcEdit(id) {
   srcFormType();
   renderSources();
 }
-const srcFormData = () => ({ type: $("src-type").value, name: $("src-name").value, path: $("src-path").value, url: $("src-url").value, token: $("src-token").value,
+const srcFormData = () => ({ type: $("src-type").value === "nas" ? "folder" : $("src-type").value, name: $("src-name").value, path: $("src-path").value, url: $("src-url").value, token: $("src-token").value,
   user: $("src-user").value, password: $("src-pass").value, plexLink: $("src-type").value === "plex" && srcPlexLink && $("src-url").value === srcPlexLink.url ? srcPlexLink : undefined });
 
 async function srcPost(body) {
@@ -5621,7 +5631,10 @@ $("src-pick-close").addEventListener("click", () => { $("src-pick").hidden = tru
 let srcMntTimer = 0;
 let srcMntPlan = null;
 function srcMountOpen(n) {
+  // a network path typed under "folder" that is not mounted: it belongs under "NAS"
+  if ($("src-type").value === "folder") { $("src-type").value = "nas"; srcFormType(); }
   $("src-mnt").hidden = false;
+  $("src-mnt-btn").hidden = true;
   $("src-pick").hidden = true;
   if (n) {
     $("src-mnt-proto").value = n.proto === "nfs" ? "nfs" : "smb";
@@ -5683,12 +5696,11 @@ $("src-mnt-steps").addEventListener("click", async (ev) => {
   setTimeout(() => { b.textContent = tr("Kopieren"); }, 2500);
 });
 $("src-mnt-btn").addEventListener("click", () => {
-  if (!$("src-mnt").hidden) { $("src-mnt").hidden = true; return; }
   const typed = $("src-path").value.trim();
   srcMountOpen(null);
   if (/^(\\\\|\/\/|smb:|nfs:)/i.test(typed)) $("src-test").click();
 });
-$("src-mnt-close").addEventListener("click", () => { $("src-mnt").hidden = true; });
+$("src-mnt-close").addEventListener("click", () => { $("src-mnt").hidden = true; srcFormType(); });
 $("src-mnt-done").addEventListener("click", () => {
   // the network path stays as typed (the server finds it now); otherwise the folder under the mount
   const typed = $("src-path").value.trim();
@@ -8086,8 +8098,8 @@ async function init() {
   renderSideStatus();
   loadGrabberReport();
   setPanel(store.get("tvtest-preview") === "1");
-  // role=phone tells the TV to hide its QR code
-  const es = new EventSource("/api/events?role=phone");
+  // role=control tells the TV to hide its QR code
+  const es = new EventSource("/api/events?role=control");
   eventSource = es;
   es.addEventListener("move", (ev) => followMove(JSON.parse(ev.data).port));
   es.addEventListener("system", (ev) => startLoading(JSON.parse(ev.data).kind));

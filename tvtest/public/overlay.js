@@ -1,4 +1,4 @@
-// Shared debug drawing for the TV page and the phone's grabber preview.
+// Shared debug drawing for the TV page and the grabber preview of the control page.
 // Coordinates are percent of the grabber image (SVG viewBox 0..100, stretched to the picture).
 
 const LINE = "#00e5ff";   // scan lines of the black-border detector
@@ -251,7 +251,7 @@ export function grayStillText(gs) {
   return tr("Standbild {a} von {b} s", { a: secs, b: gs.stillTimeSeconds }) + drop;
 }
 
-// Styles for the status box, shared so TV and phone look the same (sizes come from the host page)
+// Styles for the status box, shared so TV and control page look the same (sizes come from the host page)
 export const GRAY_STILL_CSS = `
   .gs-title { font-weight: 700; margin-bottom: .4em; }
   .gs-hit { color: #ffb020; }
