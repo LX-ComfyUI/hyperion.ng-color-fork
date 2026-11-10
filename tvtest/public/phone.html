@@ -125,6 +125,9 @@
 
   /* test colors: one row per color, tools on the right */
   .crow { display: flex; align-items: stretch; gap: 6px; margin: 0 0 8px; border-radius: 10px; border: 1px solid var(--btn-line); background: var(--btn); box-sizing: border-box; }
+  .crow-sep { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; font-size: 12px; color: var(--muted); }
+  .crow-sep::before, .crow-sep::after { content: ""; flex: 1; border-top: 1px solid var(--btn-line); }
+  .crow-sep:not(:first-child) { margin-top: 14px; }
   .crow.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
   .crow-main { all: unset; position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; border-radius: 10px;
                -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation;
@@ -143,10 +146,9 @@
   .cname small { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tools { display: flex; align-items: center; gap: 2px; padding-right: 6px; flex: none; }
   .ibtn { width: 40px; height: 40px; padding: 0; border: none; background: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
-  .ibtn:hover:not(:disabled, .tool-dot) { color: var(--text); background: var(--bg); }
+  .ibtn:hover:not(:disabled) { color: var(--text); background: var(--bg); }
   .ibtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .ibtn.done { color: var(--accent); }
-  .ibtn.tool-dot::after { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--muted); opacity: .6; }
   .ibtn.power.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .crow.add { border-style: dashed; }
   .crow.add .crow-main { color: var(--muted); }
@@ -781,6 +783,8 @@
   /* the menu is too narrow for three buttons side by side: one under the other */
   .side-order .order-seg { flex-direction: column; }
   .side-order .order-seg button { padding: 6px 10px; font-size: 13px; text-align: left; }
+  /* the chosen button is only tinted here, so it stands out less from the menu */
+  .side-order .order-seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--btn)); color: var(--btn-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
   .side-order .order-seg button + button { border-left: none; border-top: 1px solid var(--btn-line); }
   /* WebUI, language and appearance in the menu on phones: one row each, icon and name */
   .side-tools { padding: 6px 0; border-top: 1px solid var(--bar-line); }
@@ -788,6 +792,8 @@
   .side-tools .tb-icon { width: 100%; height: 40px; padding: 0 15px; justify-content: flex-start; gap: 12px; border-radius: 0; text-decoration: none; }
   .side-tools .tb-icon::after { content: attr(data-tip); font-size: 14px; font-weight: normal; }
   .side-order-hint { margin: 6px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted); }
+  .side-order-hint p { margin: 0 0 7px; }
+  .side-order-hint p:last-child { margin-bottom: 0; }
   #order-guide { max-width: 420px; margin: 0 0 10px; }
   #order-guide .order-seg button { padding: 7px 4px; font-size: 13px; }
   .side-list a { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -1095,7 +1101,7 @@
   <!-- ===== test colors: full screen on the TV (own card, fits the menu on the right beside the color calibration) ===== -->
   <section class="card" id="card-tc">
     <h2>Testfarben</h2>
-    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion unter <a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne. Das Symbol ganz rechts oben legt diese Karte in die Seitenleiste rechts, dann stehen die Testfarben neben der Farbkalibrierung.</p>
+    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Das Kopiersymbol legt den aktuellen RGB-Wert in die Zwischenablage, du kannst ihn dann in die Felder unter <a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> einfügen. Eigene Farben löschst du mit der Mülltonne. Das Symbol ganz rechts oben legt diese Karte in die Seitenleiste rechts, dann stehen die Testfarben neben der Farbkalibrierung.</p>
     <p class="note guard-note" hidden></p>
     <div class="gc-row">
       <span class="gc-label">Grabber-Farbkorrektur</span>
@@ -2298,10 +2304,13 @@
   const ORDER_OPEN_KEY = "tvtest-side-order-open";
   const orderBox = document.createElement("div");
   orderBox.className = "side-order";
-  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><p class="side-order-hint"></p>';
+  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><div class="side-order-hint"></div>';
   const orderTtl = orderBox.querySelector(".side-order-fold");
   orderTtl.querySelector("span").textContent = I18N.t("Reihenfolge der Karten");
-  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge. Das Auge blendet eine Karte aus und wieder ein, das große Auge darunter alle Karten auf einmal ein. Der Pfeil links daneben schiebt eine Karte in die Seitenleiste rechts und zurück, der große Pfeil daneben alle dort stehenden Karten.");
+  ["Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.",
+    "Auge: blendet eine Karte aus und wieder ein.", "Großes Auge darunter: blendet alle Karten auf einmal ein.",
+    "Pfeil links daneben: schiebt eine Karte in die Seitenleiste rechts und zurück.", "Großer Pfeil daneben: schiebt alle dort stehenden Karten."]
+    .forEach((t) => { const p = document.createElement("p"); p.textContent = I18N.t(t); orderBox.lastChild.appendChild(p); });
   orderBox.insertBefore(makeSeg(), orderBox.lastChild);
   const setOrderOpen = (open) => {
     orderBox.classList.toggle("folded", !open);
@@ -2963,7 +2972,7 @@ const ICON = {
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon class="solid" points="7 4 20 12 7 20 7 4"/></svg>',
   stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect class="solid" x="6" y="6" width="12" height="12" rx="1"/></svg>',
-  send: '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>',
   // the same arrows as the gray curve graph
   undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   redo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
@@ -3179,7 +3188,7 @@ function makeTool(icon, label, onClick, extraClass = "") {
 }
 
 // one row: the main part opens the picker to edit the value, the power button shows it on the
-// TV (or turns it off again), the other tools reset the value and send it to Hyperion. The row's
+// TV (or turns it off again), the other tools copy the value and reset it (presets) or delete it (custom). The row's
 // current color is always read from row.dataset.color, rows are updated in place (updateRow).
 function makeRow({ color, name, kind, id, edited }) {
   const row = document.createElement("div");
@@ -3205,32 +3214,20 @@ function makeRow({ color, name, kind, id, edited }) {
   const tools = document.createElement("span");
   tools.className = "tools";
   tools.appendChild(makeTool("power", "Einschalten", () => toggleActive(row.dataset.color), "power"));
+  // every row has the copy button: it puts the current value on the clipboard (as the RGB fields take it)
+  const copyLabel = `${name} kopieren`;
+  tools.appendChild(makeTool("copy", copyLabel, async (btn) => {
+    const ok = await copyText(rgbText(hexToRgb(row.dataset.color)));
+    btn.classList.toggle("done", ok);
+    btn.title = ok ? "Kopiert" : "Nicht kopiert";
+    setTimeout(() => { btn.classList.remove("done"); btn.title = btn.ariaLabel; }, 1200);
+  }, "copy"));
   if (kind === "preset") {
     const reset = makeTool("reset", "Auf Standard zurücksetzen", async () => { if (await send({ resetPreset: id })) renderState(); }, "reset");
     reset.disabled = !edited;
     tools.appendChild(reset);
   }
-  // only presets with a field of the same name in Hyperion (white, red, … yellow) get the arrow
-  const hyField = kind === "preset" && COLOR_RGB.find(([key]) => key === id);
-  if (hyField) {
-    const label = `${name} in Hyperion übernehmen`;
-    const sendBtn = makeTool("send", label, async (btn) => {
-      btn.disabled = true;
-      const ok = await saveRgb(id, hexToRgb(row.dataset.color));
-      btn.classList.toggle("done", ok);
-      btn.title = ok ? "Übernommen" : "Nicht übernommen";
-      if (ok) flashRgbRow(id);
-      setTimeout(() => { btn.classList.remove("done"); btn.title = label; updateSendButtons(); }, 1200);
-    }, "send");
-    tools.appendChild(sendBtn);
-  } else if (kind === "preset") {
-    // gray and black have no Hyperion field: a dot keeps the three tool columns aligned
-    tools.appendChild(makeDot());
-  } else {
-    // custom colors: power, dot, trash, in the same three columns as the presets
-    tools.appendChild(makeDot());
-    tools.appendChild(makeTool("trash", `${name} löschen`, () => removeCustom(row.dataset.color), "trash"));
-  }
+  if (kind !== "preset") tools.appendChild(makeTool("trash", `${name} löschen`, () => removeCustom(row.dataset.color), "trash"));
   row.appendChild(tools);
   return row;
 }
@@ -3248,15 +3245,17 @@ function updateRow(row, color, name, edited) {
   input.setAttribute("aria-label", `${name} bearbeiten`);
   const reset = row.querySelector(".ibtn.reset");
   if (reset) reset.disabled = !edited;
+  const copy = row.querySelector(".ibtn.copy");
+  if (copy) copy.title = copy.ariaLabel = `${name} kopieren`;
   const trash = row.querySelector(".ibtn.trash");
   if (trash) trash.title = trash.ariaLabel = `${name} löschen`;
 }
 
-function makeDot() {
-  const dot = document.createElement("span");
-  dot.className = "ibtn tool-dot";
-  dot.setAttribute("aria-hidden", "true");
-  return dot;
+function makeSep(text) {
+  const sep = document.createElement("div");
+  sep.className = "crow-sep";
+  sep.textContent = tr(text);
+  return sep;
 }
 
 function buildColorList() {
@@ -3265,6 +3264,9 @@ function buildColorList() {
   pres.innerHTML = "";
   presets.forEach(p => {
     const color = presetColor(p);
+    // labelled lines: the colors Hyperion has a field for, then the colors of this fork
+    if (p.id === presets[0].id) pres.appendChild(makeSep("Farben in Hyperion"));
+    if (p.id === "gray50") pres.appendChild(makeSep("Fork-Farben"));
     pres.appendChild(makeRow({ color, name: p.name, kind: "preset", id: p.id, edited: color !== p.color }));
   });
 
@@ -3283,7 +3285,6 @@ function buildColorList() {
   add.appendChild(addMain);
   box.appendChild(add);
   updateActiveRows();
-  updateSendButtons();
 }
 
 // brings the list up to date in place, so the input of an open picker stays on the page. New
@@ -3302,15 +3303,9 @@ function syncColorList() {
     else box.insertBefore(makeRow({ color, name, kind: "custom", id: color }), box.querySelector(".crow.add"));
   });
   listKey = JSON.stringify([state.presetColors ?? {}, colors]);
-  updateSendButtons();
   return true;
 }
 
-// the arrows write into Hyperion, so they need a connection and a color entry
-function updateSendButtons() {
-  const writable = hyperionConnected && !!colorConfig?.channelAdjustment?.[colorIndex];
-  document.querySelectorAll(".ibtn.send:not(.done)").forEach(b => { b.disabled = !writable; });
-}
 
 // the Hyperion row that just received a value lights up briefly
 function flashRgbRow(field) {
@@ -3924,7 +3919,6 @@ function renderColorEditor() {
   $("hy-accuracy-row").hidden = !String(mapping).endsWith("_advanced");
   $("hy-mapping-help").textContent = MAPPING_HELP[mapping] ? tr(MAPPING_HELP[mapping]) : "";
 
-  updateSendButtons();
   renderDepthConfig();
   renderFracConfig();
   applyPlaceholders();
