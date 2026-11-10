@@ -2133,8 +2133,10 @@
       setDrawer(!root.classList.contains("side-open"));
     }
   });
+  // the path, not ev.target: a button in the menu may swap its own icon (eye, appearance) while it is
+  // handled, and the detached icon would no longer count as inside the menu
   document.addEventListener("click", (ev) => {
-    if (root.classList.contains("side-open") && !side.contains(ev.target) && !ev.target.closest("#tb-menu")) setDrawer(false);
+    if (root.classList.contains("side-open") && !ev.composedPath().some((n) => n === side || n === document.getElementById("tb-menu"))) setDrawer(false);
   });
   wide.addEventListener("change", () => setDrawer(false));
 
