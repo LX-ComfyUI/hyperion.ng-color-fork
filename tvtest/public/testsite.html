@@ -902,6 +902,8 @@
   #card-pv .card-pin[aria-pressed="true"] { color: var(--accent); }
   #card-pv .card-pin[aria-pressed="true"] svg { fill: currentColor; fill-opacity: .25; }
   #card-pv .card-toggle .ttl { padding-right: 36px; }
+  /* the preview card has no fold arrow at its bottom edge (the one in the title bar is enough) */
+  #card-pv .card-close { display: none; }
   main > #card-pv.pinned { position: sticky; top: calc(var(--bar-h) + 8px); z-index: 6; box-shadow: 0 -8px 0 0 var(--page), var(--shadow); }
   #dock #card-pv.pinned { position: sticky; top: 0; z-index: 6; box-shadow: 0 -8px 0 0 var(--page), var(--shadow); }
   :root.pin-mid main > section.card:not(#card-pv) { scroll-margin-top: calc(var(--bar-h) + var(--pin-h, 0px) + 16px); }
