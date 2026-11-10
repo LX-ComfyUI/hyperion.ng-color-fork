@@ -576,10 +576,20 @@
   .preview .bbtext { position: absolute; left: 0; top: 0; right: 0; font-size: 11px; color: #fff; background: rgba(10, 10, 14, .7); padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .preview .pc-paused { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 13px; color: #fff; background: rgba(10, 10, 14, .78); text-align: center; }
   .preview .pc-paused[hidden] { display: none; }
-  /* the picture of the card sits in the middle and can be made smaller (slider below it), it stays centred */
-  #pc-preview { width: calc(var(--pc-size, 100) * 1%); max-width: 960px; margin: 0 auto; }
-  .pc-opts h3 { margin-top: 16px; }
+  /* the picture of the card sits in the middle, almost as wide as the card (the stage reaches into the card's padding),
+     and can be made smaller with the slider; it stays centred */
+  .pc-stage { display: flex; justify-content: center; margin: 0 -9px; }
+  #pc-preview { flex: none; width: calc(var(--pc-size, 100) * 1%); }
+  /* the arrow row under the picture folds the switches, the slider and the texts */
+  .pc-fold { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 10px 0 0; padding: 6px 0; border: none; border-top: 1px solid var(--line); border-radius: 0; background: none;
+             color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .pc-fold:hover { color: var(--text); }
+  .pc-fold svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+  .pc-fold[aria-expanded="false"] svg { transform: rotate(-90deg); }
+  .pc-opts[hidden] { display: none; }
+  .pc-opts h3 { margin-top: 10px; }
   .pc-opts .srow { margin-top: 14px; }
+  .pc-opts .pc-note { margin: 12px 0 0; }
   /* the open preview window sits on the menu (PC, tablet): the menu does not scroll then */
   :root.pv-open[data-device="desktop"] #side, :root.pv-open[data-device="tablet"] #side { overflow-y: hidden; }
   .preview .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; text-align: center; padding: 12px; }
@@ -1101,7 +1111,7 @@
   <!-- ===== grabber preview as a card (the floating panel stays; while it is open this card pauses) ===== -->
   <section class="card" id="card-pv">
     <h2>Grabber-Vorschau</h2>
-    <p class="help">Das Bild, das der Grabber an Hyperion liefert. Prüfe hier, ob wirklich das TV-Bild ankommt und nicht die „No Signal“-Seite des Grabbers oder ein schwarzes Bild. Das Symbol oben in der Leiste öffnet dieselbe Vorschau als Fenster, das du verschieben kannst. Solange dieses Fenster offen ist, pausiert die Vorschau in dieser Karte. Diese Karte steht immer ganz oben, in der Mitte wie in der Seitenleiste rechts. Mit der Nadel links neben dem Pfeil pinnst du sie fest: Sie bleibt dann beim Scrollen oben stehen, aufgeklappt oder zugeklappt, je nachdem, wie du sie gelassen hast.</p>
+    <div class="pc-stage">
     <div class="preview" id="pc-preview">
       <img id="pc-img" alt="Grabber-Bild">
       <div class="empty" id="pc-empty">Warte auf Bild vom Grabber …</div>
@@ -1112,13 +1122,17 @@
       <div class="gsc" id="pc-gs" hidden></div>
       <div class="pc-paused" id="pc-paused" hidden>Pausiert: Die Vorschau läuft im Fenster.</div>
     </div>
-    <div class="pc-opts">
+    </div>
+    <!-- everything under the picture folds away with the arrow: for anyone who only wants the picture -->
+    <button type="button" class="pc-fold" id="pc-fold" aria-expanded="true" aria-controls="pc-opts"><span>Anzeige, Größe und Hilfe</span><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <div class="pc-opts" id="pc-opts">
       <h3>Anzeige in der Vorschau</h3>
-      <p class="help">Diese Schalter gehören zu denselben Einstellungen wie „Anzeige beim Testen“ bei Schwarzen Balken, Grauem Standbild und LED-Erfassungstiefe: Was du hier umschaltest, ändert sich dort mit, und umgekehrt.</p>
       <label class="check"><input type="checkbox" id="pc-ov-bbPreview"><span>Schwarzbalken-Erkennung<small>Türkis: wo Hyperion nach Balken sucht. Pink gestrichelt: der übernommene Bildbereich.</small></span></label>
       <label class="check"><input type="checkbox" id="pc-ov-gsPreview"><span>Graues Standbild: ausgewerteter Bereich<small>Orange: was Hyperion auswertet, dazu eine Statuszeile.</small></span></label>
       <label class="check"><input type="checkbox" id="pc-ov-dpPreview"><span>LED-Erfassungstiefe<small>Grün: die Abtastflächen der LEDs mit der eingestellten Tiefe.</small></span></label>
+      <p class="help pc-note">Diese Schalter gehören zu denselben Einstellungen wie „Anzeige beim Testen“ bei Schwarzen Balken, Grauem Standbild und LED-Erfassungstiefe: Was du hier umschaltest, ändert sich dort mit, und umgekehrt.</p>
       <div class="srow"><label for="pc-size">Größe des Bildes <span class="val" id="pc-size_v"></span></label><input type="range" id="pc-size" min="25" max="100" step="1"></div>
+      <p class="help pc-note">Das Bild, das der Grabber an Hyperion liefert. Prüfe hier, ob wirklich das TV-Bild ankommt und nicht die „No Signal“-Seite des Grabbers oder ein schwarzes Bild. Das Symbol oben in der Leiste öffnet dieselbe Vorschau als Fenster, das du verschieben kannst. Solange dieses Fenster offen ist, pausiert die Vorschau in dieser Karte. Diese Karte steht immer ganz oben, in der Mitte wie in der Seitenleiste rechts. Mit der Nadel links neben dem Pfeil pinnst du sie fest: Sie bleibt dann beim Scrollen oben stehen, aufgeklappt oder zugeklappt, je nachdem, wie du sie gelassen hast.</p>
     </div>
   </section>
 
@@ -4307,6 +4321,14 @@ const onOverlayChange = (k) => (ev) => {
 };
 OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", onOverlayChange(k)));
 PC_KEYS.forEach(k => $("pc-ov-" + k).addEventListener("change", onOverlayChange(k)));
+
+// the arrow under the picture folds switches, slider and texts (per device, open at first)
+{
+  const fold = $("pc-fold"), box = $("pc-opts");
+  const set = (open) => { box.hidden = !open; fold.setAttribute("aria-expanded", String(open)); };
+  set(store.get("tvtest-pc-opts") !== "0");
+  fold.addEventListener("click", () => { const open = box.hidden; set(open); store.set("tvtest-pc-opts", open ? "1" : "0"); });
+}
 
 // size of the picture in the preview card (per device)
 {
