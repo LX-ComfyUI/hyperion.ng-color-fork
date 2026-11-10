@@ -880,6 +880,18 @@
     #dock { transform: translateX(100%); transition: transform .25s, box-shadow .25s; }
     :root.dock-open #dock { transform: none; box-shadow: 0 3px 9px rgba(0, 0, 0, .5); }
   }
+  /* grabber preview: the pin in its title (left of the fold arrow) keeps the card at the top while the page or the menu scrolls */
+  #card-pv > h2 { position: relative; }
+  #card-pv .card-pin { position: absolute; top: 50%; right: 45px; transform: translateY(-50%); width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center;
+                       border: none; border-radius: 4px; background: none; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  #card-pv .card-pin:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+  #card-pv .card-pin svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #card-pv .card-pin[aria-pressed="true"] { color: var(--accent); }
+  #card-pv .card-pin[aria-pressed="true"] svg { fill: currentColor; fill-opacity: .25; }
+  #card-pv .card-toggle .ttl { padding-right: 36px; }
+  main > #card-pv.pinned { position: sticky; top: calc(var(--bar-h) + 8px); z-index: 6; box-shadow: 0 -8px 0 0 var(--page), var(--shadow); }
+  #dock #card-pv.pinned { position: sticky; top: 0; z-index: 6; box-shadow: 0 -8px 0 0 var(--page), var(--shadow); }
+  :root.pin-mid main > section.card:not(#card-pv) { scroll-margin-top: calc(var(--bar-h) + var(--pin-h, 0px) + 16px); }
   main > header .hdr-tools { display: none; }
   main > header h1 { font-size: 24px; font-weight: 500; }
   .pv-fab, #pv-fab { display: none !important; }
@@ -1086,7 +1098,7 @@
   <!-- ===== grabber preview as a card (the floating panel stays; while it is open this card pauses) ===== -->
   <section class="card" id="card-pv">
     <h2>Grabber-Vorschau</h2>
-    <p class="help">Das Bild, das der Grabber an Hyperion liefert. Prüfe hier, ob wirklich das TV-Bild ankommt und nicht die „No Signal“-Seite des Grabbers oder ein schwarzes Bild. Das Symbol oben in der Leiste öffnet dieselbe Vorschau als Fenster, das du verschieben kannst. Solange dieses Fenster offen ist, pausiert die Vorschau in dieser Karte.</p>
+    <p class="help">Das Bild, das der Grabber an Hyperion liefert. Prüfe hier, ob wirklich das TV-Bild ankommt und nicht die „No Signal“-Seite des Grabbers oder ein schwarzes Bild. Das Symbol oben in der Leiste öffnet dieselbe Vorschau als Fenster, das du verschieben kannst. Solange dieses Fenster offen ist, pausiert die Vorschau in dieser Karte. Diese Karte steht immer ganz oben, in der Mitte wie in der Seitenleiste rechts. Mit der Nadel links neben dem Pfeil pinnst du sie fest: Sie bleibt dann beim Scrollen oben stehen, aufgeklappt oder zugeklappt, je nachdem, wie du sie gelassen hast.</p>
     <div class="preview" id="pc-preview">
       <img id="pc-img" alt="Grabber-Bild">
       <div class="empty" id="pc-empty">Warte auf Bild vom Grabber …</div>
@@ -2290,9 +2302,12 @@
   // or Eigene (dragged in this menu). Kept per device like the open cards. Every card can be moved, the
   // guide shows the text for the chosen order. The menu on the right has its own order (see below).
   const ORDERS = {
-    setup: ["card-intro", "card-flow", "card-pv", "card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
-    standard: ["card-intro", "card-flow", "card-pv", "card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
+    setup: ["card-pv", "card-intro", "card-flow", "card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
+    standard: ["card-pv", "card-intro", "card-flow", "card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
+  // the grabber preview is always the top card, in the middle and in the menu on the right: it cannot be dragged
+  // and nothing goes above it
+  const TOP = "card-pv";
   const ORDER_KEY = "tvtest-card-order";
   const CUSTOM_KEY = "tvtest-card-order-custom";
   const list = side.querySelector(".side-list");
@@ -2303,19 +2318,18 @@
     try {
       const v = JSON.parse(store.get(key));
       if (!Array.isArray(v)) return null;
-      const head = v.includes("card-intro") || v.includes("card-flow") ? v : ["card-intro", "card-flow", ...v];
-      // the preview card (new) belongs right under the flow chart in an order saved without it
-      if (!head.includes("card-pv")) head.splice(head.indexOf("card-flow") + 1, 0, "card-pv");
-      return head;
+      const head = v.includes("card-intro") || v.includes("card-flow") ? v.filter((id) => id !== "card-pv") : ["card-intro", "card-flow", ...v.filter((id) => id !== "card-pv")];
+      // the preview card is always the first one, whatever order was saved
+      return ["card-pv", ...head];
     } catch { return null; }
   };
   const readCustom = () => readOrder(CUSTOM_KEY);
   const sideIds = () => [...list.children].map((li) => li.firstChild.hash.slice(1));
   // ids in this order, unknown ones skipped, cards missing in a saved order (new ones) at the end
   const fullSeq = (ids) => {
-    const seq = ids.filter((id, i) => byId.has(id) && ids.indexOf(id) === i);
-    for (const id of byId.keys()) if (!seq.includes(id)) seq.push(id);
-    return seq;
+    const seq = ids.filter((id, i) => id !== TOP && byId.has(id) && ids.indexOf(id) === i);
+    for (const id of byId.keys()) if (id !== TOP && !seq.includes(id)) seq.push(id);
+    return [TOP, ...seq];
   };
   let mode = store.get(ORDER_KEY);
   // the everyday order was called Testing for a short while
@@ -2652,7 +2666,32 @@
     store.set(DOCK_KEY, JSON.stringify(ids));
     if (ids.length) store.set(LAST_KEY, JSON.stringify(ids));
   };
+  // pin on the preview card (left of the fold arrow in its title): the card stays at the top of the middle or
+  // of the menu on the right while the rest scrolls, open or closed as it is. Kept per device. In the middle
+  // the cards below it jump to a place under it (--pin-h)
+  const PIN_KEY = "tvtest-pv-pinned";
+  const pvTop = byId.get(TOP)[0];
+  const pinBtn = document.createElement("button");
+  pinBtn.type = "button";
+  pinBtn.className = "card-pin";
+  pinBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24z"/></svg>';
+  pvTop.querySelector(":scope > h2").appendChild(pinBtn);
+  pinBtn.addEventListener("click", () => { store.set(PIN_KEY, pvTop.classList.contains("pinned") ? "0" : "1"); renderPin(); });
+  const pinSize = new ResizeObserver(() => root.style.setProperty("--pin-h", pvTop.offsetHeight + "px"));
+  const renderPin = () => {
+    const pinned = store.get(PIN_KEY) === "1";
+    pvTop.classList.toggle("pinned", pinned);
+    pinBtn.setAttribute("aria-pressed", String(pinned));
+    setTip(pinBtn, pinned ? "Grabber-Vorschau lösen" : "Grabber-Vorschau anpinnen: Sie bleibt oben stehen, auch wenn du scrollst");
+    // the cards in the middle only keep clear of it while it is pinned there and shown
+    const mid = pinned && !docked.has(pvTop) && !pvTop.classList.contains("user-hidden");
+    root.classList.toggle("pin-mid", mid);
+    pinSize.disconnect();
+    if (mid) pinSize.observe(pvTop);
+  };
+  new MutationObserver(renderPin).observe(pvTop, { attributes: true, attributeFilter: ["class"] });
   const afterDock = () => {
+    renderPin();
     byId.forEach(([card]) => renderArrow(card));
     window.updateFoldAll?.();
     spy();
@@ -2733,6 +2772,7 @@
   else { try { const ids = JSON.parse(savedDock); if (Array.isArray(ids) && ids.length) dockCards(ids, true); } catch {} }
   byId.forEach(([card]) => renderArrow(card));
   renderDock();
+  renderPin();
 
   // dragging in the menu on the right: hold the title of a card a moment, it lifts and follows the
   // pointer, the other cards glide out of its way. Letting go saves the order of the menu as its own
@@ -2749,7 +2789,7 @@
     };
     // screen position of a card's middle without its transform (offsetTop ignores transforms)
     const middle = (el) => dock.getBoundingClientRect().top + el.offsetTop - dock.scrollTop + el.offsetHeight / 2;
-    const movable = () => dockedCards();
+    const movable = () => dockedCards().filter((c) => c.id !== TOP);
     const place = () => { drag.card.style.transform = `translateY(${drag.y - drag.grab - middle(drag.card)}px) scale(1.02)`; };
     const reorder = () => {
       const { card } = drag;
@@ -2772,7 +2812,7 @@
     dockBody.addEventListener("pointerdown", (ev) => {
       const toggle = ev.target.closest(".card-toggle");
       const card = toggle?.closest("section.card");
-      if (!card || ev.button !== 0 || drag) return;
+      if (!card || card.id === TOP || ev.button !== 0 || drag) return;
       cancelHold();
       const pointer = ev.pointerId;
       hold = { card, x: ev.clientX, y: ev.clientY,
@@ -2857,7 +2897,7 @@
       const { li } = drag;
       const at = drag.y - drag.grab;
       const others = [...list.children].filter((el) => el !== li);
-      const before = others.find((el) => at < middle(el)) ?? null;
+      const before = others.find((el) => el.firstChild.hash.slice(1) !== TOP && at < middle(el)) ?? null;
       if (li.nextElementSibling === before) return;
       glide(others, () => list.insertBefore(li, before));
       navigator.vibrate?.(5);
@@ -2891,7 +2931,7 @@
     };
     list.addEventListener("pointerdown", (ev) => {
       const a = ev.target.closest("a");
-      if (!a || ev.button !== 0 || drag) return;
+      if (!a || ev.button !== 0 || drag || a.hash === "#" + TOP) return;
       cancelHold();
       const li = a.parentElement;
       const pointer = ev.pointerId;
