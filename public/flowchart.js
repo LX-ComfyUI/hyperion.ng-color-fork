@@ -5,6 +5,8 @@
 // brings its own styles. The colors work on light and dark pages alike.
 //
 //   ForkFlow.render(element, { lang })    lang "de" (default) or "en"
+//   ForkFlow.show("20")                   scrolls to step 20 and marks it for a moment (the guides
+//                                         link their steps to the processing step they act in)
 //
 // Two lines run beside the steps: the precise color with fractions (16 bit) from step 11 to the LED
 // device, and the gray curve, which measures at step 11 and acts at step 18.
@@ -109,7 +111,7 @@
         where: [["colors", "calib"]] },
     ] },
     { color: "#c8463d", name: { de: "Ausgabe", en: "Output" }, sub: { de: "zu den LEDs", en: "to the LEDs" }, steps: [
-      { n: "20", t: { de: "Farbreihenfolge", en: "Color order" },
+      { n: "20", t: { de: "RGB-Byte-Reihenfolge", en: "RGB byte order" },
         d: { de: "RGB, GRB … so wie das LED-Gerät es erwartet", en: "RGB, GRB … the way the LED device expects it" },
         where: [["leds", "ctrl"]] },
       { n: "21", t: { de: "Glättung", en: "Smoothing" }, fork: "ext",
@@ -131,7 +133,7 @@
   const TEXT = {
     de: {
       title: "Vom TV-Bild zu den LEDs",
-      intro: "So verarbeitet Hyperion jedes Bild, von oben nach unten in genau dieser Reihenfolge. Das Kästchen unter jedem Schritt zeigt, wo du ihn in der WebUI einstellst.",
+      intro: "So verarbeitet Hyperion jedes Bild, von oben nach unten in genau dieser Reihenfolge. Das ist nicht die Reihenfolge der Anleitung: Die Anleitung ordnet, was du nacheinander einstellst, hier steht, wo es im Bild wirkt. Das Kästchen unter jedem Schritt zeigt, wo du ihn in der WebUI einstellst.",
       opt: "optional",
       fork: "nur in diesem Fork",
       ext: "in Hyperion vorhanden, vom Fork erweitert",
@@ -141,7 +143,7 @@
     },
     en: {
       title: "From the TV picture to the LEDs",
-      intro: "This is how Hyperion processes every picture, from top to bottom in exactly this order. The box below each step shows where to set it in the WebUI.",
+      intro: "This is how Hyperion processes every picture, from top to bottom in exactly this order. This is not the order of the guide: the guide orders what you set up one after the other, this shows where it acts on the picture. The box below each step shows where to set it in the WebUI.",
       opt: "optional",
       fork: "only in this fork",
       ext: "in Hyperion, extended by the fork",
@@ -174,6 +176,8 @@
 .ff-tag.out{border-style:dashed}
 .ff-badge{font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px;white-space:nowrap;color:var(--ff-forkink);background:var(--ff-forkbg);border:1px solid var(--ff-forkbg)}
 .ff-badge.ext{background:transparent;color:inherit;border-color:var(--ff-forkbg)}
+.ff-node.ff-hl{animation:ff-hl 2.4s ease-out}
+@keyframes ff-hl{0%,40%{box-shadow:0 0 0 3px var(--c)}100%{box-shadow:0 0 0 3px transparent}}
 .ff-arrow{grid-column:node;height:14px;position:relative;margin-left:19px}
 .ff-arrow::before{content:"";position:absolute;left:0;top:0;bottom:4px;border-left:2px solid var(--ff-arrow)}
 .ff-arrow::after{content:"";position:absolute;left:-4px;bottom:0;border:5px solid transparent;border-top:6px solid var(--ff-arrow);border-bottom:0}
@@ -241,7 +245,7 @@
         const note = s.note ? `<div class="ff-note${s.plain ? "" : " fork"}">${s.n === "18" ? "↳ " : ""}${esc(s.note[lang])}</div>` : "";
         const where = s.out ? `<span class="ff-tag out">${esc(OUT[lang])}</span>`
           : (s.where || []).map((w) => `<span class="ff-tag">${w.map((k) => esc(W[k][lang])).join(" → ")}</span>`).join("");
-        cells.push(`<div class="ff-node" style="grid-row:${row};--c:${ph.color}"><span class="ff-num">${esc(s.n)}</span><div>`
+        cells.push(`<div class="ff-node" id="ff-step-${esc(s.n)}" style="grid-row:${row};--c:${ph.color}"><span class="ff-num">${esc(s.n)}</span><div>`
           + `<div class="ff-t">${esc(s.t[lang])}${s.opt ? ` <span class="ff-opt">(${esc(tx.opt)})</span>` : ""}${badge}</div>`
           + `<div class="ff-d">${esc(s.d[lang])}</div>${note}<div class="ff-where">${where}</div></div></div>`);
         row++;
@@ -272,5 +276,14 @@
       + `</div></div>`;
   }
 
-  global.ForkFlow = { render, PHASES };
+  function show(n) {
+    const node = document.getElementById("ff-step-" + n);
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    node.classList.remove("ff-hl");
+    void node.offsetWidth; // restart the animation
+    node.classList.add("ff-hl");
+  }
+
+  global.ForkFlow = { render, show, PHASES };
 })(typeof window !== "undefined" ? window : globalThis);
