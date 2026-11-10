@@ -148,6 +148,12 @@ const PRESETS = [
   { id: "cyan", color: "#00ffff", name: "Cyan" },
   { id: "magenta", color: "#ff00ff", name: "Magenta" },
   { id: "gray50", color: "#808080", name: "Grau 50 %" },
+  { id: "gray25", color: "#404040", name: "Grau 25 %" },
+  { id: "gray12", color: "#1f1f1f", name: "Grau 12 %" },
+  { id: "gray6", color: "#0f0f0f", name: "Grau 6 %" },
+  { id: "gray3", color: "#080808", name: "Grau 3 %" },
+  { id: "gray2", color: "#050505", name: "Grau 2 %" },
+  { id: "gray1", color: "#030303", name: "Grau 1 %" },
   { id: "black", color: "#000000", name: "Schwarz" },
 ];
 const PRESET_IDS = PRESETS.map((p) => p.id);

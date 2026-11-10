@@ -143,10 +143,9 @@
   .cname small { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tools { display: flex; align-items: center; gap: 2px; padding-right: 6px; flex: none; }
   .ibtn { width: 40px; height: 40px; padding: 0; border: none; background: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
-  .ibtn:hover:not(:disabled, .tool-dot) { color: var(--text); background: var(--bg); }
+  .ibtn:hover:not(:disabled) { color: var(--text); background: var(--bg); }
   .ibtn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .ibtn.done { color: var(--accent); }
-  .ibtn.tool-dot::after { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--muted); opacity: .6; }
   .ibtn.power.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .crow.add { border-style: dashed; }
   .crow.add .crow-main { color: var(--muted); }
@@ -1095,7 +1094,7 @@
   <!-- ===== test colors: full screen on the TV (own card, fits the menu on the right beside the color calibration) ===== -->
   <section class="card" id="card-tc">
     <h2>Testfarben</h2>
-    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Der Pfeil schreibt den RGB-Wert sofort in die gleichnamige Farbe in Hyperion unter <a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> (nur bei Weiß, Rot, Grün, Blau, Gelb, Cyan und Magenta). Eigene Farben löschst du mit der Mülltonne. Das Symbol ganz rechts oben legt diese Karte in die Seitenleiste rechts, dann stehen die Testfarben neben der Farbkalibrierung.</p>
+    <p class="help">Füllt den ganzen TV-Bildschirm. Prüfe, ob die LEDs dieselbe Farbe zeigen. <b>Weiß</b> und <b>Grau</b> zeigen den Weißabgleich, <b>Rot/Grün/Blau</b> die einzelnen Kanäle. Tippe auf eine Farbe, um ihren Wert zu ändern. Mit dem Einschaltknopf zeigst du sie auf dem TV an oder schaltest sie wieder aus, mit dem Kreis setzt du sie auf den Standard zurück. Das Kopiersymbol legt den aktuellen RGB-Wert in die Zwischenablage, du kannst ihn dann in die Felder unter <a class="jump" href="#card-color"><b>Farbkalibrierung</b></a> einfügen. Eigene Farben löschst du mit der Mülltonne. Das Symbol ganz rechts oben legt diese Karte in die Seitenleiste rechts, dann stehen die Testfarben neben der Farbkalibrierung.</p>
     <p class="note guard-note" hidden></p>
     <div class="gc-row">
       <span class="gc-label">Grabber-Farbkorrektur</span>
@@ -2963,7 +2962,7 @@ const ICON = {
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon class="solid" points="7 4 20 12 7 20 7 4"/></svg>',
   stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect class="solid" x="6" y="6" width="12" height="12" rx="1"/></svg>',
-  send: '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>',
   // the same arrows as the gray curve graph
   undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   redo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
@@ -3210,27 +3209,15 @@ function makeRow({ color, name, kind, id, edited }) {
     reset.disabled = !edited;
     tools.appendChild(reset);
   }
-  // only presets with a field of the same name in Hyperion (white, red, … yellow) get the arrow
-  const hyField = kind === "preset" && COLOR_RGB.find(([key]) => key === id);
-  if (hyField) {
-    const label = `${name} in Hyperion übernehmen`;
-    const sendBtn = makeTool("send", label, async (btn) => {
-      btn.disabled = true;
-      const ok = await saveRgb(id, hexToRgb(row.dataset.color));
-      btn.classList.toggle("done", ok);
-      btn.title = ok ? "Übernommen" : "Nicht übernommen";
-      if (ok) flashRgbRow(id);
-      setTimeout(() => { btn.classList.remove("done"); btn.title = label; updateSendButtons(); }, 1200);
-    }, "send");
-    tools.appendChild(sendBtn);
-  } else if (kind === "preset") {
-    // gray and black have no Hyperion field: a dot keeps the three tool columns aligned
-    tools.appendChild(makeDot());
-  } else {
-    // custom colors: power, dot, trash, in the same three columns as the presets
-    tools.appendChild(makeDot());
-    tools.appendChild(makeTool("trash", `${name} löschen`, () => removeCustom(row.dataset.color), "trash"));
-  }
+  // every row has the copy button: it puts the current value on the clipboard (as the RGB fields take it)
+  const copyLabel = `${name} kopieren`;
+  tools.appendChild(makeTool("copy", copyLabel, async (btn) => {
+    const ok = await copyText(rgbText(hexToRgb(row.dataset.color)));
+    btn.classList.toggle("done", ok);
+    btn.title = ok ? "Kopiert" : "Nicht kopiert";
+    setTimeout(() => { btn.classList.remove("done"); btn.title = btn.ariaLabel; }, 1200);
+  }, "copy"));
+  if (kind !== "preset") tools.appendChild(makeTool("trash", `${name} löschen`, () => removeCustom(row.dataset.color), "trash"));
   row.appendChild(tools);
   return row;
 }
@@ -3248,15 +3235,10 @@ function updateRow(row, color, name, edited) {
   input.setAttribute("aria-label", `${name} bearbeiten`);
   const reset = row.querySelector(".ibtn.reset");
   if (reset) reset.disabled = !edited;
+  const copy = row.querySelector(".ibtn.copy");
+  if (copy) copy.title = copy.ariaLabel = `${name} kopieren`;
   const trash = row.querySelector(".ibtn.trash");
   if (trash) trash.title = trash.ariaLabel = `${name} löschen`;
-}
-
-function makeDot() {
-  const dot = document.createElement("span");
-  dot.className = "ibtn tool-dot";
-  dot.setAttribute("aria-hidden", "true");
-  return dot;
 }
 
 function buildColorList() {
@@ -3283,7 +3265,6 @@ function buildColorList() {
   add.appendChild(addMain);
   box.appendChild(add);
   updateActiveRows();
-  updateSendButtons();
 }
 
 // brings the list up to date in place, so the input of an open picker stays on the page. New
@@ -3302,15 +3283,9 @@ function syncColorList() {
     else box.insertBefore(makeRow({ color, name, kind: "custom", id: color }), box.querySelector(".crow.add"));
   });
   listKey = JSON.stringify([state.presetColors ?? {}, colors]);
-  updateSendButtons();
   return true;
 }
 
-// the arrows write into Hyperion, so they need a connection and a color entry
-function updateSendButtons() {
-  const writable = hyperionConnected && !!colorConfig?.channelAdjustment?.[colorIndex];
-  document.querySelectorAll(".ibtn.send:not(.done)").forEach(b => { b.disabled = !writable; });
-}
 
 // the Hyperion row that just received a value lights up briefly
 function flashRgbRow(field) {
@@ -3924,7 +3899,6 @@ function renderColorEditor() {
   $("hy-accuracy-row").hidden = !String(mapping).endsWith("_advanced");
   $("hy-mapping-help").textContent = MAPPING_HELP[mapping] ? tr(MAPPING_HELP[mapping]) : "";
 
-  updateSendButtons();
   renderDepthConfig();
   renderFracConfig();
   applyPlaceholders();
