@@ -4,7 +4,10 @@
 // (card above the guide) and the fork WebUI (guide, right column), so it has no dependencies and
 // brings its own styles. The colors work on light and dark pages alike.
 //
-//   ForkFlow.render(element, { lang })    lang "de" (default) or "en"
+//   ForkFlow.render(element, { lang, onGo })  lang "de" (default) or "en"; with onGo(page) the place
+//                                         boxes ("Capturing Hardware → …") become links, page is
+//                                         "grabber", "colors", "leds" or "remote" (the WebUI uses it
+//                                         to open the settings page, the test page passes none)
 //   ForkFlow.show("20")                   scrolls to step 20 and marks it for a moment (the guides
 //                                         link their steps to the processing step they act in)
 //
@@ -127,6 +130,8 @@
     ] },
   ];
 
+  const PAGES = ["grabber", "colors", "leds", "remote"];
+
   // the two lines beside the steps: from step, to step
   const LINES = { hp: ["11", "22"], gc: ["11", "18"] };
 
@@ -173,6 +178,8 @@
 .ff-note.fork{color:inherit;border-left:3px solid var(--ff-forkbg);padding-left:6px}
 .ff-where{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
 .ff-tag{font-size:11.5px;border:1px solid var(--ff-line);border-radius:10px;padding:1px 8px;opacity:.85}
+a.ff-go{color:inherit;text-decoration:underline dotted;opacity:1}
+a.ff-go:hover,a.ff-go:focus{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c);text-decoration:none;color:inherit}
 .ff-tag.out{border-style:dashed}
 .ff-badge{font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px;white-space:nowrap;color:var(--ff-forkink);background:var(--ff-forkbg);border:1px solid var(--ff-forkbg)}
 .ff-badge.ext{background:transparent;color:inherit;border-color:var(--ff-forkbg)}
@@ -244,7 +251,10 @@
           : s.fork === "ext" ? `<span class="ff-badge ext" title="${esc(tx.ext)}">+FORK</span>` : "";
         const note = s.note ? `<div class="ff-note${s.plain ? "" : " fork"}">${s.n === "18" ? "↳ " : ""}${esc(s.note[lang])}</div>` : "";
         const where = s.out ? `<span class="ff-tag out">${esc(OUT[lang])}</span>`
-          : (s.where || []).map((w) => `<span class="ff-tag">${w.map((k) => esc(W[k][lang])).join(" → ")}</span>`).join("");
+          : (s.where || []).map((w) => {
+            const text = w.map((k) => esc(W[k][lang])).join(" → ");
+            return options.onGo && PAGES.includes(w[0]) ? `<a class="ff-tag ff-go" href="#" data-ff-go="${w[0]}">${text}</a>` : `<span class="ff-tag">${text}</span>`;
+          }).join("");
         cells.push(`<div class="ff-node" id="ff-step-${esc(s.n)}" style="grid-row:${row};--c:${ph.color}"><span class="ff-num">${esc(s.n)}</span><div>`
           + `<div class="ff-t">${esc(s.t[lang])}${s.opt ? ` <span class="ff-opt">(${esc(tx.opt)})</span>` : ""}${badge}</div>`
           + `<div class="ff-d">${esc(s.d[lang])}</div>${note}<div class="ff-where">${where}</div></div></div>`);
@@ -274,6 +284,14 @@
       + `<div><span class="ff-badge">FORK</span><span>${esc(tx.fork)}</span></div>`
       + `<div><span class="ff-badge ext">+FORK</span><span>${esc(tx.ext)}</span></div>`
       + `</div></div>`;
+    if (options.onGo) {
+      element.querySelector(".ff").addEventListener("click", (ev) => {
+        const a = ev.target.closest("a[data-ff-go]");
+        if (!a) return;
+        ev.preventDefault();
+        options.onGo(a.dataset.ffGo);
+      });
+    }
   }
 
   function show(n) {

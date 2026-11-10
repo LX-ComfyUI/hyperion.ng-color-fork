@@ -2133,10 +2133,15 @@
       setDrawer(!root.classList.contains("side-open"));
     }
   });
+  // the path, not ev.target: a button in the menu may swap its own icon (eye, appearance) while it is
+  // handled, and the detached icon would no longer count as inside the menu. Only real taps count: the
+  // appearance and language buttons of the menu click a hidden twin by script (isTrusted is false)
   document.addEventListener("click", (ev) => {
-    if (root.classList.contains("side-open") && !side.contains(ev.target) && !ev.target.closest("#tb-menu")) setDrawer(false);
+    if (ev.isTrusted && root.classList.contains("side-open") && !ev.composedPath().some((n) => n === side || n === document.getElementById("tb-menu"))) setDrawer(false);
   });
   wide.addEventListener("change", () => setDrawer(false));
+  // the language button in the menu reloads the page: the menu opens again afterwards
+  try { if (sessionStorage.getItem("tvtest-side-reopen") === "1" && !wide.matches) setDrawer(true); sessionStorage.removeItem("tvtest-side-reopen"); } catch {}
 
   // Order of the cards: Ersteinrichtung (the steps of the guide, the default), Standard (everyday checks)
   // or Eigene (dragged in this menu). Kept per device like the open cards. The flow chart and the guide
@@ -2380,7 +2385,7 @@
   // starts: a list inside the drawer may redraw the button that was tapped). Capture phase: a link to
   // a card in the drawer opens it again afterwards with the same tap.
   document.addEventListener("click", (ev) => {
-    if (root.classList.contains("dock-open") && !ev.composedPath().some((n) => n === dock || n === dockBtn)) setDockOpen(false);
+    if (ev.isTrusted && root.classList.contains("dock-open") && !ev.composedPath().some((n) => n === dock || n === dockBtn)) setDockOpen(false);
   }, true);
   dockWide.addEventListener("change", () => setDockOpen(false));
   // saved: the ids in the menu ("1" from before: the whole menu)
@@ -2586,7 +2591,10 @@
   tbLang.textContent = I18N.lang === "en" ? "EN" : "DE";
   tbLang.dataset.tip = "Deutsch / English";
   tbLang.setAttribute("aria-label", "Deutsch / English");
-  tbLang.addEventListener("click", () => document.querySelector(`[data-lang-choice="${I18N.lang === "en" ? "de" : "en"}"]`).click());
+  tbLang.addEventListener("click", () => {
+    try { if (root.classList.contains("side-open")) sessionStorage.setItem("tvtest-side-reopen", "1"); } catch {}
+    document.querySelector(`[data-lang-choice="${I18N.lang === "en" ? "de" : "en"}"]`).click();
+  });
 
   const THEMES = ["auto", "light", "dark"];
   const THEME_NAMES = { auto: "Darstellung: Auto", light: "Darstellung: Hell", dark: "Darstellung: Dunkel" };
