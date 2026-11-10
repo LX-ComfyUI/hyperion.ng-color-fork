@@ -576,7 +576,10 @@
   .preview .bbtext { position: absolute; left: 0; top: 0; right: 0; font-size: 11px; color: #fff; background: rgba(10, 10, 14, .7); padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .preview .pc-paused { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 13px; color: #fff; background: rgba(10, 10, 14, .78); text-align: center; }
   .preview .pc-paused[hidden] { display: none; }
-  #pc-preview { max-width: 960px; }
+  /* the picture of the card sits in the middle and can be made smaller (slider below it), it stays centred */
+  #pc-preview { width: calc(var(--pc-size, 100) * 1%); max-width: 960px; margin: 0 auto; }
+  .pc-opts h3 { margin-top: 16px; }
+  .pc-opts .srow { margin-top: 14px; }
   /* the open preview window sits on the menu (PC, tablet): the menu does not scroll then */
   :root.pv-open[data-device="desktop"] #side, :root.pv-open[data-device="tablet"] #side { overflow-y: hidden; }
   .preview .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; text-align: center; padding: 12px; }
@@ -1108,6 +1111,14 @@
       <div class="bbtext" id="pc-bbtext" hidden></div>
       <div class="gsc" id="pc-gs" hidden></div>
       <div class="pc-paused" id="pc-paused" hidden>Pausiert: Die Vorschau läuft im Fenster.</div>
+    </div>
+    <div class="pc-opts">
+      <h3>Anzeige in der Vorschau</h3>
+      <p class="help">Diese Schalter gehören zu denselben Einstellungen wie „Anzeige beim Testen“ bei Schwarzen Balken, Grauem Standbild und LED-Erfassungstiefe: Was du hier umschaltest, ändert sich dort mit, und umgekehrt.</p>
+      <label class="check"><input type="checkbox" id="pc-ov-bbPreview"><span>Schwarzbalken-Erkennung<small>Türkis: wo Hyperion nach Balken sucht. Pink gestrichelt: der übernommene Bildbereich.</small></span></label>
+      <label class="check"><input type="checkbox" id="pc-ov-gsPreview"><span>Graues Standbild: ausgewerteter Bereich<small>Orange: was Hyperion auswertet, dazu eine Statuszeile.</small></span></label>
+      <label class="check"><input type="checkbox" id="pc-ov-dpPreview"><span>LED-Erfassungstiefe<small>Grün: die Abtastflächen der LEDs mit der eingestellten Tiefe.</small></span></label>
+      <div class="srow"><label for="pc-size">Größe des Bildes <span class="val" id="pc-size_v"></span></label><input type="range" id="pc-size" min="25" max="100" step="1"></div>
     </div>
   </section>
 
@@ -4277,20 +4288,38 @@ $("more-curve").open = store.get("tvtest-more-curve") === "1";
 // ---------- overlay switches (shared, the TV reads them too) ----------
 
 const OVERLAY_KEYS = ["bbTv", "bbPreview", "gsTv", "gsPreview", "dpTv", "dpPreview"];
+// the preview card has its own switches for the three picture overlays, the same settings as above
+const PC_KEYS = ["bbPreview", "gsPreview", "dpPreview"];
 
 function renderOverlayChecks() {
   OVERLAY_KEYS.forEach(k => { $("ov-" + k).checked = !!state.overlays?.[k]; });
+  PC_KEYS.forEach(k => { $("pc-ov-" + k).checked = !!state.overlays?.[k]; });
   $("bb-tv-warn").hidden = !state.overlays?.bbTv;
   $("gs-tv-warn").hidden = !state.overlays?.gsTv;
   $("dp-tv-warn").hidden = !state.overlays?.dpTv;
 }
 
-OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", (ev) => {
+const onOverlayChange = (k) => (ev) => {
   state = { ...state, overlays: { ...state.overlays, [k]: ev.target.checked } };
   renderState();
   renderDebug();
   send({ overlays: { [k]: ev.target.checked } });
-}));
+};
+OVERLAY_KEYS.forEach(k => $("ov-" + k).addEventListener("change", onOverlayChange(k)));
+PC_KEYS.forEach(k => $("pc-ov-" + k).addEventListener("change", onOverlayChange(k)));
+
+// size of the picture in the preview card (per device)
+{
+  const slider = $("pc-size");
+  const apply = (v) => {
+    $("pc-preview").style.setProperty("--pc-size", v);
+    $("pc-size_v").textContent = v + " %";
+  };
+  const saved = Number(store.get("tvtest-pc-size"));
+  slider.value = saved >= 25 && saved <= 100 ? saved : 100;
+  apply(slider.value);
+  slider.addEventListener("input", () => { apply(slider.value); store.set("tvtest-pc-size", slider.value); });
+}
 
 // ---------- gray still test pattern ----------
 
@@ -7327,13 +7356,19 @@ function renderDebug() {
 // so neither ever sits on top of (and steals taps from) the last card's content
 function updateSpace() {
   const open = !$("pv-panel").hidden;
-  $("main").style.paddingBottom = open ? `calc(var(--gap) + ${$("pv-panel").offsetHeight}px)` : "92px";
+  // the window on top of the left menu (PC, tablet) does not cover any card: no extra room then, or the page
+  // would grow a scrollbar of its own as the window opens
+  const pr = $("pv-panel").getBoundingClientRect(), mr = $("main").getBoundingClientRect();
+  const covers = open && pr.right > mr.left + 1 && pr.left < mr.right - 1;
+  $("main").style.paddingBottom = covers ? `calc(var(--gap) + ${$("pv-panel").offsetHeight}px)` : "92px";
   // the preview starts on top of the menu's bottom end, the jump list stays reachable above it
   const side = document.getElementById("side");
   const locked = open && ["desktop", "tablet"].includes(document.documentElement.dataset.device);
   if (side) side.style.paddingBottom = open && !locked ? `${$("pv-panel").offsetHeight + 20}px` : "";
 }
 new ResizeObserver(updateSpace).observe($("pv-panel"));
+// moved or resized by hand: the window may reach over the cards now, or leave them
+new MutationObserver(updateSpace).observe($("pv-panel"), { attributes: true, attributeFilter: ["style", "hidden"] });
 
 // one picture stream feeds the panel and the card; while the panel is open the card is paused
 const pvCard = $("card-pv");
