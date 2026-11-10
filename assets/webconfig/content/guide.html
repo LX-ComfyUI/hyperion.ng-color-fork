@@ -85,7 +85,12 @@
     }
     html += '<h4>' + $.i18n('guide_sec_later') + '</h4><p>' + $.i18n('guide_later') + '</p>';
     $('#guide_cont').html(html);
-    ForkFlow.render(document.getElementById('guide_flow'), { lang: storedLang === 'de' ? 'de' : 'en', title: false });
+    // Ortskästchen im Diagramm öffnen die Einstellungsseite, wie die Links in der Anleitung
+    const pageMenu = { grabber: 'MenuItemGrabber', colors: 'MenuItemInstConfColors', leds: 'MenuItemInstLeds', remote: 'MenuItemRemoteControl' };
+    ForkFlow.render(document.getElementById('guide_flow'), {
+      lang: storedLang === 'de' ? 'de' : 'en', title: false,
+      onGo: (page) => document.getElementById(pageMenu[page])?.click(),
+    });
 
     // WebUI-Links: wie ein Klick im Menü (lädt die Seite und markiert den Menüpunkt)
     $('#guide_cont').on('click', '[data-guide-goto]', function (ev) {
