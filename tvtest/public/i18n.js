@@ -59,13 +59,17 @@
   const ATTRS = ["title", "aria-label", "placeholder", "alt"];
   const done = new WeakSet(); // nodes written by the translator (their mutations are ours)
 
+  // only text and inline markup inside (an inline element may hold just a number, like a link "10")
+  function onlyInline(el) {
+    for (const n of el.childNodes) {
+      if (n.nodeType === 1 && (!INLINE.has(n.tagName) || !onlyInline(n))) return false;
+    }
+    return true;
+  }
+
   // only text and inline markup inside, and some real text
   function isPhrasing(el) {
-    if (!el.firstChild) return false;
-    for (const n of el.childNodes) {
-      if (n.nodeType === 1 && (!INLINE.has(n.tagName) || !isPhrasing(n) && n.tagName !== "BR" && n.childNodes.length)) return false;
-    }
-    return /[A-Za-zÄÖÜäöüß]{2}/.test(el.textContent);
+    return !!el.firstChild && onlyInline(el) && /[A-Za-zÄÖÜäöüß]{2}/.test(el.textContent);
   }
 
   function translateElement(el) {
