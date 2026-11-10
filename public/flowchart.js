@@ -4,10 +4,12 @@
 // (card above the guide) and the fork WebUI (guide, right column), so it has no dependencies and
 // brings its own styles. The colors work on light and dark pages alike.
 //
-//   ForkFlow.render(element, { lang, onGo })  lang "de" (default) or "en"; with onGo(page) the place
+//   ForkFlow.render(element, { lang, onGo, href })  lang "de" (default) or "en"; with onGo(page) the place
 //                                         boxes ("Capturing Hardware → …") become links, page is
 //                                         "grabber", "colors", "leds" or "remote" (the WebUI uses it
-//                                         to open the settings page, the test page passes none)
+//                                         to open the settings page); with href(page, section, step)
+//                                         a place box becomes a plain link to the returned address (the
+//                                         test page links to its cards), null leaves it as text
 //   ForkFlow.show("20")                   scrolls to step 20 and marks it for a moment (the guides
 //                                         link their steps to the processing step they act in)
 //
@@ -253,6 +255,8 @@ a.ff-go:hover,a.ff-go:focus{border-color:var(--c);box-shadow:inset 0 0 0 1px var
         const where = s.out ? `<span class="ff-tag out">${esc(OUT[lang])}</span>`
           : (s.where || []).map((w) => {
             const text = w.map((k) => esc(W[k][lang])).join(" → ");
+            const href = options.href?.(w[0], w[1], s.n);
+            if (href) return `<a class="ff-tag ff-go" href="${esc(href)}">${text}</a>`;
             return options.onGo && PAGES.includes(w[0]) ? `<a class="ff-tag ff-go" href="#" data-ff-go="${w[0]}">${text}</a>` : `<span class="ff-tag">${text}</span>`;
           }).join("");
         cells.push(`<div class="ff-node" id="ff-step-${esc(s.n)}" style="grid-row:${row};--c:${ph.color}"><span class="ff-num">${esc(s.n)}</span><div>`

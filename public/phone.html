@@ -750,18 +750,20 @@
   /* big eye under the eyes of the list (title row of the order box): shows all cards at once, a second tap restores the cards hidden before */
   .side-order-ttl { display: flex; align-items: center; }
   .side-order-ttl .side-order-fold { flex: 1; min-width: 0; width: auto; }
-  .side-eye-all { flex: none; width: 36px; height: 36px; margin: -6px 29px -6px 0; padding: 0; display: flex; align-items: center; justify-content: center;
+  .side-eye-all, .side-dock-all { flex: none; width: 32px; height: 36px; margin: -6px -9px -6px 0; padding: 0; display: flex; align-items: center; justify-content: center;
                   border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .85; }
-  .side-eye-all:hover:not(:disabled) { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); }
-  .side-eye-all:disabled { opacity: .3; cursor: default; }
-  .side-eye-all svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .side-dock-all { width: 28px; margin-right: 12px; }
+  .side-eye-all:hover:not(:disabled), .side-dock-all:hover:not(:disabled) { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .side-eye-all:disabled, .side-dock-all:disabled { opacity: .3; cursor: default; }
+  .side-eye-all svg, .side-dock-all svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   /* arrow next to the eye: moves the card to the menu on the right (arrow to the right) or back to the middle (arrow to the left, accent) */
-  .side-dock { flex: none; width: 28px; height: 36px; margin-right: 6px; padding: 0; display: flex; align-items: center; justify-content: center;
+  .side-dock { flex: none; width: 28px; height: 36px; margin-right: 0; padding: 0; display: flex; align-items: center; justify-content: center;
                border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .7; }
   .side-dock:hover { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); }
   .side-dock svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   #side .side-list li.docked .side-dock { color: var(--accent); opacity: 1; }
-  #side .side-list li .side-eye { margin-right: 0; }
+  .side-dock-all.on { color: var(--accent); opacity: 1; }
+  #side .side-list li .side-dock { margin-right: 0; }
   .side-list a { display: flex; align-items: center; gap: 6px; padding: 10px 15px; border-left: 4px solid transparent; border-radius: 0;
                  color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.3; }
   .side-list a:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
@@ -828,7 +830,6 @@
   .dock-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
   .dock-head .order-seg { flex: 0 1 auto; min-width: 0; margin-right: auto; }
   .dock-head .order-seg button { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
-  .dock-head .dock-back { order: 1; margin-left: auto; padding: 5px 12px; font-size: 13px; }
   .dock-head .dock-x, .dock-head .dock-fold { width: 32px; height: 32px; }
   /* dragging a card in the menu on the right: hold its title, it lifts and follows the pointer, the others glide aside */
   #dock section.card > h2 .card-toggle { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -840,9 +841,9 @@
   #dock .card:last-child { margin-bottom: 0; }
   :root { --dock-w: min(440px, 92vw); }
   @media (min-width: 1200px) {
-    :root.docked { --dock-w: calc((100vw - var(--side-w)) / 2); }
-    :root.docked.side-collapsed { --dock-w: 50vw; }
-    :root.docked main { margin-right: var(--dock-w); }
+    :root.dock-on { --dock-w: calc((100vw - var(--side-w)) / 2); }
+    :root.dock-on.side-collapsed { --dock-w: 50vw; }
+    :root.dock-on main { margin-right: var(--dock-w); }
   }
   @media (max-width: 1199.98px) {
     #dock { transform: translateX(100%); transition: transform .25s, box-shadow .25s; }
@@ -959,7 +960,7 @@
     <p class="help" style="margin:0">Auf dem Gerät, das dem TV das Bild liefert (z. B. TV-Stick oder Streaming-Box), öffnest du im Browser <code id="tv-url"></code>. Das Gerät zeigt dann das Testbild, und alles, was du hier einstellst, erscheint sofort dort. Hyperion liest dieses Bild über den Video-Grabber, so siehst du direkt, wie die LEDs reagieren.</p>
     <p class="help" style="margin:10px 0 0">Jede Karte auf dieser Seite ist ein Werkzeug für ein bestimmtes Problem. Wo Test und Einstellung zusammengehören, stehen sie in einer Karte nebeneinander: links der Test für den TV, rechts die passenden Einstellungen in Hyperion (mit „(Hyperion)“ im Namen). Diese werden direkt gespeichert und wirken sofort. Ein Tipp auf einen Namen in dieser Anleitung öffnet die Karte.</p>
     <h3>Reihenfolge der Karten</h3>
-    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü und oben in der Seitenleiste rechts stehen, ordnest du die Karten: <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Standard</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät. Mit dem Auge neben einem Namen im Seitenmenü blendest du eine Karte aus, ein Tipp auf den Namen holt sie zurück. Der Pfeil daneben schiebt die Karte in die Seitenleiste rechts, dort zeigt er nach links und holt sie wieder in die Mitte. Das Symbol ganz rechts oben öffnet die Seitenleiste rechts mit den Karten, die zuletzt dort standen, beim ersten Mal mit Testfarben, Testbilder &amp; Videos und Vom TV-Bild zu den LEDs. Das größere Auge unter der Liste blendet alle Karten auf einmal ein, ein zweiter Tipp blendet die zuvor ausgeblendeten wieder aus.</p>
+    <p class="help" style="margin:0 0 8px">Mit diesen Knöpfen, die auch unten im Seitenmenü stehen, ordnest du die Karten (die Knöpfe oben in der Seitenleiste rechts ordnen nur deren Karten, dort gilt eine eigene Reihenfolge): <b>Ersteinrichtung</b> für die erste Kalibrierung, <b>Standard</b> zum Prüfen im Alltag, <b>Eigene</b> nach deinem Geschmack. Darunter steht die Anleitung zur gewählten Reihenfolge. Voreingestellt ist Ersteinrichtung, die Wahl gilt für dieses Gerät. Mit dem Auge neben einem Namen im Seitenmenü blendest du eine Karte aus, ein Tipp auf den Namen holt sie zurück. Der Pfeil links daneben schiebt die Karte in die Seitenleiste rechts, dort zeigt er nach links und holt sie wieder in die Mitte. Das Symbol ganz rechts oben klappt die Seitenleiste rechts zu und wieder auf, die Karten bleiben darin, wie sie sind. Das X in der Seitenleiste und der große Pfeil unter der Liste holen alle Karten zurück in die Mitte, jede so, wie sie vor dem Verschieben war. Ein zweiter Tipp auf den großen Pfeil schiebt sie wieder hinüber, wie sie zuletzt dort standen, beim ersten Mal sind es Testfarben, Testbilder &amp; Videos und Vom TV-Bild zu den LEDs. Das größere Auge unter der Liste blendet alle Karten auf einmal ein, ein zweiter Tipp blendet die zuvor ausgeblendeten wieder aus.</p>
     <div id="order-guide" data-i18n-skip></div>
     <div data-order="setup">
     <h3>Ersteinrichtung</h3>
@@ -1040,7 +1041,7 @@
     </div>
     <div data-order="custom" hidden>
     <h3>Eigene</h3>
-    <p class="help" style="margin:0 0 10px">Die Karten stehen in der Reihenfolge, die du im Seitenmenü festgelegt hast, und die Liste hier folgt ihr. Zum Ändern hältst du dort einen Eintrag gedrückt, bis er sich anhebt, und ziehst ihn dann nach oben oder unten. In der Seitenleiste rechts geht das genauso mit dem Titel einer Karte, am einfachsten mit zugeklappten Karten (Symbol neben dem X). Anleitung und Vom TV-Bild zu den LEDs bleiben immer oben. Karten, die nach einem Update neu dazukommen, stehen am Ende. Mit Ersteinrichtung oder Standard wechselst du zurück zu einer festen Reihenfolge, deine eigene bleibt gespeichert. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <p class="help" style="margin:0 0 10px">Die Karten stehen in der Reihenfolge, die du im Seitenmenü festgelegt hast, und die Liste hier folgt ihr. Zum Ändern hältst du dort einen Eintrag gedrückt, bis er sich anhebt, und ziehst ihn dann nach oben oder unten. In der Seitenleiste rechts geht das genauso mit dem Titel einer Karte, am einfachsten mit zugeklappten Karten (Symbol neben dem X). Sie hat eine eigene Reihenfolge, die die Mitte nicht ändert. Alle Karten lassen sich verschieben. Karten, die nach einem Update neu dazukommen, stehen am Ende. Mit Ersteinrichtung oder Standard wechselst du zurück zu einer festen Reihenfolge, deine eigene bleibt gespeichert. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
     <ol class="guide" id="order-custom-guide" data-i18n-skip></ol>
     </div>
   </section>
@@ -2168,20 +2169,33 @@
   try { if (sessionStorage.getItem("tvtest-side-reopen") === "1" && !wide.matches) setDrawer(true); sessionStorage.removeItem("tvtest-side-reopen"); } catch {}
 
   // Order of the cards: Ersteinrichtung (the steps of the guide, the default), Standard (everyday checks)
-  // or Eigene (dragged in this menu). Kept per device like the open cards. The flow chart and the guide
-  // always stay on top, the guide shows the text for the chosen order.
+  // or Eigene (dragged in this menu). Kept per device like the open cards. Every card can be moved, the
+  // guide shows the text for the chosen order. The menu on the right has its own order (see below).
   const ORDERS = {
-    setup: ["card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
-    standard: ["card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
+    setup: ["card-intro", "card-flow", "card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
+    standard: ["card-intro", "card-flow", "card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
   const ORDER_KEY = "tvtest-card-order";
   const CUSTOM_KEY = "tvtest-card-order-custom";
   const list = side.querySelector(".side-list");
   const main = document.querySelector("main");
-  const PINNED = ["card-intro", "card-flow"];
   const byId = new Map(cards.map((c, i) => [c.id, [c, links[i]]]));
-  const readCustom = () => { try { const v = JSON.parse(store.get(CUSTOM_KEY)); return Array.isArray(v) ? v : null; } catch { return null; } };
-  const sideIds = () => [...list.children].slice(PINNED.length).map((li) => li.firstChild.hash.slice(1));
+  // an own order saved while the guide and the flow chart were fixed on top lacks them: they stay on top
+  const readOrder = (key) => {
+    try {
+      const v = JSON.parse(store.get(key));
+      if (!Array.isArray(v)) return null;
+      return v.includes("card-intro") || v.includes("card-flow") ? v : ["card-intro", "card-flow", ...v];
+    } catch { return null; }
+  };
+  const readCustom = () => readOrder(CUSTOM_KEY);
+  const sideIds = () => [...list.children].map((li) => li.firstChild.hash.slice(1));
+  // ids in this order, unknown ones skipped, cards missing in a saved order (new ones) at the end
+  const fullSeq = (ids) => {
+    const seq = ids.filter((id, i) => byId.has(id) && ids.indexOf(id) === i);
+    for (const id of byId.keys()) if (!seq.includes(id)) seq.push(id);
+    return seq;
+  };
   let mode = store.get(ORDER_KEY);
   // the everyday order was called Testing for a short while
   if (mode === "testing") store.set(ORDER_KEY, mode = "standard");
@@ -2219,37 +2233,52 @@
   const docked = new Map();   // the cards in the menu on the right: card -> slot (keeps its place in the middle)
   const applyOrder = () => {
     const ids = mode === "custom" ? readCustom() : ORDERS[mode];
-    // unknown ids are skipped, cards missing in a saved order (new ones) go to the end
-    const seq = [...PINNED, ...ids.filter((id) => !PINNED.includes(id) && byId.has(id))];
-    for (const id of byId.keys()) if (!seq.includes(id)) seq.push(id);
+    const seq = fullSeq(ids);
     seq.forEach((id, i) => {
       const [card, a] = byId.get(id);
       main.appendChild(docked.get(card) ?? card);
       cards[i] = card;
       links[i] = a;
     });
-    // the menu on the right lists its cards in the same order
-    const dockBody = document.querySelector("#dock .dock-body");
-    if (dockBody) cards.forEach((card) => { if (docked.has(card)) dockBody.appendChild(card); });
     arrange(list, links.map((a) => a.parentElement));
     renderCustomGuide(false);
     spy();
   };
   const segs = [];
   const syncSegs = () => {
-    segs.forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode))));
+    segs.forEach(({ seg, dockSide }) => seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === (dockSide ? dockMode : mode)))));
     guides.forEach((g) => { g.hidden = g.dataset.order !== mode; });
   };
   const setMode = (next, ids) => {
     // "Eigene" without a saved order starts from the order shown now
-    if (next === "custom" && !ids && !readCustom()) ids = cards.slice(PINNED.length).map((c) => c.id);
+    if (next === "custom" && !ids && !readCustom()) ids = cards.map((c) => c.id);
     if (ids) store.set(CUSTOM_KEY, JSON.stringify(ids));
     mode = next;
     store.set(ORDER_KEY, mode);
     applyOrder();
     syncSegs();
   };
-  const makeSeg = () => {
+  // the menu on the right has its own order, independent of the middle: same three buttons, own saved order
+  const DOCK_ORDER_KEY = "tvtest-dock-order";
+  const DOCK_CUSTOM_KEY = "tvtest-dock-order-custom";
+  const readDockCustom = () => readOrder(DOCK_CUSTOM_KEY);
+  let dockMode = store.get(DOCK_ORDER_KEY);
+  // first time: starts like the middle
+  if (!["setup", "standard", "custom"].includes(dockMode) || dockMode === "custom" && !readDockCustom()) {
+    dockMode = mode;
+    if (dockMode === "custom") store.set(DOCK_CUSTOM_KEY, JSON.stringify(readCustom()));
+  }
+  const dockSeq = () => fullSeq(dockMode === "custom" ? readDockCustom() : ORDERS[dockMode]);
+  const dockHooks = { arrange() {} };
+  const setDockMode = (next, ids) => {
+    if (next === "custom" && !ids && !readDockCustom()) ids = dockSeq();
+    if (ids) store.set(DOCK_CUSTOM_KEY, JSON.stringify(ids));
+    dockMode = next;
+    store.set(DOCK_ORDER_KEY, dockMode);
+    dockHooks.arrange();
+    syncSegs();
+  };
+  const makeSeg = (dockSide = false) => {
     const seg = document.createElement("div");
     seg.className = "seg full order-seg";
     seg.setAttribute("role", "group");
@@ -2259,20 +2288,20 @@
       b.type = "button";
       b.dataset.mode = m;
       b.textContent = I18N.t(label);
-      b.addEventListener("click", () => setMode(m));
+      b.addEventListener("click", () => (dockSide ? setDockMode(m) : setMode(m)));
       seg.appendChild(b);
     }
-    segs.push(seg);
+    segs.push({ seg, dockSide });
     return seg;
   };
   // the box folds by a tap on its title (kept per device, open by default)
   const ORDER_OPEN_KEY = "tvtest-side-order-open";
   const orderBox = document.createElement("div");
   orderBox.className = "side-order";
-  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-eye-all"></button></p><p class="side-order-hint"></p>';
+  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><p class="side-order-hint"></p>';
   const orderTtl = orderBox.querySelector(".side-order-fold");
   orderTtl.querySelector("span").textContent = I18N.t("Reihenfolge der Karten");
-  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge. Das Auge blendet eine Karte aus und wieder ein, das große Auge darunter alle Karten auf einmal ein. Der Pfeil schiebt eine Karte in die Seitenleiste rechts und zurück.");
+  orderBox.lastChild.textContent = I18N.t("Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge. Das Auge blendet eine Karte aus und wieder ein, das große Auge darunter alle Karten auf einmal ein. Der Pfeil links daneben schiebt eine Karte in die Seitenleiste rechts und zurück, der große Pfeil daneben alle dort stehenden Karten.");
   orderBox.insertBefore(makeSeg(), orderBox.lastChild);
   const setOrderOpen = (open) => {
     orderBox.classList.toggle("folded", !open);
@@ -2340,7 +2369,7 @@
     arrow.type = "button";
     arrow.className = "side-dock";
     arrow.addEventListener("click", () => (docked.has(card) ? undock(card) : dockCards([card.id])));
-    a.after(eye, arrow);
+    a.after(arrow, eye);
     setHidden(card, hidden.has(id), false);
   }
   // big eye (title row of the order box): shows all hidden cards and remembers which they were; once
@@ -2375,14 +2404,19 @@
   };
 
   // menu on the right (see CSS #dock): any card goes there with the arrow next to its eye and comes back
-  // with the arrow to the left. The button at the right end of the bar opens it with the cards it held
-  // last (at first Testfarben, Testbilder & Videos and Vom TV-Bild zu den LEDs). Wide windows: the
-  // button and the X move them back to the middle. Narrow ones: the button opens and closes the drawer,
-  // "In die Mitte holen" moves them back. Its head has the order buttons of the left menu and a fold
-  // button for its own cards. Kept per device.
+  // with the arrow to the left. The button at the right end of the bar only folds the menu away and
+  // shows it again, the cards stay in it as they are (wide windows: the page gets its width back; narrow
+  // ones: a drawer from the right). The X and the big arrow below the list of the left menu bring all
+  // cards back to the middle, each as it was before it went to the menu; the big arrow, the X and the
+  // button of an empty menu send them there again as they stood last (at first Testfarben, Testbilder &
+  // Videos and Vom TV-Bild zu den LEDs). The head has the order buttons (an order of its own, independent
+  // of the middle) and a fold button for its cards. Kept per device.
   const DEFAULT_DOCK = ["card-tc", "card-p-media", "card-flow"];
   const DOCK_KEY = "tvtest-dock";
   const LAST_KEY = "tvtest-dock-last";
+  const SHOWN_KEY = "tvtest-dock-shown";     // wide windows: menu folded away ("0") or shown
+  const BEFORE_DOCK_KEY = "tvtest-dock-before";   // per card in the menu: open/hidden state in the middle before
+  const AWAY_KEY = "tvtest-dock-away";       // the menu as it was when its cards were brought back: ids + open
   const dockWide = matchMedia("(min-width: 1200px)");
   const X_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
   const FOLD_SVG = {
@@ -2393,45 +2427,61 @@
   dock.id = "dock";
   dock.hidden = true;
   dock.setAttribute("aria-label", "Seitenleiste rechts");
-  dock.innerHTML = `<div class="dock-head"><button type="button" class="dock-back">In die Mitte holen</button><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><div class="dock-body"></div>`;
+  dock.innerHTML = `<div class="dock-head"><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><div class="dock-body"></div>`;
   document.body.appendChild(dock);
-  dock.querySelector(".dock-head").prepend(makeSeg());
+  dock.querySelector(".dock-head").prepend(makeSeg(true));
   syncSegs();
   const dockBody = dock.querySelector(".dock-body");
   const dockBtn = document.getElementById("hdr-dock");
-  const dockBack = dock.querySelector(".dock-back");
   const dockFold = dock.querySelector(".dock-fold");
   const dockX = dock.querySelector(".dock-x");
+  const dockAll = orderBox.querySelector(".side-dock-all");
   const setTip = (el, text) => { el.dataset.tip = I18N.t(text); el.setAttribute("aria-label", el.dataset.tip); };
-  const readLast = () => { try { const v = JSON.parse(store.get(LAST_KEY)); if (Array.isArray(v) && v.some((id) => byId.has(id))) return v.filter((id) => byId.has(id)); } catch {} return DEFAULT_DOCK.filter((id) => byId.has(id)); };
+  const readJSON = (key) => { try { return JSON.parse(store.get(key)); } catch { return null; } };
+  const readLast = () => { const v = readJSON(LAST_KEY); if (Array.isArray(v) && v.some((id) => byId.has(id))) return v.filter((id) => byId.has(id)); return DEFAULT_DOCK.filter((id) => byId.has(id)); };
   const dockedCards = () => [...dockBody.children].filter((c) => docked.has(c));
+  let dockShown = store.get(SHOWN_KEY) !== "0";
+  const before = new Map(Object.entries(readJSON(BEFORE_DOCK_KEY) || {}));
+  const saveBefore = () => store.set(BEFORE_DOCK_KEY, JSON.stringify(Object.fromEntries(before)));
+  dockHooks.arrange = () => {
+    const order = dockSeq().map((id) => byId.get(id)[0]).filter((c) => docked.has(c));
+    arrange(dockBody, order);
+  };
   const renderDockFold = () => {
     const allOpen = dockedCards().every((c) => !c.classList.contains("closed"));
     dockFold.innerHTML = allOpen ? FOLD_SVG.collapse : FOLD_SVG.expand;
     dockFold.dataset.allOpen = String(allOpen);
-    setTip(dockFold, allOpen ? "Seitenleiste rechts zuklappen" : "Seitenleiste rechts aufklappen");
+    setTip(dockFold, allOpen ? "Karten der Seitenleiste rechts zuklappen" : "Karten der Seitenleiste rechts aufklappen");
   };
   const renderDock = () => {
     const on = docked.size > 0;
     const open = root.classList.contains("dock-open");
-    dock.hidden = !on;
-    root.classList.toggle("docked", on);
-    dockBtn.setAttribute("aria-pressed", String(on));
+    const visible = on && (!dockWide.matches || dockShown);
+    dock.hidden = !visible;
+    root.classList.toggle("dock-on", on && dockShown);
+    dockBtn.setAttribute("aria-pressed", String(visible && (dockWide.matches || open)));
     setTip(dockBtn, !on ? "Seitenleiste rechts öffnen"
-      : dockWide.matches ? "Karten der Seitenleiste rechts zurück in die Mitte"
-      : open ? "Seitenleiste rechts schließen" : "Seitenleiste rechts öffnen");
-    dockBack.hidden = dockWide.matches;
-    setTip(dockX, dockWide.matches ? "Karten der Seitenleiste rechts zurück in die Mitte" : "Seitenleiste rechts schließen");
+      : (dockWide.matches ? dockShown : open) ? "Seitenleiste rechts zuklappen" : "Seitenleiste rechts aufklappen");
+    setTip(dockX, "Seitenleiste rechts schließen und Karten zurück in die Mitte holen");
+    dockAll.innerHTML = on ? ARROW_L : ARROW_R;
+    dockAll.classList.toggle("on", on);
+    setTip(dockAll, on ? "Alle Karten der Seitenleiste rechts zurück in die Mitte holen" : "Karten wieder in die Seitenleiste rechts schieben, wie sie zuletzt dort standen");
     renderDockFold();
   };
   // the fold button follows every card opened or closed in the menu
   const baseSetCardOpen = window.setCardOpen;
   window.setCardOpen = (card, open, keep) => { baseSetCardOpen(card, open, keep); if (docked.has(card)) renderDockFold(); };
+  const setShown = (on) => {
+    dockShown = on;
+    store.set(SHOWN_KEY, on ? "1" : "0");
+    renderDock();
+  };
   const setDockOpen = (open) => {
+    if (open && docked.size && !dockShown) { dockShown = true; store.set(SHOWN_KEY, "1"); }
     root.classList.toggle("dock-open", open && docked.size > 0 && !dockWide.matches);
     renderDock();
   };
-  // what the menu holds now, and the last cards it held (the button brings them back)
+  // what the menu holds now, and the last cards it held (the big arrow brings them back)
   const saveDock = () => {
     const ids = [...docked.keys()].map((card) => card.id);
     store.set(DOCK_KEY, JSON.stringify(ids));
@@ -2444,41 +2494,63 @@
     saveDock();
     renderDock();
   };
-  // moves the cards to the menu, in the order of the page; a hidden one is shown there
-  const dockCards = (ids) => {
+  // moves the cards to the menu, in the order of the menu; a hidden one is shown there. The state in the
+  // middle is kept for the way back
+  const dockCards = (ids, restoring = false) => {
     for (const card of cards) {
       if (!ids.includes(card.id) || docked.has(card)) continue;
+      if (!restoring || !before.has(card.id)) before.set(card.id, { open: !card.classList.contains("closed"), hidden: card.classList.contains("user-hidden") });
       const slot = document.createElement("div");
       slot.hidden = true;
       card.replaceWith(slot);
       docked.set(card, slot);
       if (card.classList.contains("user-hidden")) setHidden(card, false);
     }
-    cards.forEach((card) => { if (docked.has(card)) dockBody.appendChild(card); });
+    saveBefore();
+    dockHooks.arrange();
+    if (!restoring && !dockShown) { dockShown = true; store.set(SHOWN_KEY, "1"); }
     afterDock();
   };
-  // moves one card back to the middle, or all of them
-  const undock = (one) => {
+  // moves one card back to the middle, or all of them; "restore" gives each its state from before
+  const undock = (one, restore = false) => {
     for (const card of one ? [one] : [...docked.keys()]) {
       if (!docked.has(card)) continue;
       docked.get(card).replaceWith(card);
       docked.delete(card);
+      const was = before.get(card.id);
+      before.delete(card.id);
+      if (restore && was) {
+        setCardOpen(card, was.open);
+        if (was.hidden) setHidden(card, true);
+      }
     }
+    saveBefore();
     if (!docked.size) root.classList.remove("dock-open");
     afterDock();
   };
+  // all cards back, each as before; the menu as it was (cards, order by the menu's own order, open or
+  // closed) is kept for sendBack
+  const bringBack = () => {
+    const open = {};
+    dockedCards().forEach((c) => { open[c.id] = !c.classList.contains("closed"); });
+    store.set(AWAY_KEY, JSON.stringify({ ids: Object.keys(open), open }));
+    undock(null, true);
+  };
+  const sendBack = () => {
+    const away = readJSON(AWAY_KEY);
+    const ids = (Array.isArray(away?.ids) ? away.ids : readLast()).filter((id) => byId.has(id));
+    if (!ids.length) return;
+    dockCards(ids);
+    ids.forEach((id) => setCardOpen(byId.get(id)[0], away?.open ? away.open[id] !== false : true));
+    setDockOpen(true);
+  };
   dockBtn.addEventListener("click", () => {
-    if (!docked.size) {
-      const ids = readLast();
-      dockCards(ids);
-      ids.forEach((id) => setCardOpen(byId.get(id)[0], true));
-      setDockOpen(true);
-    }
-    else if (dockWide.matches) undock();
+    if (!docked.size) sendBack();
+    else if (dockWide.matches) setShown(!dockShown);
     else setDockOpen(!root.classList.contains("dock-open"));
   });
-  dockBack.addEventListener("click", () => undock());
-  dockX.addEventListener("click", () => (dockWide.matches ? undock() : setDockOpen(false)));
+  dockAll.addEventListener("click", () => (docked.size ? bringBack() : sendBack()));
+  dockX.addEventListener("click", bringBack);
   dockFold.addEventListener("click", () => {
     const open = dockFold.dataset.allOpen !== "true";
     dockedCards().forEach((c) => setCardOpen(c, open));
@@ -2492,15 +2564,15 @@
   dockWide.addEventListener("change", () => setDockOpen(false));
   // saved: the ids in the menu ("1" from before: Testfarben and Testbilder & Videos)
   const savedDock = store.get(DOCK_KEY);
-  if (savedDock === "1") dockCards(["card-tc", "card-p-media"]);
-  else { try { const ids = JSON.parse(savedDock); if (Array.isArray(ids) && ids.length) dockCards(ids); } catch {} }
+  if (savedDock === "1") dockCards(["card-tc", "card-p-media"], true);
+  else { try { const ids = JSON.parse(savedDock); if (Array.isArray(ids) && ids.length) dockCards(ids, true); } catch {} }
   byId.forEach(([card]) => renderArrow(card));
   renderDock();
 
   // dragging in the menu on the right: hold the title of a card a moment, it lifts and follows the
-  // pointer, the other cards glide out of its way. Letting go saves the order as "Eigene": the cards of
-  // the menu swap the places they have among all cards. Easiest with folded cards (fold button above).
-  // The guide and the flow chart stay on top as in the middle.
+  // pointer, the other cards glide out of its way. Letting go saves the order of the menu as its own
+  // "Eigene": the cards in it swap the places they have in that order, the middle is not touched.
+  // Easiest with folded cards (fold button above).
   {
     const HOLD_MS = 350;
     let hold = null, drag = null, swallowClick = false;
@@ -2512,7 +2584,7 @@
     };
     // screen position of a card's middle without its transform (offsetTop ignores transforms)
     const middle = (el) => dock.getBoundingClientRect().top + el.offsetTop - dock.scrollTop + el.offsetHeight / 2;
-    const movable = () => dockedCards().filter((c) => !PINNED.includes(c.id));
+    const movable = () => dockedCards();
     const place = () => { drag.card.style.transform = `translateY(${drag.y - drag.grab - middle(drag.card)}px) scale(1.02)`; };
     const reorder = () => {
       const { card } = drag;
@@ -2535,7 +2607,7 @@
     dockBody.addEventListener("pointerdown", (ev) => {
       const toggle = ev.target.closest(".card-toggle");
       const card = toggle?.closest("section.card");
-      if (!card || ev.button !== 0 || PINNED.includes(card.id) || drag) return;
+      if (!card || ev.button !== 0 || drag) return;
       cancelHold();
       const pointer = ev.pointerId;
       hold = { card, x: ev.clientX, y: ev.clientY,
@@ -2573,7 +2645,7 @@
       const moved = movable().map((c) => c.id);
       const set = new Set(moved);
       let k = 0;
-      setMode("custom", sideIds().map((id) => (set.has(id) ? moved[k++] : id)));
+      setDockMode("custom", dockSeq().map((id) => (set.has(id) ? moved[k++] : id)));
     };
     dockBody.addEventListener("pointerup", endDrag);
     dockBody.addEventListener("pointercancel", endDrag);
@@ -2587,7 +2659,7 @@
     document.addEventListener("touchmove", (ev) => { if (drag) ev.preventDefault(); }, { passive: false });
   }
 
-  // dragging: hold an entry (not the guide) for a moment, it sinks in a little, then lifts off like a
+  // dragging: hold an entry for a moment, it sinks in a little, then lifts off like a
   // card in the hand: bigger, with a shadow, tilted in the direction it moves. It follows the finger,
   // the other entries glide out of its way and a dashed gap shows where it lands. Letting go settles
   // it there and saves the order as "Eigene". Moving before the moment is up scrolls or clicks as usual.
@@ -2619,7 +2691,7 @@
     const reorder = () => {
       const { li } = drag;
       const at = drag.y - drag.grab;
-      const others = [...list.children].slice(PINNED.length).filter((el) => el !== li);
+      const others = [...list.children].filter((el) => el !== li);
       const before = others.find((el) => at < middle(el)) ?? null;
       if (li.nextElementSibling === before) return;
       glide(others, () => list.insertBefore(li, before));
@@ -2654,7 +2726,7 @@
     };
     list.addEventListener("pointerdown", (ev) => {
       const a = ev.target.closest("a");
-      if (!a || ev.button !== 0 || PINNED.includes(a.hash.slice(1)) || drag) return;
+      if (!a || ev.button !== 0 || drag) return;
       cancelHold();
       const li = a.parentElement;
       const pointer = ev.pointerId;
@@ -2829,7 +2901,15 @@
 <script src="/static/testimages.js"></script>
 <script src="/static/grabbertest-report.js"></script>
 <script src="/static/flowchart.js"></script>
-<script>ForkFlow.render(document.getElementById("flow-chart"), { lang: I18N.lang, title: false });</script>
+<script>
+  // the place boxes link to the cards of this page that hold the same settings
+  ForkFlow.render(document.getElementById("flow-chart"), { lang: I18N.lang, title: false, href: (page, section, step) => {
+    const card = { "grabber": "card-gx", "grabber/gtest": "card-gx", "grabber/nosignal": "card-ns", "colors/bb": "card-p-bars", "colors/depth": "card-p-dt",
+      "colors/calib": "card-color", "colors/smooth": "card-sm", "leds/layout": "card-p-lp" }[section ? page + "/" + section : page]
+      ?? (step === "20" ? "card-rgb" : null);
+    return card && "#" + card;
+  } });
+</script>
 <script src="/static/nosignal-ui.js"></script>
 <script src="/static/notice-text.js"></script>
 <script type="module">
