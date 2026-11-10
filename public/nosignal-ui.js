@@ -305,8 +305,13 @@
       .nsd-pair b { display: block; font-size: 13px; margin: 0 0 4px; }
       .nsd-pair .nsd-none { padding: 0 6px; box-sizing: border-box; text-align: center; }
       .nsd-live canvas { display: block; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; }
-      .nsd-refbtns { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; }
-      .nsd-refbtns button { width: 100%; margin: 0; text-align: left; white-space: normal; font-size: 13px; }
+      .nsd-refbtns { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 0; }
+      .nsd-refbtns button { flex: 1 1 0; min-width: 0; width: auto; margin: 0; padding: 5px 6px; text-align: center; white-space: normal; font-size: 12px; line-height: 1.25; }
+      .nsd-refbtns p { flex: 0 0 100%; }
+      .nsd-live > .nsd-muted:first-child { margin: 0 0 6px; }
+      .nsd-live { padding-top: 8px; }
+      .nsd-start { margin: 8px 0 0; }
+      .nsd-start .nsd-actions { margin: 0; }
       .nsd-refbtns button[aria-pressed="true"] { outline: 2px solid #2b93ef; outline-offset: -2px; font-weight: 600; }
       .nsd-refbtns p { margin: 2px 0 0; }
       .nsd-check { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: 5px; }
@@ -365,10 +370,9 @@
       <div class="nsd-box nsd-live">
         <p class="nsd-muted" data-ns="device"></p>
         <div class="nsd-pair">
-          <div><b>${esc(t.liveTitle)}</b><div data-ns="picture"><div class="nsd-none">${esc(t.liveNone)}</div></div></div>
+          <div><b>${esc(t.liveTitle)}</b><div data-ns="picture"><div class="nsd-none">${esc(t.liveNone)}</div></div><p class="nsd-status" data-ns="status"></p><div class="nsd-start" data-ns="start"></div></div>
           <div><b>${esc(t.refTitle)}</b><div data-ns="refpic"><div class="nsd-none">${esc(t.refNone)}</div></div><div class="nsd-refbtns" data-ns="refbtns"></div></div>
         </div>
-        <p class="nsd-status" data-ns="status"></p>
       </div>
       <div data-ns="calibration"></div>
       <div data-ns="config"></div>`;
@@ -479,7 +483,7 @@
     function renderCalibration() {
       const box = $("calibration");
       const r = view.result;
-      let html = "";
+      let html = "", start = "";
       if (view.error) html += `<p class="nsd-err">${esc(view.error)}</p>`;
       if (view.calib && view.calib.running) {
         const done = view.calib.durationMs > 0 ? 100 * (1 - view.calib.leftMs / view.calib.durationMs) : 0;
@@ -506,11 +510,13 @@
         }
         html += `<button type="button" class="${btn}" data-ns-act="discard">${esc(t.resDiscard)}</button></div></div>`;
       } else {
-        html += `<div class="nsd-actions"><button type="button" class="${primary}" data-ns-act="start"${device() ? "" : " disabled"}>${esc(t.calStart)}</button></div>`;
+        // the start button sits under the status line below the current picture
+        start = `<div class="nsd-actions"><button type="button" class="${primary}" data-ns-act="start"${device() ? "" : " disabled"}>${esc(t.calStart)}</button></div>`;
       }
       box.innerHTML = html;
+      $("start").innerHTML = start;
       box.querySelector("[data-ns-name]")?.addEventListener("input", (ev) => { view.resultName = ev.target.value; });
-      box.querySelectorAll("[data-ns-act]").forEach((b) => b.addEventListener("click", () => calibrationAction(b.dataset.nsAct, Number(b.dataset.slot))));
+      element.querySelectorAll("[data-ns-act]").forEach((b) => b.addEventListener("click", () => calibrationAction(b.dataset.nsAct, Number(b.dataset.slot))));
     }
 
     async function calibrationAction(act, slot) {
