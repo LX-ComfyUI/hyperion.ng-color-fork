@@ -1338,8 +1338,8 @@
       <p class="help">Ein Ordner auf dem Server oder einem NAS im Netzwerk, Plex oder Jellyfin. Die Testseite liest nur und spielt die Dateien über den Server ab, Passwörter und Zugangsschlüssel bleiben auf dem Server.</p>
       <ul class="md-list" id="src-list"></ul>
       <div class="src-form" id="src-form" hidden>
-        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner (lokal)</option><option value="nas">NAS / Netzwerkordner</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option><option value="webdav">WebDAV (z. B. Nextcloud)</option></select></span></div>
-        <div class="frow"><label for="src-name">Name (optional)</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
+        <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type" autocomplete="off"><option value="folder">Ordner (lokal)</option><option value="nas">NAS / Netzwerkordner</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option><option value="webdav">WebDAV (z. B. Nextcloud)</option></select></span></div>
+        <div class="frow"><label for="src-name">Name (optional)</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60" autocomplete="off"></span></div>
         <div class="frow" id="src-path-row"><label for="src-path">Ordnerpfad</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
         <div class="src-sub" id="src-pick" hidden>
           <h5>Ordner auf dem Server wählen</h5>
@@ -1354,7 +1354,7 @@
         <div class="src-sub" id="src-mnt" hidden>
           <h5>Netzwerkfreigabe einbinden</h5>
           <p class="help">Die Testseite liest eine NAS-Freigabe über einen Ordner auf dem Server. Diesen Ordner richtet einmal jemand mit Administratorrechten ein: Die Testseite schreibt die passenden Befehle, die du im Terminal des Servers (zum Beispiel per SSH) nacheinander ausführst. Die Testseite selbst führt nichts davon aus.</p>
-          <div class="frow"><label for="src-mnt-proto">Art</label><span class="inputs"><select id="src-mnt-proto"><option value="smb">Windows-Freigabe (SMB)</option><option value="nfs">NFS</option></select></span></div>
+          <div class="frow"><label for="src-mnt-proto">Art</label><span class="inputs"><select id="src-mnt-proto" autocomplete="off"><option value="smb">Windows-Freigabe (SMB)</option><option value="nfs">NFS</option></select></span></div>
           <div class="frow"><label for="src-mnt-host">NAS-Adresse</label><span class="inputs"><input type="text" id="src-mnt-host" class="wide-in" placeholder="192.168.1.20 · NAS-Name" autocomplete="off" spellcheck="false"></span></div>
           <div class="frow"><span></span><span class="inputs"><button type="button" id="src-mnt-find" class="small-btn">NAS im Netz suchen</button></span></div>
           <ul class="md-list" id="src-mnt-found" hidden></ul>
@@ -1362,12 +1362,12 @@
           <div class="frow"><label for="src-mnt-share" id="src-mnt-share-label">Freigabe</label><span class="inputs"><input type="text" id="src-mnt-share" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
           <div class="frow"><label for="src-mnt-sub">Unterordner</label><span class="inputs"><input type="text" id="src-mnt-sub" class="wide-in" placeholder="Videos/Urlaub" autocomplete="off" spellcheck="false"></span></div>
           <div class="frow" id="src-mnt-user-row"><label for="src-mnt-user">Benutzer am NAS</label><span class="inputs"><input type="text" id="src-mnt-user" class="wide-in" placeholder="wird sonst abgefragt" autocomplete="off" spellcheck="false"></span></div>
-          <div class="frow" id="src-mnt-guest-row"><label for="src-mnt-guest">Ohne Anmeldung (Gast)</label><span class="inputs"><input type="checkbox" id="src-mnt-guest"></span></div>
+          <div class="frow" id="src-mnt-guest-row"><label for="src-mnt-guest">Ohne Anmeldung (Gast)</label><span class="inputs"><input type="checkbox" id="src-mnt-guest" autocomplete="off"></span></div>
           <div class="frow"><label for="src-mnt-target">Einbinden unter</label><span class="inputs"><input type="text" id="src-mnt-target" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
           <div id="src-mnt-warn"></div>
           <div id="src-mnt-steps"></div>
           <div class="src-run" id="src-run" hidden>
-            <label class="src-run-allow"><input type="checkbox" id="src-run-allow"> <span>Einbinden direkt von hier erlauben</span></label>
+            <label class="src-run-allow"><input type="checkbox" id="src-run-allow" autocomplete="off"> <span>Einbinden direkt von hier erlauben</span></label>
             <p class="note" id="src-run-hint">Dann führt die Testseite genau die Schritte oben selbst aus, statt dass du sie im Terminal eingibst. Dafür braucht sie einmal das Administratorpasswort des Servers. Passwörter werden nicht gespeichert, andere Befehle führt sie nie aus.</p>
             <div id="src-run-form" hidden>
               <div class="frow" id="src-run-sudo-row"><label for="src-run-sudo">Administratorpasswort am Server</label><span class="inputs"><input type="password" id="src-run-sudo" class="wide-in" autocomplete="off"></span></div>
@@ -5487,12 +5487,45 @@ function srcFormType() {
   $("src-help").textContent = tr(SRC_HELP[t]);
 }
 $("src-type").addEventListener("change", () => {
+  srcMountReset();
   srcFormType();
   // someone choosing a NAS most likely has to mount the share first: show that part right away
   if ($("src-type").value === "nas") srcMountOpen();
 });
 
+// empties the helper for mounting (nothing typed there stays for the next source); passwords too
+function srcMountReset() {
+  clearTimeout(srcMntTimer);
+  $("src-mnt-proto").value = "smb";
+  for (const id of ["src-mnt-host", "src-mnt-share", "src-mnt-sub", "src-mnt-user", "src-mnt-target", "src-run-sudo", "src-run-nas", "src-mnt-find-note"]) {
+    if ($(id).tagName === "INPUT") $(id).value = ""; else $(id).textContent = "";
+  }
+  $("src-mnt-target").placeholder = "";
+  $("src-mnt-guest").checked = false;
+  $("src-mnt-found").innerHTML = "";
+  $("src-mnt-found").hidden = true;
+  $("src-mnt-warn").innerHTML = "";
+  $("src-mnt-steps").innerHTML = "";
+  $("src-run-log").innerHTML = "";
+  $("src-run").hidden = true;
+  srcMntPlan = null;
+  $("src-mnt").hidden = true;
+  $("src-pick").hidden = true;
+}
+// the whole form back to empty: after saving, cancelling and at the start of a new source
+function srcFormClear() {
+  $("src-type").value = "folder";
+  for (const id of ["src-name", "src-path", "src-url", "src-token", "src-user", "src-pass"]) { $(id).value = ""; $(id).placeholder = ""; }
+  $("src-note").textContent = "";
+  $("src-found").innerHTML = "";
+  srcPlexLink = null;
+  srcPlexStop();
+  srcMountReset();
+  srcFormType();
+}
+
 function srcEdit(id) {
+  srcFormClear();
   srcEditing = id;
   const s = srcList.find((x) => x.id === id);
   $("src-type").value = srcKindOf(s) ?? "folder";
@@ -5533,7 +5566,7 @@ function srcFound(out) {
   return out.remote && out.path ? " · " + tr("eingebunden unter {a}", { a: out.path }) : "";
 }
 $("src-add").addEventListener("click", () => srcEdit("new"));
-$("src-cancel").addEventListener("click", () => { srcEditing = null; renderSources(); });
+$("src-cancel").addEventListener("click", () => { srcEditing = null; srcFormClear(); renderSources(); });
 $("src-test").addEventListener("click", async () => {
   $("src-note").textContent = tr("Prüfe …");
   try {
@@ -5548,6 +5581,7 @@ $("src-save").addEventListener("click", async () => {
     const out = await srcPost(srcEditing === "new" ? { op: "add", source: srcFormData() } : { op: "update", id: srcEditing, source: srcFormData() });
     srcList = out.sources;
     srcEditing = null;
+    srcFormClear();
     renderSources();
     srcLoad();
   } catch (e) {
@@ -5844,7 +5878,7 @@ $("src-mnt-btn").addEventListener("click", () => {
   srcMountOpen(null);
   if (/^(\\\\|\/\/|smb:|nfs:)/i.test(typed)) $("src-test").click();
 });
-$("src-mnt-close").addEventListener("click", () => { $("src-mnt").hidden = true; srcFormType(); });
+$("src-mnt-close").addEventListener("click", () => { srcMountReset(); srcFormType(); });
 $("src-mnt-done").addEventListener("click", () => {
   // the network path stays as typed (the server finds it now); otherwise the folder under the mount
   const typed = $("src-path").value.trim();
