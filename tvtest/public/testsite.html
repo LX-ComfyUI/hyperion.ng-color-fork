@@ -33,7 +33,7 @@
   :root {
     color-scheme: light;
     --bg: #f8f8f8; --page: #ffffff; --card: #ffffff; --card-head: #f5f5f5; --inset: #f5f5f5;
-    --text: #333333; --muted: #6b6b6b; --line: #dddddd; --bar-line: #e7e7e7;
+    --text: #333333; --muted: #6b6b6b; --line: #dddddd; --bar-line: #e7e7e7; --side-row-line: #e7e7e7; --side-sep: #c4c4c4;
     --btn: #ffffff; --btn-text: #333333; --btn-line: #cccccc; --accent: #0e83e7; --accent-text: #ffffff;
     --chip-line: rgba(0, 0, 0, .18); --danger: #d93025; --warn: #9a5b00; --shadow: 0 1px 1px rgba(0, 0, 0, .05);
     --gap: 16px;
@@ -44,7 +44,7 @@
     :root:not([data-theme="light"]) {
       color-scheme: dark;
       --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
-      --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
+      --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121; --side-row-line: #454545; --side-sep: #9a9a9a;
       --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
       --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
       --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
@@ -54,7 +54,7 @@
   :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
-    --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
+    --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121; --side-row-line: #454545; --side-sep: #9a9a9a;
     --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
     --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
     --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
@@ -459,6 +459,9 @@
   .src-sub { border: 1px solid var(--btn-line); border-radius: 9px; padding: 8px 10px; margin: 8px 0; }
   .src-sub h5 { margin: 0 0 6px; font-size: 14px; }
   .src-pick-path { font-size: 13px; color: var(--muted); word-break: break-all; margin-bottom: 6px; }
+  .src-run { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+  .src-run-allow { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  #src-run-log .src-step pre.bad { border-color: #c0392b; }
   .src-step { margin: 10px 0 0; }
   .src-step p { margin: 0 0 4px; font-size: 13px; }
   .src-step pre { margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; white-space: pre-wrap; word-break: break-all; user-select: all; }
@@ -736,7 +739,8 @@
   #side { display: flex; flex-direction: column; position: fixed; top: var(--bar-h); bottom: 0; left: 0; z-index: 44; width: var(--side-w); scrollbar-width: thin;
           box-sizing: border-box; overflow-y: auto; background: var(--bg); padding: 0; gap: 0; }
   #side .side-list { list-style: none; margin: 0; padding: 0; }
-  #side .side-list li { display: flex; align-items: center; padding: 0; border-bottom: 1px solid var(--bar-line); }
+  #side .side-list li { display: flex; align-items: center; padding: 0; border-bottom: 1px solid var(--side-row-line); }
+  #side .side-list li:last-child { border-bottom: none; }
   #side .side-list li > a { flex: 1; min-width: 0; padding-right: 2px; }
   /* the mark of the current card spans the whole row, eye included */
   #side .side-list li:has(> a.current) { background: color-mix(in srgb, var(--text) 6%, transparent); }
@@ -752,12 +756,13 @@
   /* big eye under the eyes of the list (title row of the order box): shows all cards at once, a second tap restores the cards hidden before */
   .side-order-ttl { display: flex; align-items: center; }
   .side-order-ttl .side-order-fold { flex: 1; min-width: 0; width: auto; }
-  .side-eye-all, .side-dock-all { flex: none; width: 32px; height: 36px; margin: -6px -9px -6px 0; padding: 0; display: flex; align-items: center; justify-content: center;
+  .side-eye-all, .side-dock-all { flex: none; width: 32px; height: 36px; margin: -6px 0; padding: 0; display: flex; align-items: center; justify-content: center;
                   border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .85; }
   .side-dock-all { width: 28px; margin-right: 12px; }
+  .side-eye-all { margin-right: -9px; }
   .side-eye-all:hover:not(:disabled), .side-dock-all:hover:not(:disabled) { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); }
   .side-eye-all:disabled, .side-dock-all:disabled { opacity: .3; cursor: default; }
-  .side-eye-all svg, .side-dock-all svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .side-eye-all svg, .side-dock-all svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   /* arrow next to the eye: moves the card to the menu on the right (arrow to the right) or back to the middle (arrow to the left, accent) */
   .side-dock { flex: none; width: 28px; height: 36px; margin-right: 0; padding: 0; display: flex; align-items: center; justify-content: center;
                border: none; border-radius: 4px; background: none; color: var(--muted); opacity: .7; }
@@ -772,20 +777,24 @@
   .side-list a.current { border-left-color: var(--accent); background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-weight: 600; }
     .side-foot { margin-top: auto; padding: 10px 15px; font-size: 12px; color: var(--muted); }
   /* order of the cards under the list; an entry held a moment can be dragged */
-  .side-order { padding: 12px 15px 6px; }
+  /* the thick line belongs to the box itself (not to the last card of the list), so it stays above it however the cards are ordered */
+  .side-order { padding: 12px 15px 6px; border-top: 3px solid var(--side-sep); }
   .side-order-ttl { margin: 0 0 6px; }
   .side-order-ttl .side-order-fold { display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: none;
                            font-size: 12px; color: var(--muted); text-align: left; }
   .side-order-fold svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
-  .side-order.folded .side-order-fold svg { transform: rotate(-90deg); }
+  .side-order.folded .side-order-fold svg.fold-chev { transform: rotate(-90deg); }
+  .side-order-fold span { white-space: nowrap; }
   .side-order.folded .side-order-ttl { margin: 0; }
   .side-order.folded > :not(.side-order-ttl) { display: none; }
   /* the menu is too narrow for three buttons side by side: one under the other */
-  .side-order .order-seg { flex-direction: column; }
+  .side-order .order-seg { flex-direction: column; width: var(--seg-w, auto); max-width: 100%; }
   .side-order .order-seg button { padding: 6px 10px; font-size: 13px; text-align: left; }
   /* the chosen button is only tinted here, so it stands out less from the menu */
-  .side-order .order-seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--btn)); color: var(--btn-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
-  .side-order .order-seg button + button { border-left: none; border-top: 1px solid var(--btn-line); }
+  .side-order .order-seg { border-color: var(--bar-line); }
+  .side-order .order-seg button { background: color-mix(in srgb, var(--text) 4%, var(--bg)); border-color: var(--bar-line); }
+  .side-order .order-seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+  .side-order .order-seg button + button { border-left: none; border-top: 1px solid var(--bar-line); }
   /* WebUI, language and appearance in the menu on phones: one row each, icon and name */
   .side-tools { padding: 6px 0; border-top: 1px solid var(--bar-line); }
   .side-tools[hidden] { display: none; }
@@ -834,7 +843,18 @@
           background: var(--page); border-left: 1px solid var(--bar-line); padding: 8px 12px 24px; }
   #dock[hidden] { display: none; }
   .dock-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
-  .dock-head .order-seg { flex: 0 1 auto; min-width: 0; margin-right: auto; }
+  .dock-head .dock-ttl { margin-right: auto; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .dock-head .order-seg { flex: 0 1 auto; min-width: 0; }
+  /* (i) like the WebUI's explanation icons: filled circle, bubble below it (click/tap toggles, mouse hover shows) */
+  .info-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 6px; border: 0; border-radius: 50%;
+               background: transparent; color: #3a87ad; cursor: pointer; }
+  .info-icon svg { width: 16px; height: 16px; display: block; }
+  .info-icon:hover, .info-icon:focus-visible, .info-icon[aria-expanded="true"] { color: #0e83e7; background: rgba(14, 131, 231, .12); }
+  #info-pop { position: fixed; z-index: 2000; box-sizing: border-box; max-width: min(380px, calc(100vw - 16px)); padding: 10px 12px; border: 1px solid rgba(0, 0, 0, .15);
+              border-radius: 6px; background: #fff; color: #333; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); font-size: 13px; line-height: 1.45; }
+  #info-pop[hidden] { display: none; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #info-pop { background: #424242; color: #ddd; border-color: rgba(255, 255, 255, .15); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); } }
+  :root[data-theme="dark"] #info-pop { background: #424242; color: #ddd; border-color: rgba(255, 255, 255, .15); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
   .dock-head .order-seg button { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
   .dock-head .dock-x, .dock-head .dock-fold { width: 32px; height: 32px; }
   /* dragging a card in the menu on the right: hold its title, it lifts and follows the pointer, the others glide aside */
@@ -1319,8 +1339,8 @@
       <ul class="md-list" id="src-list"></ul>
       <div class="src-form" id="src-form" hidden>
         <div class="frow"><label for="src-type">Art</label><span class="inputs"><select id="src-type"><option value="folder">Ordner (lokal)</option><option value="nas">NAS / Netzwerkordner</option><option value="dlna">Medienserver im Netz (DLNA)</option><option value="plex">Plex</option><option value="jellyfin">Jellyfin</option><option value="emby">Emby</option><option value="webdav">WebDAV (z. B. Nextcloud)</option></select></span></div>
-        <div class="frow"><label for="src-name">Name</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
-        <div class="frow" id="src-path-row"><label for="src-path">Ordner</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
+        <div class="frow"><label for="src-name">Name (optional)</label><span class="inputs"><input type="text" id="src-name" class="wide-in" maxlength="60"></span></div>
+        <div class="frow" id="src-path-row"><label for="src-path">Ordnerpfad</label><span class="inputs src-path-in"><input type="text" id="src-path" placeholder="/mnt/nas/videos · \\NAS\Freigabe\Ordner" autocomplete="off" spellcheck="false"><button type="button" id="src-pick-btn" class="small-btn">Durchsuchen</button></span></div>
         <div class="src-sub" id="src-pick" hidden>
           <h5>Ordner auf dem Server wählen</h5>
           <div class="src-pick-path" id="src-pick-path"></div>
@@ -1346,6 +1366,16 @@
           <div class="frow"><label for="src-mnt-target">Einbinden unter</label><span class="inputs"><input type="text" id="src-mnt-target" class="wide-in" autocomplete="off" spellcheck="false"></span></div>
           <div id="src-mnt-warn"></div>
           <div id="src-mnt-steps"></div>
+          <div class="src-run" id="src-run" hidden>
+            <label class="src-run-allow"><input type="checkbox" id="src-run-allow"> <span>Einbinden direkt von hier erlauben</span></label>
+            <p class="note" id="src-run-hint">Dann führt die Testseite genau die Schritte oben selbst aus, statt dass du sie im Terminal eingibst. Dafür braucht sie einmal das Administratorpasswort des Servers. Passwörter werden nicht gespeichert, andere Befehle führt sie nie aus.</p>
+            <div id="src-run-form" hidden>
+              <div class="frow" id="src-run-sudo-row"><label for="src-run-sudo">Administratorpasswort am Server</label><span class="inputs"><input type="password" id="src-run-sudo" class="wide-in" autocomplete="off"></span></div>
+              <div class="frow" id="src-run-nas-row"><label for="src-run-nas">Passwort am NAS</label><span class="inputs"><input type="password" id="src-run-nas" class="wide-in" autocomplete="off"></span></div>
+              <div class="lg-actions"><button type="button" class="primary" id="src-run-go">Jetzt einbinden</button></div>
+              <div id="src-run-log"></div>
+            </div>
+          </div>
           <details class="more">
             <summary>Wenn es nicht klappt</summary>
             <p class="help"><b>mount error(13)</b> oder „Permission denied“: Benutzer oder Passwort falsch. Den Schritt mit den Zugangsdaten noch einmal ausführen, dann den letzten Schritt.<br><b>mount error(2)</b>: Den Namen der Freigabe gibt es nicht. Manche NAS zeigen im Explorer einen anderen Namen als den der Freigabe.<br><b>mount error(112)</b>, „Host is down“ oder es dauert lange: NAS aus oder Adresse falsch. Sehr alte NAS können nur SMB 1: dann in /etc/fstab bei den Optionen <code>vers=1.0</code> ergänzen (unsicher, nur wenn nötig).<br>Genauere Meldungen zeigt <code>sudo dmesg | tail</code>.<br><b>Wieder entfernen</b>: die Zeile aus /etc/fstab löschen (die Sicherung liegt in /etc/fstab.bak-tvtest), <code>sudo systemctl daemon-reload</code> ausführen und die Datei mit den Zugangsdaten in /etc/tvtest-shares löschen.</p>
@@ -2364,18 +2394,24 @@
   const ORDER_OPEN_KEY = "tvtest-side-order-open";
   const orderBox = document.createElement("div");
   orderBox.className = "side-order";
-  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><div class="side-order-hint"></div>';
+  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg class="fold-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><div class="side-order-hint"></div>';
   const orderTtl = orderBox.querySelector(".side-order-fold");
   orderTtl.querySelector("span").textContent = I18N.t("Reihenfolge der Karten");
-  ["Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.",
-    "Auge: blendet eine Karte aus und wieder ein.", "Großes Auge darunter: blendet alle Karten auf einmal ein.",
-    "Pfeil links daneben: schiebt eine Karte in die Seitenleiste rechts und zurück.", "Großer Pfeil daneben: schiebt alle dort stehenden Karten."]
+  ["Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge."]
     .forEach((t) => { const p = document.createElement("p"); p.textContent = I18N.t(t); orderBox.lastChild.appendChild(p); });
   orderBox.insertBefore(makeSeg(), orderBox.lastChild);
   const setOrderOpen = (open) => {
     orderBox.classList.toggle("folded", !open);
     orderTtl.setAttribute("aria-expanded", String(open));
+    fitSeg();
   };
+  // the buttons reach from the left edge of the box to the end of the title word only
+  const fitSeg = () => {
+    const word = orderTtl.querySelector("span"), seg = orderBox.querySelector(".order-seg");
+    if (!word.offsetWidth || !seg) return;
+    orderBox.style.setProperty("--seg-w", Math.round(word.getBoundingClientRect().right - seg.getBoundingClientRect().left) + "px");
+  };
+  addEventListener("resize", fitSeg);
   orderTtl.addEventListener("click", () => {
     const open = orderBox.classList.contains("folded");
     setOrderOpen(open);
@@ -2383,6 +2419,9 @@
   });
   setOrderOpen(store.get(ORDER_OPEN_KEY) !== "0");
   list.after(orderBox);
+  fitSeg();
+  requestAnimationFrame(fitSeg);
+  document.fonts?.ready.then(fitSeg);
   document.getElementById("order-guide")?.appendChild(makeSeg());
   applyOrder();
   syncSegs();
@@ -2496,9 +2535,41 @@
   dock.id = "dock";
   dock.hidden = true;
   dock.setAttribute("aria-label", "Seitenleiste rechts");
-  dock.innerHTML = `<div class="dock-head"><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><div class="dock-body"></div>`;
+  dock.innerHTML = `<div class="dock-head"><span class="dock-ttl"></span><button type="button" class="info-icon dock-info"></button><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><div class="dock-body"></div>`;
   document.body.appendChild(dock);
-  dock.querySelector(".dock-head").prepend(makeSeg(true));
+  dock.querySelector(".dock-ttl").textContent = I18N.t("Seitenleiste");
+  const INFO_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="currentColor"/><circle cx="8" cy="4.4" r="1.2" fill="#fff"/><rect x="6.9" y="6.7" width="2.2" height="5.6" rx=".6" fill="#fff"/></svg>';
+  const dockInfo = dock.querySelector(".dock-info");
+  dockInfo.innerHTML = INFO_SVG;
+  dockInfo.dataset.info = I18N.t("Reihenfolge der Karten in der Seitenleiste: Ersteinrichtung, Standard oder Eigene. Zum Verschieben eine Karte an ihrem Kopf gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.");
+  dockInfo.setAttribute("aria-label", I18N.t("Reihenfolge der Karten"));
+  dockInfo.setAttribute("aria-expanded", "false");
+  {
+    const pop = document.createElement("div");
+    pop.id = "info-pop"; pop.setAttribute("role", "tooltip"); pop.hidden = true;
+    document.body.appendChild(pop);
+    let pinned = false;
+    const hide = () => { dockInfo.setAttribute("aria-expanded", "false"); pinned = false; pop.hidden = true; };
+    const show = (pin) => {
+      pinned = pin;
+      dockInfo.setAttribute("aria-expanded", "true");
+      pop.textContent = dockInfo.dataset.info;
+      pop.hidden = false;
+      const vw = document.documentElement.clientWidth, r = dockInfo.getBoundingClientRect();
+      pop.style.left = "0px";
+      pop.style.maxWidth = Math.min(380, vw - 16) + "px";
+      pop.style.left = Math.max(8, Math.min(r.left - 12, vw - pop.offsetWidth - 8)) + "px";
+      pop.style.top = (r.bottom + 6) + "px";
+    };
+    dockInfo.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (!pop.hidden && pinned) hide(); else show(true); });
+    dockInfo.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse" && !pinned) show(false); });
+    dockInfo.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse" && !pinned) hide(); });
+    document.addEventListener("click", (e) => { if (!pop.hidden && !pop.contains(e.target)) hide(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+    addEventListener("resize", hide);
+    addEventListener("scroll", hide, true);
+  }
+  dockInfo.after(makeSeg(true));
   syncSegs();
   const dockBody = dock.querySelector(".dock-body");
   const dockBtn = document.getElementById("hdr-dock");
@@ -5402,6 +5473,9 @@ function srcFormType() {
   $("src-user-row").hidden = !mb && !dav;
   $("src-pass-row").hidden = !mb && !dav;
   $("src-path-row").hidden = !dir;
+  $("src-path-row").querySelector("label").textContent = tr(t === "nas" ? "Netzwerkpfad" : "Ordnerpfad");
+  $("src-pick-btn").textContent = tr(t === "nas" ? "Überprüfen" : "Durchsuchen");
+  $("src-name").placeholder = tr(dir ? "sonst der Ordnername" : "sonst der Name des Servers");
   $("src-path").placeholder = t === "nas" ? "\\\\NAS\\Freigabe\\Ordner" : "/home/NAME/Videos";
   $("src-mnt-btn").hidden = t !== "nas" || !$("src-mnt").hidden;
   if (!dir) $("src-pick").hidden = true;
@@ -5595,8 +5669,10 @@ async function srcPick(at) {
     let rows;
     if (!at) {
       $("src-pick-path").textContent = tr("Startpunkte auf dem Server");
+      // for a NAS only shares the server has mounted make sense, not its own folders
+      if ($("src-type").value === "nas") out.roots = out.roots.filter((x) => x.kind === "net");
       rows = out.roots.map((x) => `<li><button type="button" class="md-show" data-pick="${escHtml(x.path)}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(x.path)}</b><small>${escHtml(x.kind === "net" ? tr("Netzwerkfreigabe") + (x.label ? " · " + x.label : "") : x.kind === "home" ? tr("Persönlicher Ordner") : tr("Ordner"))}</small></span></button></li>`);
-      $("src-pick-note").textContent = out.roots.length ? "" : tr("Keine Startpunkte gefunden.");
+      $("src-pick-note").textContent = out.roots.length ? "" : tr($("src-type").value === "nas" ? "Auf dem Server ist noch keine Netzwerkfreigabe eingebunden. Unten bei „Netzwerkfreigabe einbinden“ einbinden." : "Keine Startpunkte gefunden.");
     } else {
       $("src-pick-path").textContent = at;
       rows = (out.parent ? [`<li><button type="button" class="md-show" data-pick="${escHtml(out.parent)}"><span class="md-thumb">↑</span><span class="md-text"><b>${tr("Übergeordneter Ordner")}</b></span></button></li>`] : [])
@@ -5611,10 +5687,42 @@ async function srcPick(at) {
     $("src-pick-take").hidden = true;
   }
 }
-$("src-pick-btn").addEventListener("click", () => {
+$("src-pick-btn").addEventListener("click", async () => {
   if (!$("src-pick").hidden) { $("src-pick").hidden = true; return; }
   const typed = $("src-path").value.trim();
-  srcPick(typed.startsWith("/") ? typed : null);
+  if (typed.startsWith("/") && !typed.startsWith("//")) return srcPick(typed);
+  // a network path (\\NAS\Freigabe\Ordner, smb://, host:/export): browse its mounted folder, or hand it to the mount helper
+  if (typed) {
+    try {
+      const info = await srcPost({ op: "netInfo", path: typed });
+      if (info.kind === "net") {
+        if (info.local) return srcPick(info.local);
+        srcMountOpen(info.net);
+        $("src-pick").hidden = false;
+        $("src-pick-path").textContent = typed;
+        $("src-pick-list").innerHTML = "";
+        $("src-pick-take").hidden = true;
+        $("src-pick-note").textContent = tr("Diese Freigabe ist auf dem Server noch nicht eingebunden. Unten bei „Netzwerkfreigabe einbinden“ einbinden, danach lässt sie sich hier durchsuchen.");
+        return;
+      }
+    } catch { /* the plain start points below */ }
+  }
+  srcPick(null);
+});
+// a network path typed or pasted under "NAS": its parts go into the mount helper at once
+let srcPathTimer = 0;
+$("src-path").addEventListener("input", () => {
+  clearTimeout(srcPathTimer);
+  srcPathTimer = setTimeout(async () => {
+    const typed = $("src-path").value.trim();
+    if (!typed || (typed.startsWith("/") && !typed.startsWith("//"))) return;
+    try {
+      const info = await srcPost({ op: "netInfo", path: typed });
+      if (info.kind !== "net" || $("src-path").value.trim() !== typed) return;
+      const was = $("src-mnt").hidden;
+      srcMountOpen(info.net, { quiet: !was });
+    } catch { /* not readable yet: nothing to copy */ }
+  }, 400);
 });
 $("src-pick-list").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-pick]");
@@ -5630,12 +5738,12 @@ $("src-pick-close").addEventListener("click", () => { $("src-pick").hidden = tru
 // ---- helper for mounting a network share: the server writes the commands, someone runs them once ----
 let srcMntTimer = 0;
 let srcMntPlan = null;
-function srcMountOpen(n) {
+function srcMountOpen(n, opt = {}) {
   // a network path typed under "folder" that is not mounted: it belongs under "NAS"
   if ($("src-type").value === "folder") { $("src-type").value = "nas"; srcFormType(); }
   $("src-mnt").hidden = false;
   $("src-mnt-btn").hidden = true;
-  $("src-pick").hidden = true;
+  if (!opt.quiet) $("src-pick").hidden = true;
   if (n) {
     $("src-mnt-proto").value = n.proto === "nfs" ? "nfs" : "smb";
     $("src-mnt-host").value = n.host ?? "";
@@ -5645,7 +5753,7 @@ function srcMountOpen(n) {
     $("src-mnt-target").value = "";
   }
   srcMountPlan();
-  $("src-mnt").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (!opt.quiet) $("src-mnt").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 async function srcMountPlan() {
   const nfs = $("src-mnt-proto").value === "nfs";
@@ -5656,6 +5764,7 @@ async function srcMountPlan() {
   const plan = { proto: $("src-mnt-proto").value, host: $("src-mnt-host").value, share: $("src-mnt-share").value, sub: $("src-mnt-sub").value,
     user: $("src-mnt-user").value, guest: $("src-mnt-guest").checked, target: $("src-mnt-target").value, lang: I18N.lang === "en" ? "en" : "de" };
   srcMntPlan = null;
+  $("src-run").hidden = true;
   if (!plan.host.trim() || !plan.share.trim()) {
     $("src-mnt-warn").innerHTML = "";
     $("src-mnt-steps").innerHTML = `<p class="note">${tr("NAS-Adresse und Freigabe eintragen, dann erscheinen hier die Befehle.")}</p>`;
@@ -5666,6 +5775,7 @@ async function srcMountPlan() {
     srcMntPlan = out;
     if (!$("src-mnt-target").value) $("src-mnt-target").placeholder = out.target;
     const fill = (t) => escHtml(tr(t, { a: out.already ?? "", b: out.target }));
+    srcRunShow(out);
     $("src-mnt-warn").innerHTML = out.warnings.map((w) => `<p class="warn">${fill(w)}</p>`).join("");
     $("src-mnt-steps").innerHTML = out.steps.map((st, i) => `<div class="src-step"><p><b>${i + 1}.</b> ${escHtml(tr(st.title))}</p><pre>${escHtml(st.cmd)}</pre><button type="button" class="small-btn" data-copy="${i}">${tr("Kopieren")}</button></div>`).join("");
   } catch (e) {
@@ -5673,6 +5783,40 @@ async function srcMountPlan() {
     $("src-mnt-steps").innerHTML = "";
   }
 }
+// mounting from the page itself: opt-in, Linux server only; the server runs just the steps listed above
+let srcRunState = null;
+async function srcRunShow(plan) {
+  const can = plan.env?.platform === "linux" && !plan.env.docker && !plan.already;
+  $("src-run").hidden = !can;
+  if (!can) return;
+  try { srcRunState ??= await srcPost({ op: "mountRunState" }); } catch { $("src-run").hidden = true; return; }
+  $("src-run-allow").checked = srcRunState.enabled;
+  $("src-run-form").hidden = !srcRunState.enabled;
+  $("src-run-sudo-row").hidden = srcRunState.sudoFree;
+  $("src-run-nas-row").hidden = plan.proto !== "smb" || plan.guest;
+}
+$("src-run-allow").addEventListener("change", async () => {
+  try { srcRunState = await srcPost({ op: "mountRunState", enabled: $("src-run-allow").checked }); } catch (e) { $("src-note").textContent = I18N.t(e.message); }
+  $("src-run-form").hidden = !srcRunState?.enabled;
+  $("src-run-sudo-row").hidden = !!srcRunState?.sudoFree;
+  if (srcMntPlan) srcRunShow(srcMntPlan);
+});
+$("src-run-go").addEventListener("click", async () => {
+  const btn = $("src-run-go"), log = $("src-run-log");
+  btn.disabled = true;
+  log.innerHTML = `<p class="note">${tr("Läuft …")}</p>`;
+  try {
+    const out = await srcPost({ op: "mountRun", sudoPassword: $("src-run-sudo").value, nasPassword: $("src-run-nas").value,
+      plan: { proto: $("src-mnt-proto").value, host: $("src-mnt-host").value, share: $("src-mnt-share").value, sub: $("src-mnt-sub").value,
+        user: $("src-mnt-user").value, guest: $("src-mnt-guest").checked, target: $("src-mnt-target").value, lang: I18N.lang === "en" ? "en" : "de" } });
+    log.innerHTML = out.log.map((l) => `<div class="src-step"><p><b>${l.ok ? "✓" : "✗"}</b> ${escHtml(tr(l.title))}</p>${l.out ? `<pre class="${l.ok ? "" : "bad"}">${escHtml(l.out)}</pre>` : ""}</div>`).join("")
+      + `<p class="${out.ok ? "note" : "warn"}">${escHtml(tr(out.ok ? "Eingebunden. Mit „Fertig, prüfen“ geht es weiter." : "Das Einbinden hat nicht geklappt. Die Meldung steht oben."))}</p>`;
+    if (out.ok) { $("src-run-sudo").value = ""; $("src-run-nas").value = ""; }
+  } catch (e) {
+    log.innerHTML = `<p class="warn">${escHtml(I18N.t(e.message))}</p>`;
+  }
+  btn.disabled = false;
+});
 for (const id of ["src-mnt-proto", "src-mnt-host", "src-mnt-share", "src-mnt-sub", "src-mnt-user", "src-mnt-guest", "src-mnt-target"]) {
   $(id).addEventListener("input", () => { clearTimeout(srcMntTimer); srcMntTimer = setTimeout(srcMountPlan, 300); });
 }

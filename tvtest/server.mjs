@@ -1093,12 +1093,14 @@ async function pollHealth() {
 setInterval(() => pollHealth().catch(() => {}), HEALTH_POLL_MS);
 
 // --- "No Signal" still image detection (card of the same name, nosignal-ui.js like the WebUI) ---
-// The setting grabberTest.noSignal for the page, without the calibration data of the slots
+// The setting grabberTest.noSignal for the page, without the calibration data of the slots (except the chosen one's cells)
 function noSignalConfig() {
   const ns = readGlobalSetting("grabberTest")?.noSignal ?? {};
   const grabbers = Object.fromEntries(Object.entries(ns.grabbers ?? {}).map(([device, g]) => [device, {
     active: g?.active ?? -1,
-    slots: (g?.slots ?? []).map((s) => (s ? { name: s.name ?? "", savedAt: s.savedAt ?? null, featureCells: s.featureCells ?? null, unstableCells: s.unstableCells ?? null, settings: s.settings ?? null } : null)),
+    // the cells of the chosen slot stay: the page draws the calibrated picture from them
+    slots: (g?.slots ?? []).map((s, i) => (s ? { name: s.name ?? "", savedAt: s.savedAt ?? null, featureCells: s.featureCells ?? null, unstableCells: s.unstableCells ?? null, settings: s.settings ?? null,
+      ...(i === g?.active ? { cols: s.cols, rows: s.rows, ref: s.ref } : {}) } : null)),
   }]));
   return { noSignal: { ...ns, grabbers } };
 }

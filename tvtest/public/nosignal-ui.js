@@ -38,6 +38,8 @@
       guideNote: "Jeder Grabber hat eigene Speicherplätze. Wechselst du den Grabber, nutzt Hyperion automatisch dessen Kalibrierung. Änderungen in diesem Abschnitt werden sofort gespeichert.",
       liveTitle: "Aktuelles Grabber-Bild",
       liveNone: "Noch kein Bild vom Grabber.",
+      refTitle: "Kalibriertes Grabber-Bild",
+      refNone: "Noch nicht kalibriert.",
       grabber: "Grabber: {name}",
       noDevice: "Kein Grabber erkannt.",
       stNoFrames: "Der Grabber liefert gerade keine Bilder.",
@@ -110,6 +112,8 @@
       guideNote: "Every grabber has its own slots. When you change the grabber, Hyperion uses its calibration automatically. Changes in this section are saved immediately.",
       liveTitle: "Current grabber picture",
       liveNone: "No picture from the grabber yet.",
+      refTitle: "Calibrated grabber picture",
+      refNone: "Not calibrated yet.",
       grabber: "Grabber: {name}",
       noDevice: "No grabber found.",
       stNoFrames: "The grabber delivers no pictures right now.",
@@ -171,6 +175,7 @@
     },
   };
 
+  const CHECK = '<svg class="nsd-check" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><polyline points="7 12.5 10.5 16 17 8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const fill = (s, v) => String(s).replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const clamp = (v, lo, hi, def) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
@@ -287,6 +292,12 @@
       .nsd-guide li { margin: 3px 0; display: list-item; }
       .nsd-guide p { margin: 0 0 4px; }
       .nsd-muted { opacity: .75; font-size: 13px; }
+      .nsd-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; max-width: 980px; }
+      .nsd-pair > div { min-width: 0; }
+      .nsd-pair b { display: block; font-size: 13px; margin: 0 0 4px; }
+      .nsd-pair .nsd-none { padding: 0 6px; box-sizing: border-box; text-align: center; }
+      .nsd-live canvas { display: block; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; }
+      .nsd-check { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: 5px; }
       .nsd-live img { display: block; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 6px; }
       .nsd-live .nsd-none { display: flex; align-items: center; justify-content: center; width: 100%; max-width: 480px; aspect-ratio: 16 / 9; background: #000; color: #bbb; border-radius: 6px; font-size: 13px; }
       .nsd-status { margin: 8px 0 0; font-size: 14px; }
@@ -339,9 +350,12 @@
         <ol>${t.guideSteps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
         <p class="nsd-muted">${esc(t.guideNote)}</p>
       </div>
-      <div class="nsd-box nsd-live"><b>${esc(t.liveTitle)}</b>
+      <div class="nsd-box nsd-live">
         <p class="nsd-muted" data-ns="device"></p>
-        <div data-ns="picture"><div class="nsd-none">${esc(t.liveNone)}</div></div>
+        <div class="nsd-pair">
+          <div><b>${esc(t.liveTitle)}</b><div data-ns="picture"><div class="nsd-none">${esc(t.liveNone)}</div></div></div>
+          <div><b>${esc(t.refTitle)}</b><div data-ns="refpic"><div class="nsd-none">${esc(t.refNone)}</div></div></div>
+        </div>
         <p class="nsd-status" data-ns="status"></p>
       </div>
       <div data-ns="calibration"></div>
@@ -361,9 +375,40 @@
       }
       renderConfig(true);
       renderCalibration();
+      renderRef();
     };
 
+    // the calibrated picture: the reference cells (RGB per cell) of the chosen slot, drawn small and scaled up
+    function renderRef() {
+      const box = $("refpic");
+      const e = entry(opts.getConfig(), device());
+      const slot = e.active >= 0 ? e.slots[e.active] : null;
+      const key = slot && slot.ref ? [device(), e.active, slot.savedAt, slot.ref.length].join("|") : "";
+      if (key === view.refKey) return;
+      view.refKey = key;
+      if (!key) { box.innerHTML = `<div class="nsd-none">${esc(t.refNone)}</div>`; return; }
+      try {
+        const bin = atob(slot.ref);
+        const cols = slot.cols || 64, rows = slot.rows || 36;
+        const canvas = document.createElement("canvas");
+        canvas.width = cols; canvas.height = rows;
+        const img = canvas.getContext("2d").createImageData(cols, rows);
+        for (let i = 0; i < cols * rows; i++) {
+          img.data[i * 4] = bin.charCodeAt(i * 3);
+          img.data[i * 4 + 1] = bin.charCodeAt(i * 3 + 1);
+          img.data[i * 4 + 2] = bin.charCodeAt(i * 3 + 2);
+          img.data[i * 4 + 3] = 255;
+        }
+        canvas.getContext("2d").putImageData(img, 0, 0);
+        box.replaceChildren(canvas);
+      } catch (err) {
+        view.refKey = "";
+        box.innerHTML = `<div class="nsd-none">${esc(t.refNone)}</div>`;
+      }
+    }
+
     function renderStatus() {
+      renderRef();
       const s = view.status;
       $("device").textContent = s && s.device ? fill(t.grabber, { name: displayName(s.device) }) : t.noDevice;
       if (s && s.image) {
@@ -380,8 +425,16 @@
       else if (!s.calibrated) el.textContent = t.stUncalibrated;
       else if (s.noSignal) {
         const what = !o.enable ? t.whatOff : s.action === "black" ? t.whatBlack : t.whatRelease;
-        el.textContent = fill(t.stNoSignal, { time: fmtTime(s.changedMs), match: pct(s.match), what });
-        el.classList.add("bad");
+        const text = fill(t.stNoSignal, { time: fmtTime(s.changedMs), match: pct(s.match), what });
+        // detected and handled: green with a check mark, so it reads as working (switched off: still red)
+        if (o.enable) {
+          el.classList.add("ok");
+          el.innerHTML = CHECK;
+          el.append(text);
+        } else {
+          el.textContent = text;
+          el.classList.add("bad");
+        }
       } else if (s.matchSinceMs > 0) {
         const left = Math.max(0, o.delay - (s.now - s.matchSinceMs) / 1000);
         el.textContent = fill(t.stPending, { match: pct(s.match), left: left.toLocaleString(t.dateLocale, { maximumFractionDigits: 1 }) });

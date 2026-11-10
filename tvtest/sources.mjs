@@ -14,7 +14,7 @@ import { randomBytes, createHash } from "node:crypto";
 import * as Dlna from "./dlna.mjs";
 import * as Webdav from "./webdav.mjs";
 import * as Discover from "./discover.mjs";
-import { parseInput, netLabel, resolveNet, netMountOf, probe, within, mountPlan, countDir, pickerRoots, environment } from "./netshare.mjs";
+import { parseInput, netLabel, resolveNet, netMountOf, probe, within, mountPlan, mountRun, sudoFree, countDir, pickerRoots, environment } from "./netshare.mjs";
 
 const TYPES = ["folder", "plex", "jellyfin", "emby", "dlna", "webdav"];
 const LABEL = { plex: "Plex", jellyfin: "Jellyfin", emby: "Emby", dlna: "DLNA", webdav: "WebDAV" };
@@ -44,6 +44,8 @@ const cleanUrl = (u, whole = false) => {
 
 export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
   const FILE = path.join(dataDir, "sources.json");
+  const MOUNT_RUN_FILE = path.join(dataDir, "mount-run.json");
+  const mountRunEnabled = () => { try { return JSON.parse(fs.readFileSync(MOUNT_RUN_FILE, "utf8")).enabled === true; } catch { return false; } };
   let list = [];
   try { list = JSON.parse(fs.readFileSync(FILE, "utf8")).filter((s) => s && TYPES.includes(s.type)); } catch {}
   let ffmpeg = null;
@@ -619,6 +621,29 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     }
     // the commands for mounting a share (see netshare.mjs); the server runs none of them
     if (op === "mountPlan") { sendJson(res, 200, await mountPlan(body.plan ?? {})); return true; }
+    // what a typed folder is: a network path split into its parts (for the mount helper) and, when the
+    // server has that share mounted, the folder it appears under
+    if (op === "netInfo") {
+      const n = parseInput(body.path);
+      const out = { kind: n.kind };
+      if (n.kind === "net") {
+        out.net = n;
+        if (n.proto === "nfs" || n.share) { const r = await resolveNet(n).catch(() => null); if (r) out.local = r.local; }
+      }
+      sendJson(res, 200, out);
+      return true;
+    }
+    // mounting from the page is opt-in (kept in mount-run.json); only the steps of mountPlan run, see netshare.mjs
+    if (op === "mountRunState") {
+      if (typeof body.enabled === "boolean") fs.writeFileSync(MOUNT_RUN_FILE, JSON.stringify({ enabled: body.enabled }), { mode: 0o600 });
+      sendJson(res, 200, { enabled: mountRunEnabled(), sudoFree: await sudoFree() });
+      return true;
+    }
+    if (op === "mountRun") {
+      if (!mountRunEnabled()) throw new Error("Das Einbinden aus der Seite ist nicht eingeschaltet");
+      sendJson(res, 200, await mountRun(body.plan ?? {}, { sudo: body.sudoPassword, nas: body.nasPassword }));
+      return true;
+    }
     if (op === "env") { sendJson(res, 200, environment()); return true; }
     // looking around in the network: media servers of one kind, or NAS with shares (for the mount helper)
     if (op === "discover") {

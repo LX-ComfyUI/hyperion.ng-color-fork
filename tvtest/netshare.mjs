@@ -7,7 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import dns from "node:dns";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 
 const NET_FS = new Set(["cifs", "smb3", "smbfs", "nfs", "nfs4", "fuse.sshfs", "sshfs", "davfs", "fuse.davfs2", "fuse.rclone", "afpfs", "webdav"]);
 const MOUNTS_FILE = process.env.TVTEST_MOUNTS ?? "/proc/mounts";
@@ -266,7 +266,7 @@ export async function mountPlan(input) {
     title: "Einbinden und kurz prüfen (zeigt den Inhalt der Freigabe)",
     cmd: env.systemd ? `sudo systemctl daemon-reload\nsudo systemctl start "$(systemd-escape -p --suffix=automount ${shq(target)})"\nls ${shq(target)}` : `sudo mount ${shq(target)}\nls ${shq(target)}`,
   });
-  return { env, steps, line, target, local: path.join(target, ...sub), already: already ? already.mount.target : null, taken: !!taken && !already, warnings, guest };
+  return { env, steps, line, target, local: path.join(target, ...sub), already: already ? already.mount.target : null, taken: !!taken && !already, warnings, guest, proto, cred: proto === "smb" && !guest ? cred : null, host, share };
 }
 
 // first level below the folder, for the test and the folder picker: how many pictures, videos, folders
@@ -294,4 +294,79 @@ export async function pickerRoots() {
   }
   add(os.homedir(), "home", "");
   return out;
+}
+
+// ---- running the planned steps itself (opt-in, Linux only) ----
+// Only the steps mountPlan writes, built here from checked parts: every command is a fixed argument list
+// (nothing typed is ever put into a shell line), the passwords travel through stdin and are never logged
+// or stored. sudo is asked for them in the one place they are needed.
+const scrub = (t, secrets) => secrets.filter(Boolean).reduce((x, p) => x.split(p).join("***"), String(t)).slice(-1500);
+function run(argv, { stdin = "", timeout = 60000 } = {}) {
+  return new Promise((resolve) => {
+    if (process.env.TVTEST_MOUNT_DRYRUN === "1") return resolve({ ok: true, out: "(Probelauf) " + argv.join(" ") });
+    const c = spawn(argv[0], argv.slice(1), { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, LC_ALL: "C.UTF-8" } });
+    let out = "";
+    const t = setTimeout(() => { out += "\n(Zeitlimit)"; c.kill("SIGKILL"); }, timeout);
+    c.stdout.on("data", (d) => { out += d; });
+    c.stderr.on("data", (d) => { out += d; });
+    c.on("error", (e) => { clearTimeout(t); resolve({ ok: false, out: e.message }); });
+    c.on("close", (code) => { clearTimeout(t); resolve({ ok: code === 0, out: out.trim() }); });
+    c.stdin.on("error", () => {});
+    c.stdin.end(stdin);
+  });
+}
+export async function sudoFree() {
+  if (process.env.TVTEST_MOUNT_DRYRUN === "1") return process.env.TVTEST_MOUNT_SUDO === "pw" ? false : true;
+  return (await run(["sudo", "-n", "true"], { timeout: 5000 })).ok;
+}
+// input = the same as mountPlan; secrets = { sudo, nas }; returns { ok, log: [{ title, ok, out }], local }
+export async function mountRun(input, secrets = {}) {
+  const plan = await mountPlan(input);
+  const log = [];
+  const fail = (title, out) => { log.push({ title, ok: false, out: scrub(out, [secrets.sudo, secrets.nas]) }); return { ok: false, log, target: plan.target, local: plan.local }; };
+  if (plan.env.platform !== "linux") throw new Error("Das Einbinden aus der Seite gibt es nur auf Linux");
+  if (plan.env.docker) throw new Error("Die Testseite läuft in einem Container und kann dort nichts einbinden");
+  if (plan.already) return { ok: true, log: [{ title: "Schon eingebunden", ok: true, out: plan.already }], target: plan.already, local: plan.local };
+  if (plan.taken) throw new Error("Unter diesem Ordner ist schon etwas anderes eingebunden oder eingetragen. Bitte einen anderen Ordner zum Einbinden wählen.");
+  const free = await sudoFree();
+  if (!free && !secrets.sudo) throw new Error("Bitte das Administratorpasswort des Servers eingeben");
+  if (/[\r\n]/.test(String(secrets.sudo ?? "")) || /[\r\n]/.test(String(secrets.nas ?? "")) || /[\r\n]/.test(String(input.user ?? ""))) throw new Error("Zeilenumbrüche sind in Benutzer und Passwort nicht erlaubt");
+  const pw = free ? "" : secrets.sudo + "\n";
+  const sudo = (argv, stdin = "", timeout) => run(["sudo", "-S", "-p", "", ...argv], { stdin: pw + stdin, timeout });
+  const step = async (title, r) => { log.push({ title, ok: r.ok, out: scrub(r.out, [secrets.sudo, secrets.nas]) }); return r.ok; };
+
+  if (!free) {
+    // wrong password: stop here, with a clear message instead of a failing later step
+    const t = await sudo(["-v"], "", 15000);
+    if (!t.ok) return fail("Administratorpasswort prüfen", /incorrect|Sorry|Falsches|falsch/i.test(t.out) ? "Das Administratorpasswort stimmt nicht." : t.out);
+  }
+  if ((input.proto === "nfs" ? !plan.env.nfsTool : !plan.env.smbTool)) {
+    if (!which(["apt-get"])) return fail("Werkzeug installieren", "Bitte das Werkzeug für Netzwerkfreigaben selbst installieren (siehe Schritt 1 in der Liste).");
+    if (!(await step("Werkzeug für Netzwerkfreigaben installieren", await sudo(["apt-get", "install", "-y", plan.proto === "smb" ? "cifs-utils" : "nfs-common"], "", 240000)))) return { ok: false, log, target: plan.target, local: plan.local };
+  }
+  if (plan.cred) {
+    const user = String(input.user ?? "").trim();
+    if (!user || !secrets.nas) return fail("Zugangsdaten ablegen", "Bitte Benutzer und Passwort am NAS eingeben (oder „Ohne Anmeldung“ wählen).");
+    const r = await sudo(["sh", "-c", 'install -d -m 700 /etc/tvtest-shares && umask 077 && cat > "$1"', "sh", plan.cred], `username=${user}\npassword=${secrets.nas}\n`);
+    if (!(await step("Zugangsdaten sicher ablegen", r))) return { ok: false, log, target: plan.target, local: plan.local };
+  }
+  if (!(await step("Ordner zum Einbinden anlegen", await sudo(["mkdir", "-p", plan.target])))) return { ok: false, log, target: plan.target, local: plan.local };
+  let tab = "";
+  try { tab = fs.readFileSync(FSTAB_FILE, "utf8"); } catch {}
+  const have = tab.split("\n").some((l) => l.trim().split(/\s+/)[1] === plan.line.split(" ")[1]);
+  if (have) log.push({ title: "In /etc/fstab eintragen", ok: true, out: "Der Eintrag steht schon in /etc/fstab." });
+  else {
+    if (!(await step("Sicherung der /etc/fstab", await sudo(["cp", "/etc/fstab", "/etc/fstab.bak-tvtest"])))) return { ok: false, log, target: plan.target, local: plan.local };
+    const r = await sudo(["sh", "-c", 'cat >> /etc/fstab'], (tab && !tab.endsWith("\n") ? "\n" : "") + plan.line + "\n");
+    if (!(await step("In /etc/fstab eintragen (nur lesend)", r))) return { ok: false, log, target: plan.target, local: plan.local };
+  }
+  if (plan.env.systemd) {
+    if (!(await step("systemd neu einlesen", await sudo(["systemctl", "daemon-reload"])))) return { ok: false, log, target: plan.target, local: plan.local };
+    const unit = await run(["systemd-escape", "-p", "--suffix=automount", plan.target]);
+    if (!unit.ok) return fail("Einbinden", unit.out);
+    if (!(await step("Einbinden starten", await sudo(["systemctl", "start", unit.out])))) return { ok: false, log, target: plan.target, local: plan.local };
+  } else if (!(await step("Einbinden", await sudo(["mount", plan.target])))) return { ok: false, log, target: plan.target, local: plan.local };
+  const ls = await run(["ls", plan.target], { timeout: 25000 });
+  log.push({ title: "Inhalt der Freigabe", ok: ls.ok, out: scrub(ls.out || (ls.ok ? "(leer)" : ""), [secrets.sudo, secrets.nas]) });
+  return { ok: ls.ok, log, target: plan.target, local: plan.local };
 }
