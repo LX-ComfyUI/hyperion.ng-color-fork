@@ -21,3 +21,5 @@ sources.json
 sources.json.tmp
 link-history.json
 sessions.json
+mount-run.json
+mount-run.json.tmp

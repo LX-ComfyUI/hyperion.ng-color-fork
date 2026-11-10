@@ -33,7 +33,7 @@
   :root {
     color-scheme: light;
     --bg: #f8f8f8; --page: #ffffff; --card: #ffffff; --card-head: #f5f5f5; --inset: #f5f5f5;
-    --text: #333333; --muted: #6b6b6b; --line: #dddddd; --bar-line: #e7e7e7;
+    --text: #333333; --muted: #6b6b6b; --line: #dddddd; --bar-line: #e7e7e7; --side-row-line: #e7e7e7; --side-sep: #c4c4c4;
     --btn: #ffffff; --btn-text: #333333; --btn-line: #cccccc; --accent: #0e83e7; --accent-text: #ffffff;
     --chip-line: rgba(0, 0, 0, .18); --danger: #d93025; --warn: #9a5b00; --shadow: 0 1px 1px rgba(0, 0, 0, .05);
     --gap: 16px;
@@ -44,7 +44,7 @@
     :root:not([data-theme="light"]) {
       color-scheme: dark;
       --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
-      --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
+      --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121; --side-row-line: #454545; --side-sep: #9a9a9a;
       --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
       --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
       --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
@@ -54,7 +54,7 @@
   :root[data-theme="dark"] {
     color-scheme: dark;
     --bg: #212121; --page: #333333; --card: #424242; --card-head: #424242; --inset: #383838;
-    --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121;
+    --text: #ececec; --muted: #cdcdcd; --line: #212121; --bar-line: #212121; --side-row-line: #454545; --side-sep: #9a9a9a;
     --btn: #4a4a4a; --btn-text: #dddddd; --btn-line: #5c5c5c; --accent: #2b93ef; --accent-text: #ffffff;
     --chip-line: rgba(255, 255, 255, .28); --danger: #ff6b5e; --warn: #f2b14c; --shadow: 0 2px 10px rgba(18, 18, 18, .4);
     --menu-btn: #1e1e1e; --menu-btn-open: #1e1e1e; --menu-btn-hover: #424242; --menu-bar: #dddddd;
@@ -739,7 +739,7 @@
   #side { display: flex; flex-direction: column; position: fixed; top: var(--bar-h); bottom: 0; left: 0; z-index: 44; width: var(--side-w); scrollbar-width: thin;
           box-sizing: border-box; overflow-y: auto; background: var(--bg); padding: 0; gap: 0; }
   #side .side-list { list-style: none; margin: 0; padding: 0; }
-  #side .side-list li { display: flex; align-items: center; padding: 0; border-bottom: 1px solid var(--bar-line); }
+  #side .side-list li { display: flex; align-items: center; padding: 0; border-bottom: 1px solid var(--side-row-line); }
   #side .side-list li:last-child { border-bottom: none; }
   #side .side-list li > a { flex: 1; min-width: 0; padding-right: 2px; }
   /* the mark of the current card spans the whole row, eye included */
@@ -777,7 +777,8 @@
   .side-list a.current { border-left-color: var(--accent); background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font-weight: 600; }
     .side-foot { margin-top: auto; padding: 10px 15px; font-size: 12px; color: var(--muted); }
   /* order of the cards under the list; an entry held a moment can be dragged */
-  .side-order { padding: 12px 15px 6px; border-top: 1px solid var(--bar-line); }
+  /* the thick line belongs to the box itself (not to the last card of the list), so it stays above it however the cards are ordered */
+  .side-order { padding: 12px 15px 6px; border-top: 3px solid var(--side-sep); }
   .side-order-ttl { margin: 0 0 6px; }
   .side-order-ttl .side-order-fold { display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: none;
                            font-size: 12px; color: var(--muted); text-align: left; }
