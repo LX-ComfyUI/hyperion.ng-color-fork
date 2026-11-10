@@ -1597,9 +1597,6 @@ nav.navbar-static-top .navbar-toggle {
 }
 
 /* Fork-Erweiterung: Anleitung (content/guide.html) */
-.fork-guide #guide_cont {
-  max-width: 900px;
-}
 .fork-guide #guide_cont h4 {
   margin-top: 22px;
   font-weight: 600;
@@ -1611,13 +1608,13 @@ nav.navbar-static-top .navbar-toggle {
 .fork-guide #guide_cont li {
   margin-bottom: 12px;
 }
-.fork-guide #guide_flow {
-  margin: 20px 0 30px;
+.fork-guide .guide-flowref {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: .85;
 }
-@media (min-width: 1200px) {
-  .fork-guide #guide_flow {
-    margin-top: 0;
-  }
+.fork-guide .guide-flowref a {
+  font-weight: 700;
 }
 .fork-guide .guide-links {
   display: flex;
