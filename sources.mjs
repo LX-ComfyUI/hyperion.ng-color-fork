@@ -619,6 +619,18 @@ export function createSources({ dataDir, thumbsDir, notify = () => {} }) {
     }
     // the commands for mounting a share (see netshare.mjs); the server runs none of them
     if (op === "mountPlan") { sendJson(res, 200, await mountPlan(body.plan ?? {})); return true; }
+    // what a typed folder is: a network path split into its parts (for the mount helper) and, when the
+    // server has that share mounted, the folder it appears under
+    if (op === "netInfo") {
+      const n = parseInput(body.path);
+      const out = { kind: n.kind };
+      if (n.kind === "net") {
+        out.net = n;
+        if (n.proto === "nfs" || n.share) { const r = await resolveNet(n).catch(() => null); if (r) out.local = r.local; }
+      }
+      sendJson(res, 200, out);
+      return true;
+    }
     if (op === "env") { sendJson(res, 200, environment()); return true; }
     // looking around in the network: media servers of one kind, or NAS with shares (for the mount helper)
     if (op === "discover") {

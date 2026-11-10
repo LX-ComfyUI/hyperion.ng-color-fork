@@ -983,6 +983,8 @@ window.I18N_EN = {
  "Ersteinrichtung": "First setup",
  "Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Ein Tipp auf einen Namen öffnet die passende Karte.": "Go through the steps in this order. Each one builds on the previous ones, so you do not have to repeat anything. Tapping a name opens the matching card.",
  "Reihenfolge der Karten": "Order of the cards",
+ "Diese Freigabe ist auf dem Server noch nicht eingebunden. Unten bei „Netzwerkfreigabe einbinden“ einbinden, danach lässt sie sich hier durchsuchen.": "This share is not mounted on the server yet. Mount it below under “Mount a network share”, then you can browse it here.",
+ "Auf dem Server ist noch keine Netzwerkfreigabe eingebunden. Unten bei „Netzwerkfreigabe einbinden“ einbinden.": "No network share is mounted on the server yet. Mount one below under “Mount a network share”.",
  "Seitenleiste": "Sidebar",
  "Reihenfolge der Karten in der Seitenleiste: Ersteinrichtung, Standard oder Eigene. Zum Verschieben eine Karte an ihrem Kopf gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.": "Order of the cards in the sidebar: First setup, Default or Custom. To move a card, hold it by its header and drag. This saves a custom order.",
  "Karte einblenden": "Show card",

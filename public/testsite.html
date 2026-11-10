@@ -841,11 +841,16 @@
   .dock-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
   .dock-head .dock-ttl { margin-right: auto; font-size: 13px; color: var(--muted); white-space: nowrap; }
   .dock-head .order-seg { flex: 0 1 auto; min-width: 0; }
-  .dock-head .dock-info { width: 22px; height: 22px; margin-right: -2px; padding: 0; display: flex; align-items: center; justify-content: center; flex: none;
-                          border: 1px solid currentColor; border-radius: 50%; background: none; color: var(--muted); opacity: .75; font: italic 700 13px/1 Georgia, serif; }
-  .dock-head .dock-info:hover, .dock-head .dock-info[aria-expanded="true"] { opacity: 1; }
-  .dock-info-text { margin: 0 0 8px; font-size: 12px; line-height: 1.35; color: var(--muted); }
-  .dock-info-text[hidden] { display: none; }
+  /* (i) like the WebUI's explanation icons: filled circle, bubble below it (click/tap toggles, mouse hover shows) */
+  .info-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 6px; border: 0; border-radius: 50%;
+               background: transparent; color: #3a87ad; cursor: pointer; }
+  .info-icon svg { width: 16px; height: 16px; display: block; }
+  .info-icon:hover, .info-icon:focus-visible, .info-icon[aria-expanded="true"] { color: #0e83e7; background: rgba(14, 131, 231, .12); }
+  #info-pop { position: fixed; z-index: 2000; box-sizing: border-box; max-width: min(380px, calc(100vw - 16px)); padding: 10px 12px; border: 1px solid rgba(0, 0, 0, .15);
+              border-radius: 6px; background: #fff; color: #333; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); font-size: 13px; line-height: 1.45; }
+  #info-pop[hidden] { display: none; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #info-pop { background: #424242; color: #ddd; border-color: rgba(255, 255, 255, .15); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); } }
+  :root[data-theme="dark"] #info-pop { background: #424242; color: #ddd; border-color: rgba(255, 255, 255, .15); box-shadow: 0 6px 18px rgba(0, 0, 0, .5); }
   .dock-head .order-seg button { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
   .dock-head .dock-x, .dock-head .dock-fold { width: 32px; height: 32px; }
   /* dragging a card in the menu on the right: hold its title, it lifts and follows the pointer, the others glide aside */
@@ -2516,17 +2521,40 @@
   dock.id = "dock";
   dock.hidden = true;
   dock.setAttribute("aria-label", "Seitenleiste rechts");
-  dock.innerHTML = `<div class="dock-head"><span class="dock-ttl"></span><button type="button" class="dock-info">i</button><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><p class="dock-info-text" hidden></p><div class="dock-body"></div>`;
+  dock.innerHTML = `<div class="dock-head"><span class="dock-ttl"></span><button type="button" class="info-icon dock-info"></button><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><div class="dock-body"></div>`;
   document.body.appendChild(dock);
   dock.querySelector(".dock-ttl").textContent = I18N.t("Seitenleiste");
-  const dockInfo = dock.querySelector(".dock-info"), dockInfoText = dock.querySelector(".dock-info-text");
-  dockInfoText.textContent = I18N.t("Reihenfolge der Karten in der Seitenleiste: Ersteinrichtung, Standard oder Eigene. Zum Verschieben eine Karte an ihrem Kopf gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.");
+  const INFO_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="currentColor"/><circle cx="8" cy="4.4" r="1.2" fill="#fff"/><rect x="6.9" y="6.7" width="2.2" height="5.6" rx=".6" fill="#fff"/></svg>';
+  const dockInfo = dock.querySelector(".dock-info");
+  dockInfo.innerHTML = INFO_SVG;
+  dockInfo.dataset.info = I18N.t("Reihenfolge der Karten in der Seitenleiste: Ersteinrichtung, Standard oder Eigene. Zum Verschieben eine Karte an ihrem Kopf gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.");
   dockInfo.setAttribute("aria-label", I18N.t("Reihenfolge der Karten"));
   dockInfo.setAttribute("aria-expanded", "false");
-  dockInfo.addEventListener("click", () => {
-    dockInfoText.hidden = !dockInfoText.hidden;
-    dockInfo.setAttribute("aria-expanded", String(!dockInfoText.hidden));
-  });
+  {
+    const pop = document.createElement("div");
+    pop.id = "info-pop"; pop.setAttribute("role", "tooltip"); pop.hidden = true;
+    document.body.appendChild(pop);
+    let pinned = false;
+    const hide = () => { dockInfo.setAttribute("aria-expanded", "false"); pinned = false; pop.hidden = true; };
+    const show = (pin) => {
+      pinned = pin;
+      dockInfo.setAttribute("aria-expanded", "true");
+      pop.textContent = dockInfo.dataset.info;
+      pop.hidden = false;
+      const vw = document.documentElement.clientWidth, r = dockInfo.getBoundingClientRect();
+      pop.style.left = "0px";
+      pop.style.maxWidth = Math.min(380, vw - 16) + "px";
+      pop.style.left = Math.max(8, Math.min(r.left - 12, vw - pop.offsetWidth - 8)) + "px";
+      pop.style.top = (r.bottom + 6) + "px";
+    };
+    dockInfo.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); if (!pop.hidden && pinned) hide(); else show(true); });
+    dockInfo.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse" && !pinned) show(false); });
+    dockInfo.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse" && !pinned) hide(); });
+    document.addEventListener("click", (e) => { if (!pop.hidden && !pop.contains(e.target)) hide(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+    addEventListener("resize", hide);
+    addEventListener("scroll", hide, true);
+  }
   dockInfo.after(makeSeg(true));
   syncSegs();
   const dockBody = dock.querySelector(".dock-body");
@@ -5624,8 +5652,10 @@ async function srcPick(at) {
     let rows;
     if (!at) {
       $("src-pick-path").textContent = tr("Startpunkte auf dem Server");
+      // for a NAS only shares the server has mounted make sense, not its own folders
+      if ($("src-type").value === "nas") out.roots = out.roots.filter((x) => x.kind === "net");
       rows = out.roots.map((x) => `<li><button type="button" class="md-show" data-pick="${escHtml(x.path)}"><span class="md-thumb">${SRC_FOLDER}</span><span class="md-text"><b>${escHtml(x.path)}</b><small>${escHtml(x.kind === "net" ? tr("Netzwerkfreigabe") + (x.label ? " · " + x.label : "") : x.kind === "home" ? tr("Persönlicher Ordner") : tr("Ordner"))}</small></span></button></li>`);
-      $("src-pick-note").textContent = out.roots.length ? "" : tr("Keine Startpunkte gefunden.");
+      $("src-pick-note").textContent = out.roots.length ? "" : tr($("src-type").value === "nas" ? "Auf dem Server ist noch keine Netzwerkfreigabe eingebunden. Unten bei „Netzwerkfreigabe einbinden“ einbinden." : "Keine Startpunkte gefunden.");
     } else {
       $("src-pick-path").textContent = at;
       rows = (out.parent ? [`<li><button type="button" class="md-show" data-pick="${escHtml(out.parent)}"><span class="md-thumb">↑</span><span class="md-text"><b>${tr("Übergeordneter Ordner")}</b></span></button></li>`] : [])
@@ -5640,10 +5670,42 @@ async function srcPick(at) {
     $("src-pick-take").hidden = true;
   }
 }
-$("src-pick-btn").addEventListener("click", () => {
+$("src-pick-btn").addEventListener("click", async () => {
   if (!$("src-pick").hidden) { $("src-pick").hidden = true; return; }
   const typed = $("src-path").value.trim();
-  srcPick(typed.startsWith("/") ? typed : null);
+  if (typed.startsWith("/") && !typed.startsWith("//")) return srcPick(typed);
+  // a network path (\\NAS\Freigabe\Ordner, smb://, host:/export): browse its mounted folder, or hand it to the mount helper
+  if (typed) {
+    try {
+      const info = await srcPost({ op: "netInfo", path: typed });
+      if (info.kind === "net") {
+        if (info.local) return srcPick(info.local);
+        srcMountOpen(info.net);
+        $("src-pick").hidden = false;
+        $("src-pick-path").textContent = typed;
+        $("src-pick-list").innerHTML = "";
+        $("src-pick-take").hidden = true;
+        $("src-pick-note").textContent = tr("Diese Freigabe ist auf dem Server noch nicht eingebunden. Unten bei „Netzwerkfreigabe einbinden“ einbinden, danach lässt sie sich hier durchsuchen.");
+        return;
+      }
+    } catch { /* the plain start points below */ }
+  }
+  srcPick(null);
+});
+// a network path typed or pasted under "NAS": its parts go into the mount helper at once
+let srcPathTimer = 0;
+$("src-path").addEventListener("input", () => {
+  clearTimeout(srcPathTimer);
+  srcPathTimer = setTimeout(async () => {
+    const typed = $("src-path").value.trim();
+    if (!typed || (typed.startsWith("/") && !typed.startsWith("//"))) return;
+    try {
+      const info = await srcPost({ op: "netInfo", path: typed });
+      if (info.kind !== "net" || $("src-path").value.trim() !== typed) return;
+      const was = $("src-mnt").hidden;
+      srcMountOpen(info.net, { quiet: !was });
+    } catch { /* not readable yet: nothing to copy */ }
+  }, 400);
 });
 $("src-pick-list").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-pick]");
@@ -5659,12 +5721,12 @@ $("src-pick-close").addEventListener("click", () => { $("src-pick").hidden = tru
 // ---- helper for mounting a network share: the server writes the commands, someone runs them once ----
 let srcMntTimer = 0;
 let srcMntPlan = null;
-function srcMountOpen(n) {
+function srcMountOpen(n, opt = {}) {
   // a network path typed under "folder" that is not mounted: it belongs under "NAS"
   if ($("src-type").value === "folder") { $("src-type").value = "nas"; srcFormType(); }
   $("src-mnt").hidden = false;
   $("src-mnt-btn").hidden = true;
-  $("src-pick").hidden = true;
+  if (!opt.quiet) $("src-pick").hidden = true;
   if (n) {
     $("src-mnt-proto").value = n.proto === "nfs" ? "nfs" : "smb";
     $("src-mnt-host").value = n.host ?? "";
@@ -5674,7 +5736,7 @@ function srcMountOpen(n) {
     $("src-mnt-target").value = "";
   }
   srcMountPlan();
-  $("src-mnt").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (!opt.quiet) $("src-mnt").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 async function srcMountPlan() {
   const nfs = $("src-mnt-proto").value === "nfs";
