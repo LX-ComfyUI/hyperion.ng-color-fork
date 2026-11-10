@@ -1257,7 +1257,7 @@ body {
   }
   #top-navbar > li > a {
     min-height: 56px;
-    padding: 0 4px;
+    padding: 0 9px;
   }
   #top-navbar > li > a > .fa,
   #top-navbar > li > a > .mdi {
@@ -1299,7 +1299,7 @@ body {
     min-width: 0;
   }
   #top-navbar > li > a {
-    padding: 0 2px;
+    padding: 0 7px;
   }
 }
 /* sehr schmal: ein briefmarkengroßes Logo wäre unleserlich, die Symbole brauchen den Platz */

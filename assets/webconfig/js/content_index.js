@@ -508,7 +508,10 @@ function bindUiHandlers() {
       const shown = id => $(id).length && $(id)[0].style.display !== "none";
       $("#mob_streamer").toggleClass("mob-show", !!shown("#btn_streamer"));
       $("#mob_wizard_byteorder, #mob_wizard_colorcalibration").toggleClass("mob-show", !!shown("#NavMenuWizards"));
-      $("#mob_divider").toggleClass("mob-show", $("#mob_darkmode, #mob_streamer, #mob_wizard_byteorder").filter(".mob-show").length > 0);
+      // jeder Eintrag hat seine Trennlinie davor, sie folgt der Sichtbarkeit des Eintrags
+      $("#mob_div_streamer").toggleClass("mob-show", $("#mob_streamer").hasClass("mob-show"));
+      $("#mob_div_byteorder").toggleClass("mob-show", $("#mob_wizard_byteorder").hasClass("mob-show"));
+      $("#mob_div_colorcalibration").toggleClass("mob-show", $("#mob_wizard_colorcalibration").hasClass("mob-show"));
       $("#mob_streamer_icon").toggleClass("text-danger", $("#btn_streamer_icon").hasClass("text-danger"));
     }
   };
