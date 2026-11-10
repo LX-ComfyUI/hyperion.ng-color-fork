@@ -1100,7 +1100,7 @@ function noSignalConfig() {
     active: g?.active ?? -1,
     // the cells of the chosen slot stay: the page draws the calibrated picture from them
     slots: (g?.slots ?? []).map((s, i) => (s ? { name: s.name ?? "", savedAt: s.savedAt ?? null, featureCells: s.featureCells ?? null, unstableCells: s.unstableCells ?? null, settings: s.settings ?? null,
-      ...(i === g?.active ? { cols: s.cols, rows: s.rows, ref: s.ref } : {}) } : null)),
+      ...(i === g?.active ? { cols: s.cols, rows: s.rows, ref: s.ref, image: s.image } : {}) } : null)),
   }]));
   return { noSignal: { ...ns, grabbers } };
 }

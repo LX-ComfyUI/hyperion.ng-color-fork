@@ -574,6 +574,11 @@
   .preview .gsc .gs-bar { height: 4px; margin-bottom: 3px; }
   .preview .gsc b { color: #ffb020; }
   .preview .bbtext { position: absolute; left: 0; top: 0; right: 0; font-size: 11px; color: #fff; background: rgba(10, 10, 14, .7); padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preview .pc-paused { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 13px; color: #fff; background: rgba(10, 10, 14, .78); text-align: center; }
+  .preview .pc-paused[hidden] { display: none; }
+  #pc-preview { max-width: 960px; }
+  /* the open preview window sits on the menu (PC, tablet): the menu does not scroll then */
+  :root.pv-open[data-device="desktop"] #side, :root.pv-open[data-device="tablet"] #side { overflow-y: hidden; }
   .preview .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 14px; text-align: center; padding: 12px; }
 
   /* backups */
@@ -1036,6 +1041,7 @@
     <p class="help" style="margin:0 0 10px">Für den Alltag, wenn die Ersteinrichtung erledigt ist. Oben stehen die Karten, mit denen du Farbe und Bild am TV prüfst, darunter die Feinheiten der LEDs und die Erkennungen, unten die selten nötigen Kalibrierungen und die Werkzeuge. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
     <h3>Farbe und Bild</h3>
     <ul class="guide">
+      <li data-card="card-pv"><a class="jump" href="#card-pv"><b>Grabber-Vorschau</b></a>: Kommt das TV-Bild wirklich beim Grabber an, und nicht seine „No Signal“-Seite?</li>
       <li data-card="card-tc"><a class="jump" href="#card-tc"><b>Testfarben</b></a>: Farben als Vollbild, um TV und LEDs direkt zu vergleichen. Holst du sie in die Seitenleiste rechts, stehen sie neben der Farbkalibrierung.</li>
       <li data-card="card-color"><a class="jump" href="#card-color"><b>Farbkalibrierung</b></a>: Alle Farbwerte von Hyperion: Farbprofil, Weißpunkt, Gamma und Bildverarbeitung.</li>
       <li data-card="card-p-gc"><a class="jump" href="#card-gcg"><b>Graukurve</b></a>: Gleicht einen Farbstich in dunklem oder mittlerem Grau aus. Nach einer Änderung in der Farbkalibrierung hier kurz nachsehen.</li>
@@ -1075,6 +1081,22 @@
   <section class="card" id="card-flow">
     <h2>Vom TV-Bild zu den LEDs</h2>
     <div id="flow-chart" data-i18n-skip></div>
+  </section>
+
+  <!-- ===== grabber preview as a card (the floating panel stays; while it is open this card pauses) ===== -->
+  <section class="card" id="card-pv">
+    <h2>Grabber-Vorschau</h2>
+    <p class="help">Das Bild, das der Grabber an Hyperion liefert. Prüfe hier, ob wirklich das TV-Bild ankommt und nicht die „No Signal“-Seite des Grabbers oder ein schwarzes Bild. Das Symbol oben in der Leiste öffnet dieselbe Vorschau als Fenster, das du verschieben kannst. Solange dieses Fenster offen ist, pausiert die Vorschau in dieser Karte.</p>
+    <div class="preview" id="pc-preview">
+      <img id="pc-img" alt="Grabber-Bild">
+      <div class="empty" id="pc-empty">Warte auf Bild vom Grabber …</div>
+      <div class="ov" id="pc-gsarea"></div>
+      <div class="ov" id="pc-dparea"></div>
+      <div class="ov" id="pc-bb"></div>
+      <div class="bbtext" id="pc-bbtext" hidden></div>
+      <div class="gsc" id="pc-gs" hidden></div>
+      <div class="pc-paused" id="pc-paused" hidden>Pausiert: Die Vorschau läuft im Fenster.</div>
+    </div>
   </section>
 
   <!-- ===== grabber test ===== -->
@@ -2268,8 +2290,8 @@
   // or Eigene (dragged in this menu). Kept per device like the open cards. Every card can be moved, the
   // guide shows the text for the chosen order. The menu on the right has its own order (see below).
   const ORDERS = {
-    setup: ["card-intro", "card-flow", "card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
-    standard: ["card-intro", "card-flow", "card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
+    setup: ["card-intro", "card-flow", "card-pv", "card-ts", "card-backup", "card-rgb", "card-gx", "card-tc", "card-color", "card-p-ft", "card-p-gc", "card-p-lp", "card-p-dt", "card-p-bars", "card-ns", "card-p-gs", "card-p-media", "card-sm"],
+    standard: ["card-intro", "card-flow", "card-pv", "card-tc", "card-color", "card-p-gc", "card-p-media", "card-sm", "card-p-ft", "card-p-lp", "card-p-dt", "card-p-bars", "card-p-gs", "card-ns", "card-gx", "card-rgb", "card-ts", "card-backup"],
   };
   const ORDER_KEY = "tvtest-card-order";
   const CUSTOM_KEY = "tvtest-card-order-custom";
@@ -2281,7 +2303,10 @@
     try {
       const v = JSON.parse(store.get(key));
       if (!Array.isArray(v)) return null;
-      return v.includes("card-intro") || v.includes("card-flow") ? v : ["card-intro", "card-flow", ...v];
+      const head = v.includes("card-intro") || v.includes("card-flow") ? v : ["card-intro", "card-flow", ...v];
+      // the preview card (new) belongs right under the flow chart in an order saved without it
+      if (!head.includes("card-pv")) head.splice(head.indexOf("card-flow") + 1, 0, "card-pv");
+      return head;
     } catch { return null; }
   };
   const readCustom = () => readOrder(CUSTOM_KEY);
@@ -5487,7 +5512,10 @@ function srcFormType() {
   $("src-help").textContent = tr(SRC_HELP[t]);
 }
 $("src-type").addEventListener("change", () => {
-  srcMountReset();
+  // a new kind starts with empty fields: everything typed under the old kind goes
+  const kind = $("src-type").value;
+  srcFormClear();
+  $("src-type").value = kind;
   srcFormType();
   // someone choosing a NAS most likely has to mount the share first: show that part right away
   if ($("src-type").value === "nas") srcMountOpen();
@@ -7239,14 +7267,16 @@ function renderDebug() {
   if ($("gs-live").checked) $("gs-live-box").innerHTML = grayStillHtml(gs);
 
   const o = state?.overlays ?? {};
-  if (!$("pv-panel").hidden) {
-    $("pv-bb").innerHTML = o.bbPreview ? blackborderSvg(bb) : "";
-    $("pv-bbtext").hidden = !o.bbPreview;
-    if (o.bbPreview) $("pv-bbtext").textContent = ok ? blackborderText(bb) : "Keine Daten von Hyperion";
-    $("pv-gs").hidden = !o.gsPreview;
-    if (o.gsPreview) $("pv-gs").innerHTML = grayStillCompactHtml(gs);
-    $("pv-gsarea").innerHTML = o.gsPreview ? grayStillAreaSvg(gs, ledAreas, bb, colorConfig?.ledAreaDepth) : "";
-    $("pv-dparea").innerHTML = o.dpPreview ? depthAreaSvg(ledAreas, bb, colorConfig?.ledAreaDepth) : "";
+  // the overlays of the preview: in the window (pv) and in the card (pc)
+  for (const k of [!$("pv-panel").hidden && "pv", cardPreviewOn() && "pc"]) {
+    if (!k) continue;
+    $(k + "-bb").innerHTML = o.bbPreview ? blackborderSvg(bb) : "";
+    $(k + "-bbtext").hidden = !o.bbPreview;
+    if (o.bbPreview) $(k + "-bbtext").textContent = ok ? blackborderText(bb) : "Keine Daten von Hyperion";
+    $(k + "-gs").hidden = !o.gsPreview;
+    if (o.gsPreview) $(k + "-gs").innerHTML = grayStillCompactHtml(gs);
+    $(k + "-gsarea").innerHTML = o.gsPreview ? grayStillAreaSvg(gs, ledAreas, bb, colorConfig?.ledAreaDepth) : "";
+    $(k + "-dparea").innerHTML = o.dpPreview ? depthAreaSvg(ledAreas, bb, colorConfig?.ledAreaDepth) : "";
   }
   renderDepthStatus();
 }
@@ -7260,30 +7290,57 @@ function updateSpace() {
   $("main").style.paddingBottom = open ? `calc(var(--gap) + ${$("pv-panel").offsetHeight}px)` : "92px";
   // the preview starts on top of the menu's bottom end, the jump list stays reachable above it
   const side = document.getElementById("side");
-  if (side) side.style.paddingBottom = open ? `${$("pv-panel").offsetHeight + 20}px` : "";
+  const locked = open && ["desktop", "tablet"].includes(document.documentElement.dataset.device);
+  if (side) side.style.paddingBottom = open && !locked ? `${$("pv-panel").offsetHeight + 20}px` : "";
 }
 new ResizeObserver(updateSpace).observe($("pv-panel"));
+
+// one picture stream feeds the panel and the card; while the panel is open the card is paused
+const pvCard = $("card-pv");
+let pvCardSeen = true;   // the card is on screen (IntersectionObserver)
+let pvLastFrame = null;
+const cardPreviewOn = () => pvCardSeen && !pvCard.classList.contains("closed") && !pvCard.classList.contains("user-hidden");
+function updatePreviewStream() {
+  const panelOpen = !$("pv-panel").hidden;
+  const cardOn = cardPreviewOn();
+  $("pc-paused").hidden = !(panelOpen && cardOn);
+  if ((panelOpen || cardOn) && !previewSource) {
+    previewSource = new EventSource("/api/preview");
+    previewSource.onmessage = (ev) => {
+      pvLastFrame = ev.data;
+      if (!$("pv-panel").hidden) {
+        $("pv-img").src = ev.data;
+        $("pv-empty").hidden = true;
+      } else if (cardPreviewOn()) {
+        $("pc-img").src = ev.data;
+        $("pc-empty").hidden = true;
+      }
+    };
+  } else if (!panelOpen && !cardOn && previewSource) {
+    previewSource.close();
+    previewSource = null;
+    pvLastFrame = null;
+  }
+  // a view that starts or resumes shows the last picture right away
+  if (panelOpen && pvLastFrame && !$("pv-img").getAttribute("src")) { $("pv-img").src = pvLastFrame; $("pv-empty").hidden = true; }
+  if (!panelOpen && cardOn && pvLastFrame) { $("pc-img").src = pvLastFrame; $("pc-empty").hidden = true; }
+  if (!cardOn && !panelOpen) { $("pc-img").removeAttribute("src"); $("pc-empty").hidden = false; }
+}
+new MutationObserver(updatePreviewStream).observe(pvCard, { attributes: true, attributeFilter: ["class"] });
+new IntersectionObserver((entries) => { pvCardSeen = entries.some((e) => e.isIntersecting); updatePreviewStream(); }).observe(pvCard);
 
 function setPanel(open) {
   if (open && PV_START_SMALL) { resetPanelPosition(); $("pv-panel").style.width = ""; }
   $("pv-panel").hidden = !open;
   $("pv-fab").hidden = open;
   $("pv-fab").setAttribute("aria-pressed", String(open));
+  document.documentElement.classList.toggle("pv-open", open);
   // closing returns the panel to its standard place, bottom right
   if (!open) resetPanelPosition();
   store.set("tvtest-preview", open ? "1" : "0");
-  if (open && !previewSource) {
-    $("pv-empty").hidden = false;
-    previewSource = new EventSource("/api/preview");
-    previewSource.onmessage = (ev) => {
-      $("pv-img").src = ev.data;
-      $("pv-empty").hidden = true;
-    };
-  } else if (!open && previewSource) {
-    previewSource.close();
-    previewSource = null;
-    $("pv-img").removeAttribute("src");
-  }
+  if (open) { $("pv-empty").hidden = !!pvLastFrame; $("pv-img").removeAttribute("src"); }
+  else $("pv-img").removeAttribute("src");
+  updatePreviewStream();
   updateSpace();
   renderDebug();
 }
