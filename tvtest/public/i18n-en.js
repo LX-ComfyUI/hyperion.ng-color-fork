@@ -1038,6 +1038,7 @@ window.I18N_EN = {
  "Seitenleiste rechts aufklappen": "Unfold the right sidebar",
  "Seitenleiste rechts öffnen": "Open right sidebar",
  "Anzeige in der Vorschau": "Shown in the preview",
+ "Anzeige, Größe und Hilfe": "Display, size and help",
  "Diese Schalter gehören zu denselben Einstellungen wie „Anzeige beim Testen“ bei Schwarzen Balken, Grauem Standbild und LED-Erfassungstiefe: Was du hier umschaltest, ändert sich dort mit, und umgekehrt.": "These switches are the same settings as “Anzeige beim Testen” (display while testing) in the black bars, gray still and LED capture depth cards: what you switch here changes there too, and the other way round.",
  "Schwarzbalken-Erkennung<small>Türkis: wo Hyperion nach Balken sucht. Pink gestrichelt: der übernommene Bildbereich.</small>": "Black bar detection<small>Teal: where Hyperion looks for bars. Pink dashed: the picture area it takes over.</small>",
  "Graues Standbild: ausgewerteter Bereich<small>Orange: was Hyperion auswertet, dazu eine Statuszeile.</small>": "Gray still image: evaluated area<small>Orange: what Hyperion evaluates, plus a status line.</small>",
