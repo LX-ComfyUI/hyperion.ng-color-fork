@@ -983,6 +983,8 @@ window.I18N_EN = {
  "Ersteinrichtung": "First setup",
  "Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Ein Tipp auf einen Namen öffnet die passende Karte.": "Go through the steps in this order. Each one builds on the previous ones, so you do not have to repeat anything. Tapping a name opens the matching card.",
  "Reihenfolge der Karten": "Order of the cards",
+ "Seitenleiste": "Sidebar",
+ "Reihenfolge der Karten in der Seitenleiste: Ersteinrichtung, Standard oder Eigene. Zum Verschieben eine Karte an ihrem Kopf gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.": "Order of the cards in the sidebar: First setup, Default or Custom. To move a card, hold it by its header and drag. This saves a custom order.",
  "Karte einblenden": "Show card",
  "Alle Karten einblenden": "Show all cards",
  "Wieder ausblenden wie zuvor": "Hide them again as before",

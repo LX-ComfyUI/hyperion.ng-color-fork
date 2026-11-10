@@ -779,10 +779,7 @@
   .side-order-ttl .side-order-fold { display: flex; align-items: center; gap: 4px; width: 100%; padding: 2px 0; border: none; border-radius: 0; background: none;
                            font-size: 12px; color: var(--muted); text-align: left; }
   .side-order-fold svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
-  .side-order-fold svg.fold-list { width: 20px; height: 20px; margin-right: 2px; transition: none; }
-  .side-order-fold svg.fold-list .dg { stroke-width: 1.4; }
   .side-order.folded .side-order-fold svg.fold-chev { transform: rotate(-90deg); }
-  .side-order.folded .side-order-fold span { display: none; }
   .side-order-fold span { white-space: nowrap; }
   .side-order.folded .side-order-ttl { margin: 0; }
   .side-order.folded > :not(.side-order-ttl) { display: none; }
@@ -842,7 +839,13 @@
           background: var(--page); border-left: 1px solid var(--bar-line); padding: 8px 12px 24px; }
   #dock[hidden] { display: none; }
   .dock-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; }
-  .dock-head .order-seg { flex: 0 1 auto; min-width: 0; margin-right: auto; }
+  .dock-head .dock-ttl { margin-right: auto; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .dock-head .order-seg { flex: 0 1 auto; min-width: 0; }
+  .dock-head .dock-info { width: 22px; height: 22px; margin-right: -2px; padding: 0; display: flex; align-items: center; justify-content: center; flex: none;
+                          border: 1px solid currentColor; border-radius: 50%; background: none; color: var(--muted); opacity: .75; font: italic 700 13px/1 Georgia, serif; }
+  .dock-head .dock-info:hover, .dock-head .dock-info[aria-expanded="true"] { opacity: 1; }
+  .dock-info-text { margin: 0 0 8px; font-size: 12px; line-height: 1.35; color: var(--muted); }
+  .dock-info-text[hidden] { display: none; }
   .dock-head .order-seg button { padding: 5px 8px; font-size: 13px; white-space: nowrap; }
   .dock-head .dock-x, .dock-head .dock-fold { width: 32px; height: 32px; }
   /* dragging a card in the menu on the right: hold its title, it lifts and follows the pointer, the others glide aside */
@@ -2372,10 +2375,9 @@
   const ORDER_OPEN_KEY = "tvtest-side-order-open";
   const orderBox = document.createElement("div");
   orderBox.className = "side-order";
-  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg class="fold-list" viewBox="0 0 24 24" aria-hidden="true"><path class="dg" d="M2.5 4.5l1.8-1.3v5.3M2.2 10.2c.3-1 3.7-1.2 3.7.4 0 1.4-3.5 2.8-3.7 4.4h3.9M2.3 16.8c.4-.8 3.5-1 3.5.6 0 1-1.2 1.4-1.8 1.4.8 0 2 .3 2 1.5 0 1.800-3 1.900-3.700.7"/><line x1="10" y1="5.5" x2="23" y2="5.5"/><line x1="10" y1="12" x2="23" y2="12"/><line x1="10" y1="18.5" x2="23" y2="18.5"/></svg><svg class="fold-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><div class="side-order-hint"></div>';
+  orderBox.innerHTML = '<p class="side-order-ttl"><button type="button" class="side-order-fold"><svg class="fold-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg><span></span></button><button type="button" class="side-dock-all"></button><button type="button" class="side-eye-all"></button></p><div class="side-order-hint"></div>';
   const orderTtl = orderBox.querySelector(".side-order-fold");
   orderTtl.querySelector("span").textContent = I18N.t("Reihenfolge der Karten");
-  orderTtl.title = I18N.t("Reihenfolge der Karten");
   ["Zum Verschieben einen Eintrag gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge."]
     .forEach((t) => { const p = document.createElement("p"); p.textContent = I18N.t(t); orderBox.lastChild.appendChild(p); });
   orderBox.insertBefore(makeSeg(), orderBox.lastChild);
@@ -2514,9 +2516,18 @@
   dock.id = "dock";
   dock.hidden = true;
   dock.setAttribute("aria-label", "Seitenleiste rechts");
-  dock.innerHTML = `<div class="dock-head"><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><div class="dock-body"></div>`;
+  dock.innerHTML = `<div class="dock-head"><span class="dock-ttl"></span><button type="button" class="dock-info">i</button><button type="button" class="tb-icon dock-fold"></button><button type="button" class="tb-icon dock-x">${X_SVG}</button></div><p class="dock-info-text" hidden></p><div class="dock-body"></div>`;
   document.body.appendChild(dock);
-  dock.querySelector(".dock-head").prepend(makeSeg(true));
+  dock.querySelector(".dock-ttl").textContent = I18N.t("Seitenleiste");
+  const dockInfo = dock.querySelector(".dock-info"), dockInfoText = dock.querySelector(".dock-info-text");
+  dockInfoText.textContent = I18N.t("Reihenfolge der Karten in der Seitenleiste: Ersteinrichtung, Standard oder Eigene. Zum Verschieben eine Karte an ihrem Kopf gedrückt halten und ziehen. Das speichert eine eigene Reihenfolge.");
+  dockInfo.setAttribute("aria-label", I18N.t("Reihenfolge der Karten"));
+  dockInfo.setAttribute("aria-expanded", "false");
+  dockInfo.addEventListener("click", () => {
+    dockInfoText.hidden = !dockInfoText.hidden;
+    dockInfo.setAttribute("aria-expanded", String(!dockInfoText.hidden));
+  });
+  dockInfo.after(makeSeg(true));
   syncSegs();
   const dockBody = dock.querySelector(".dock-body");
   const dockBtn = document.getElementById("hdr-dock");
