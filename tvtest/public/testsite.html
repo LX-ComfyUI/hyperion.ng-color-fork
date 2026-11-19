@@ -1511,6 +1511,10 @@
       <div id="gcg-run" hidden>
         <div class="status" id="gcg-progress"></div>
         <div class="status gck-measure" id="gcg-measure"></div>
+        <div id="gcg-fail" hidden>
+          <button type="button" class="primary wide" id="gcg-retry">Erneut messen</button>
+          <p class="note">Klappt es wieder nicht: Stufe überspringen oder abbrechen.</p>
+        </div>
         <div id="gcg-ask">
           <div class="status gck-status" id="gcg-status" aria-live="polite" hidden></div>
           <p class="lg-q" id="gcg-q"></p>
@@ -6317,8 +6321,12 @@ function renderGcGuide() {
     $("gcg-measure").innerHTML = renderGcgMeasure(g);
     const ask = g.phase === "answer";
     const before = g.showing === "before";
+    const failed = g.phase === "error";
     $("gcg-ask").hidden = !ask;
-    for (const id of ["gcg-neutral", "gcg-skip"]) $(id).disabled = !ask || before;
+    $("gcg-fail").hidden = !failed;
+    $("gcg-retry").disabled = !failed;
+    $("gcg-neutral").disabled = !ask || before;
+    $("gcg-skip").disabled = !(ask || failed) || before;
     $("gcg-tints").querySelectorAll("button").forEach((b) => { b.disabled = !ask || before; });
     $("gcg-dir").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dir === gcgDir)));
     $("gcg-strength").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.strength) === gcgStrength)));
@@ -6401,6 +6409,7 @@ $("gcg-back").addEventListener("click", () => gcgSend({ action: "back" }));
 $("gcg-finish").addEventListener("click", () => gcgSend({ action: "finish" }));
 $("gcg-stop").addEventListener("click", () => gcgSend({ action: "stop" }));
 $("gcg-remeasure").addEventListener("click", () => gcgSend({ action: "remeasure" }));
+$("gcg-retry").addEventListener("click", () => gcgSend({ action: "remeasure" }));
 $("gcg-compare").addEventListener("click", () => gcgSend({ action: "compare", show: state.gcGuide?.showing === "before" ? "after" : "before" }));
 $("gcg-close").addEventListener("click", () => gcgSend({ action: "close" }));
 $("gcg-original").addEventListener("click", () => {

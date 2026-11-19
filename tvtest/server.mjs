@@ -857,6 +857,11 @@ const GT_STABLE_DELTA = 0.4;
 const GT_MAX_SETTLE_MS = 6000;  // measured anyway after this, marked as unstable
 const GT_MEASURE_MS = 1000;     // averaged over this long
 const GT_MAX_AGE_MS = 1000;     // newest grabber frame must be younger
+// Hyperion only records frames while it was asked within the last 5 s (VideoProbe ACTIVE_MS): after a
+// pause (a person answering) the newest frame is old. Waits are split so each piece asks again, and
+// old frames count as an error only after this long without a new one.
+const GT_WAKE_MS = 2000;
+const GT_STALE_MS = 2500;
 const GT_BIG_CHANGE = 32;       // TV code values: a color change this big must show up in the frame
 const GT_LEAVE_MIN = 3;         // raw counts the frame mean must move away from the old color
 const GT_RECHECK_DELTA = 1.5;   // the averaged measurement must agree with the stable frame mean
@@ -1224,13 +1229,24 @@ function setRun(patch) {
 // the delay seen that way sets the minimum wait of changes too small to see.
 async function waitStable(shownAt, from = null, change = 0) {
   const expect = !!from && change >= GT_BIG_CHANGE;
-  await sleep(expect ? GT_MIN_WAIT_MS : Math.max(GT_MIN_WAIT_MS, Math.round(gtLatencyMs * 1.5)));
+  await probeGrabber(false);
+  for (let wait = expect ? GT_MIN_WAIT_MS : Math.max(GT_MIN_WAIT_MS, Math.round(gtLatencyMs * 1.5)); wait > 0; wait -= GT_WAKE_MS) {
+    await sleep(Math.min(wait, GT_WAKE_MS));
+    if (wait > GT_WAKE_MS) await probeGrabber(false);
+  }
   let prev = null;
   let stable = 0;
   let left = !expect;
+  let staleSince = 0;
   for (;;) {
     const s = await probeGrabber(false);
-    if (s.ageMs < 0 || s.ageMs > GT_MAX_AGE_MS) throw new Error("Der Grabber liefert keine Bilder mehr");
+    if (s.ageMs < 0 || s.ageMs > GT_MAX_AGE_MS) {
+      staleSince ||= Date.now();
+      if (Date.now() - staleSince >= GT_STALE_MS) throw new Error("Der Grabber liefert keine Bilder mehr");
+      await sleep(GT_POLL_MS);
+      continue;
+    }
+    staleSince = 0;
     const m = s.last.mean;
     if (!left && Math.max(...m.map((v, i) => Math.abs(v - from[i]))) >= Math.max(GT_LEAVE_MIN, change * 0.25)) {
       left = true;

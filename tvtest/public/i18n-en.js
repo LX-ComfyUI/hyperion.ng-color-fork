@@ -1121,6 +1121,8 @@ window.I18N_EN = {
  "Vergleichen": "Compare",
  "Vorher zeigen": "Show before",
  "Nachher zeigen": "Show after",
+ "Erneut messen": "Retry measurement",
+ "Klappt es wieder nicht: Stufe überspringen oder abbrechen.": "If it fails again: skip the level or cancel.",
  "Neu messen": "Measure again",
  "Kalibrierung steuern": "Control calibration",
  "Überspringen": "Skip",
