@@ -1365,7 +1365,7 @@ const CurveMath = globalThis.GrayCurveGraph.math;
 const GC_MAX_TRIES = 6;     // TV grays tried to hit a level
 const GC_MAX_POINTS = 12;   // like the WebUI and the graph
 
-const GC_IDLE = { active: false, phase: "idle", round: "measure", levels: [], index: 0, color: null, measure: null, showing: "after", done: false, error: null, aborted: false, restored: false, startPoints: null, afterPoints: null, results: {}, colorIndex: 0, runId: "" };
+const GC_IDLE = { active: false, phase: "idle", round: "measure", levels: [], index: 0, color: null, measure: null, showing: "after", done: false, error: null, aborted: false, restored: false, startPoints: null, afterPoints: null, results: {}, colorIndex: 0, runId: "", came: "start" };
 let gcGuide = { ...GC_IDLE };
 // counts the color writes the server makes on its own, so the pages read the settings again
 let colorStamp = 0;
@@ -1478,17 +1478,18 @@ async function gcWritePoints(points, history = true) {
   return written;
 }
 
-function gcGo(index) {
-  gcSet({ index, measure: null });
+// came: how the page got to this level (start, next, control, back, again), for its transition text
+function gcGo(index, came) {
+  gcSet({ index, measure: null, came });
   gcMeasureCurrent();
 }
 
 // the next level, or the control round, or the end
 function gcNext() {
-  if (gcGuide.index + 1 < gcGuide.levels.length) return gcGo(gcGuide.index + 1);
+  if (gcGuide.index + 1 < gcGuide.levels.length) return gcGo(gcGuide.index + 1, "next");
   if (gcGuide.round === "measure") {
     gcSet({ round: "control" });
-    return gcGo(0);
+    return gcGo(0, "control");
   }
   gcFinish();
 }
@@ -1533,7 +1534,7 @@ async function gcStart({ levels, enableCurve, colorIndex }) {
   // the test guard first, so a still image or black border detection never touches the gray
   await exclusive(syncGuard).catch(() => {});
   updateGrace();
-  gcGo(0);
+  gcGo(0, "start");
 }
 
 async function gcAnswer({ tint, dir, strength }) {
@@ -1600,7 +1601,7 @@ async function gcAction(body) {
   if (!gcGuide.active) throw new Error("Die Graukurven-Kalibrierung läuft nicht");
   if (action === "answer") return gcAnswer(body);
   if (action === "compare") return gcCompare(body.show);
-  if (action === "remeasure") { await gcRestoreAfter(); return gcGo(gcGuide.index); }
+  if (action === "remeasure") { await gcRestoreAfter(); return gcGo(gcGuide.index, "again"); }
   if (action === "neutral" || action === "skip") {
     await gcRestoreAfter();
     const level = gcGuide.levels[gcGuide.index];
@@ -1610,9 +1611,9 @@ async function gcAction(body) {
   }
   if (action === "back") {
     await gcRestoreAfter();
-    if (gcGuide.index > 0) return gcGo(gcGuide.index - 1);
-    if (gcGuide.round === "control") { gcSet({ round: "measure" }); return gcGo(gcGuide.levels.length - 1); }
-    return gcGo(0);
+    if (gcGuide.index > 0) return gcGo(gcGuide.index - 1, "back");
+    if (gcGuide.round === "control") { gcSet({ round: "measure" }); return gcGo(gcGuide.levels.length - 1, "back"); }
+    return gcGo(0, "again");
   }
   if (action === "finish") { await gcRestoreAfter(); return gcFinish(); }
   throw new Error("Unbekannte Aktion");

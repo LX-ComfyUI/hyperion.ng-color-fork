@@ -494,6 +494,25 @@
   .gck-level small { font-size: 11px; color: var(--muted); }
   .gck-level.off span { color: var(--muted); }
   .gck-measure { font-size: 13px; line-height: 1.5; }
+  .gck-how { margin: 12px 0 4px; padding: 10px 12px; border-radius: 9px; background: var(--inset); font-size: 14px; line-height: 1.45; }
+  .gck-how-ttl { margin: 0 0 4px; font-weight: 600; }
+  .gck-how ol { margin: 0; padding-left: 20px; }
+  .gck-how li { display: list-item; padding: 0; margin: 0; border: none; }
+  .gck-how li + li { margin-top: 4px; }
+  .gck-how li::marker { color: var(--text); font-weight: 600; }
+  .gck-rounds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; }
+  .gck-round { padding: 3px 10px; border: 1px solid var(--btn-line); border-radius: 999px; color: var(--muted); }
+  .gck-round.cur { border-color: var(--accent); background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .gck-round.done { color: var(--text); }
+  .gck-arrow { color: var(--muted); }
+  .gck-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .gck-lv { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 38px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .gck-sw { display: flex; align-items: center; justify-content: center; width: 36px; height: 26px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--text) 25%, transparent); font-size: 14px; font-weight: 700; }
+  .gck-lv.cur { color: var(--text); font-weight: 600; }
+  .gck-lv.cur .gck-sw { outline: 3px solid var(--accent); outline-offset: 1px; }
+  .gck-lv.next .gck-sw { opacity: .45; }
+  .gck-trans { margin-bottom: 4px; }
+  .gck-trans.flash { animation: gckflash 1.4s ease-out; }
   .gck-warnlist { margin-top: 6px; color: var(--warn); }
   .gck-warnlist div + div { margin-top: 4px; }
   #gcg-neutral { margin: 4px 0 10px; }
@@ -1494,11 +1513,20 @@
     <div class="pair">
     <div class="pair-col" id="card-gcg">
       <h3 class="pair-ttl">Graukurve kalibrieren</h3>
-      <p class="help">Der TV zeigt nacheinander graue Flächen von hell bis dunkel. Du vergleichst das Licht der LEDs an der Wand mit dem Grau auf dem TV und sagst je Stufe, ob es neutral wirkt oder welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Punkt der Graukurve für diese Helligkeit sofort. Am Ende prüft ein Kontrolllauf alle Stufen noch einmal.</p>
+      <p class="help">Gleicht einen Farbstich im Grau aus, Stufe für Stufe von hell bis dunkel: Du vergleichst das Licht der LEDs an der Wand mit dem Grau auf dem TV. Jede Antwort ändert den Punkt der Graukurve für diese Helligkeit sofort.</p>
       <p class="help">Die Seite misst, welches Grau Hyperion nach der Grabber-Farbkorrektur wirklich sieht, und stellt das TV-Grau so ein, dass die Stufe stimmt, egal was der Grabber hebt oder senkt. Kalibriere deshalb zuerst die <a class="jump" href="#card-gx">Grabber-Farberkennung</a>: Fehler des Grabbers gehören dorthin, nicht in die Graukurve.</p>
       <p class="note guard-note" hidden></p>
 
       <div id="gcg-idle">
+        <div class="gck-how">
+          <p class="gck-how-ttl">So läuft’s</p>
+          <ol>
+            <li>Der TV zeigt eine graue Fläche, zuerst die hellste gewählte Stufe, dann immer dunkler. Eine Leiste zeigt, welche Stufe gerade dran ist und welche noch kommen.</li>
+            <li>Pro Stufe misst Hyperion ein paar Sekunden lang, was beim Grabber ankommt. Dann bist du dran: Vergleiche das Licht der LEDs an der Wand mit dem Grau auf dem TV. Lass dir ruhig Zeit.</li>
+            <li>Wirkt es neutral, geht es mit „Neutral, weiter“ zur nächsten Stufe. Sonst sagst du, welche Farbe zu viel oder zu wenig ist. Die LEDs ändern sich sofort, und du antwortest so oft, bis es neutral wirkt.</li>
+            <li>Nach der dunkelsten Stufe prüft ein Kontrolllauf alle Stufen noch einmal. Danach sicherst du die neue Kurve als Speicherplatz.</li>
+          </ol>
+        </div>
         <p class="gck-sub">Stufen (Helligkeit, die Hyperion misst)</p>
         <div class="gck-levels" id="gcg-levels"></div>
         <div class="frow"><label for="gcg-own">Eigene Stufe (1–100 %)</label><span class="inputs"><input type="number" class="wide-in" id="gcg-own" min="1" max="100" step="1" inputmode="numeric"><button type="button" id="gcg-own-add">Hinzufügen</button></span></div>
@@ -1509,7 +1537,10 @@
       </div>
 
       <div id="gcg-run" hidden>
+        <div class="gck-rounds" id="gcg-rounds"></div>
+        <div class="gck-bar" id="gcg-bar"></div>
         <div class="status" id="gcg-progress"></div>
+        <div class="status gck-trans" id="gcg-trans" aria-live="polite" hidden></div>
         <div class="status gck-measure" id="gcg-measure"></div>
         <div id="gcg-fail" hidden>
           <button type="button" class="primary wide" id="gcg-retry">Erneut messen</button>
@@ -6287,7 +6318,7 @@ async function gcgSend(body) {
 function renderGcgMeasure(g) {
   const m = g.measure;
   if (g.phase === "error") return `<b>${tr("Messung fehlgeschlagen")}</b>: ${escHtml(g.error ?? "")}`;
-  if (!m) return tr("Stelle das TV-Grau ein und messe, was Hyperion sieht …");
+  if (!m) return tr("Der TV zeigt jetzt das Grau. Die Seite stellt es so ein, dass Hyperion genau {a} % sieht, und misst, was beim Grabber ankommt. Das dauert ein paar Sekunden, gleich bist du dran.", { a: gcgFmt(g.levels[g.index]) });
   const lines = [tr("TV-Grau {a} → Hyperion misst {b} % (R {r} · G {g} · B {bl}){c}", {
     a: m.tv, b: gcgFmt(m.got, 1), r: gcgFmt(m.rgb[0], 1), g: gcgFmt(m.rgb[1], 1), bl: gcgFmt(m.rgb[2], 1),
     c: m.corrected ? tr(", nach der Grabber-Farbkorrektur") : "",
@@ -6301,6 +6332,40 @@ function renderGcgMeasure(g) {
   if (m.unstable) warn.push(tr("Das Grabberbild war unruhig, die Messung ist ungenau."));
   return lines.join("<br>") + (warn.length ? `<div class="gck-warnlist">${warn.map((w) => `<div>${escHtml(w)}</div>`).join("")}</div>` : "");
 }
+
+// which levels are done, skipped, current or still to come, with their gray; and the two rounds
+function renderGcgBar(g) {
+  const control = g.round === "control";
+  $("gcg-rounds").innerHTML = [["measure", tr("Messlauf")], ["control", tr("Kontrolllauf")]].map(([r, name], i) => {
+    const st = r === g.round ? "cur" : control ? "done" : "next";
+    return `<span class="gck-round ${st}">${st === "done" ? "✓" : i + 1} ${escHtml(name)}</span>`;
+  }).join(`<span class="gck-arrow" aria-hidden="true">›</span>`);
+  const names = { done: tr("erledigt"), skip: tr("übersprungen"), cur: tr("gerade dran"), next: tr("kommt noch") };
+  $("gcg-bar").innerHTML = g.levels.map((l, i) => {
+    const r = g.results?.[l];
+    const st = i === g.index ? "cur" : i > g.index ? "next" : (control ? r?.control : r?.verdict) === "skip" ? "skip" : "done";
+    const v = Math.round(Math.min(100, l) * 2.55);
+    const mark = st === "done" ? "✓" : st === "skip" ? "–" : "";
+    return `<span class="gck-lv ${st}" title="${escHtml(`${gcgFmt(l)} %: ${names[st]}`)}"><span class="gck-sw" style="background:rgb(${v},${v},${v});color:${v < 128 ? "#fff" : "#000"}">${mark}</span><span>${gcgFmt(l)} %</span></span>`;
+  }).join("");
+}
+
+// what just happened and what comes now: start, next darker level, control round, last level
+function gcgTransition(g) {
+  const lv = g.levels;
+  const i = g.index;
+  const a = gcgFmt(lv[i]);
+  const parts = [];
+  if (g.came === "start") parts.push(lv.length > 1 ? tr("Los geht’s mit der hellsten Stufe: {a} %. Danach wird das Grau Stufe für Stufe dunkler.", { a }) : tr("Los geht’s mit der Stufe {a} %.", { a }));
+  else if (g.came === "next") parts.push(tr("Stufe {a} % fertig. Jetzt {b} %: ein dunkleres Grau.", { a: gcgFmt(lv[i - 1]), b: a }));
+  else if (g.came === "control") parts.push(tr("Messlauf fertig. Jetzt kommt der Kontrolllauf: alle Stufen noch einmal von hell nach dunkel, beginnend mit {a} %. Wirkt eine Stufe neutral, geht es mit „Neutral, weiter“ weiter. „Fertig“ beendet die Kalibrierung jederzeit.", { a }));
+  else if (g.came === "back") parts.push(tr("Zurück zur Stufe {a} %.", { a }));
+  if (i === lv.length - 1) parts.push(g.round === "control" ? tr("Das ist die letzte Stufe, danach ist die Kalibrierung fertig.") : tr("Das ist die letzte Stufe des Messlaufs, danach kommt der Kontrolllauf."));
+  return parts.join(" ");
+}
+
+let gcgTransKey = null;
+let gcgTransLog = 0;
 
 function renderGcGuide() {
   const g = state?.gcGuide ?? {};
@@ -6319,6 +6384,14 @@ function renderGcGuide() {
       a: g.round === "control" ? tr("Kontrolllauf") : tr("Messlauf"), b: g.index + 1, c: g.levels.length, d: gcgFmt(level),
     });
     $("gcg-measure").innerHTML = renderGcgMeasure(g);
+    renderGcgBar(g);
+    // the transition text stays until the first answer at this level
+    const logLen = g.results?.[level]?.log?.length ?? 0;
+    const transKey = `${g.runId}/${g.round}/${g.index}/${g.came}`;
+    if (transKey !== gcgTransKey) { gcgTransLog = gcgTransKey === null && g.round === "measure" ? 0 : logLen; if (gcgTransKey !== null) gckFlash($("gcg-trans")); gcgTransKey = transKey; }
+    const trans = g.phase !== "error" && logLen === gcgTransLog ? gcgTransition(g) : "";
+    $("gcg-trans").textContent = trans;
+    $("gcg-trans").hidden = !trans;
     const ask = g.phase === "answer";
     const before = g.showing === "before";
     const failed = g.phase === "error";
@@ -6342,7 +6415,8 @@ function renderGcGuide() {
     $("gcg-q").textContent = round === 1
       ? tr("Runde 1: Wie wirkt das Licht der LEDs an der Wand neben dem Grau auf dem TV?")
       : tr("Runde {a}: Und jetzt? Wie wirkt das Licht der LEDs neben dem Grau auf dem TV?", { a: round });
-    const last = log[log.length - 1];
+    // only answers given since arriving at this level (in the control round the earlier ones are history)
+    const last = log.length > gcgTransLog ? log[log.length - 1] : null;
     $("gcg-status").hidden = !last;
     if (last) {
       $("gcg-status").textContent = tr("Antwort {a} bei {b} % übernommen: {c}. Die LEDs zeigen es schon. Schau noch einmal hin und antworte neu: Oft ist danach eine andere Farbe zu viel oder zu wenig. Schlägt es in die Gegenrichtung um, antworte einfach so, die Schritte werden dann von selbst kleiner. Wirkt das Grau neutral, geht es mit „Neutral, weiter“ zur nächsten Stufe.", { a: log.length, b: gcgFmt(level), c: gckAnswerText(last.tint, last.dir, last.strength) });
