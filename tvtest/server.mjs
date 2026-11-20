@@ -1707,6 +1707,20 @@ function mergeBlackborder(current, patch) {
   if ("borderFrameCnt" in patch) next.borderFrameCnt = num(patch.borderFrameCnt, 0, 100000, next.borderFrameCnt);
   if ("maxInconsistentCnt" in patch) next.maxInconsistentCnt = num(patch.maxInconsistentCnt, 0, 100000, next.maxInconsistentCnt);
   if ("blurRemoveCnt" in patch) next.blurRemoveCnt = num(patch.blurRemoveCnt, 0, 100, next.blurRemoveCnt);
+  // fork: picture display with black bars at the top/bottom
+  const bp = patch.barDisplay;
+  if (bp) {
+    const b = { lightAtBars: "normal", sideLeds: "stretched", barSideFill: "dark", ...(next.barDisplay ?? {}) };
+    const pick = (key, allowed, error) => {
+      if (!(key in bp)) return;
+      if (!allowed.includes(bp[key])) throw new Error(error);
+      b[key] = bp[key];
+    };
+    pick("lightAtBars", ["normal", "sidesOnly", "off"], "Unbekannte Einstellung für Licht bei Balken");
+    pick("sideLeds", ["stretched", "oneToOne"], "Unbekannte Einstellung für Seiten-LEDs");
+    pick("barSideFill", ["dark", "cornerColor"], "Unbekannte Einstellung für Balkenhöhe an den Seiten");
+    next.barDisplay = b;
+  }
   const gp = patch.grayStillImageDetector;
   if (gp) {
     const g = { ...(next.grayStillImageDetector ?? {}) };

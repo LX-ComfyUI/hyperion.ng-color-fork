@@ -10,6 +10,7 @@
     { id: "builtin:bars", name: "Farbbalken 100 %" },
     { id: "builtin:bars75", name: "Farbbalken 75 %" },
     { id: "builtin:edges", name: "Ränder: jede Seite eine Farbe" },
+    { id: "builtin:letterbox", name: "Letterbox: Balken oben/unten, vier farbige Ecken" },
     { id: "builtin:grayramp", name: "Grauverlauf und Graustufen" },
     { id: "builtin:rgbramp", name: "Verläufe Rot, Grün, Blau, Weiß" },
     { id: "builtin:hue", name: "Farbkreis mit Sättigung" },
@@ -62,6 +63,21 @@
         ctx.fillStyle = "rgb(0,0,255)"; ctx.fillRect(0, h - b, w, b);
         ctx.fillStyle = "rgb(0,255,0)"; ctx.fillRect(w - b, b, b, h - 2 * b);
         ctx.fillStyle = "rgb(255,255,0)"; ctx.fillRect(0, b, b, h - 2 * b);
+        break;
+      }
+      case "builtin:letterbox": {
+        // a cinema picture (about 2.39:1) with black bars at the top and bottom, each corner of the
+        // picture in its own color, gray in between: shows the picture display with black bars (top/bottom
+        // off, side LEDs 1:1, bar height filled with the corner color)
+        const bar = Math.round(h * 0.125);
+        const ph = h - 2 * bar;
+        const cw = Math.round(w * 0.22), ch = Math.round(ph * 0.3);
+        ctx.fillStyle = "rgb(96,96,96)";
+        ctx.fillRect(0, bar, w, ph);
+        ctx.fillStyle = "rgb(255,0,0)"; ctx.fillRect(0, bar, cw, ch);
+        ctx.fillStyle = "rgb(0,255,0)"; ctx.fillRect(w - cw, bar, cw, ch);
+        ctx.fillStyle = "rgb(0,0,255)"; ctx.fillRect(0, h - bar - ch, cw, ch);
+        ctx.fillStyle = "rgb(255,255,0)"; ctx.fillRect(w - cw, h - bar - ch, cw, ch);
         break;
       }
       case "builtin:grayramp": {
