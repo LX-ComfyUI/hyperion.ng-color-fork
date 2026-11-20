@@ -512,6 +512,29 @@
   .gck-lv.cur .gck-sw { outline: 3px solid var(--accent); outline-offset: 1px; }
   .gck-lv.next .gck-sw { opacity: .45; }
   .gck-trans { margin-bottom: 4px; }
+  .calib-steps { margin: 0 0 12px; padding: 10px 12px; border-radius: 9px; background: var(--inset); font-size: 14px; line-height: 1.45; }
+  .calib-steps .gck-how-ttl { margin: 0 0 6px; }
+  .calib-steps .gck-rounds { margin-top: 0; }
+  .calib-steps a.gck-round { color: var(--muted); text-decoration: none; font-weight: 400; }
+  .calib-steps a.gck-round.cur { font-weight: 600; }
+  .calib-steps a.gck-round.done { color: var(--text); }
+  .calib-steps a.gck-round.cur { color: var(--accent-text); }
+  .calib-steps a.gck-round.redo { border-color: var(--warn); color: var(--text); }
+  .calib-steps p { margin: 8px 0 0; }
+  .calib-steps small { color: var(--muted); }
+  .gx-check ul { margin: 4px 0 0; padding-left: 18px; }
+  .gx-error { margin-top: 8px; }
+  .gx-error .warn { margin: 0 0 8px; }
+  .gx-hint { margin: 12px 0 0; }
+  /* LED position calibration: one row per LED run with its places (done, skipped, current, to come) */
+  .lg-bar { display: grid; gap: 5px; margin: 10px 0; }
+  .lg-strand { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .lg-strand-name { min-width: 92px; font-variant-numeric: tabular-nums; }
+  .lg-strand.cur .lg-strand-name { color: var(--text); font-weight: 600; }
+  .lg-strand.done .lg-strand-name { color: var(--text); }
+  .lg-pt { display: flex; align-items: center; justify-content: center; width: 26px; height: 20px; border-radius: 5px; border: 1px solid var(--btn-line); background: var(--btn); color: var(--text); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .lg-pt.cur { outline: 3px solid var(--accent); outline-offset: 1px; }
+  .lg-pt.next { opacity: .45; }
   .gck-trans.flash { animation: gckflash 1.4s ease-out; }
   .gck-warnlist { margin-top: 6px; color: var(--warn); }
   .gck-warnlist div + div { margin-top: 4px; }
@@ -638,6 +661,7 @@
   .paused { outline: 3px solid var(--warn); outline-offset: 4px; border-radius: 8px; }
   .paused::before { content: attr(data-paused-text); display: block; margin: 0 0 10px; padding: 8px 10px; border-radius: 6px; background: var(--inset); color: var(--warn); font-size: 14px; font-weight: 600; }
   .pair-col { min-width: 0; scroll-margin-top: calc(var(--bar-h, 0px) + 8px); }
+  #wp { scroll-margin-top: calc(var(--bar-h, 0px) + 16px); }
   .pair-col + .pair-col { border-top: 1px solid var(--btn-line); padding-top: 16px; }
   h3.pair-ttl { margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--text); }
   @container (min-width: 850px) {
@@ -1042,6 +1066,7 @@
     <div data-order="setup">
     <h3>Ersteinrichtung</h3>
     <p class="help" style="margin:0 0 10px">Geh die Schritte in dieser Reihenfolge durch. Jeder baut auf den vorherigen auf, so musst du nichts wiederholen. Ein Tipp auf einen Namen öffnet die passende Karte.</p>
+    <div class="calib-steps" id="calib-steps" data-i18n-skip></div>
     <p class="help" style="margin:0 0 10px"><b>Einstellen und Verarbeiten sind zwei Reihenfolgen.</b> Die Schritte hier ordnen, was du nacheinander einstellst. Die Karte <a class="jump" href="#card-flow"><b>Vom TV-Bild zu den LEDs</b></a> zeigt dagegen die Verarbeitungsschritte, also in welcher Reihenfolge Hyperion jedes Bild bearbeitet. Beides deckt sich nicht: Die RGB-Byte-Reihenfolge stellst du als Erstes ein, Hyperion wendet sie erst kurz vor dem LED-Gerät an. Die LED-Position stellst du nach den Farben ein, im Bild wirkt sie vor ihnen. Unter jedem Schritt steht, in welchem Verarbeitungsschritt er wirkt, ein Tipp auf die Nummer zeigt ihn.</p>
     <p class="help" style="margin:0 0 10px"><b>Erst der Grundstein, dann die Feinabstimmung.</b> Viele drehen stundenlang an Farbwerten, Gamma und Farbtemperatur, bis Grau einigermaßen neutral wirkt, und verstellen dabei die Farben. Leg stattdessen zuerst den Grundstein der Farbdarstellung: richtige Farbkanäle, ein Grabber, der die Farben unverfälscht sieht, und ein neutrales Weiß. Erst danach stimmt die Graukurve die Graustufen fein ab und rechnet das Ergebnis auf Wunsch in Gamma und Weiß um. Dreh also nicht an Gamma, um ein graues Bild zu retten, das erledigt die Graukurve.</p>
     <h3>Vorher in der WebUI</h3>
@@ -1163,14 +1188,18 @@
     <div class="seg full gt-controls gx-start" role="group" aria-label="Grundtest">
       <button type="button" id="gx-basic"></button>
     </div>
+    <div class="warn gx-check" id="gx-check" hidden></div>
     <div class="status" id="gx-progress" hidden></div>
-    <p class="warn" id="gx-error" hidden></p>
+    <div class="gx-error" id="gx-error-box" hidden>
+      <p class="warn" id="gx-error"></p>
+      <button type="button" class="primary" id="gx-retry">Erneut starten</button>
+    </div>
     <p class="note" id="gx-note"></p>
     <div class="gx-save" id="gx-save" data-i18n-skip hidden></div>
     <p class="help">Misst, wie dein Grabber Farben sieht: ob Schwarz als 0 ankommt, ob dunkle Stufen und dunkle Farben erhalten bleiben und ob Grau neutral bleibt. Der TV zeigt dafür nacheinander Testfarben als Vollbild, und Hyperion misst das Bild direkt vom Grabber. Farbprofil, Gamma und Graukurve spielen dabei keine Rolle. Das Ergebnis wird in Hyperion gespeichert und im WebUI unter <b>Aufnahme Hardware → Grabber-Test</b> angezeigt.</p>
     <p class="help">Der <b>Grundtest</b> geht automatisch Graustufen, Farbleitern von sehr dunkel bis hell und zwei Mischfarben durch und dauert etwa 2½ Minuten. Lass TV und Zuspielgerät dabei in Ruhe. Das Smartphone darf ausgehen, der Test läuft auf dem Hyperion-Server weiter.</p>
-    <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch.</p>
-    <p class="help"><b>Nach dem Test:</b> Unten erscheint das Ergebnis. Zeigt es einen Farbfehler, setze direkt über dem Ergebnis den Haken <b>Grabber-Farbkorrektur aktiv</b>. Prüfe danach unter <a class="jump" href="#card-tc"><b>Testfarben</b></a> Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV? Mit dem Schalter <b>Grabber-Farbkorrektur</b> bei den Testfarben schaltest du die Korrektur bei laufender Farbe ein und aus und siehst den Unterschied sofort.</p>
+    <p class="help"><b>Vor dem Test:</b> Prüfe in der Grabber-Vorschau, dass der Grabber das TV-Bild zeigt und nicht seine „No Signal“-Seite. Ist die Vorschau beim Start zu, öffnet sie sich automatisch. Erkennt die Seite schon vorher ein Problem, etwa keine Verbindung zur TV-Testseite oder kein Signal am Grabber, steht es oben über dem Startknopf.</p>
+    <p class="help"><b>Nach dem Test:</b> Unten erscheint das Ergebnis, und über dem Haken <b>Grabber-Farbkorrektur aktiv</b> steht, was als Nächstes zu tun ist. Zeigt es einen Farbfehler, setze den Haken. Prüfe danach unter <a class="jump" href="#card-tc"><b>Testfarben</b></a> Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV? Mit dem Schalter <b>Grabber-Farbkorrektur</b> bei den Testfarben schaltest du die Korrektur bei laufender Farbe ein und aus und siehst den Unterschied sofort.</p>
 
     <h3>Eigene Farben</h3>
     <p class="help">Lege Farben an, die du zusätzlich messen willst, zum Beispiel typische Farben aus Filmen. Sie werden nacheinander gemessen und getrennt vom Grundtest gespeichert.</p>
@@ -1179,6 +1208,7 @@
       <button type="button" id="gx-custom"></button>
     </div>
 
+    <div class="status gx-hint" id="gx-hint" hidden></div>
     <label class="check gx-corr"><input type="checkbox" id="gx-corr"><span>Grabber-Farbkorrektur aktiv<small id="gx-corr-note"></small></span></label>
     <div id="gx-slots" data-i18n-skip></div>
 
@@ -1242,13 +1272,23 @@
 
       <div class="wp" id="wp">
         <h4 class="hy-h"><span>Weißpunkt</span></h4>
-        <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Der TV zeigt Weiß, du vergleichst das Licht der LEDs an der Wand damit und sagst, welche Farbe zu viel oder zu wenig ist. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Das läuft in Runden: antworten, neu hinschauen, wieder antworten, bis das Licht neutral wirkt. Die Farbtemperatur bleibt, wie sie ist. Stell sie vorher grob ein, dann brauchst du weniger Runden.</p>
+        <p class="help" style="margin-bottom:6px">Der erste Schritt zu richtigen Farben: 100&nbsp;% Weiß muss stimmen. Jede Antwort ändert den Weißwert in Hyperion sofort, und alle anderen Farbwerte im selben Verhältnis, damit Grau und Mischfarben mitziehen. Die Farbtemperatur bleibt, wie sie ist. Stell sie vorher grob ein, dann brauchst du weniger Runden.</p>
+        <div class="gck-how" id="wp-how">
+          <p class="gck-how-ttl">So läuft’s</p>
+          <ol>
+            <li>Der TV zeigt 100&nbsp;% Weiß. Vergleiche das Licht der LEDs an der Wand mit dem Weiß auf dem TV.</li>
+            <li>Wirkt das Licht neutral, tippst du auf „Neutral, fertig“. Sonst sagst du, welche Farbe zu viel oder zu wenig ist. Die LEDs ändern sich sofort.</li>
+            <li>Dann schaust du neu hin und antwortest wieder. Oft ist danach eine andere Farbe dran, das ist normal.</li>
+            <li>Aufhören kannst du, sobald das Licht neutral wirkt oder die Antworten hin und her springen, etwa erst zu viel Grün, dann zu viel Magenta. Dann bist du nah dran. Zurück nimmt die letzte Antwort zurück, Abbrechen stellt alles wieder her.</li>
+          </ol>
+        </div>
         <button type="button" class="primary wide" id="wp-start">Weißpunkt einstellen</button>
         <div id="wp-run" hidden>
           <div class="status gck-status" id="wp-status" aria-live="polite"></div>
           <p class="lg-q" id="wp-q"></p>
           <button type="button" class="primary wide" id="wp-done">Neutral, fertig</button>
-          <p class="gck-sub">Nicht neutral? Dann in drei Teilen antworten:</p>
+          <p class="note gck-near" id="wp-near" hidden></p>
+          <p class="gck-sub">Nicht neutral? Antworte mit drei Tipps, zum Beispiel: zu viel · leicht · Grün.</p>
           <p class="gck-step">1. Das Licht hat …</p>
           <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="wp-dir">
             <button type="button" data-dir="more">zu viel</button>
@@ -1260,7 +1300,7 @@
             <button type="button" data-strength="2">deutlich</button>
             <button type="button" data-strength="3">stark</button>
           </div>
-          <p class="gck-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
+          <p class="gck-step">3. Welche Farbe? Der Tipp darauf schickt die Antwort ab.</p>
           <div class="gck-tints" id="wp-tints"></div>
           <div class="gck-log" id="wp-log"></div>
           <div class="seg full" role="group" aria-label="Weißpunkt steuern" style="margin-top:8px">
@@ -1550,7 +1590,7 @@
           <div class="status gck-status" id="gcg-status" aria-live="polite" hidden></div>
           <p class="lg-q" id="gcg-q"></p>
           <button type="button" class="primary wide" id="gcg-neutral">Neutral, weiter</button>
-          <p class="gck-sub">Nicht neutral? Dann in drei Teilen antworten:</p>
+          <p class="gck-sub">Nicht neutral? Antworte mit drei Tipps, zum Beispiel: zu viel · leicht · Grün.</p>
           <p class="gck-step">1. Das Licht hat …</p>
           <div class="seg full gck-seg" role="group" aria-label="Zu viel oder zu wenig" id="gcg-dir">
             <button type="button" data-dir="more">zu viel</button>
@@ -1562,7 +1602,7 @@
             <button type="button" data-strength="2">deutlich</button>
             <button type="button" data-strength="3">stark</button>
           </div>
-          <p class="gck-step">3. Welche Farbe? Das Antippen schickt die Antwort ab und ändert die LEDs sofort.</p>
+          <p class="gck-step">3. Welche Farbe? Der Tipp darauf schickt die Antwort ab.</p>
           <div class="gck-tints" id="gcg-tints"></div>
           <div class="gck-log" id="gcg-log"></div>
           <p class="note" id="gcg-gains"></p>
@@ -1653,6 +1693,7 @@
       <button type="button" class="primary wide" id="rgb-save" hidden></button>
     </div>
     <p class="note" id="rgb-current"></p>
+    <p class="note" id="rgb-next" hidden></p>
   </section>
 
   <section class="card card-pair" id="card-p-bars">
@@ -2019,12 +2060,21 @@
     </div>
     <div class="pair-col" id="card-lg">
       <h3 class="pair-ttl">LED-Position kalibrieren</h3>
-      <p class="help">Der Test zeigt nacheinander 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln). Auf dem TV markiert ein heller Strich die LED, darüber liegt ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, und tippe auf <b>Übernehmen</b>. Am Ende zeigt die Seite das Muster je Strang und schlägt eine Korrektur des LED-Layouts vor. Danach prüft ein <b>Kontrolllauf</b> an denselben Stellen, ob es passt.</p>
+      <p class="help">Misst an 5 Stellen je LED-Strang (an beiden Enden, bei einem Viertel, in der Mitte und bei drei Vierteln), wohin die LEDs wirklich schauen, und korrigiert danach das LED-Layout.</p>
       <p class="note guard-note" hidden></p>
       <div class="status" id="lg-layout"></div>
       <div class="lg-actions" id="lg-layout-actions"></div>
 
       <div id="lg-idle">
+        <div class="gck-how">
+          <p class="gck-how-ttl">So läuft’s</p>
+          <ol>
+            <li>Der TV zeigt Strang für Strang je 5 Stellen. Eine Leiste zeigt, welcher Strang und welche Stelle gerade dran ist und was noch kommt.</li>
+            <li>Auf dem TV markiert ein heller Strich die LED, darüber liegen ein <b>Lineal</b> mit einem Strich je Nachbar-LED und ein <b>oranger Pfeil</b>. Schieb den Pfeil mit den Pfeiltasten hier genau über die LED, die wirklich leuchtet, dann „Übernehmen und weiter“. Ist keine LED zu erkennen, tippe auf „Nicht erkennbar“.</li>
+            <li>Am Ende zeigt die Seite den Versatz je Strang und schlägt eine Korrektur des LED-Layouts vor. Das Original-Layout bleibt gespeichert.</li>
+            <li>Nach der Korrektur prüft ein <b>Kontrolllauf</b> dieselben Stellen. Abbrechen geht jederzeit, mit „Fortsetzen“ machst du später an derselben Stelle weiter.</li>
+          </ol>
+        </div>
         <div class="lg-actions">
           <button type="button" class="primary" id="lg-start">Test starten</button>
           <button type="button" id="lg-resume" hidden>Fortsetzen</button>
@@ -2032,7 +2082,10 @@
       </div>
 
       <div id="lg-run" hidden>
+        <div class="gck-rounds" id="lg-rounds"></div>
+        <div class="lg-bar" id="lg-bar"></div>
         <div class="status" id="lg-progress"></div>
+        <div class="status gck-trans" id="lg-trans" aria-live="polite" hidden></div>
         <div class="lp-map" id="lg-map"></div>
         <p class="lg-q" id="lg-question"></p>
         <div id="lg-answers"></div>
@@ -2250,7 +2303,7 @@
       requestAnimationFrame(() => ForkFlow.show(step.getAttribute("href").slice("#ff-step-".length)));
       return;
     }
-    const a = ev.target.closest('a[href^="#card-"]');
+    const a = ev.target.closest('a[href^="#card-"], a[href="#wp"]');
     const card = a && document.querySelector(a.getAttribute("href"))?.closest("section.card");
     if (card) { window.showCard?.(card); setCardOpen(card, true); }
   });
@@ -3355,6 +3408,7 @@ function renderState() {
   renderTestServer();
   window.renderPowerMenu?.();
   renderOverlayChecks();
+  renderCalibSteps();
   renderGrabberRun();
   renderGrabberCorrection();
   renderGrabberColors();
@@ -6508,7 +6562,7 @@ $("gcg-save").addEventListener("click", async () => {
 // different tint). Zurück steps back through the answers, Abbrechen restores the corner colors from
 // the start.
 const WP_CORNERS = ["white", "red", "green", "blue", "cyan", "magenta", "yellow"];
-let wpRun = null;          // { start: {corner: [r, g, b]}, gains: [r, g, b], steps: [gains …], log: [{ text, white }], memo }
+let wpRun = null;          // { start: {corner: [r, g, b]}, gains: [r, g, b], steps: [gains …], log: [{ text, white }], memo, swings }
 let wpDir = "more";
 let wpStrength = 1;
 const wpFmt = (w) => w.join(" / ");
@@ -6524,10 +6578,18 @@ function renderWhitePoint() {
   const running = !!wpRun;
   renderSideStatus();
   $("wp-start").hidden = running;
+  $("wp-how").hidden = running;
   $("wp-start").disabled = !hyperionConnected || !wpWhite();
   $("wp-run").hidden = !running;
   if (!running) return;
   const round = wpRun.steps.length + 1;
+  // when to stop: the answers swing back (applyAnswer then halves the step) or many rounds went by
+  const near = wpRun.swings >= 2 ? tr("Die Antworten springen hin und her, die Schritte sind schon klein: Das Weiß ist so gut wie neutral. Tippe auf „Neutral, fertig“, sobald du keinen Stich mehr sicher erkennst.")
+    : wpRun.swings === 1 ? tr("Die letzte Antwort ging in die Gegenrichtung: Du bist nah dran. Wirkt das Licht jetzt neutral oder kaum noch farbig, tippe auf „Neutral, fertig“.")
+    : round > 8 ? tr("Schon viele Runden. Wirkt das Licht fast neutral, darfst du aufhören: Den Rest gleicht später die Graukurve aus.")
+    : "";
+  $("wp-near").textContent = near;
+  $("wp-near").hidden = !near;
   $("wp-q").textContent = round === 1
     ? tr("Runde 1: Wie wirkt das Licht der LEDs an der Wand neben dem Weiß auf dem TV?")
     : tr("Runde {a}: Und jetzt? Wie wirkt das Licht der LEDs neben dem Weiß auf dem TV?", { a: round });
@@ -6548,7 +6610,7 @@ $("wp-start").addEventListener("click", () => {
   const e = wpEntry();
   if (!e?.white) return;
   const start = Object.fromEntries(WP_CORNERS.map((c) => [c, (e[c] ?? [0, 0, 0]).map(Number)]));
-  wpRun = { start, gains: [1, 1, 1], steps: [], log: [], memo: { scale: 1, last: null } };
+  wpRun = { start, gains: [1, 1, 1], steps: [], log: [], memo: { scale: 1, last: null }, swings: 0 };
   setColor("#ffffff");
   $("wp-note").textContent = "";
   wpStatus(tr("Der TV zeigt jetzt 100 % Weiß (Weißwert {a}). Vergleiche das Licht der LEDs an der Wand damit.", { a: wpFmt(start.white) }));
@@ -6560,7 +6622,9 @@ $("wp-tints").addEventListener("click", async (ev) => {
   const before = wpRun.gains;
   const round = wpRun.steps.length + 1;
   const text = gckAnswerText(b.dataset.tint, wpDir, wpStrength);
+  const scale = wpRun.memo.scale ?? 1;
   wpRun.gains = GrayCal.applyAnswer(before, b.dataset.tint, wpDir, wpStrength, wpRun.memo);
+  if ((wpRun.memo.scale ?? 1) < scale) wpRun.swings++;
   wpRun.steps.push(before);
   const white = wpCorners(wpRun.start, wpRun.gains)[0].value;
   wpRun.log.push({ text, white });
@@ -6591,10 +6655,16 @@ $("wp-done").addEventListener("click", () => {
   if (!wpRun) return;
   const white = wpCorners(wpRun.start, wpRun.gains)[0].value;
   const changed = wpRun.gains.some((g) => g !== 1);
-  $("wp-note").textContent = changed
+  const done = changed
     ? tr("Fertig: Weißwert {a} (vorher {b}), alle Farbwerte im selben Verhältnis. Sichere die Farbwerte unten in einem Speicherplatz.", { a: wpFmt(white), b: wpFmt(wpRun.start.white) })
     : tr("Fertig: Das Weiß war schon neutral, nichts geändert.");
+  // what comes next in the setup order: the gray curve, with 16-bit output first where the LEDs can do it
+  $("wp-note").innerHTML = escHtml(done) + "<br>" + tr("Als Nächstes: {a}. Können deine LEDs 16 Bit pro Farbe, schalte vorher die {b} ein.", {
+    a: `<a class="jump" href="#card-gcg"><b>${escHtml(tr("Graukurve kalibrieren"))}</b></a>`,
+    b: `<a class="jump" href="#card-ft"><b>${escHtml(tr("16-Bit Präzise-Farbausgabe"))}</b></a>`,
+  });
   wpRun = null;
+  send({ calibDone: { wp: true } });
   renderWhitePoint();
 });
 
@@ -6890,6 +6960,55 @@ async function lgLayoutAction(action) {
   }
 }
 
+// the places of the run grouped by LED run, in the order the calibration goes through them
+function lgStrands(areas, g) {
+  const out = [];
+  g.points.forEach((p, k) => {
+    const run = lgRun(areas, p);
+    const last = out.at(-1);
+    if (last && run && last.run.start === run.start) last.steps.push(k);
+    else out.push({ run, steps: [k] });
+  });
+  return out;
+}
+
+// the three parts (measure, correction, control run) and one row per LED run with its places
+function renderLgBar(g, areas, strands) {
+  const control = g.round === "control";
+  $("lg-rounds").innerHTML = [tr("Messung"), tr("Korrektur"), tr("Kontrolllauf")].map((name, i) => {
+    const st = control ? (i < 2 ? "done" : "cur") : i === 0 ? "cur" : "next";
+    return `<span class="gck-round ${st}">${st === "done" ? "✓" : i + 1} ${escHtml(name)}</span>`;
+  }).join(`<span class="gck-arrow" aria-hidden="true">›</span>`);
+  const names = { done: tr("erledigt"), skip: tr("nicht erkennbar"), cur: tr("gerade dran"), next: tr("kommt noch") };
+  $("lg-bar").innerHTML = strands.map(({ run, steps }) => {
+    const pts = steps.map((k) => {
+      const v = g.answers[g.points[k]];
+      const st = k === g.step ? "cur" : k > g.step ? "next" : v === null ? "skip" : "done";
+      const mark = st === "done" ? (v ? (v > 0 ? "+" : "−") + Math.abs(v) : "✓") : st === "skip" ? "–" : "";
+      return `<span class="lg-pt ${st}" title="${escHtml(tr("LED {a}: {b}", { a: g.points[k], b: names[st] }))}">${mark}</span>`;
+    }).join("");
+    const st = steps.includes(g.step) ? "cur" : steps.at(-1) < g.step ? "done" : "next";
+    const label = run ? tr(EDGE_NAMES[run.edge]) : "";
+    return `<div class="lg-strand ${st}"><span class="lg-strand-name">${st === "done" ? "✓ " : ""}${escHtml(label)} <small>${run ? `${run.start}–${run.end}` : ""}</small></span>${pts}</div>`;
+  }).join("");
+}
+
+// what just happened and what comes now: start, the next LED run, the last place
+function lgTransition(g, strands) {
+  const k = strands.findIndex((s) => s.steps.includes(g.step));
+  const cur = strands[k];
+  if (!cur?.run || cur.steps[0] !== g.step) return g.step === g.points.length - 1 ? tr("Letzte Stelle, danach zeigt die Seite das Ergebnis.") : "";
+  const name = (r) => tr("Strang {a} (LED {b}–{c})", { a: tr(EDGE_NAMES[r.edge]), b: r.start, c: r.end });
+  const parts = [];
+  if (k === 0) parts.push(g.round === "control"
+    ? tr("Kontrolllauf: dieselben Stellen noch einmal mit dem korrigierten Layout. Leuchtet die LED direkt an der Markierung, einfach „Übernehmen und weiter“. Los geht’s mit {a}.", { a: name(cur.run) })
+    : tr("Los geht’s mit {a}: {n} Stellen vom Anfang bis zum Ende des Strangs.", { a: name(cur.run), n: cur.steps.length }));
+  else parts.push(tr("{a} fertig. Jetzt {b}, {n} Stellen.", { a: name(strands[k - 1].run), b: name(cur.run), n: cur.steps.length }));
+  if (k > 0 && k === strands.length - 1) parts.push(tr("Das ist der letzte Strang."));
+  return parts.join(" ");
+}
+let lgTransKey = null;
+
 function renderPosGuide() {
   const g = state.posGuide;
   const fix = state.layoutFix ?? {};
@@ -6932,6 +7051,13 @@ function renderPosGuide() {
     $("lg-progress").innerHTML = tr("{r} · Stelle <b>{a}</b> von {b} · LED <b>{i}</b>", { r: g.round === "control" ? tr("Kontrolllauf") : tr("Messung"), a: g.step + 1, b: g.points.length, i }) +
       (run ? `<div>${tr("Strang {a} (LED {b}–{c}, {d})", { a: tr(EDGE_NAMES[run.edge]), b: run.start, c: run.end, d: segmentDirection(areas, run) })}</div>` : "");
     $("lg-map").innerHTML = lpMapSvg(areas, [i], state.posTest.color);
+    const strands = lgStrands(areas, g);
+    renderLgBar(g, areas, strands);
+    const trans = lgTransition(g, strands);
+    const tkey = `${g.round}/${g.step}/${I18N.lang}`;
+    if (tkey !== lgTransKey) { if (lgTransKey !== null && trans) gckFlash($("lg-trans")); lgTransKey = tkey; }
+    $("lg-trans").textContent = trans;
+    $("lg-trans").hidden = !trans;
     $("lg-question").textContent = tr("Schieb den orangen Pfeil auf dem TV genau über die LED, die leuchtet, dann „Übernehmen“.");
     if (run) lgRenderAnswers(run, Number(g.cursor) || 0);
     $("lg-back").disabled = g.step === 0;
@@ -7737,8 +7863,13 @@ function renderGrabberRun() {
       + `<span>${run.color ? tr("Schritt {a} von {b}", { a: run.index + 1, b: run.total }) + (run.label ? " · " + escHtml(I18N.t(run.label)) : "") : tr("Test startet …")}</span></div>`
       + `<div class="gx-bar"><span style="width:${pct}%"></span></div>`;
   }
-  $("gx-error").hidden = running || !run.error;
+  $("gx-error-box").hidden = running || !run.error;
   $("gx-error").textContent = run.error ? "Test abgebrochen: " + run.error : "";
+  $("gx-retry").disabled = !!state?.gcGuide?.active;
+  // what would spoil the test, checked before the start: shown above the button while nothing runs
+  const problems = running ? [] : gxProblems();
+  $("gx-check").hidden = !problems.length;
+  if (problems.length) $("gx-check").innerHTML = `<b>${escHtml(tr("Vor dem Start prüfen:"))}</b><ul>${problems.map((p) => `<li>${escHtml(p)}</li>`).join("")}</ul>`;
   $("gx-note").textContent = !running && run.aborted ? "Test abgebrochen, nichts gespeichert." : "";
   // finishedAt is 0 as long as no run ended since the server start, so the first end counts too
   const finishedAt = run.finishedAt ?? 0;
@@ -7747,6 +7878,74 @@ function renderGrabberRun() {
     gxFinishedAt = finishedAt;
     if (finishedAt) loadGrabberReport();
   }
+}
+
+// overview of the calibrations in the setup guide: done (check mark), the next one, the rest. The page
+// sets a mark when a calibration is finished; the grabber test counts by its stored result for the
+// connected grabber. The gray curve balances what gamma and white value give, so a white point set
+// after it asks for it again.
+function renderCalibSteps() {
+  const done = state?.calibDone ?? {};
+  const r = gxHintReport;
+  const gx = r?.basic?.steps?.length && r.device && GrabberTestReport.sameGrabber(GrabberTestReport.testDevice(r.basic), r.device) ? r.basic.date : null;
+  const later = (a, b) => a && b && Date.parse(a) > Date.parse(b);
+  const steps = [
+    { id: "rgb", href: "#card-rgb", name: tr("RGB-Byte-Reihenfolge"), at: done.rgb },
+    { id: "gx", href: "#card-gx", name: tr("Grabber-Farberkennung"), at: gx },
+    { id: "wp", href: "#wp", name: tr("Weißpunkt"), at: done.wp },
+    { id: "gc", href: "#card-gcg", name: tr("Graukurve"), at: done.gc, redo: later(done.wp, done.gc) },
+    { id: "lg", href: "#card-lg", name: tr("LED-Position"), at: done.lg },
+  ];
+  const next = steps.find((st) => !st.at || st.redo);
+  const date = (at) => new Date(at).toLocaleDateString(I18N.locale, { dateStyle: "medium" });
+  const chips = steps.map((st, i) => {
+    const cls = st === next ? (st.redo ? "cur redo" : "cur") : st.at && !st.redo ? "done" : st.redo ? "redo" : "next";
+    const title = st.redo ? tr("Neu nötig: Der Weißpunkt wurde danach geändert.") : st.at ? tr("Erledigt am {a}", { a: date(st.at) }) : st === next ? tr("Als Nächstes") : tr("Kommt noch");
+    return `<a class="jump gck-round ${cls}" href="${st.href}" title="${escHtml(title)}">${st.at && !st.redo ? "✓" : i + 1} ${escHtml(st.name)}</a>`;
+  }).join(`<span class="gck-arrow" aria-hidden="true">›</span>`);
+  let text;
+  if (!next) text = escHtml(tr("Alle Kalibrierungen sind erledigt. Sichere den Stand jetzt im Hyperion Backup."));
+  else if (next.redo) text = tr("Als Nächstes: {a}. Der Weißpunkt wurde nach der Graukurve geändert, deshalb muss sie neu kalibriert werden.", { a: `<a class="jump" href="${next.href}"><b>${escHtml(next.name)}</b></a>` });
+  else text = tr("Als Nächstes: {a}.", { a: `<a class="jump" href="${next.href}"><b>${escHtml(next.name)}</b></a>` });
+  const html = `<p class="gck-how-ttl">${escHtml(tr("Stand der Kalibrierungen"))}</p><div class="gck-rounds">${chips}</div><p>${text}</p>`
+    + `<p><small>${escHtml(tr("Ein Häkchen erscheint, sobald eine Kalibrierung fertig ist. Die Grabber-Farberkennung zählt für den angeschlossenen Grabber."))}</small></p>`;
+  const box = $("calib-steps");
+  if (box.dataset.html !== html) { box.dataset.html = html; box.innerHTML = html; }
+}
+
+// problems that make the measurement wrong: no TV page, Hyperion or grabber away, "No Signal" picture
+function gxProblems() {
+  const h = state?.health ?? {};
+  const out = [];
+  if (h.hyperionUp === false) out.push(tr("Hyperion ist nicht erreichbar."));
+  else if (h.noGrabber || h.grabberStuck) out.push(tr("Hyperion bekommt keine Bilder vom Grabber. Prüfe in der Grabber-Vorschau, ob ein Bild ankommt."));
+  else if (h.noSignal) out.push(tr("Der Grabber zeigt seine „No Signal“-Seite: Am Grabber kommt kein HDMI-Signal an. Prüfe Kabel und Zuspielgerät, bis die Grabber-Vorschau das TV-Bild zeigt."));
+  if (state && state.tvConnected !== true) out.push(tr("Die TV-Testseite ist nicht verbunden. Ohne sie zeigt der TV keine Testfarben. Öffne sie auf dem Gerät, das dem TV das Bild liefert (die Adresse steht in der Anleitung)."));
+  return out;
+}
+
+// the hint above the correction switch: what the last basic test of this grabber means for the next step
+let gxHintReport = null;
+function renderGxHint() {
+  const box = $("gx-hint");
+  const r = gxHintReport;
+  const basic = r?.basic;
+  const fits = !!basic?.steps?.length && !!r.device && GrabberTestReport.sameGrabber(GrabberTestReport.testDevice(basic), r.device);
+  if (!fits || state?.grabberRun?.running) { box.hidden = true; return; }
+  const c = state?.grabberCorrection ?? {};
+  const yuv = GrabberTestReport.detectYuv(basic);
+  const fit = GrabberTestReport.fitCorrection(basic);
+  const useful = !fit.error && fit.before && fit.before.max > 4;
+  const next = tr("Als Nächstes: {a} in der Farbkalibrierung.", { a: `<a class="jump" href="#wp"><b>${escHtml(tr("Weißpunkt einstellen"))}</b></a>` });
+  const tc = `<a class="jump" href="#card-tc"><b>${escHtml(tr("Testfarben"))}</b></a>`;
+  let html;
+  if (yuv?.best && yuv.best !== yuv.used) html = escHtml(tr("Der letzte Grundtest empfiehlt eine andere Farbnorm (YUV). Stell sie unten bei den Speicherplätzen dieses Grabbers um und wiederhole den Grundtest, bevor du die Korrektur einschaltest."));
+  else if (c.blocked) html = escHtml(tr("Die Korrektur ist pausiert, weil ihr Speicherplatz für eine andere Farbnorm berechnet wurde. Mach einen neuen Grundtest und speichere ihn."));
+  else if (useful && !c.enable) html = escHtml(tr("Der letzte Grundtest zeigt einen Farbfehler von bis zu {a} Stufen. Setze den Haken „Grabber-Farbkorrektur aktiv“ direkt hier darunter, dann gleicht Hyperion ihn aus.", { a: fmt(fit.before.max, 0) }));
+  else if (c.enable) html = tr("Die Grabber-Farbkorrektur ist an. Prüfe unter {a} Rot, Grün, Blau, Cyan, Magenta und Gelb: Zeigen die LEDs dieselbe Farbe wie der TV?", { a: tc }) + "<br>" + next;
+  else html = escHtml(tr("Der letzte Grundtest zeigt kaum Farbfehler, eine Korrektur ist nicht nötig.")) + "<br>" + next;
+  box.innerHTML = html;
+  box.hidden = false;
 }
 
 // switches the grabber color correction (stored in Hyperion); correction = full object from the report
@@ -7774,6 +7973,7 @@ function renderGrabberCorrection() {
     ? tr("Gleicht den Farbfehler von Grabber oder Splitter aus (Kalibrierung des angeschlossenen Grabbers). Wirkt sofort auf die LEDs.")
     : tr("Für den angeschlossenen Grabber ist noch keine Kalibrierung gespeichert. Zuerst in der Karte Grabber-Farberkennung einen Grundtest machen.");
   renderCorrectionSwitch();
+  renderGxHint();
   renderBell();
   const key = JSON.stringify(c);
   if (gcShown !== null && key !== gcShown) loadGrabberReport();
@@ -8045,7 +8245,10 @@ async function loadGrabberReport() {
       grabberTest: r, device: r.device, lang: I18N.lang, onAction: grabberSlotAction,
       devices, onSelectDevice: selectGrabber, yuvInfo: r.yuvInfo,
     });
+    gxHintReport = r;
+    renderCalibSteps();
     renderCorrectionSwitch();
+    renderGxHint();
     renderGxSave(r);
     GrabberTestReport.renderCompare($("gx-compare"), { grabberTest: r, device: r.device, lang: I18N.lang, heading: false });
   } catch (e) {
@@ -8095,6 +8298,8 @@ function renderGxSave(r) {
 async function grabberTestAction(kind) {
   const run = state?.grabberRun ?? {};
   const body = run.running ? { action: "stop" } : { action: "start", kind };
+  const problems = run.running ? [] : gxProblems();
+  if (problems.length && !confirm(tr("Vor dem Start:") + "\n\n" + problems.map((p) => "• " + p).join("\n") + "\n\n" + tr("Trotzdem starten?"))) return;
   try {
     const res = await fetch("/api/grabbertest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const out = await res.json();
@@ -8110,6 +8315,7 @@ async function grabberTestAction(kind) {
   }
 }
 $("gx-basic").addEventListener("click", () => grabberTestAction("basic"));
+$("gx-retry").addEventListener("click", () => grabberTestAction(state?.grabberRun?.kind === "custom" ? "custom" : "basic"));
 // the result folds like "All measured values"; the choice is kept in this browser
 for (const [id, key] of [["gx-result", "tvtest-gx-result"], ["gx-compare-fold", "tvtest-gx-compare"]]) {
   const box = $(id);
@@ -8341,6 +8547,13 @@ async function loadingTick() {
     $("rgb-current").textContent = tr("Aktuelle Reihenfolge der LED-Hardware: {o}", { o: current.toUpperCase() });
   };
   // the same mapping as the WebUI wizard: every channel of the order is replaced by the one the LEDs showed
+  // the order is right (found or saved): check mark in the guide and the next step of the setup
+  let marked = false;
+  const done = () => {
+    $("rgb-next").innerHTML = tr("Als Nächstes: {a}.", { a: `<a class="jump" href="#card-gx"><b>${escHtml(tr("Grabber-Farberkennung"))}</b></a>` });
+    $("rgb-next").hidden = false;
+    if (!marked) { marked = true; send({ calibDone: { rgb: true } }); }
+  };
   const evaluate = () => {
     const red = $("rgb-r").value;
     const green = $("rgb-g").value;
@@ -8357,6 +8570,7 @@ async function loadingTick() {
     if (red === "r" && green === "g") {
       $("rgb-result").textContent = I18N.t("Deine RGB-Byte-Reihenfolge ist bereits richtig eingestellt.");
       save.hidden = true;
+      done();
       return;
     }
     $("rgb-result").textContent = tr("Neue Reihenfolge: {o}", { o: next.toUpperCase() });
@@ -8370,6 +8584,8 @@ async function loadingTick() {
     } catch { /* stays rgb */ }
     $("rgb-r").value = "";
     $("rgb-g").value = "";
+    marked = false;
+    $("rgb-next").hidden = true;
     evaluate();
     schedule();
     render();
@@ -8391,6 +8607,7 @@ async function loadingTick() {
       current = out.colorOrder;
       await stop();
       $("rgb-current").textContent = tr("Gespeichert. Aktuelle Reihenfolge der LED-Hardware: {o}", { o: current.toUpperCase() });
+      done();
     } catch (e) { fail(e); }
   });
   // leaving the page ends the wizard, so the LEDs do not stay red or green
@@ -8542,7 +8759,7 @@ async function init() {
 init().then(() => {
   // a link from the Hyperion WebUI bell (/#card-gx): open that card and scroll to it
   const id = decodeURIComponent(location.hash.slice(1));
-  if (id && /^card-[\w-]+$/.test(id)) setTimeout(() => jumpToCard(id), 300);
+  if (id && /^(card-[\w-]+|wp)$/.test(id)) setTimeout(() => jumpToCard(id), 300);
 });
 </script>
 </body>
