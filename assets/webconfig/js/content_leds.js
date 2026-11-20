@@ -642,6 +642,11 @@ $(document).ready(function () {
   // update instance listing
   updateHyperionInstanceListing();
 
+  // Fork-Erweiterung: Direktlinks auf die passenden Karten der TV-Testseite, immer sichtbar (die
+  // Einführungen setzen sich darüber)
+  $('#leddevice_intro').prepend(testPageCardLinks([['card-rgb', 'testpage_link_rgb']]));
+  $('#layout_intro').prepend(testPageCardLinks([['card-lg', 'testpage_link_lg'], ['card-lp', 'testpage_link_lp']]));
+
   //add intros
   if (window.showOptHelp) {
     createHintH("intro", $.i18n('conf_leds_device_intro'), "leddevice_intro");
@@ -1990,6 +1995,7 @@ $(document).ready(function () {
     var current = window.serverConfig.color && window.serverConfig.color.ledAreaDepth;
     if (current) depthEditor.getEditor('root.ledAreaDepth').setValue(current);
     var expl = $.i18n('edt_conf_color_ledAreaDepth_expl');
+    $('#editor_container_areadepth').prepend(testPageCardLinks([['card-dt', 'testpage_link_dt']]));
     if (window.showOptHelp && expl !== 'edt_conf_color_ledAreaDepth_expl') createHint('intro', expl, 'editor_container_areadepth');
     depthEditor.on('change', function () {
       $('#btn_submit_areadepth').prop('disabled', !!(depthEditor.validate().length || window.readOnlyMode));

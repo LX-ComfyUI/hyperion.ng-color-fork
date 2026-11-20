@@ -87,7 +87,8 @@ $(document).ready(function () {
       const testPageLink = (path) => '<a href="' + testPageBase() + path + '" target="_blank" rel="noopener">' + testPageBase() + path + '</a>';
       $('#grabbertest_container').append(
         '<div class="bs-callout bs-callout-primary" style="margin-top:0px"><h4>' + $.i18n('conf_helptable_expl') + '</h4>'
-        + $.i18n('conf_grabber_test_intro', testPageLink('/tv'), testPageLink('/')) + '</div>'
+        + $.i18n('conf_grabber_test_intro', testPageLink('/tv'), testPageLink('/#card-gx')) + '</div>'
+        + testPageCardLinks([['card-gx', 'testpage_link_gx']])
         + '<div id="grabbertest_slots"></div>'
         + '<div id="grabbertest_report"></div>'
         + '<div id="grabbertest_compare"></div>');
@@ -965,6 +966,9 @@ $(document).ready(function () {
 
   //////////////////////////////////////////////////
 
+  // Fork-Erweiterung: Direktlink auf den Grundtest der TV-Testseite, immer sichtbar
+  if (videoGrabberAvailable) $('#editor_container_videograbber').prepend(testPageCardLinks([['card-gx', 'testpage_link_gx'], ['card-ns', 'testpage_link_ns']]));
+
   //create introduction
   if (globalThis.showOptHelp) {
     if (screenGrabberAvailable) {
@@ -973,7 +977,7 @@ $(document).ready(function () {
     if (videoGrabberAvailable) {
       // Fork-Erweiterung: Hinweis auf den Grabber-Test der TV-Testseite (testPageBase)
       const testPageLink = (path) => '<a href="' + testPageBase() + path + '" target="_blank" rel="noopener">' + testPageBase() + path + '</a>';
-      createHint("intro", $.i18n('conf_grabber_v4l_intro') + '<br><br>' + $.i18n('conf_grabber_v4l_testpage', testPageLink('/tv'), testPageLink('/')), "editor_container_videograbber");
+      createHint("intro", $.i18n('conf_grabber_v4l_intro') + '<br><br>' + $.i18n('conf_grabber_v4l_testpage', testPageLink('/tv'), testPageLink('/#card-gx')), "editor_container_videograbber");
     }
     if (audioGrabberAvailable) {
       createHint("intro", $.i18n('conf_grabber_audio_intro'), "editor_container_audiograbber");

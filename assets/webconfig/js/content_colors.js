@@ -405,13 +405,21 @@ $(document).ready(function () {
   wikiElement.attr('id', 'blackborderWikiLinkId');
   $('#editor_container_blackborder').append(wikiElement);
 
+  // Fork-Erweiterung: Direktlinks auf die passenden Karten der TV-Testseite, immer sichtbar (vor den
+  // Einführungen eingefügt, die sich darüber setzen)
+  $('#editor_container_color').prepend(testPageCardLinks([['wp', 'testpage_link_wp'], ['card-tc', 'testpage_link_tc'], ['card-gcg', 'testpage_link_gc']]));
+  $('#editor_container_graycurve').prepend(testPageCardLinks([['card-gcg', 'testpage_link_gc']]));
+  $('#editor_container_smoothing').prepend(testPageCardLinks([['card-sm', 'testpage_link_sm']]));
+  $('#editor_container_blackborder').prepend(testPageCardLinks([['card-bars', 'testpage_link_bars']]));
+  $('#editor_container_graystill').prepend(testPageCardLinks([['card-gs', 'testpage_link_gs']]));
+
   //create introduction
   if (window.showOptHelp) {
     // TV test page (tvtest service on the same host, see testPageBase): /tv on the TV, / is the phone/PC control page
     var testPageLink = function (path) {
       return '<a href="' + testPageBase() + path + '" target="_blank" rel="noopener">' + testPageBase() + path + '</a>';
     };
-    createHint("intro", $.i18n('conf_colors_color_intro') + '<br><br>' + $.i18n('conf_colors_color_testpage', testPageLink("/tv"), testPageLink("/")), "editor_container_color");
+    createHint("intro", $.i18n('conf_colors_color_intro') + '<br><br>' + $.i18n('conf_colors_color_testpage', testPageLink("/tv"), testPageLink("/#card-color")), "editor_container_color");
     createHint("intro", $.i18n('conf_colors_smoothing_intro'), "editor_container_smoothing");
     if (BORDERDETECT_ENABLED) {
       createHint("intro", $.i18n('conf_colors_blackborder_intro'), "editor_container_blackborder");

@@ -1412,7 +1412,20 @@
   "wiz_yeelight_unsupported": "Unsupported",
   "ws_error_occured": "WebSocket error occured",
   "ws_not_supported": "Websocket is not supported by your browser",
-  "ws_processing_exception": "Exception during Websocket message processing"
+  "ws_processing_exception": "Exception during Websocket message processing",
+  "testpage_links_lead": "On the TV test page:",
+  "testpage_link_wp": "Set white point",
+  "testpage_link_tc": "Compare test colors",
+  "testpage_link_gc": "Calibrate gray curve",
+  "testpage_link_sm": "Check smoothing with videos",
+  "testpage_link_bars": "Test black bars",
+  "testpage_link_gs": "Test gray still image",
+  "testpage_link_gx": "Grabber color detection (basic test)",
+  "testpage_link_ns": "“No Signal” still image",
+  "testpage_link_rgb": "Check RGB byte order",
+  "testpage_link_lg": "Calibrate LED position",
+  "testpage_link_lp": "Test LED position",
+  "testpage_link_dt": "Test LED capture depth"
 }
 
 

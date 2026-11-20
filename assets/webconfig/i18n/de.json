@@ -1412,5 +1412,18 @@
   "wiz_yeelight_unsupported": "Nicht unterstützt",
   "ws_error_occured": "Ein WebSocket-Fehler ist aufgetreten",
   "ws_not_supported": "Ihr Browser unterstützt kein Websocket Verbindungen",
-  "ws_processing_exception": "Bei der Verarbeitung von Websocket-Nachrichten gibt es einen Fehler"
+  "ws_processing_exception": "Bei der Verarbeitung von Websocket-Nachrichten gibt es einen Fehler",
+  "testpage_links_lead": "Auf der TV-Testseite:",
+  "testpage_link_wp": "Weißpunkt einstellen",
+  "testpage_link_tc": "Testfarben vergleichen",
+  "testpage_link_gc": "Graukurve kalibrieren",
+  "testpage_link_sm": "Glättung mit Videos prüfen",
+  "testpage_link_bars": "Schwarze Balken testen",
+  "testpage_link_gs": "Graues Standbild testen",
+  "testpage_link_gx": "Grabber-Farberkennung (Grundtest)",
+  "testpage_link_ns": "„No Signal“-Standbild",
+  "testpage_link_rgb": "RGB-Byte-Reihenfolge prüfen",
+  "testpage_link_lg": "LED-Position kalibrieren",
+  "testpage_link_lp": "LED-Position testen",
+  "testpage_link_dt": "LED-Erfassungstiefe testen"
 }

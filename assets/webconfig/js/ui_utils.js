@@ -9,6 +9,16 @@ function testPageBase() {
   return 'http://' + location.hostname + ':' + port;
 }
 
+// Fork-Erweiterung: Zeile mit Links, die eine Karte der TV-Testseite öffnen (/#card-…: die Testseite
+// klappt die Karte auf und scrollt hin; ohne Anmeldung kommt sie nach dem Login dorthin). items:
+// [[Karte, i18n-Schlüssel des Linktexts], …]
+function testPageCardLinks(items) {
+  const links = items.map(function (it) {
+    return '<a href="' + testPageBase() + '/#' + it[0] + '" target="_blank" rel="noopener">' + $.i18n(it[1]) + '</a>';
+  });
+  return '<div class="testpage-links"><i class="fa fa-external-link fa-fw"></i>' + $.i18n('testpage_links_lead') + ' ' + links.join(' · ') + '</div>';
+}
+
 // Fork: headers for requests to the test server; with a Hyperion password of its own it accepts the
 // login of this WebUI (its token) instead of an own login
 function testPageHeaders(headers) {
