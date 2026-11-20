@@ -128,7 +128,11 @@ const DEFAULT_STATE = {
   lastPort: 0,
   // the hint "ffmpeg is missing" was given at the first video upload / the first video played
   ffmpegHint: { upload: false, play: false },
+  // calibrations finished (overview in the guide): key -> ISO date. rgb byte order, wp white point,
+  // gc gray curve, lg LED position; the grabber test counts by its stored result instead
+  calibDone: {},
 };
+const CALIB_KEYS = ["rgb", "wp", "gc", "lg"];
 
 const num = (v, min, max, fallback, step = 1) => {
   const n = Number(v);
@@ -327,6 +331,7 @@ function sanitize(input) {
     );
   }
   if (input.lang === "en" || input.lang === "de") out.lang = input.lang;
+  out.calibDone = Object.fromEntries(CALIB_KEYS.filter((k) => typeof input.calibDone?.[k] === "string" && !Number.isNaN(Date.parse(input.calibDone[k]))).map((k) => [k, input.calibDone[k]]));
   out.testGuard = input.testGuard !== false;
   out.guardRules = Object.fromEntries(GUARD_TESTS.map((t) => {
     const list = Array.isArray(input.guardRules?.[t]) ? input.guardRules[t] : DEFAULT_GUARD_RULES[t];
@@ -1381,8 +1386,14 @@ function gcSet(patch, silent = false) {
     if (gcGuide.error) addNotice("gcgError", "critical", { error: gcGuide.error }, "card-gcg");
     else addNotice("gcgAborted", "critical", {}, "card-gcg");
   }
-  if (!was.done && gcGuide.done) addNotice("gcgDone", "info", {}, "card-gcg");
+  if (!was.done && gcGuide.done) { addNotice("gcgDone", "info", {}, "card-gcg"); markCalibDone("gc"); }
   broadcast();
+}
+
+// a calibration finished: its check mark in the overview of the guide
+function markCalibDone(key) {
+  state = sanitize({ ...state, calibDone: { ...state.calibDone, [key]: new Date().toISOString() } });
+  saveState();
 }
 
 const gcEntry = (color) => color?.channelAdjustment?.[gcGuide.colorIndex] ?? null;
@@ -2815,10 +2826,25 @@ const server = http.createServer(async (req, res) => {
       const testGuard = typeof patch.testGuard === "boolean" ? patch.testGuard : state.testGuard;
       const guardRules = patch.guardRulesReset ? DEFAULT_GUARD_RULES : patch.guardRules ? { ...state.guardRules, ...patch.guardRules } : state.guardRules;
       const guideBefore = state.posGuide;
-      state = sanitize({ color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState, lastPort: state.lastPort, ffmpegHint: state.ffmpegHint });
+      // check marks of the calibrations done on the page (white point, RGB byte order); null takes one back
+      const calibDone = { ...state.calibDone };
+      for (const [k, v] of Object.entries(patch.calibDone ?? {})) {
+        if (!CALIB_KEYS.includes(k)) continue;
+        if (v === null) delete calibDone[k];
+        else calibDone[k] = new Date().toISOString();
+      }
+      state = sanitize({ calibDone, color, colorActive, bars, customColors, grabberColors, presetColors, grayTest, depthTest, fracTest, posTest, posGuide, overlays, lang, testPresets, testGuard, guardRules, grayCurveByGrabber: state.grayCurveByGrabber, curveGrabber: state.curveGrabber, media: mediaState, lastPort: state.lastPort, ffmpegHint: state.ffmpegHint });
       if (patch.media?.active === true) ffmpegHint(mediaItemOf(state.media.id), "play");
       saveState();
-      if (state.posGuide?.done && !guideBefore?.done) addNotice("guideDone", "info", {}, "card-lg");
+      if (state.posGuide?.done && !guideBefore?.done) {
+        addNotice("guideDone", "info", {}, "card-lg");
+        // done = every measured place fits, or the control run after a correction is through
+        const values = Object.values(state.posGuide.answers).filter((v) => typeof v === "number");
+        if (values.length && (state.posGuide.round === "control" || values.every((v) => v === 0))) {
+          state = sanitize({ ...state, calibDone: { ...state.calibDone, lg: new Date().toISOString() } });
+          saveState();
+        }
+      }
       else if (guideBefore?.active && !guideBefore.done && !state.posGuide?.active) addNotice("guideAborted", "critical", {}, "card-lg");
       // a test that is touched again is no longer "paused"
       for (const key of ["grayTest", "depthTest", "fracTest", "posTest", "posGuide", "bars"]) if (patch[key]) delete paused[key];
