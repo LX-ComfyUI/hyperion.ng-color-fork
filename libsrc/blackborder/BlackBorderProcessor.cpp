@@ -149,8 +149,21 @@ QJsonObject BlackBorderProcessor::debugState() const
 		};
 	};
 
+	const auto levelsJson = [](const EdgeLevels& levels) {
+		return QJsonObject{
+			{ "top", levels.top },
+			{ "bottom", levels.bottom },
+			{ "left", levels.left },
+			{ "right", levels.right }
+		};
+	};
+
 	return QJsonObject{
 		{ "enabled", _enabled },
+		{ "blackLevel", _detector ? _detector->blackLevel() : -1 },
+		{ "edgeLevel", levelsJson(_edgeLevels) },
+		{ "edgeLevelPeak", levelsJson(_edgePeak) },
+		{ "edgeLevelFrames", EDGE_BLOCK_FRAMES },
 		{ "mode", _detectionMode },
 		{ "threshold", _oldThreshold },
 		{ "imageWidth", _lastImageWidth },

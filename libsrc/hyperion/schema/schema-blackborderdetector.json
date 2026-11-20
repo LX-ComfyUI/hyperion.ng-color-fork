@@ -67,13 +67,27 @@
 			},
 			"propertyOrder" : 7
 		},
+		"barDisplay" :
+		{
+			"type" : "object",
+			"title" : "edt_conf_bb_barDisplay_title",
+			"required" : true,
+			"propertyOrder" : 8,
+			"properties" :
+			{
+				"lightAtBars" : { "type" : "string", "title" : "edt_conf_bb_barDisplay_lightAtBars_title", "required" : true, "enum" : ["normal", "sidesOnly", "off"], "options" : { "enum_titles" : ["edt_conf_enum_bbBarLightNormal", "edt_conf_enum_bbBarLightSidesOnly", "edt_conf_enum_bbBarLightOff"] }, "default" : "normal", "propertyOrder" : 1 },
+				"sideLeds" : { "type" : "string", "title" : "edt_conf_bb_barDisplay_sideLeds_title", "required" : true, "enum" : ["stretched", "oneToOne"], "options" : { "enum_titles" : ["edt_conf_enum_bbSideStretched", "edt_conf_enum_bbSideOneToOne"] }, "default" : "stretched", "propertyOrder" : 2 },
+				"barSideFill" : { "type" : "string", "title" : "edt_conf_bb_barDisplay_barSideFill_title", "required" : true, "enum" : ["dark", "cornerColor"], "options" : { "enum_titles" : ["edt_conf_enum_bbBarFillDark", "edt_conf_enum_bbBarFillCorner"] }, "default" : "dark", "propertyOrder" : 3 }
+			},
+			"additionalProperties" : false
+		},
 		"grayStillImageDetector" :
 		{
 			"type" : "object",
 			"title" : "edt_conf_bb_grayStillImageDetector_title",
 			"required" : true,
 			"access" : "expert",
-			"propertyOrder" : 8,
+			"propertyOrder" : 9,
 			"properties" :
 			{
 				"enabled" : { "type" : "boolean", "title" : "edt_conf_bb_grayStillImageDetector_enabled_title", "required" : true, "default" : false, "propertyOrder" : 1 },

@@ -150,6 +150,11 @@
          "maxInconsistentCnt":10,
          "blurRemoveCnt":1,
          "mode":"default",
+         "barDisplay":{
+            "lightAtBars":"normal",
+            "sideLeds":"stretched",
+            "barSideFill":"dark"
+         },
          "grayStillImageDetector":{
             "enabled":false,
             "stillTimeSeconds":5,

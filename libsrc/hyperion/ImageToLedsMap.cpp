@@ -13,7 +13,8 @@ ImageToLedsMap::ImageToLedsMap(
 		int verticalBorder,
 		const QVector<Led>& leds,
 		int reducedPixelSetFactor,
-		int accuracyLevel)
+		int accuracyLevel,
+		const QVector<bool>& fullHeightLeds)
 	: _log(log)
 	, _width(width)
 	, _height(height)
@@ -45,8 +46,18 @@ ImageToLedsMap::ImageToLedsMap(
 	int     ledCounter = 0;
 	QList<int> ledsWithForcedSkippedPixels;
 
-	for (const Led& led : leds)
+	// Fork extension: LEDs mapped 1:1 against the full image height (see fullHeightLeds)
+	const bool anyFullHeight = fullHeightLeds.contains(true);
+	_centerRow.fill(-1.0, leds.size());
+	if (anyFullHeight)
 	{
+		_barSide.fill(0, leds.size());
+	}
+
+	for (int ledIndex = 0; ledIndex < leds.size(); ++ledIndex)
+	{
+		const Led& led = leds[ledIndex];
+
 		// skip leds without area
 		if ((led.maxX_frac-led.minX_frac) < 1e-6 || (led.maxY_frac-led.minY_frac) < 1e-6)
 		{
@@ -66,11 +77,36 @@ ImageToLedsMap::ImageToLedsMap(
 		{
 			maxX_idx++;
 		}
-		minY_idx = qMin(minY_idx, yOffset + actualHeight - 1);
-		if (minY_idx == maxY_idx)
+
+		if (anyFullHeight && ledIndex < fullHeightLeds.size() && fullHeightLeds[ledIndex])
 		{
-			maxY_idx++;
+			// Fork extension: the real height in the full image, cut to the picture between the bars.
+			// The centre decides: in a bar = no light from the picture, else the picture part of the area.
+			const double centre = _height * (led.minY_frac + led.maxY_frac) / 2.0;
+			if (centre < yOffset || centre >= yOffset + actualHeight)
+			{
+				_barSide[ledIndex] = centre < yOffset ? -1 : 1;
+				_centerRow[ledIndex] = centre;
+				_colorsMap.append(QVector<int>());
+				continue;
+			}
+			minY_idx = qMax(yOffset, int32_t(qRound(_height * led.minY_frac)));
+			maxY_idx = qMin(yOffset + actualHeight, int32_t(qRound(_height * led.maxY_frac)));
+			if (maxY_idx <= minY_idx)
+			{
+				minY_idx = qBound(yOffset, int(centre), yOffset + actualHeight - 1);
+				maxY_idx = minY_idx + 1;
+			}
 		}
+		else
+		{
+			minY_idx = qMin(minY_idx, yOffset + actualHeight - 1);
+			if (minY_idx == maxY_idx)
+			{
+				maxY_idx++;
+			}
+		}
+		_centerRow[ledIndex] = (minY_idx + qMin(maxY_idx, yOffset + actualHeight)) / 2.0;
 
 		// Add all the indices in the above defined rectangle to the indices for this led
 		const int maxYLedCount = qMin(maxY_idx, yOffset+actualHeight);

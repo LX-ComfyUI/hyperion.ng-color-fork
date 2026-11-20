@@ -4,6 +4,8 @@
 #include <QVector>
 #include <QSharedPointer>
 #include <QLoggingCategory>
+#include <QMutex>
+#include <QMutexLocker>
 
 // Utils includes
 #include <utils/Image.h>
@@ -199,6 +201,9 @@ public:
 					}
 				}
 			}
+
+			// Fork extension: picture display with black bars (top/bottom off, sides 1:1, bar height)
+			applyBarDisplay(colors, means);
 		}
 		else
 		{
@@ -257,6 +262,9 @@ public:
 			// Fork extension: detect/handle a gray, dimmed still image (e.g. a paused
 			// streaming player fading out) and override colors in place if confirmed
 			processGrayStill(image, ledColors);
+
+			// Fork extension: picture display with black bars
+			applyBarDisplay(ledColors, nullptr);
 		}
 		else
 		{
@@ -283,7 +291,8 @@ public:
 	{
 		return QJsonObject{
 			{ "blackborder", _borderProcessor->debugState() },
-			{ "grayStill", _grayStillDetector->debugState() }
+			{ "grayStill", _grayStillDetector->debugState() },
+			{ "barDisplay", barDisplayDebugState() }
 		};
 	}
 
@@ -456,6 +465,38 @@ private:
 
 	/// Fork extension: recompute _areaLeds from the layout and the depth
 	void updateAreaLeds();
+
+	///
+	/// Fork extension: picture display with black bars at the top/bottom (setting
+	/// blackborderdetector.barDisplay). Only acts while a horizontal bar is applied.
+	///  - lightAtBars: normal / sidesOnly (top and bottom LEDs off) / off (all LEDs off)
+	///  - sideLeds: stretched (picture stretched over the whole side, upstream) / oneToOne (side LEDs
+	///    at their real height, see ImageToLedsMap fullHeightLeds)
+	///  - barSideFill (oneToOne only): side LEDs at bar height dark, or with the colour of the side
+	///    LED nearest to the bar that still lies in the picture (the corner of the picture)
+	/// Built for one axis (letterbox); pillarbox would be the same with x and y swapped.
+	///
+	enum class BarLight { Normal, SidesOnly, Off };
+	enum LedEdge { EdgeInner = 0, EdgeTop, EdgeBottom, EdgeLeft, EdgeRight };
+	BarLight _barLight;
+	bool _barOneToOne;
+	bool _barFillCorner;
+	/// per LED the nearest picture edge of its centre in the layout, EdgeInner when far from all
+	QVector<int> _ledEdge;
+	/// per LED in a bar: the LED whose colour it takes, -1 = dark (built with the mapping)
+	QVector<int> _barFillSource;
+	/// LEDs the last frame switched off / filled, for the debug state
+	mutable QMutex _barMutex;
+	bool _barActive;
+	int _barDarkCount;
+	int _barFilledCount;
+
+	void handleBarDisplaySettings(const QJsonObject& obj);
+	void updateLedEdges();
+	QVector<bool> barFullHeightLeds(int horizontalBorder) const;
+	void updateBarFillSources();
+	void applyBarDisplay(QVector<ColorRgb>& colors, QVector<ColorRgbFloat>* means);
+	QJsonObject barDisplayDebugState() const;
 
 	/// Hyperion instance pointer
 	QWeakPointer<Hyperion> _hyperionWeak;

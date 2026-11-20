@@ -2,6 +2,8 @@
 
 // Utils includes
 #include <utils/Image.h>
+#include <QString>
+#include <initializer_list>
 
 namespace hyperion
 {
@@ -37,6 +39,26 @@ namespace hyperion
 		}
 	};
 
+	///
+	/// Fork extension: the brightest colour channel (0-255) at the outermost picture edge, where the
+	/// detection mode looks for bars. A bar can only be detected while this stays below the black
+	/// threshold. -1 = this edge is not checked by the mode.
+	///
+	struct EdgeLevels
+	{
+		int top = -1;
+		int bottom = -1;
+		int left = -1;
+		int right = -1;
+
+		void raise(const EdgeLevels& other)
+		{
+			top = qMax(top, other.top);
+			bottom = qMax(bottom, other.bottom);
+			left = qMax(left, other.left);
+			right = qMax(right, other.right);
+		}
+	};
 	///
 	/// The BlackBorderDetector performs detection of black-borders on a single image.
 	/// The detector will search for the upper left corner of the picture in the frame.
@@ -280,6 +302,85 @@ namespace hyperion
 		}
 
 
+
+		///
+		/// Fork extension: edge levels of one image (see EdgeLevels), measured in a band of 1 % of the
+		/// height (top/bottom) or width (left/right), at least one pixel, at the columns/rows the mode
+		/// checks. For "osd", top/bottom are measured at the given vertical border.
+		///
+		template <typename Pixel_T>
+		EdgeLevels edgeLevels(const Image<Pixel_T> & image, const QString & mode, int verticalBorder = 0) const
+		{
+			EdgeLevels levels;
+			const int width = image.width();
+			const int height = image.height();
+			if (width < 4 || height < 4)
+			{
+				return levels;
+			}
+			const int bandY = qMax(1, height / 100);
+			const int bandX = qMax(1, width / 100);
+			const auto level = [](const Pixel_T & p) { return int(qMax(p.red, qMax(p.green, p.blue))); };
+			const auto rowsAt = [&](std::initializer_list<int> xs, bool bottom) {
+				int v = 0;
+				for (int x : xs)
+				{
+					x = qBound(0, x, width - 1);
+					for (int d = 0; d < bandY; ++d)
+					{
+						v = qMax(v, level(image(x, bottom ? height - 1 - d : d)));
+					}
+				}
+				return v;
+			};
+			const auto colsAt = [&](std::initializer_list<int> ys, bool right) {
+				int v = 0;
+				for (int y : ys)
+				{
+					y = qBound(0, y, height - 1);
+					for (int d = 0; d < bandX; ++d)
+					{
+						v = qMax(v, level(image(right ? width - 1 - d : d, y)));
+					}
+				}
+				return v;
+			};
+
+			if (mode == "classic")
+			{
+				// one diagonal from the top left corner
+				int v = 0;
+				for (int d = 0; d < qMax(bandX, bandY); ++d)
+				{
+					v = qMax(v, level(image(qMin(d, width - 1), qMin(d, height - 1))));
+				}
+				levels.top = levels.left = v;
+			}
+			else if (mode == "letterbox")
+			{
+				levels.top = rowsAt({ width / 4, width / 2, width / 4 * 3 }, false);
+				levels.bottom = rowsAt({ width / 4, width / 4 * 3 }, true);
+			}
+			else if (mode == "osd")
+			{
+				const int x = qBound(0, verticalBorder, width / 3);
+				levels.top = rowsAt({ x, width - 1 - x }, false);
+				levels.bottom = rowsAt({ x, width - 1 - x }, true);
+				levels.left = colsAt({ height / 3, height / 3 * 2 }, false);
+				levels.right = colsAt({ height / 2 }, true);
+			}
+			else
+			{
+				levels.top = rowsAt({ width / 3, width / 3 * 2 }, false);
+				levels.bottom = rowsAt({ width / 2 }, true);
+				levels.left = colsAt({ height / 3, height / 3 * 2 }, false);
+				levels.right = colsAt({ height / 2 }, true);
+			}
+			return levels;
+		}
+
+		/// Fork extension: the black threshold in colour steps, a channel below it counts as black
+		int blackLevel() const { return _blackborderThreshold; }
 
 	private:
 

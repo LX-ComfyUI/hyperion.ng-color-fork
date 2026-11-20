@@ -328,6 +328,42 @@ $(document).ready(function () {
       blackborderdetector: window.schema.blackborderdetector
     }, true, true);
 
+    // Fork-Erweiterung: Bilddarstellung bei schwarzen Balken - Info-Symbole, Felder nur zeigen, wenn
+    // sie wirken, und ein sichtbarer Hinweis bei "Komplett aus"
+    var BAR_BASE = 'root.blackborderdetector.barDisplay.';
+    function barField(key) {
+      try {
+        return editor_blackborder.getEditor(BAR_BASE + key);
+      } catch (e) {
+        return null;
+      }
+    }
+    ['lightAtBars', 'sideLeds', 'barSideFill'].forEach(function (key) {
+      var fieldEditor = barField(key);
+      if (!fieldEditor || !fieldEditor.label || $(fieldEditor.label).data('forkInfoIconAdded')) return;
+      infoIcons.add(fieldEditor.label, $.i18n('edt_conf_bb_barDisplay_' + key + '_expl'));
+      $(fieldEditor.label).data('forkInfoIconAdded', true);
+    });
+    function updateBarDisplayFields(detectionOn) {
+      var light = barField('lightAtBars');
+      var side = barField('sideLeds');
+      var fill = barField('barSideFill');
+      if (!light || !side || !fill) return;
+      var off = light.getValue() === 'off';
+      var show = function (fieldEditor, on) {
+        if (fieldEditor.container) fieldEditor.container.style.display = on ? '' : 'none';
+      };
+      show(side, detectionOn && !off);
+      show(fill, detectionOn && !off && side.getValue() === 'oneToOne');
+      var $warn = $('#bbBarOffWarning');
+      if (!$warn.length && light.container) {
+        $warn = $('<p id="bbBarOffWarning" class="text-warning" style="margin-top:6px"></p>').text($.i18n('edt_conf_bb_barDisplay_offWarning'));
+        $(light.container).append($warn);
+      }
+      $warn.toggle(detectionOn && off);
+    }
+
+
     editor_blackborder.on('change', function () {
       var blackborderEnable = editor_blackborder.getEditor("root.blackborderdetector.enable").getValue();
       if (blackborderEnable) {
@@ -340,6 +376,7 @@ $(document).ready(function () {
         $('#blackborderHelpPanelId').hide();
         $('#blackborderWikiLinkId').hide();
       }
+      updateBarDisplayFields(blackborderEnable);
       var blackborderInvalid = editor_blackborder.validate().length || window.readOnlyMode;
       $('#btn_submit_blackborder').prop('disabled', blackborderInvalid);
       $('#btn_submit_graystill').prop('disabled', blackborderInvalid);

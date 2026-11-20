@@ -113,6 +113,18 @@ namespace hyperion
 			}
 
 			_lastImageBorder = imageBorder;
+
+			// Fork extension: live edge level for the test page, with the peak of the last block of frames
+			_edgeLevels = _detector->edgeLevels(image, _detectionMode,
+			                                    _currentBorder.unknown ? 0 : qMax(0, _currentBorder.verticalSize));
+			_edgeBlock.raise(_edgeLevels);
+			if (++_edgeBlockFrames >= EDGE_BLOCK_FRAMES)
+			{
+				_edgePeak = _edgeBlock;
+				_edgeBlock = EdgeLevels();
+				_edgeBlockFrames = 0;
+			}
+
 			const bool borderUpdated = updateBorder(imageBorder);
 			return borderUpdated;
 		}
@@ -184,6 +196,13 @@ namespace hyperion
 		bool _userEnabled;
 
 		/// Fork extension: debug snapshot data, guarded by _debugMutex
+		/// Fork extension: edge levels of the last frame, the running block and the last full block
+		static constexpr int EDGE_BLOCK_FRAMES = 30;
+		EdgeLevels _edgeLevels;
+		EdgeLevels _edgeBlock;
+		EdgeLevels _edgePeak;
+		int _edgeBlockFrames = 0;
+
 		mutable QMutex _debugMutex;
 		BlackBorder _lastImageBorder;
 		int _lastImageWidth;

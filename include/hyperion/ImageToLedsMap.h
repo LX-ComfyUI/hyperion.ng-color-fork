@@ -68,6 +68,11 @@ namespace hyperion
 		/// @param[in] leds             The list with led specifications
 		/// @param[in] reducedProcessingFactor Factor to reduce the number of pixels evaluated during processing
 		/// @param[in] accuraryLevel    The accuracy used during processing (only for selected types)
+		/// @param[in] fullHeightLeds   Fork extension, optional: LEDs whose vertical position is mapped 1:1
+		///                             against the full image height instead of being stretched over the
+		///                             picture between the horizontal bars (side LEDs with black bars at the
+		///                             top/bottom). Their area is cut to the picture; a LED whose centre lies
+		///                             in a bar gets no pixels and is reported by barSide().
 		///
 		ImageToLedsMap(
 			QSharedPointer<Logger> log,
@@ -77,7 +82,8 @@ namespace hyperion
 			int verticalBorder,
 			const QVector<Led> &leds,
 			int reducedProcessingFactor = 0,
-			int accuraryLevel = 0);
+			int accuraryLevel = 0,
+			const QVector<bool> &fullHeightLeds = QVector<bool>());
 		~ImageToLedsMap() override;
 
 		///
@@ -96,6 +102,19 @@ namespace hyperion
 
 		int horizontalBorder() const { return _horizontalBorder; }
 		int verticalBorder() const { return _verticalBorder; }
+
+		///
+		/// Fork extension: per LED, whether its centre lies in a horizontal black bar (only LEDs mapped
+		/// with fullHeightLeds): 0 = in the picture, -1 = in the top bar, +1 = in the bottom bar.
+		/// Empty without 1:1 mapped LEDs.
+		///
+		const QVector<int>& barSide() const { return _barSide; }
+
+		///
+		/// Fork extension: per LED the centre of its mapped area in image rows (-1 = no area), for
+		/// picking the LED nearest to a bar
+		///
+		const QVector<double>& centerRow() const { return _centerRow; }
 
 		///
 		/// Set the accuracy used during processing
@@ -522,6 +541,10 @@ namespace hyperion
 
 		/// The absolute indices into the image for each led
 		QVector<QVector<int>> _colorsMap;
+
+		/// Fork extension: see barSide() and centerRow()
+		QVector<int> _barSide;
+		QVector<double> _centerRow;
 
 		///
 		/// Calculates the 'mean color' over the given image. This is the mean over each color-channel
