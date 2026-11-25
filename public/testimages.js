@@ -11,6 +11,7 @@
     { id: "builtin:bars75", name: "Farbbalken 75 %" },
     { id: "builtin:edges", name: "Ränder: jede Seite eine Farbe" },
     { id: "builtin:letterbox", name: "Letterbox: Balken oben/unten, vier farbige Ecken" },
+    { id: "builtin:pillarbox", name: "Pillarbox: Balken links/rechts, vier farbige Ecken" },
     { id: "builtin:grayramp", name: "Grauverlauf und Graustufen" },
     { id: "builtin:rgbramp", name: "Verläufe Rot, Grün, Blau, Weiß" },
     { id: "builtin:hue", name: "Farbkreis mit Sättigung" },
@@ -78,6 +79,20 @@
         ctx.fillStyle = "rgb(0,255,0)"; ctx.fillRect(w - cw, bar, cw, ch);
         ctx.fillStyle = "rgb(0,0,255)"; ctx.fillRect(0, h - bar - ch, cw, ch);
         ctx.fillStyle = "rgb(255,255,0)"; ctx.fillRect(w - cw, h - bar - ch, cw, ch);
+        break;
+      }
+      case "builtin:pillarbox": {
+        // a 4:3 picture in the 16:9 frame with black bars at the left and right, the corners colored as
+        // in the letterbox picture: shows the picture display with bars at the left/right
+        const bar = Math.round(w * 0.125);
+        const pw = w - 2 * bar;
+        const cw = Math.round(pw * 0.3), ch = Math.round(h * 0.22);
+        ctx.fillStyle = "rgb(96,96,96)";
+        ctx.fillRect(bar, 0, pw, h);
+        ctx.fillStyle = "rgb(255,0,0)"; ctx.fillRect(bar, 0, cw, ch);
+        ctx.fillStyle = "rgb(0,255,0)"; ctx.fillRect(w - bar - cw, 0, cw, ch);
+        ctx.fillStyle = "rgb(0,0,255)"; ctx.fillRect(bar, h - ch, cw, ch);
+        ctx.fillStyle = "rgb(255,255,0)"; ctx.fillRect(w - bar - cw, h - ch, cw, ch);
         break;
       }
       case "builtin:grayramp": {
