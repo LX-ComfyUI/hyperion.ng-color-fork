@@ -1707,18 +1707,31 @@ function mergeBlackborder(current, patch) {
   if ("borderFrameCnt" in patch) next.borderFrameCnt = num(patch.borderFrameCnt, 0, 100000, next.borderFrameCnt);
   if ("maxInconsistentCnt" in patch) next.maxInconsistentCnt = num(patch.maxInconsistentCnt, 0, 100000, next.maxInconsistentCnt);
   if ("blurRemoveCnt" in patch) next.blurRemoveCnt = num(patch.blurRemoveCnt, 0, 100, next.blurRemoveCnt);
-  // fork: picture display with black bars at the top/bottom
+  // fork: picture display with black bars, one part per bar direction (letterbox/pillarbox)
   const bp = patch.barDisplay;
   if (bp) {
-    const b = { lightAtBars: "normal", sideLeds: "stretched", barSideFill: "dark", ...(next.barDisplay ?? {}) };
-    const pick = (key, allowed, error) => {
-      if (!(key in bp)) return;
-      if (!allowed.includes(bp[key])) throw new Error(error);
-      b[key] = bp[key];
+    const cur = next.barDisplay ?? {};
+    const axes = {
+      letterbox: { beside: "sidesOnly", leds: "sideLeds", ledsError: "Unbekannte Einstellung für Seiten-LEDs" },
+      pillarbox: { beside: "topBottomOnly", leds: "topBottomLeds", ledsError: "Unbekannte Einstellung für LEDs oben und unten" },
     };
-    pick("lightAtBars", ["normal", "sidesOnly", "off"], "Unbekannte Einstellung für Licht bei Balken");
-    pick("sideLeds", ["stretched", "oneToOne"], "Unbekannte Einstellung für Seiten-LEDs");
-    pick("barSideFill", ["dark", "cornerColor"], "Unbekannte Einstellung für Balkenhöhe an den Seiten");
+    const b = {};
+    for (const [axis, d] of Object.entries(axes)) {
+      const a = { lightAtBars: "normal", [d.leds]: "stretched", fillCornerColor: true, ...(cur[axis] ?? {}) };
+      const p = bp[axis];
+      if (p) {
+        if ("lightAtBars" in p) {
+          if (!["normal", d.beside, "off"].includes(p.lightAtBars)) throw new Error("Unbekannte Einstellung für Licht bei Balken");
+          a.lightAtBars = p.lightAtBars;
+        }
+        if (d.leds in p) {
+          if (!["stretched", "oneToOne"].includes(p[d.leds])) throw new Error(d.ledsError);
+          a[d.leds] = p[d.leds];
+        }
+        if ("fillCornerColor" in p) a.fillCornerColor = p.fillCornerColor === true;
+      }
+      b[axis] = a;
+    }
     next.barDisplay = b;
   }
   const gp = patch.grayStillImageDetector;
@@ -2027,7 +2040,10 @@ async function readHyperionDefaults() {
   const blackborder = {};
   for (const [k, v] of Object.entries(bbProps)) {
     if ("default" in v) blackborder[k] = v.default;
-    for (const [k2, v2] of Object.entries(v.properties ?? {})) if ("default" in v2) blackborder[`${k}.${k2}`] = v2.default;
+    for (const [k2, v2] of Object.entries(v.properties ?? {})) {
+      if ("default" in v2) blackborder[`${k}.${k2}`] = v2.default;
+      for (const [k3, v3] of Object.entries(v2.properties ?? {})) if ("default" in v3) blackborder[`${k}.${k2}.${k3}`] = v3.default;
+    }
   }
   const smoothing = {};
   for (const [k, v] of Object.entries(props.smoothing?.properties ?? {})) if ("default" in v) smoothing[k] = v.default;

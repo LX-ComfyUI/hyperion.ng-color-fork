@@ -74,7 +74,7 @@
     { color: "#2e9a6a", name: { de: "Bild → LED-Farben", en: "Picture → LED colors" }, sub: { de: "je LED", en: "per LED" }, steps: [
       { n: "9", t: { de: "Schwarze Balken Erkennung", en: "Black bar detection" }, fork: "ext",
         d: { de: "erkennt Kinobalken, die LED-Bereiche rücken nach innen", en: "detects cinema bars, the LED areas move inwards" },
-        note: { de: "Fork: Bilddarstellung bei Balken oben/unten einstellbar (oben/unten aus, Seiten 1:1, Eckfarbe)", en: "Fork: picture display with bars at the top/bottom adjustable (top/bottom off, sides 1:1, corner color)" },
+        note: { de: "Fork: Bilddarstellung bei Balken oben/unten und links/rechts einstellbar (LEDs neben dem Bild aus, 1:1, Eckfarbe)", en: "Fork: picture display with bars at the top/bottom and left/right adjustable (LEDs beside the picture off, 1:1, corner color)" },
         where: [["colors", "bb"]] },
       { n: "10", t: { de: "LED-Bereiche", en: "LED areas" }, fork: "ext",
         d: { de: "jede LED bekommt ihren Bildausschnitt am Rand", en: "each LED gets its part of the picture at the edge" },

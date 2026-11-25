@@ -1091,7 +1091,7 @@
     <ol class="guide" start="8">
       <li><a class="jump" href="#card-lp"><b>LED-Position Test</b></a> und <a class="jump" href="#card-lg"><b>LED-Position kalibrieren</b></a>: Die LEDs zeigen die Farbe einer Stelle daneben, zum Beispiel weil das Bild kleiner oder verschoben gegenüber dem LED-Rahmen ist. Der Test zeigt, wo eine LED wirklich hinschaut. Die Kalibrierung misst den Versatz an fünf Stellen je LED-Strang und korrigiert das LED-Layout. Die Farbschritte oben nutzen Vollbilder, dafür spielt die Lage keine Rolle. Bei echten Bildern muss jede LED aber auf die richtige Stelle schauen. <small class="flowref">Wirkt in Verarbeitungsschritt <a class="flowjump" href="#ff-step-10">10</a></small></li>
       <li><a class="jump" href="#card-dt"><b>LED-Erfassungstiefe Test</b></a> und <a class="jump" href="#card-dtd"><b>LED-Erfassungstiefe</b></a>: Die LEDs wirken flau, weil sie viel aus der Bildmitte mitteln, oder sie zappeln bei kleinen Details am Rand, weil sie zu wenig vom Bild sehen. Hier legst du fest, wie tief die LEDs ins Bild schauen. <small class="flowref">Wirkt in Verarbeitungsschritt <a class="flowjump" href="#ff-step-10">10</a></small></li>
-      <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen. Was die LEDs bei Balken oben und unten zeigen, stellst du unter <a class="jump" href="#bb-bar"><b>Bilddarstellung bei schwarzen Balken</b></a> ein. <small class="flowref">Wirkt in Verarbeitungsschritt <a class="flowjump" href="#ff-step-9">9</a></small></li>
+      <li><a class="jump" href="#card-bars"><b>Schwarze Balken Test</b></a> und <a class="jump" href="#card-bb"><b>Schwarzbalken-Erkennung</b></a>: Bei Filmen mit Balken bleiben die LEDs oben und unten (oder links und rechts) dunkel. Die Erkennung soll die Balken überspringen, damit die LEDs die Bildfarbe zeigen. Was die LEDs bei Balken oben/unten und links/rechts zeigen, stellst du unter <a class="jump" href="#bb-bar"><b>Bilddarstellung bei schwarzen Balken</b></a> ein. <small class="flowref">Wirkt in Verarbeitungsschritt <a class="flowjump" href="#ff-step-9">9</a></small></li>
     </ol>
     <h3>Sonderfälle</h3>
     <ol class="guide" start="11">
@@ -1714,10 +1714,11 @@
       </details>
       <button class="wide" id="reset" style="margin-top:12px">Alle Balken auf 0 %</button>
       <div class="sub" id="bars-lb">
-        <h3>Letterbox-Testbild</h3>
-        <p class="help">Ein Kinobild mit Balken oben und unten, jede Ecke des Bildes in einer eigenen Farbe (oben links Rot, oben rechts Grün, unten links Blau, unten rechts Gelb). Damit siehst du, was die <a class="jump" href="#bb-bar">Bilddarstellung bei schwarzen Balken</a> mit den LEDs macht. Die Balken stecken im Bild selbst, die Schieberegler oben bleiben dafür auf 0 %.</p>
-        <div class="seg full" role="group" aria-label="Letterbox-Testbild">
-          <button type="button" id="bars-lb-show">Auf dem TV zeigen</button>
+        <h3>Testbilder mit Balken</h3>
+        <p class="help">Letterbox: ein Kinobild mit Balken oben und unten. Pillarbox: ein 4:3-Bild mit Balken links und rechts. Jede Ecke des Bildes hat eine eigene Farbe (oben links Rot, oben rechts Grün, unten links Blau, unten rechts Gelb). Damit siehst du, was die <a class="jump" href="#bb-bar">Bilddarstellung bei schwarzen Balken</a> mit den LEDs macht. Die Balken stecken im Bild selbst, die Schieberegler oben bleiben dafür auf 0 %.</p>
+        <div class="seg full" role="group" aria-label="Testbilder mit Balken">
+          <button type="button" id="bars-lb-show">Letterbox</button>
+          <button type="button" id="bars-pb-show">Pillarbox</button>
           <button type="button" id="bars-lb-stop">Beenden</button>
         </div>
         <p class="note" id="bars-lb-note"></p>
@@ -1761,31 +1762,44 @@
 
       <div class="sub" id="bb-bar" hidden>
         <h3>Bilddarstellung bei schwarzen Balken</h3>
-        <p class="help">Was die LEDs zeigen, solange Balken oben und unten erkannt sind. Balken links und rechts bleiben wie bisher. Ausprobieren mit dem <a class="jump" href="#bars-lb">Letterbox-Testbild</a>.</p>
+        <p class="help">Was die LEDs zeigen, solange schwarze Balken erkannt sind, getrennt für Balken oben/unten und Balken links/rechts. Hat das Bild Balken auf allen vier Seiten, gilt beides. Ausprobieren mit den <a class="jump" href="#bars-lb">Testbildern mit Balken</a>.</p>
+        <h4>Balken oben/unten (Letterbox)</h4>
         <label class="field">Licht bei Balken oben/unten</label>
         <div class="seg full" role="group" aria-label="Licht bei Balken oben/unten">
-          <button data-bar-light="normal">Normal</button>
-          <button data-bar-light="sidesOnly">Nur Seiten</button>
-          <button data-bar-light="off">Komplett aus</button>
+          <button data-bar-axis="letterbox" data-bar-light="normal">Normal</button>
+          <button data-bar-axis="letterbox" data-bar-light="sidesOnly">Nur Seiten</button>
+          <button data-bar-axis="letterbox" data-bar-light="off">Komplett aus</button>
         </div>
-        <p class="note" id="bb-bar-light-help"></p>
-        <p class="warn" id="bb-bar-off-warn" hidden>„Komplett aus“ kann in manchen, vor allem dunklen Szenen nicht richtig funktionieren: Kippt die Erkennung, geht das Licht ungewollt an und aus.</p>
-        <div id="bb-bar-side-wrap">
+        <p class="note" id="bb-bar-light-help-letterbox"></p>
+        <p class="warn" id="bb-bar-off-warn-letterbox" hidden>„Komplett aus“ kann in manchen, vor allem dunklen Szenen nicht richtig funktionieren: Kippt die Erkennung, geht das Licht ungewollt an und aus.</p>
+        <div id="bb-bar-leds-wrap-letterbox">
           <label class="field">Seiten-LEDs</label>
           <div class="seg full" role="group" aria-label="Seiten-LEDs">
-            <button data-bar-side="stretched">Gestreckt</button>
-            <button data-bar-side="oneToOne">1:1</button>
+            <button data-bar-axis="letterbox" data-bar-leds="stretched">Gestreckt</button>
+            <button data-bar-axis="letterbox" data-bar-leds="oneToOne">1:1</button>
           </div>
-          <p class="note" id="bb-bar-side-help"></p>
+          <p class="note" id="bb-bar-leds-help-letterbox"></p>
         </div>
-        <div id="bb-bar-fill-wrap">
-          <label class="field">Balkenhöhe an den Seiten</label>
-          <div class="seg full" role="group" aria-label="Balkenhöhe an den Seiten">
-            <button data-bar-fill="dark">Dunkel</button>
-            <button data-bar-fill="cornerColor">Mit Eckfarbe auffüllen</button>
+        <label class="check" id="bb-bar-fill-wrap-letterbox"><input type="checkbox" id="bb-bar-fill-letterbox" data-bar-axis="letterbox"><span>Mit Eckfarbe auffüllen<small>Angehakt: Die Seiten-LEDs neben den Balken zeigen die Farbe der Ecke des sichtbaren Bildes (oberste bzw. unterste Seiten-LED im Bild). Nicht angehakt: Sie sind aus, wie die Balken.</small></span></label>
+        <h4>Balken links/rechts (Pillarbox)</h4>
+        <label class="field">Licht bei Balken links/rechts</label>
+        <div class="seg full" role="group" aria-label="Licht bei Balken links/rechts">
+          <button data-bar-axis="pillarbox" data-bar-light="normal">Normal</button>
+          <button data-bar-axis="pillarbox" data-bar-light="topBottomOnly">Nur oben + unten</button>
+          <button data-bar-axis="pillarbox" data-bar-light="off">Komplett aus</button>
+        </div>
+        <p class="note" id="bb-bar-light-help-pillarbox"></p>
+        <p class="warn" id="bb-bar-off-warn-pillarbox" hidden>„Komplett aus“ kann in manchen, vor allem dunklen Szenen nicht richtig funktionieren: Kippt die Erkennung, geht das Licht ungewollt an und aus.</p>
+        <div id="bb-bar-leds-wrap-pillarbox">
+          <label class="field">LEDs oben und unten</label>
+          <div class="seg full" role="group" aria-label="LEDs oben und unten">
+            <button data-bar-axis="pillarbox" data-bar-leds="stretched">Gestreckt</button>
+            <button data-bar-axis="pillarbox" data-bar-leds="oneToOne">1:1</button>
           </div>
-          <p class="note" id="bb-bar-fill-help"></p>
+          <p class="note" id="bb-bar-leds-help-pillarbox"></p>
         </div>
+        <label class="check" id="bb-bar-fill-wrap-pillarbox"><input type="checkbox" id="bb-bar-fill-pillarbox" data-bar-axis="pillarbox"><span>Mit Eckfarbe auffüllen<small>Angehakt: Die LEDs über und unter den Balken zeigen die Farbe der Ecke des sichtbaren Bildes (äußerste LED oben bzw. unten im Bild). Nicht angehakt: Sie sind aus, wie die Balken.</small></span></label>
+        <p class="note" id="bb-bar-mode-hint" hidden>Der Modus „Letterbox“ erkennt nur Balken oben/unten. Damit Balken links/rechts erkannt werden, wähle oben bei „Modus“ zum Beispiel „Standard“.</p>
         <div class="status" id="bb-bar-live"></div>
         <p class="note" id="bb-bar-note"></p>
       </div>
@@ -3310,21 +3324,35 @@ const colorSliderText = (field, value) => {
   if (field === "temperature") return `${Number(value)}${unit}` + (Number(value) === 6600 ? ` (${tr("neutral")})` : "");
   return `${fmt(value, dec)}${unit}`;
 };
-// fork: picture display with black bars at the top/bottom (blackborderdetector.barDisplay)
-const BAR_LIGHT_HELP = {
-  normal: "Alle LEDs leuchten, oben und unten mit der Farbe des Bildrands (wie bisher).",
-  sidesOnly: "Die LEDs oben und unten sind aus, solange Balken erkannt sind. Über und unter dem Bild bleibt es dunkel wie die Balken.",
-  off: "Alle LEDs sind aus, solange Balken erkannt sind.",
-};
-const BAR_SIDE_HELP = {
-  stretched: "Das Bild zwischen den Balken wird auf die ganze Höhe der Seiten verteilt (wie bisher).",
-  oneToOne: "Jede Seiten-LED zeigt das Bild an ihrer echten Höhe. Die LEDs neben den Balken liegen dann außerhalb des Bildes.",
-};
-const BAR_FILL_HELP = {
-  dark: "Die Seiten-LEDs neben den Balken sind aus, wie die Balken.",
-  cornerColor: "Die Seiten-LEDs neben den Balken zeigen die Farbe der Ecke des sichtbaren Bildes (oberste bzw. unterste Seiten-LED im Bild).",
+// fork: picture display with black bars (blackborderdetector.barDisplay), one part per bar direction
+const BAR_AXES = {
+  letterbox: {
+    leds: "sideLeds",
+    light: {
+      normal: "Alle LEDs leuchten, oben und unten mit der Farbe des Bildrands (wie bisher).",
+      sidesOnly: "Die LEDs oben und unten sind aus, solange Balken erkannt sind. Über und unter dem Bild bleibt es dunkel wie die Balken.",
+      off: "Alle LEDs sind aus, solange Balken erkannt sind.",
+    },
+    ledsHelp: {
+      stretched: "Das Bild zwischen den Balken wird auf die ganze Höhe der Seiten verteilt (wie bisher).",
+      oneToOne: "Jede Seiten-LED zeigt das Bild an ihrer echten Höhe. Die LEDs neben den Balken liegen dann außerhalb des Bildes.",
+    },
+  },
+  pillarbox: {
+    leds: "topBottomLeds",
+    light: {
+      normal: "Alle LEDs leuchten, links und rechts mit der Farbe des Bildrands (wie bisher).",
+      topBottomOnly: "Die LEDs links und rechts sind aus, solange Balken erkannt sind. Neben dem Bild bleibt es dunkel wie die Balken.",
+      off: "Alle LEDs sind aus, solange Balken erkannt sind.",
+    },
+    ledsHelp: {
+      stretched: "Das Bild zwischen den Balken wird auf die ganze Breite oben und unten verteilt (wie bisher).",
+      oneToOne: "Jede LED oben und unten zeigt das Bild an ihrer echten Stelle. Die LEDs über und unter den Balken liegen dann außerhalb des Bildes.",
+    },
+  },
 };
 const LETTERBOX_IMAGE = "builtin:letterbox";
+const PILLARBOX_IMAGE = "builtin:pillarbox";
 const BB_NUMBERS = [
   { id: "bb-unknown", key: "unknownFrameCnt" },
   { id: "bb-border", key: "borderFrameCnt" },
@@ -4435,12 +4463,15 @@ function renderBars() {
 }
 
 function renderLetterboxTest() {
-  const on = !!state.media?.active && state.media.id === LETTERBOX_IMAGE;
-  $("bars-lb-show").setAttribute("aria-pressed", String(on));
-  $("bars-lb-stop").disabled = !on;
-  $("bars-lb-note").textContent = on ? tr("Läuft auf dem TV. Stell die Bilddarstellung bei schwarzen Balken um und schau auf die LEDs.") : "";
+  const id = state.media?.active ? state.media.id : null;
+  const lb = id === LETTERBOX_IMAGE, pb = id === PILLARBOX_IMAGE;
+  $("bars-lb-show").setAttribute("aria-pressed", String(lb));
+  $("bars-pb-show").setAttribute("aria-pressed", String(pb));
+  $("bars-lb-stop").disabled = !lb && !pb;
+  $("bars-lb-note").textContent = lb || pb ? tr("Läuft auf dem TV. Stell die Bilddarstellung bei schwarzen Balken um und schau auf die LEDs.") : "";
 }
 $("bars-lb-show").addEventListener("click", () => mdSend({ active: true, id: LETTERBOX_IMAGE, position: 0, playing: true }));
+$("bars-pb-show").addEventListener("click", () => mdSend({ active: true, id: PILLARBOX_IMAGE, position: 0, playing: true }));
 $("bars-lb-stop").addEventListener("click", () => mdSend({ active: false }));
 
 function setBars(patch) {
@@ -7381,8 +7412,12 @@ document.addEventListener("click", (ev) => {
   const bb = hyDefaults.blackborder ?? {};
   if (c.dataset.cardReset === "bb") {
     const patch = Object.fromEntries(BB_RESET_KEYS.filter((k) => k in bb).map((k) => [k, bb[k]]));
-    const bar = Object.fromEntries(Object.entries(bb).filter(([k]) => k.startsWith("barDisplay.")).map(([k, v]) => [k.split(".")[1], v]));
-    if (bbConfig?.barDisplay && Object.keys(bar).length) patch.barDisplay = bar;
+    const bar = {};
+    for (const [k, v] of Object.entries(bb)) {
+      const [head, axis, key] = k.split(".");
+      if (head === "barDisplay" && key) (bar[axis] ??= {})[key] = v;
+    }
+    if (bbConfig?.barDisplay?.letterbox && Object.keys(bar).length) patch.barDisplay = bar;
     saveBb(patch, tr("Standardwerte"));
   }
   if (c.dataset.cardReset === "gsd") {
@@ -7453,25 +7488,34 @@ function renderBbConfig() {
 }
 
 // the settings only exist with the fork version that has the picture display with black bars
+// (since 2026-11-25 one part per bar direction)
 function renderBarDisplay(writable) {
   const b = bbConfig?.barDisplay;
-  $("bb-bar").hidden = !b;
-  if (!b) return;
+  const ok = !!b?.letterbox && !!b?.pillarbox;
+  $("bb-bar").hidden = !ok;
+  if (!ok) return;
   const on = !!bbConfig.enable;
-  const off = b.lightAtBars === "off";
-  for (const [attr, key] of [["barLight", "lightAtBars"], ["barSide", "sideLeds"], ["barFill", "barSideFill"]]) {
-    const sel = `[data-${attr.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())}]`;
-    document.querySelectorAll(sel).forEach((btn) => {
-      btn.setAttribute("aria-pressed", String(btn.dataset[attr] === b[key]));
+  for (const [axis, def] of Object.entries(BAR_AXES)) {
+    const a = b[axis];
+    const off = a.lightAtBars === "off";
+    document.querySelectorAll(`[data-bar-axis="${axis}"][data-bar-light]`).forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.barLight === a.lightAtBars));
       btn.disabled = !writable || !on;
     });
+    document.querySelectorAll(`[data-bar-axis="${axis}"][data-bar-leds]`).forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.barLeds === a[def.leds]));
+      btn.disabled = !writable || !on;
+    });
+    const fill = $(`bb-bar-fill-${axis}`);
+    fill.checked = a.fillCornerColor === true;
+    fill.disabled = !writable || !on;
+    $(`bb-bar-light-help-${axis}`).textContent = tr(def.light[a.lightAtBars] ?? "");
+    $(`bb-bar-leds-help-${axis}`).textContent = tr(def.ledsHelp[a[def.leds]] ?? "");
+    $(`bb-bar-off-warn-${axis}`).hidden = !off;
+    $(`bb-bar-leds-wrap-${axis}`).hidden = off;
+    $(`bb-bar-fill-wrap-${axis}`).hidden = off || a[def.leds] !== "oneToOne";
   }
-  $("bb-bar-light-help").textContent = tr(BAR_LIGHT_HELP[b.lightAtBars] ?? "");
-  $("bb-bar-side-help").textContent = tr(BAR_SIDE_HELP[b.sideLeds] ?? "");
-  $("bb-bar-fill-help").textContent = tr(BAR_FILL_HELP[b.barSideFill] ?? "");
-  $("bb-bar-off-warn").hidden = !off;
-  $("bb-bar-side-wrap").hidden = off;
-  $("bb-bar-fill-wrap").hidden = off || b.sideLeds !== "oneToOne";
+  $("bb-bar-mode-hint").hidden = bbConfig.mode !== "letterbox";
   renderBarLive();
 }
 
@@ -7480,14 +7524,16 @@ function renderBarLive() {
   const el = $("bb-bar-live");
   const live = debug?.ok ? debug.barDisplay : null;
   const bb = debug?.ok ? debug.blackborder : null;
-  if (!live || !bbConfig?.barDisplay) { el.hidden = true; return; }
+  if (!live?.letterbox || !bbConfig?.barDisplay?.letterbox) { el.hidden = true; return; }
   el.hidden = false;
   const cur = bb?.currentBorder ?? {};
-  const bar = bb?.enabled && !cur.unknown && cur.horizontalSize > 0;
+  const h = bb?.enabled && !cur.unknown && cur.horizontalSize > 0;
+  const v = bb?.enabled && !cur.unknown && cur.verticalSize > 0;
+  const where = h && v ? tr("rundum") : h ? tr("oben/unten") : tr("links/rechts");
   if (!bbConfig.enable || !bb?.enabled) el.textContent = tr("Schwarzbalken-Erkennung ist aus, die Einstellungen wirken nicht.");
-  else if (!bar) el.textContent = tr("Gerade keine Balken oben/unten erkannt: alle LEDs wie gewohnt.");
-  else if (!live.active) el.textContent = tr("Balken oben/unten erkannt, die LEDs zeigen das Bild wie bisher.");
-  else el.textContent = tr("Balken oben/unten erkannt: {d} LEDs aus, {f} mit Eckfarbe.", { d: live.ledsDark, f: live.ledsFilled });
+  else if (!h && !v) el.textContent = tr("Gerade keine Balken erkannt: alle LEDs wie gewohnt.");
+  else if (!live.active) el.textContent = tr("Balken {w} erkannt, die LEDs zeigen das Bild wie bisher.", { w: where });
+  else el.textContent = tr("Balken {w} erkannt: {d} LEDs aus, {f} mit Eckfarbe.", { w: where, d: live.ledsDark, f: live.ledsFilled });
 }
 
 // the live edge level against the threshold: does the edge count as black, so a bar can be detected?
@@ -7591,13 +7637,17 @@ for (const [id, key, label] of GS_FIELDS) {
 }
 document.querySelectorAll("[data-gs-mode]").forEach(b => b.addEventListener("click", () =>
   saveBb({ grayStillImageDetector: { mode: b.dataset.gsMode } }, "Reaktion")));
-for (const [attr, key, what] of [["barLight", "lightAtBars", "Licht bei Balken"], ["barSide", "sideLeds", "Seiten-LEDs"], ["barFill", "barSideFill", "Balkenhöhe an den Seiten"]]) {
-  document.querySelectorAll(`[data-${attr.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())}]`).forEach((btn) => btn.addEventListener("click", () => {
-    bbConfig = { ...bbConfig, barDisplay: { ...bbConfig.barDisplay, [key]: btn.dataset[attr] } };
-    renderBbConfig();
-    saveBb({ barDisplay: { [key]: btn.dataset[attr] } }, what);
-  }));
+function saveBar(axis, key, value, what) {
+  bbConfig = { ...bbConfig, barDisplay: { ...bbConfig.barDisplay, [axis]: { ...bbConfig.barDisplay[axis], [key]: value } } };
+  renderBbConfig();
+  saveBb({ barDisplay: { [axis]: { [key]: value } } }, what);
 }
+document.querySelectorAll("[data-bar-axis][data-bar-light]").forEach((btn) => btn.addEventListener("click", () =>
+  saveBar(btn.dataset.barAxis, "lightAtBars", btn.dataset.barLight, "Licht bei Balken")));
+document.querySelectorAll("[data-bar-axis][data-bar-leds]").forEach((btn) => btn.addEventListener("click", () =>
+  saveBar(btn.dataset.barAxis, BAR_AXES[btn.dataset.barAxis].leds, btn.dataset.barLeds, btn.dataset.barAxis === "letterbox" ? "Seiten-LEDs" : "LEDs oben und unten")));
+document.querySelectorAll("input[data-bar-axis]").forEach((box) => box.addEventListener("change", () =>
+  saveBar(box.dataset.barAxis, "fillCornerColor", box.checked, "Mit Eckfarbe auffüllen")));
 document.querySelectorAll("[data-gs-edge]").forEach(b => b.addEventListener("click", () =>
   saveBb({ grayStillImageDetector: { edgeWidthPercent: Number(b.dataset.gsEdge) } }, "Randbereich")));
 
@@ -7716,7 +7766,12 @@ function bbLiveHtml(bb) {
     rows.push(["Schwarz heißt", `Farbwerte unter ${bb.blackLevel}`]);
   }
   const bd = debug?.barDisplay;
-  if (bd) rows.push(["Bilddarstellung", `${bd.lightAtBars} · ${bd.sideLeds} · ${bd.barSideFill} · ${bd.active ? `aktiv, ${bd.ledsDark} aus, ${bd.ledsFilled} Eckfarbe` : "nicht aktiv"}`]);
+  if (bd?.letterbox && bd?.pillarbox) {
+    const fill = (on) => (on ? "Eckfarbe" : "dunkel");
+    rows.push(["Bilddarstellung Letterbox", `${bd.letterbox.lightAtBars} · ${bd.letterbox.sideLeds} · ${fill(bd.letterbox.fillCornerColor)}`]);
+    rows.push(["Bilddarstellung Pillarbox", `${bd.pillarbox.lightAtBars} · ${bd.pillarbox.topBottomLeds} · ${fill(bd.pillarbox.fillCornerColor)}`]);
+    rows.push(["Bilddarstellung jetzt", bd.active ? `aktiv, ${bd.ledsDark} aus, ${bd.ledsFilled} Eckfarbe` : "nicht aktiv"]);
+  }
   return `<div class="gs-title">Schwarzbalken-Erkennung</div>` + rows.map(([k, val]) => `<div>${k}: <b>${val}</b></div>`).join("");
 }
 
