@@ -202,7 +202,7 @@ public:
 				}
 			}
 
-			// Fork extension: picture display with black bars (top/bottom off, sides 1:1, bar height)
+			// Fork extension: picture display with black bars (letterbox/pillarbox: LEDs off, 1:1, corner colour)
 			applyBarDisplay(colors, means);
 		}
 		else
@@ -400,26 +400,35 @@ private:
 			registerProcessingUnit(image.width(), image.height(), 0, 0);
 		}
 
-		if(_borderProcessor->enabled() && _borderProcessor->process(image))
+		if(_borderProcessor->enabled())
 		{
+			const bool changed = _borderProcessor->process(image);
 			const hyperion::BlackBorder border = _borderProcessor->getCurrentBorder();
 
+			// Fork fix: the detector only reports changes. A new image size (an effect in between, a new
+			// grabber resolution) rebuilds the mapping without a border while the detector keeps its
+			// unchanged border, which was then never applied again. So the mapping is compared with the
+			// detected border on every frame, not only when the detector reports a change.
 			if (border.unknown)
 			{
-				qCDebug(imageProcessor_track) << "Detected unknown black border setup; resetting to no border";
-				registerProcessingUnit(image.width(), image.height(), 0, 0);
+				if (changed || _imageToLedColors->horizontalBorder() != 0 || _imageToLedColors->verticalBorder() != 0)
+				{
+					qCDebug(imageProcessor_track) << "Detected unknown black border setup; resetting to no border";
+					registerProcessingUnit(image.width(), image.height(), 0, 0);
+				}
 			}
-			else
+			else if (border.horizontalSize != _imageToLedColors->horizontalBorder() || border.verticalSize != _imageToLedColors->verticalBorder())
 			{
-				if (border.horizontalSize != _imageToLedColors->horizontalBorder() || border.verticalSize != _imageToLedColors->verticalBorder())
+				// a border measured on an image of another size may not fit this one
+				if (2 * border.horizontalSize < image.height() && 2 * border.verticalSize < image.width())
 				{
 					qCDebug(imageProcessor_track) << "Detected change in black border setup - horizontal:" << border.horizontalSize << " vertical:" << border.verticalSize;
 					registerProcessingUnit(image.width(), image.height(), border.horizontalSize, border.verticalSize);
 				}
-				else
-				{
-					qCDebug(imageProcessor_track) << "Border detection setup has not changed - horizontal:" << border.horizontalSize << " vertical:" << border.verticalSize;
-				}
+			}
+			else if (changed)
+			{
+				qCDebug(imageProcessor_track) << "Border detection setup has not changed - horizontal:" << border.horizontalSize << " vertical:" << border.verticalSize;
 			}
 		}
 	}
@@ -467,23 +476,32 @@ private:
 	void updateAreaLeds();
 
 	///
-	/// Fork extension: picture display with black bars at the top/bottom (setting
-	/// blackborderdetector.barDisplay). Only acts while a horizontal bar is applied.
-	///  - lightAtBars: normal / sidesOnly (top and bottom LEDs off) / off (all LEDs off)
-	///  - sideLeds: stretched (picture stretched over the whole side, upstream) / oneToOne (side LEDs
-	///    at their real height, see ImageToLedsMap fullHeightLeds)
-	///  - barSideFill (oneToOne only): side LEDs at bar height dark, or with the colour of the side
-	///    LED nearest to the bar that still lies in the picture (the corner of the picture)
-	/// Built for one axis (letterbox); pillarbox would be the same with x and y swapped.
+	/// Fork extension: picture display with black bars (setting blackborderdetector.barDisplay), one
+	/// set of options per bar direction; each acts only while its bar is applied:
+	///  letterbox (bars at the top/bottom):
+	///   - lightAtBars: normal / sidesOnly (top and bottom LEDs off) / off (all LEDs off)
+	///   - sideLeds: stretched (picture stretched over the whole side, upstream) / oneToOne (side LEDs
+	///     at their real height, see ImageToLedsMap fullHeightLeds)
+	///   - fillCornerColor (oneToOne only): side LEDs at bar height take the colour of the side LED
+	///     nearest to the bar that still lies in the picture (the corner of the picture), else dark
+	///  pillarbox (bars at the left/right): the same with x and y swapped (topBottomOnly = left and
+	///  right LEDs off, topBottomLeds = top/bottom LEDs stretched or at their real width)
 	///
-	enum class BarLight { Normal, SidesOnly, Off };
+	enum class BarLight { Normal, Beside, Off };
 	enum LedEdge { EdgeInner = 0, EdgeTop, EdgeBottom, EdgeLeft, EdgeRight };
-	BarLight _barLight;
-	bool _barOneToOne;
-	bool _barFillCorner;
-	/// per LED the nearest picture edge of its centre in the layout, EdgeInner when far from all
+	struct BarAxis
+	{
+		BarLight light = BarLight::Normal;
+		bool oneToOne = false;
+		bool fillCorner = true;
+		bool operator==(const BarAxis& o) const { return light == o.light && oneToOne == o.oneToOne && fillCorner == o.fillCorner; }
+	};
+	BarAxis _barLetterbox;
+	BarAxis _barPillarbox;
+	/// per LED the picture edge it belongs to in the layout, EdgeInner when far from all
 	QVector<int> _ledEdge;
-	/// per LED in a bar: the LED whose colour it takes, -1 = dark (built with the mapping)
+	/// per LED: -2 = not in a bar, -1 = in a bar and dark, else the LED whose colour it takes
+	/// (built with the mapping)
 	QVector<int> _barFillSource;
 	/// LEDs the last frame switched off / filled, for the debug state
 	mutable QMutex _barMutex;
@@ -491,9 +509,11 @@ private:
 	int _barDarkCount;
 	int _barFilledCount;
 
+	static BarAxis readBarAxis(const QJsonObject& obj, const char* besideValue, const char* ledsKey);
 	void handleBarDisplaySettings(const QJsonObject& obj);
 	void updateLedEdges();
 	QVector<bool> barFullHeightLeds(int horizontalBorder) const;
+	QVector<bool> barFullWidthLeds(int verticalBorder) const;
 	void updateBarFillSources();
 	void applyBarDisplay(QVector<ColorRgb>& colors, QVector<ColorRgbFloat>* means);
 	QJsonObject barDisplayDebugState() const;

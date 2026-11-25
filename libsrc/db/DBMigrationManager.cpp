@@ -87,6 +87,46 @@ bool DBMigrationManager::migrateSettings(QJsonObject& config)
 	return migrated;
 }
 
+bool DBMigrationManager::migrateForkSettings(QJsonObject& config)
+{
+	bool migrated = false;
+	QJsonArray instancesConfig = config.value("instances").toArray();
+	for (int i = 0; i < instancesConfig.size(); ++i)
+	{
+		QJsonObject instanceConfig = instancesConfig[i].toObject();
+		QJsonObject instanceSettings = instanceConfig.value("settings").toObject();
+		QJsonObject blackborder = instanceSettings.value("blackborderdetector").toObject();
+		const QJsonObject barDisplay = blackborder.value("barDisplay").toObject();
+
+		// blackborderdetector.barDisplay: first version (letterbox only, flat, fill as a choice) ->
+		// one object per bar direction, the fill as a checkbox
+		if (barDisplay.contains("lightAtBars") && !barDisplay.contains("letterbox"))
+		{
+			const QJsonObject letterbox{
+				{ "lightAtBars", barDisplay.value("lightAtBars").toString("normal") },
+				{ "sideLeds", barDisplay.value("sideLeds").toString("stretched") },
+				{ "fillCornerColor", barDisplay.value("barSideFill").toString("dark") == "cornerColor" }
+			};
+			const QJsonObject pillarbox{
+				{ "lightAtBars", "normal" },
+				{ "topBottomLeds", "stretched" },
+				{ "fillCornerColor", true }
+			};
+			blackborder.insert("barDisplay", QJsonObject{ { "letterbox", letterbox }, { "pillarbox", pillarbox } });
+			instanceSettings.insert("blackborderdetector", blackborder);
+			instanceConfig.insert("settings", instanceSettings);
+			instancesConfig.replace(i, instanceConfig);
+			Info(_log, "Instance [%d]: picture display with black bars migrated to letterbox/pillarbox settings", i);
+			migrated = true;
+		}
+	}
+	if (migrated)
+	{
+		config.insert("instances", instancesConfig);
+	}
+	return migrated;
+}
+
 bool DBMigrationManager::upgradeGlobalSettings(const semver::version& currentVersion, QJsonObject& config)
 {
 	bool migrated = false;

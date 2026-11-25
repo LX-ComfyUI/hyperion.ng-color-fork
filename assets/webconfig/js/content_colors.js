@@ -328,41 +328,62 @@ $(document).ready(function () {
       blackborderdetector: window.schema.blackborderdetector
     }, true, true);
 
-    // Fork-Erweiterung: Bilddarstellung bei schwarzen Balken - Info-Symbole, Felder nur zeigen, wenn
-    // sie wirken, und ein sichtbarer Hinweis bei "Komplett aus"
+    // Fork-Erweiterung: Bilddarstellung bei schwarzen Balken (Letterbox/Pillarbox) - Info-Symbole,
+    // Felder nur zeigen, wenn sie wirken, Hinweise bei "Komplett aus" und beim Modus "Letterbox"
     var BAR_BASE = 'root.blackborderdetector.barDisplay.';
-    function barField(key) {
+    var BAR_AXES = [
+      { key: 'letterbox', leds: 'sideLeds', texts: { lightAtBars: 'lightAtBars', sideLeds: 'sideLeds', fillCornerColor: 'fillCornerColor' } },
+      { key: 'pillarbox', leds: 'topBottomLeds', texts: { lightAtBars: 'pillarLight', topBottomLeds: 'topBottomLeds', fillCornerColor: 'pillarFillCornerColor' } }
+    ];
+    function barField(path) {
       try {
-        return editor_blackborder.getEditor(BAR_BASE + key);
+        return editor_blackborder.getEditor(BAR_BASE + path);
       } catch (e) {
         return null;
       }
     }
-    ['lightAtBars', 'sideLeds', 'barSideFill'].forEach(function (key) {
-      var fieldEditor = barField(key);
-      if (!fieldEditor || !fieldEditor.label || $(fieldEditor.label).data('forkInfoIconAdded')) return;
-      infoIcons.add(fieldEditor.label, $.i18n('edt_conf_bb_barDisplay_' + key + '_expl'));
-      $(fieldEditor.label).data('forkInfoIconAdded', true);
+    BAR_AXES.forEach(function (axis) {
+      Object.keys(axis.texts).forEach(function (key) {
+        var fieldEditor = barField(axis.key + '.' + key);
+        if (!fieldEditor || !fieldEditor.label || $(fieldEditor.label).data('forkInfoIconAdded')) return;
+        infoIcons.add(fieldEditor.label, $.i18n('edt_conf_bb_barDisplay_' + axis.texts[key] + '_expl'));
+        $(fieldEditor.label).data('forkInfoIconAdded', true);
+      });
     });
-    function updateBarDisplayFields(detectionOn) {
-      var light = barField('lightAtBars');
-      var side = barField('sideLeds');
-      var fill = barField('barSideFill');
-      if (!light || !side || !fill) return;
-      var off = light.getValue() === 'off';
-      var show = function (fieldEditor, on) {
-        if (fieldEditor.container) fieldEditor.container.style.display = on ? '' : 'none';
-      };
-      show(side, detectionOn && !off);
-      show(fill, detectionOn && !off && side.getValue() === 'oneToOne');
-      var $warn = $('#bbBarOffWarning');
-      if (!$warn.length && light.container) {
-        $warn = $('<p id="bbBarOffWarning" class="text-warning" style="margin-top:6px"></p>').text($.i18n('edt_conf_bb_barDisplay_offWarning'));
-        $(light.container).append($warn);
-      }
-      $warn.toggle(detectionOn && off);
+    var barDisplayEditor = editor_blackborder.getEditor('root.blackborderdetector.barDisplay');
+    if (barDisplayEditor && barDisplayEditor.header && !$(barDisplayEditor.header).data('forkInfoIconAdded')) {
+      infoIcons.add(barDisplayEditor.header, $.i18n('edt_conf_bb_barDisplay_expl'));
+      $(barDisplayEditor.header).data('forkInfoIconAdded', true);
     }
-
+    function barNote(id, container, text, cls) {
+      var $note = $('#' + id);
+      if (!$note.length && container) {
+        $note = $('<p id="' + id + '" class="' + cls + '" style="margin-top:6px"></p>').text(text);
+        $(container).append($note);
+      }
+      return $note;
+    }
+    function updateBarDisplayFields(detectionOn) {
+      var show = function (fieldEditor, on) {
+        if (fieldEditor && fieldEditor.container) fieldEditor.container.style.display = on ? '' : 'none';
+      };
+      var modeEditor = editor_blackborder.getEditor('root.blackborderdetector.mode');
+      var letterboxMode = modeEditor && modeEditor.getValue() === 'letterbox';
+      show(barDisplayEditor, detectionOn);
+      BAR_AXES.forEach(function (axis) {
+        var light = barField(axis.key + '.lightAtBars');
+        var leds = barField(axis.key + '.' + axis.leds);
+        var fill = barField(axis.key + '.fillCornerColor');
+        if (!light || !leds || !fill) return;
+        var off = light.getValue() === 'off';
+        show(leds, !off);
+        show(fill, !off && leds.getValue() === 'oneToOne');
+        barNote('bbBarOffWarning_' + axis.key, light.container, $.i18n('edt_conf_bb_barDisplay_offWarning'), 'text-warning').toggle(off);
+        if (axis.key === 'pillarbox') {
+          barNote('bbBarModeHint', light.container, $.i18n('edt_conf_bb_barDisplay_letterboxModeHint'), 'text-info').toggle(letterboxMode);
+        }
+      });
+    }
 
     editor_blackborder.on('change', function () {
       var blackborderEnable = editor_blackborder.getEditor("root.blackborderdetector.enable").getValue();

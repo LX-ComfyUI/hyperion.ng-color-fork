@@ -48,6 +48,7 @@ QPair<bool, QStringList> DBConfigManager::importJson(const QString& configFile)
 
 	DBMigrationManager migtrationManger;
 	migtrationManger.migrateSettings(config);
+	migtrationManger.migrateForkSettings(config);
 
 	return updateConfiguration(config, true);
 }
@@ -382,7 +383,17 @@ QPair<bool, QStringList> DBConfigManager::migrateConfiguration()
 	{
 		QJsonObject config = getConfiguration();
 
-		if (migtrationManger.migrateSettings(config))
+		const bool forkMigrated = migtrationManger.migrateForkSettings(config);
+		if (migtrationManger.migrateSettings(config) || forkMigrated)
+		{
+			return updateConfiguration(config, true);
+		}
+	}
+	else
+	{
+		// Fork extension: fork settings can change shape without a new Hyperion version
+		QJsonObject config = getConfiguration();
+		if (migtrationManger.migrateForkSettings(config))
 		{
 			return updateConfiguration(config, true);
 		}

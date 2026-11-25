@@ -151,9 +151,16 @@
          "blurRemoveCnt":1,
          "mode":"default",
          "barDisplay":{
-            "lightAtBars":"normal",
-            "sideLeds":"stretched",
-            "barSideFill":"dark"
+            "letterbox":{
+               "lightAtBars":"normal",
+               "sideLeds":"stretched",
+               "fillCornerColor":true
+            },
+            "pillarbox":{
+               "lightAtBars":"normal",
+               "topBottomLeds":"stretched",
+               "fillCornerColor":true
+            }
          },
          "grayStillImageDetector":{
             "enabled":false,

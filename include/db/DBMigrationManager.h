@@ -15,6 +15,13 @@ public:
 	bool isMigrationRequired();
 	bool migrateSettings(QJsonObject& config);
 
+	///
+	/// Fork extension: version-independent migration of fork settings whose shape changed between
+	/// fork builds (the schema correction would otherwise replace them with defaults).
+	/// @return true, if anything was changed
+	///
+	bool migrateForkSettings(QJsonObject& config);
+
 private:
 
 	bool upgradeGlobalSettings(const semver::version& currentVersion, QJsonObject& config);

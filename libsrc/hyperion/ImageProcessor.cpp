@@ -46,7 +46,8 @@ void ImageProcessor::registerProcessingUnit(
 								_areaLeds,
 								_reducedPixelSetFactorFactor,
 								_accuracyLevel,
-								barFullHeightLeds(horizontalBorder)
+								barFullHeightLeds(horizontalBorder),
+								barFullWidthLeds(verticalBorder)
 		);
 		updateBarFillSources();
 	}
@@ -141,9 +142,6 @@ ImageProcessor::ImageProcessor(const LedString& ledString, const QSharedPointer<
 	, _depthTopBottom(0.0)
 	, _depthLeftRight(0.0)
 	, _areaLeds(ledString.leds())
-	, _barLight(BarLight::Normal)
-	, _barOneToOne(false)
-	, _barFillCorner(false)
 	, _barActive(false)
 	, _barDarkCount(0)
 	, _barFilledCount(0)
@@ -225,21 +223,46 @@ void ImageProcessor::handleSettingsUpdate(settings::type type, const QJsonDocume
 	}
 }
 
+ImageProcessor::BarAxis ImageProcessor::readBarAxis(const QJsonObject& obj, const char* besideValue, const char* ledsKey)
+{
+	BarAxis axis;
+	const QString light = obj["lightAtBars"].toString("normal");
+	axis.light = light == "off" ? BarLight::Off : light == besideValue ? BarLight::Beside : BarLight::Normal;
+	axis.oneToOne = obj[ledsKey].toString("stretched") == "oneToOne";
+	axis.fillCorner = obj["fillCornerColor"].toBool(true);
+	return axis;
+}
+
 void ImageProcessor::handleBarDisplaySettings(const QJsonObject& obj)
 {
-	const QString light = obj["lightAtBars"].toString("normal");
-	const BarLight barLight = light == "off" ? BarLight::Off : light == "sidesOnly" ? BarLight::SidesOnly : BarLight::Normal;
-	const bool oneToOne = obj["sideLeds"].toString("stretched") == "oneToOne";
-	const bool fillCorner = obj["barSideFill"].toString("dark") == "cornerColor";
-	if (barLight == _barLight && oneToOne == _barOneToOne && fillCorner == _barFillCorner)
+	BarAxis letterbox;
+	BarAxis pillarbox;
+	if (obj.contains("letterbox") || obj.contains("pillarbox"))
+	{
+		letterbox = readBarAxis(obj["letterbox"].toObject(), "sidesOnly", "sideLeds");
+		pillarbox = readBarAxis(obj["pillarbox"].toObject(), "topBottomOnly", "topBottomLeds");
+	}
+	else if (obj.contains("lightAtBars"))
+	{
+		// first version of the setting (letterbox only, fill as a choice), normally migrated at startup
+		letterbox = readBarAxis(obj, "sidesOnly", "sideLeds");
+		letterbox.fillCorner = obj["barSideFill"].toString("dark") == "cornerColor";
+	}
+	if (letterbox == _barLetterbox && pillarbox == _barPillarbox)
 	{
 		return;
 	}
-	_barLight = barLight;
-	_barOneToOne = oneToOne;
-	_barFillCorner = fillCorner;
-	Info(_log, "Picture with black bars: light at bars %s, side LEDs %s, bar height at the sides %s",
-		 QSTRING_CSTR(light), oneToOne ? "1:1" : "stretched", fillCorner ? "corner colour" : "dark");
+	_barLetterbox = letterbox;
+	_barPillarbox = pillarbox;
+	const auto lightText = [](BarLight light, const char* beside) {
+		return light == BarLight::Off ? "off" : light == BarLight::Beside ? beside : "normal";
+	};
+	Info(_log, "Picture with black bars at the top/bottom: light %s, side LEDs %s%s",
+		 lightText(letterbox.light, "sides only"), letterbox.oneToOne ? "1:1" : "stretched",
+		 letterbox.oneToOne ? (letterbox.fillCorner ? ", bar height in the corner colour" : ", bar height dark") : "");
+	Info(_log, "Picture with black bars at the left/right: light %s, top/bottom LEDs %s%s",
+		 lightText(pillarbox.light, "top/bottom only"), pillarbox.oneToOne ? "1:1" : "stretched",
+		 pillarbox.oneToOne ? (pillarbox.fillCorner ? ", bar width in the corner colour" : ", bar width dark") : "");
 	if (!_imageToLedColors.isNull())
 	{
 		// keep the current black border, the border detection only reports changes
@@ -250,9 +273,14 @@ void ImageProcessor::handleBarDisplaySettings(const QJsonObject& obj)
 
 void ImageProcessor::updateLedEdges()
 {
-	// the nearest picture edge of each LED centre in the layout; LEDs far from every edge (a matrix
-	// behind the picture) count as inner: never switched off as top/bottom, mapped 1:1 like the sides
+	// The picture edge each LED belongs to. LEDs far from every edge (a matrix behind the picture)
+	// count as inner: never switched off as an edge row, mapped 1:1 in both directions.
+	// The edge an LED's area comes closest to decides, not its centre: in a corner an LED of the side
+	// column reaching deep into the picture has its centre nearer to the top than to the side, but its
+	// area touches the side. Same distance (a corner LED touching both): the nearer centre decides,
+	// and an exact corner belongs to the top/bottom row.
 	constexpr double INNER_DISTANCE = 0.25;
+	constexpr double SAME = 1e-3;
 	const QVector<Led>& leds = _ledString.leds();
 	_ledEdge.fill(EdgeInner, leds.size());
 	for (int i = 0; i < leds.size(); ++i)
@@ -264,24 +292,33 @@ void ImageProcessor::updateLedEdges()
 		}
 		const double cx = (led.minX_frac + led.maxX_frac) / 2.0;
 		const double cy = (led.minY_frac + led.maxY_frac) / 2.0;
-		const double top = cy, bottom = 1.0 - cy, left = cx, right = 1.0 - cx;
-		const double nearest = qMin(qMin(top, bottom), qMin(left, right));
-		if (nearest > INNER_DISTANCE)
+		if (qMin(qMin(cy, 1.0 - cy), qMin(cx, 1.0 - cx)) > INNER_DISTANCE)
 		{
 			continue;
 		}
-		// a corner LED (same distance) belongs to the top/bottom row
-		if (top <= nearest) _ledEdge[i] = EdgeTop;
-		else if (bottom <= nearest) _ledEdge[i] = EdgeBottom;
-		else if (left <= nearest) _ledEdge[i] = EdgeLeft;
-		else _ledEdge[i] = EdgeRight;
+		const bool nearTop = cy <= 1.0 - cy;
+		const bool nearLeft = cx <= 1.0 - cx;
+		const double areaY = nearTop ? qMax(0.0, led.minY_frac) : qMax(0.0, 1.0 - led.maxY_frac);
+		const double areaX = nearLeft ? qMax(0.0, led.minX_frac) : qMax(0.0, 1.0 - led.maxX_frac);
+		const double centreY = nearTop ? cy : 1.0 - cy;
+		const double centreX = nearLeft ? cx : 1.0 - cx;
+		bool row;
+		if (qAbs(areaY - areaX) > SAME)
+		{
+			row = areaY < areaX;
+		}
+		else
+		{
+			row = centreY <= centreX;
+		}
+		_ledEdge[i] = row ? (nearTop ? EdgeTop : EdgeBottom) : (nearLeft ? EdgeLeft : EdgeRight);
 	}
 }
 
 QVector<bool> ImageProcessor::barFullHeightLeds(int horizontalBorder) const
 {
 	QVector<bool> fullHeight;
-	if (horizontalBorder <= 0 || !_barOneToOne || _barLight == BarLight::Off || _ledEdge.size() != _areaLeds.size())
+	if (horizontalBorder <= 0 || !_barLetterbox.oneToOne || _barLetterbox.light == BarLight::Off || _ledEdge.size() != _areaLeds.size())
 	{
 		return fullHeight;
 	}
@@ -293,47 +330,83 @@ QVector<bool> ImageProcessor::barFullHeightLeds(int horizontalBorder) const
 	return fullHeight;
 }
 
+QVector<bool> ImageProcessor::barFullWidthLeds(int verticalBorder) const
+{
+	QVector<bool> fullWidth;
+	if (verticalBorder <= 0 || !_barPillarbox.oneToOne || _barPillarbox.light == BarLight::Off || _ledEdge.size() != _areaLeds.size())
+	{
+		return fullWidth;
+	}
+	fullWidth.fill(false, _ledEdge.size());
+	for (int i = 0; i < _ledEdge.size(); ++i)
+	{
+		fullWidth[i] = _ledEdge[i] != EdgeLeft && _ledEdge[i] != EdgeRight;
+	}
+	return fullWidth;
+}
+
 void ImageProcessor::updateBarFillSources()
 {
 	_barFillSource.clear();
-	const QVector<int>& barSide = _imageToLedColors->barSide();
-	if (barSide.isEmpty())
+	const QVector<int>& barY = _imageToLedColors->barSide();
+	const QVector<int>& barX = _imageToLedColors->barSideX();
+	const int count = _ledEdge.size();
+	if ((barY.isEmpty() && barX.isEmpty()) || (!barY.isEmpty() && barY.size() != count) || (!barX.isEmpty() && barX.size() != count))
 	{
 		return;
 	}
-	const QVector<double>& rows = _imageToLedColors->centerRow();
-	_barFillSource.fill(-1, barSide.size());
-	if (!_barFillCorner)
+	const auto inBarY = [&](int i) { return !barY.isEmpty() && barY[i] != 0; };
+	const auto inBarX = [&](int i) { return !barX.isEmpty() && barX[i] != 0; };
+	_barFillSource.fill(-2, count);
+	for (int i = 0; i < count; ++i)
 	{
-		return;
-	}
-	// per side and bar: the LED of the same side in the picture nearest to that bar
-	for (int edge : { int(EdgeLeft), int(EdgeRight) })
-	{
-		int topmost = -1, bottommost = -1;
-		for (int i = 0; i < barSide.size(); ++i)
+		if (inBarY(i) || inBarX(i))
 		{
-			if (_ledEdge[i] != edge || barSide[i] != 0 || rows[i] < 0)
+			_barFillSource[i] = -1;
+		}
+	}
+
+	// per edge and bar: the LED of the same edge in the picture nearest to that bar
+	const auto fill = [&](const QVector<int>& bar, const QVector<double>& pos, int edge) {
+		int first = -1, last = -1;
+		for (int i = 0; i < count; ++i)
+		{
+			if (_ledEdge[i] != edge || inBarY(i) || inBarX(i) || pos[i] < 0)
 			{
 				continue;
 			}
-			if (topmost < 0 || rows[i] < rows[topmost]) topmost = i;
-			if (bottommost < 0 || rows[i] > rows[bottommost]) bottommost = i;
+			if (first < 0 || pos[i] < pos[first]) first = i;
+			if (last < 0 || pos[i] > pos[last]) last = i;
 		}
-		for (int i = 0; i < barSide.size(); ++i)
+		for (int i = 0; i < count; ++i)
 		{
-			if (_ledEdge[i] == edge && barSide[i] != 0)
+			if (_ledEdge[i] == edge && bar[i] != 0)
 			{
-				_barFillSource[i] = barSide[i] < 0 ? topmost : bottommost;
+				_barFillSource[i] = bar[i] < 0 ? first : last;
 			}
 		}
+	};
+	if (!barY.isEmpty() && _barLetterbox.fillCorner)
+	{
+		fill(barY, _imageToLedColors->centerRow(), EdgeLeft);
+		fill(barY, _imageToLedColors->centerRow(), EdgeRight);
+	}
+	if (!barX.isEmpty() && _barPillarbox.fillCorner)
+	{
+		fill(barX, _imageToLedColors->centerCol(), EdgeTop);
+		fill(barX, _imageToLedColors->centerCol(), EdgeBottom);
 	}
 }
 
 void ImageProcessor::applyBarDisplay(QVector<ColorRgb>& colors, QVector<ColorRgbFloat>* means)
 {
-	const bool bar = !_imageToLedColors.isNull() && _imageToLedColors->horizontalBorder() > 0;
-	const bool active = bar && (_barLight != BarLight::Normal || !_barFillSource.isEmpty());
+	const bool hBar = !_imageToLedColors.isNull() && _imageToLedColors->horizontalBorder() > 0;
+	const bool vBar = !_imageToLedColors.isNull() && _imageToLedColors->verticalBorder() > 0;
+	const bool allOff = (hBar && _barLetterbox.light == BarLight::Off) || (vBar && _barPillarbox.light == BarLight::Off);
+	const bool rowsOff = hBar && _barLetterbox.light == BarLight::Beside;
+	const bool sidesOff = vBar && _barPillarbox.light == BarLight::Beside;
+	const bool withFill = (hBar || vBar) && _barFillSource.size() == colors.size();
+	const bool active = allOff || rowsOff || sidesOff || withFill;
 	int dark = 0;
 	int filled = 0;
 	if (active)
@@ -344,21 +417,21 @@ void ImageProcessor::applyBarDisplay(QVector<ColorRgb>& colors, QVector<ColorRgb
 			if (withMeans) (*means)[i] = ColorRgbFloat{ 0.0f, 0.0f, 0.0f };
 			++dark;
 		};
-		if (_barLight == BarLight::Off)
+		if (allOff)
 		{
 			for (int i = 0; i < colors.size(); ++i) setDark(i);
 		}
 		else
 		{
-			// fill first: the sources are side LEDs in the picture, never switched off below
-			if (_barFillSource.size() == colors.size())
+			// fill first: the sources are LEDs in the picture, their colour before anything is switched off
+			if (withFill)
 			{
 				const QVector<ColorRgb> source = colors;
 				const QVector<ColorRgbFloat> sourceMeans = withMeans ? *means : QVector<ColorRgbFloat>();
 				for (int i = 0; i < colors.size(); ++i)
 				{
 					const int from = _barFillSource[i];
-					if (from == -1 && _imageToLedColors->barSide().value(i) == 0)
+					if (from == -2)
 					{
 						continue;
 					}
@@ -372,11 +445,15 @@ void ImageProcessor::applyBarDisplay(QVector<ColorRgb>& colors, QVector<ColorRgb
 					++filled;
 				}
 			}
-			if (_barLight == BarLight::SidesOnly && _ledEdge.size() == colors.size())
+			if ((rowsOff || sidesOff) && _ledEdge.size() == colors.size())
 			{
 				for (int i = 0; i < colors.size(); ++i)
 				{
-					if (_ledEdge[i] == EdgeTop || _ledEdge[i] == EdgeBottom) setDark(i);
+					const int edge = _ledEdge[i];
+					if ((rowsOff && (edge == EdgeTop || edge == EdgeBottom)) || (sidesOff && (edge == EdgeLeft || edge == EdgeRight)))
+					{
+						setDark(i);
+					}
 				}
 			}
 		}
@@ -389,11 +466,19 @@ void ImageProcessor::applyBarDisplay(QVector<ColorRgb>& colors, QVector<ColorRgb
 
 QJsonObject ImageProcessor::barDisplayDebugState() const
 {
+	const auto lightText = [](BarLight light, const char* beside) {
+		return QString(light == BarLight::Off ? "off" : light == BarLight::Beside ? beside : "normal");
+	};
 	QMutexLocker locker(&_barMutex);
 	return QJsonObject{
-		{ "lightAtBars", _barLight == BarLight::Off ? "off" : _barLight == BarLight::SidesOnly ? "sidesOnly" : "normal" },
-		{ "sideLeds", _barOneToOne ? "oneToOne" : "stretched" },
-		{ "barSideFill", _barFillCorner ? "cornerColor" : "dark" },
+		{ "letterbox", QJsonObject{
+			{ "lightAtBars", lightText(_barLetterbox.light, "sidesOnly") },
+			{ "sideLeds", _barLetterbox.oneToOne ? "oneToOne" : "stretched" },
+			{ "fillCornerColor", _barLetterbox.fillCorner } } },
+		{ "pillarbox", QJsonObject{
+			{ "lightAtBars", lightText(_barPillarbox.light, "topBottomOnly") },
+			{ "topBottomLeds", _barPillarbox.oneToOne ? "oneToOne" : "stretched" },
+			{ "fillCornerColor", _barPillarbox.fillCorner } } },
 		{ "active", _barActive },
 		{ "ledsDark", _barDarkCount },
 		{ "ledsFilled", _barFilledCount }
