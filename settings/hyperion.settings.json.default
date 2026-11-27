@@ -153,12 +153,12 @@
          "barDisplay":{
             "letterbox":{
                "lightAtBars":"normal",
-               "sideLeds":"stretched",
+               "sideLeds":"oneToOne",
                "fillCornerColor":true
             },
             "pillarbox":{
                "lightAtBars":"normal",
-               "topBottomLeds":"stretched",
+               "topBottomLeds":"oneToOne",
                "fillCornerColor":true
             }
          },

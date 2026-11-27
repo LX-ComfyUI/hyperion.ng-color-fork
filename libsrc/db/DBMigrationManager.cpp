@@ -109,7 +109,8 @@ bool DBMigrationManager::migrateForkSettings(QJsonObject& config)
 			};
 			const QJsonObject pillarbox{
 				{ "lightAtBars", "normal" },
-				{ "topBottomLeds", "stretched" },
+				// the old form had no pillarbox part: it gets today's default (1:1 with the corner colour)
+				{ "topBottomLeds", "oneToOne" },
 				{ "fillCornerColor", true }
 			};
 			blackborder.insert("barDisplay", QJsonObject{ { "letterbox", letterbox }, { "pillarbox", pillarbox } });

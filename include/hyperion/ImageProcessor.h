@@ -492,12 +492,13 @@ private:
 	struct BarAxis
 	{
 		BarLight light = BarLight::Normal;
-		bool oneToOne = false;
+		bool oneToOne = true;  // fork default since 2026-11-27: 1:1 with the corner colour
 		bool fillCorner = true;
 		bool operator==(const BarAxis& o) const { return light == o.light && oneToOne == o.oneToOne && fillCorner == o.fillCorner; }
 	};
 	BarAxis _barLetterbox;
 	BarAxis _barPillarbox;
+	bool _barDisplayRead = false;
 	/// per LED the picture edge it belongs to in the layout, EdgeInner when far from all
 	QVector<int> _ledEdge;
 	/// per LED: -2 = not in a bar, -1 = in a bar and dark, else the LED whose colour it takes

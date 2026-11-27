@@ -376,14 +376,92 @@ $(document).ready(function () {
         var fill = barField(axis.key + '.fillCornerColor');
         if (!light || !leds || !fill) return;
         var off = light.getValue() === 'off';
+        var oneToOne = leds.getValue() === 'oneToOne';
         show(leds, !off);
-        show(fill, !off && leds.getValue() === 'oneToOne');
+        // the checkbox stays visible with "Stretched", greyed out with a note that it only acts with 1:1
+        show(fill, !off);
+        if (!window.readOnlyMode) {
+          if (oneToOne) fill.enable(); else fill.disable();
+        }
+        barNote('bbBarFillInactive_' + axis.key, fill.container, $.i18n('edt_conf_bb_barDisplay_fillInactive'), 'text-muted').toggle(!off && !oneToOne);
         barNote('bbBarOffWarning_' + axis.key, light.container, $.i18n('edt_conf_bb_barDisplay_offWarning'), 'text-warning').toggle(off);
         if (axis.key === 'pillarbox') {
           barNote('bbBarModeHint', light.container, $.i18n('edt_conf_bb_barDisplay_letterboxModeHint'), 'text-info').toggle(letterboxMode);
         }
       });
+      updateBarMismatch(detectionOn);
     }
+
+    // letterbox and pillarbox with a different LED mapping: hint plus buttons to apply one to the other
+    function barDisplayText(axis) {
+      var leds = barField(axis.key + '.' + axis.leds).getValue();
+      if (leds !== 'oneToOne') return '„' + $.i18n('edt_conf_enum_bbSideStretched') + '“';
+      return '„1:1“ ' + $.i18n(barField(axis.key + '.fillCornerColor').getValue() ? 'edt_conf_bb_barDisplay_withCorner' : 'edt_conf_bb_barDisplay_withoutCorner');
+    }
+    function updateBarMismatch(detectionOn) {
+      var lb = BAR_AXES[0], pb = BAR_AXES[1];
+      if (!barDisplayEditor || !barField(lb.key + '.' + lb.leds) || !barField(pb.key + '.' + pb.leds)) return;
+      var anyOff = barField(lb.key + '.lightAtBars').getValue() === 'off' || barField(pb.key + '.lightAtBars').getValue() === 'off';
+      var lbText = barDisplayText(lb), pbText = barDisplayText(pb);
+      var $box = $('#bbBarMismatch');
+      if (!$box.length) {
+        $box = $('<div id="bbBarMismatch" class="text-info" style="margin-top:6px"><p></p></div>');
+        var $toPb = $('<button type="button" class="btn btn-default btn-sm" style="margin:0 6px 6px 0"></button>').text($.i18n('edt_conf_bb_barDisplay_copyToPillarbox'));
+        var $toLb = $('<button type="button" class="btn btn-default btn-sm" style="margin:0 6px 6px 0"></button>').text($.i18n('edt_conf_bb_barDisplay_copyToLetterbox'));
+        $toPb.on('click', function () { copyBarDisplay(lb, pb); });
+        $toLb.on('click', function () { copyBarDisplay(pb, lb); });
+        $box.append($toPb, $toLb);
+        $(barDisplayEditor.container).append($box);
+      }
+      $box.find('p').text($.i18n('edt_conf_bb_barDisplay_mismatch', lbText, pbText));
+      $box.find('button').prop('disabled', !!window.readOnlyMode);
+      $box.toggle(detectionOn && !anyOff && lbText !== pbText);
+    }
+    function copyBarDisplay(from, to) {
+      barField(to.key + '.' + to.leds).setValue(barField(from.key + '.' + from.leds).getValue());
+      barField(to.key + '.fillCornerColor').setValue(barField(from.key + '.fillCornerColor').getValue());
+      // a value set from code does not always raise the editor's change event
+      updateBarDisplayFields(editor_blackborder.getEditor('root.blackborderdetector.enable').getValue());
+    }
+
+    // live line: which bars are detected right now and what the picture display does with them
+    function barLiveText(info) {
+      var bb = info && info.blackborder, live = info && info.barDisplay;
+      if (!bb || !live || !live.letterbox) return null;
+      if (!bb.enabled) return $.i18n('edt_conf_bb_barDisplay_liveOff');
+      var cur = bb.currentBorder || {};
+      var parts = [];
+      var axisText = function (size, total, key, axis) {
+        if (cur.unknown || !(size > 0)) return;
+        var pct = total > 0 ? Math.round((size / total) * 1000) / 10 : 0;
+        parts.push($.i18n(key, size, pct.toLocaleString($.i18n().locale || undefined)));
+        var a = live[axis.key];
+        if (a.lightAtBars === 'off') parts.push($.i18n('edt_conf_bb_barDisplay_liveAllOff'));
+        else if (a[axis.leds] !== 'oneToOne') parts.push($.i18n('edt_conf_bb_barDisplay_liveStretched'));
+        else if (live.ledsDark > 0 && live.ledsFilled > 0) parts.push($.i18n('edt_conf_bb_barDisplay_liveActive', live.ledsDark, live.ledsFilled));
+        else if (live.ledsDark > 0) parts.push($.i18n('edt_conf_bb_barDisplay_liveDark', live.ledsDark));
+        else parts.push($.i18n('edt_conf_bb_barDisplay_liveFilled', live.ledsFilled));
+      };
+      axisText(cur.horizontalSize, bb.imageHeight, 'edt_conf_bb_barDisplay_liveLetterbox', BAR_AXES[0]);
+      axisText(cur.verticalSize, bb.imageWidth, 'edt_conf_bb_barDisplay_livePillarbox', BAR_AXES[1]);
+      return parts.length ? parts.join(' ') : $.i18n('edt_conf_bb_barDisplay_liveNone');
+    }
+    function pollBarLive() {
+      var $live = $('#bbBarLive');
+      if (!barDisplayEditor || !barDisplayEditor.container || !document.body.contains(barDisplayEditor.container)) return;
+      if (!$live.length) {
+        $live = $('<p id="bbBarLive" class="text-muted" style="margin-top:6px"></p>');
+        $(barDisplayEditor.header).after($live);
+      }
+      var next = function () { setTimeout(pollBarLive, 2000); };
+      if (document.hidden || !$(barDisplayEditor.container).is(':visible')) { $live.hide(); next(); return; }
+      sendAsyncToHyperion('forkdebug', null, { instance: Number(globalThis.currentHyperionInstance) || 0 }).then(function (r) {
+        var text = r && r.success ? barLiveText(r.info) : null;
+        if (text) $live.text($.i18n('edt_conf_bb_barDisplay_liveTitle') + ' ' + text).show(); else $live.hide();
+        next();
+      }, next);
+    }
+    pollBarLive();
 
     editor_blackborder.on('change', function () {
       var blackborderEnable = editor_blackborder.getEditor("root.blackborderdetector.enable").getValue();

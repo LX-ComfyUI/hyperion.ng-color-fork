@@ -228,7 +228,7 @@ ImageProcessor::BarAxis ImageProcessor::readBarAxis(const QJsonObject& obj, cons
 	BarAxis axis;
 	const QString light = obj["lightAtBars"].toString("normal");
 	axis.light = light == "off" ? BarLight::Off : light == besideValue ? BarLight::Beside : BarLight::Normal;
-	axis.oneToOne = obj[ledsKey].toString("stretched") == "oneToOne";
+	axis.oneToOne = obj[ledsKey].toString("oneToOne") == "oneToOne";
 	axis.fillCorner = obj["fillCornerColor"].toBool(true);
 	return axis;
 }
@@ -248,10 +248,12 @@ void ImageProcessor::handleBarDisplaySettings(const QJsonObject& obj)
 		letterbox = readBarAxis(obj, "sidesOnly", "sideLeds");
 		letterbox.fillCorner = obj["barSideFill"].toString("dark") == "cornerColor";
 	}
-	if (letterbox == _barLetterbox && pillarbox == _barPillarbox)
+	// the first reading always logs, also when it equals the built-in default
+	if (_barDisplayRead && letterbox == _barLetterbox && pillarbox == _barPillarbox)
 	{
 		return;
 	}
+	_barDisplayRead = true;
 	_barLetterbox = letterbox;
 	_barPillarbox = pillarbox;
 	const auto lightText = [](BarLight light, const char* beside) {
