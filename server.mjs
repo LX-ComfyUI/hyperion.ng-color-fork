@@ -1717,7 +1717,7 @@ function mergeBlackborder(current, patch) {
     };
     const b = {};
     for (const [axis, d] of Object.entries(axes)) {
-      const a = { lightAtBars: "normal", [d.leds]: "stretched", fillCornerColor: true, ...(cur[axis] ?? {}) };
+      const a = { lightAtBars: "normal", [d.leds]: "oneToOne", fillCornerColor: true, ...(cur[axis] ?? {}) };
       const p = bp[axis];
       if (p) {
         if ("lightAtBars" in p) {

@@ -240,6 +240,7 @@
   .check { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0 0; font-size: 15px; }
   .check input { width: 22px; height: 22px; margin: 1px 0 0; flex: none; accent-color: var(--accent); }
   .check small { display: block; color: var(--muted); font-size: 13px; }
+  .check.inactive { opacity: .5; }
   .indent { margin-left: 30px; }
   .numgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 12px; }
   .numgrid input { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 8px; color: var(--btn-text); background: var(--card); border: 1px solid var(--btn-line); border-radius: 8px; }
@@ -1781,6 +1782,7 @@
           <p class="note" id="bb-bar-leds-help-letterbox"></p>
         </div>
         <label class="check" id="bb-bar-fill-wrap-letterbox"><input type="checkbox" id="bb-bar-fill-letterbox" data-bar-axis="letterbox"><span>Mit Eckfarbe auffüllen<small>Angehakt: Die Seiten-LEDs neben den Balken zeigen die Farbe der Ecke des sichtbaren Bildes (oberste bzw. unterste Seiten-LED im Bild). Nicht angehakt: Sie sind aus, wie die Balken.</small></span></label>
+        <p class="note" id="bb-bar-fill-inactive-letterbox" hidden>Wirkt nur bei „1:1“. Bei „Gestreckt“ zeigen die LEDs neben den Balken gestreckte Bildfarben.</p>
         <h4>Balken links/rechts (Pillarbox)</h4>
         <label class="field">Licht bei Balken links/rechts</label>
         <div class="seg full" role="group" aria-label="Licht bei Balken links/rechts">
@@ -1799,6 +1801,14 @@
           <p class="note" id="bb-bar-leds-help-pillarbox"></p>
         </div>
         <label class="check" id="bb-bar-fill-wrap-pillarbox"><input type="checkbox" id="bb-bar-fill-pillarbox" data-bar-axis="pillarbox"><span>Mit Eckfarbe auffüllen<small>Angehakt: Die LEDs über und unter den Balken zeigen die Farbe der Ecke des sichtbaren Bildes (äußerste LED oben bzw. unten im Bild). Nicht angehakt: Sie sind aus, wie die Balken.</small></span></label>
+        <p class="note" id="bb-bar-fill-inactive-pillarbox" hidden>Wirkt nur bei „1:1“. Bei „Gestreckt“ zeigen die LEDs neben den Balken gestreckte Bildfarben.</p>
+        <div class="note" id="bb-bar-mismatch" hidden>
+          <p id="bb-bar-mismatch-text"></p>
+          <div class="seg full" role="group" aria-label="Einstellung übernehmen">
+            <button type="button" data-bar-copy="pillarbox">Letterbox-Einstellung für Pillarbox übernehmen</button>
+            <button type="button" data-bar-copy="letterbox">Pillarbox-Einstellung für Letterbox übernehmen</button>
+          </div>
+        </div>
         <p class="note" id="bb-bar-mode-hint" hidden>Der Modus „Letterbox“ erkennt nur Balken oben/unten. Damit Balken links/rechts erkannt werden, wähle oben bei „Modus“ zum Beispiel „Standard“.</p>
         <div class="status" id="bb-bar-live"></div>
         <p class="note" id="bb-bar-note"></p>
@@ -3334,8 +3344,8 @@ const BAR_AXES = {
       off: "Alle LEDs sind aus, solange Balken erkannt sind.",
     },
     ledsHelp: {
-      stretched: "Das Bild zwischen den Balken wird auf die ganze Höhe der Seiten verteilt (wie bisher).",
-      oneToOne: "Jede Seiten-LED zeigt das Bild an ihrer echten Höhe. Die LEDs neben den Balken liegen dann außerhalb des Bildes.",
+      stretched: "Das Bild zwischen den Balken wird auf die ganze Höhe der Seiten verteilt (altes Hyperion-Verhalten).",
+      oneToOne: "Standard: Jede Seiten-LED zeigt das Bild an ihrer echten Höhe. Die LEDs neben den Balken liegen dann außerhalb des Bildes.",
     },
   },
   pillarbox: {
@@ -3346,8 +3356,8 @@ const BAR_AXES = {
       off: "Alle LEDs sind aus, solange Balken erkannt sind.",
     },
     ledsHelp: {
-      stretched: "Das Bild zwischen den Balken wird auf die ganze Breite oben und unten verteilt (wie bisher).",
-      oneToOne: "Jede LED oben und unten zeigt das Bild an ihrer echten Stelle. Die LEDs über und unter den Balken liegen dann außerhalb des Bildes.",
+      stretched: "Das Bild zwischen den Balken wird auf die ganze Breite oben und unten verteilt (altes Hyperion-Verhalten).",
+      oneToOne: "Standard: Jede LED oben und unten zeigt das Bild an ihrer echten Stelle. Die LEDs über und unter den Balken liegen dann außerhalb des Bildes.",
     },
   },
 };
@@ -7508,15 +7518,30 @@ function renderBarDisplay(writable) {
     });
     const fill = $(`bb-bar-fill-${axis}`);
     fill.checked = a.fillCornerColor === true;
-    fill.disabled = !writable || !on;
+    const oneToOne = a[def.leds] === "oneToOne";
+    fill.disabled = !writable || !on || !oneToOne;
     $(`bb-bar-light-help-${axis}`).textContent = tr(def.light[a.lightAtBars] ?? "");
     $(`bb-bar-leds-help-${axis}`).textContent = tr(def.ledsHelp[a[def.leds]] ?? "");
     $(`bb-bar-off-warn-${axis}`).hidden = !off;
     $(`bb-bar-leds-wrap-${axis}`).hidden = off;
-    $(`bb-bar-fill-wrap-${axis}`).hidden = off || a[def.leds] !== "oneToOne";
+    $(`bb-bar-fill-wrap-${axis}`).hidden = off;
+    $(`bb-bar-fill-wrap-${axis}`).classList.toggle("inactive", !oneToOne);
+    $(`bb-bar-fill-inactive-${axis}`).hidden = off || oneToOne;
   }
+  // letterbox and pillarbox with a different LED mapping: hint plus buttons to apply one to the other
+  const lbText = barDisplayText("letterbox"), pbText = barDisplayText("pillarbox");
+  const anyOff = b.letterbox.lightAtBars === "off" || b.pillarbox.lightAtBars === "off";
+  $("bb-bar-mismatch").hidden = !on || anyOff || lbText === pbText;
+  $("bb-bar-mismatch-text").textContent = tr("Balken oben/unten und links/rechts sind unterschiedlich eingestellt: Letterbox {l}, Pillarbox {p}. Für eine gleiche Darstellung eine Einstellung übernehmen.", { l: lbText, p: pbText });
+  document.querySelectorAll("[data-bar-copy]").forEach((btn) => { btn.disabled = !writable || !on; });
   $("bb-bar-mode-hint").hidden = bbConfig.mode !== "letterbox";
   renderBarLive();
+}
+
+function barDisplayText(axis) {
+  const a = bbConfig.barDisplay[axis];
+  if (a[BAR_AXES[axis].leds] !== "oneToOne") return tr("„Gestreckt“");
+  return tr(a.fillCornerColor ? "„1:1“ mit Eckfarbe" : "„1:1“ ohne Eckfarbe");
 }
 
 // what the picture display does right now (debug state "barDisplay")
@@ -7527,13 +7552,21 @@ function renderBarLive() {
   if (!live?.letterbox || !bbConfig?.barDisplay?.letterbox) { el.hidden = true; return; }
   el.hidden = false;
   const cur = bb?.currentBorder ?? {};
-  const h = bb?.enabled && !cur.unknown && cur.horizontalSize > 0;
-  const v = bb?.enabled && !cur.unknown && cur.verticalSize > 0;
-  const where = h && v ? tr("rundum") : h ? tr("oben/unten") : tr("links/rechts");
-  if (!bbConfig.enable || !bb?.enabled) el.textContent = tr("Schwarzbalken-Erkennung ist aus, die Einstellungen wirken nicht.");
-  else if (!h && !v) el.textContent = tr("Gerade keine Balken erkannt: alle LEDs wie gewohnt.");
-  else if (!live.active) el.textContent = tr("Balken {w} erkannt, die LEDs zeigen das Bild wie bisher.", { w: where });
-  else el.textContent = tr("Balken {w} erkannt: {d} LEDs aus, {f} mit Eckfarbe.", { w: where, d: live.ledsDark, f: live.ledsFilled });
+  if (!bbConfig.enable || !bb?.enabled) { el.textContent = tr("Schwarzbalken-Erkennung ist aus, die Einstellungen wirken nicht."); return; }
+  const parts = [];
+  const axisText = (size, total, axis, text) => {
+    if (cur.unknown || !(size > 0)) return;
+    parts.push(tr(text, { n: size, p: fmt(total > 0 ? (size / total) * 100 : 0) }));
+    const a = live[axis];
+    if (a.lightAtBars === "off") parts.push(tr("Wirkt: alle LEDs aus."));
+    else if (a[BAR_AXES[axis].leds] !== "oneToOne") parts.push(tr("Wirkt: gestreckt, Eckfarbe inaktiv."));
+    else if (live.ledsDark > 0 && live.ledsFilled > 0) parts.push(tr("Wirkt: {d} LEDs aus, {f} LEDs mit Eckfarbe.", { d: live.ledsDark, f: live.ledsFilled }));
+    else if (live.ledsDark > 0) parts.push(tr("Wirkt: {d} LEDs aus.", { d: live.ledsDark }));
+    else parts.push(tr("Wirkt: {f} LEDs mit Eckfarbe.", { f: live.ledsFilled }));
+  };
+  axisText(cur.horizontalSize, bb.imageHeight, "letterbox", "Balken oben/unten erkannt, je {n} Bildpunkte ({p} %).");
+  axisText(cur.verticalSize, bb.imageWidth, "pillarbox", "Balken links/rechts erkannt, je {n} Bildpunkte ({p} %).");
+  el.textContent = parts.length ? parts.join(" ") : tr("Gerade keine Balken erkannt: alle LEDs wie gewohnt.");
 }
 
 // the live edge level against the threshold: does the edge count as black, so a bar can be detected?
@@ -7648,6 +7681,14 @@ document.querySelectorAll("[data-bar-axis][data-bar-leds]").forEach((btn) => btn
   saveBar(btn.dataset.barAxis, BAR_AXES[btn.dataset.barAxis].leds, btn.dataset.barLeds, btn.dataset.barAxis === "letterbox" ? "Seiten-LEDs" : "LEDs oben und unten")));
 document.querySelectorAll("input[data-bar-axis]").forEach((box) => box.addEventListener("change", () =>
   saveBar(box.dataset.barAxis, "fillCornerColor", box.checked, "Mit Eckfarbe auffüllen")));
+document.querySelectorAll("[data-bar-copy]").forEach((btn) => btn.addEventListener("click", () => {
+  const to = btn.dataset.barCopy, from = to === "pillarbox" ? "letterbox" : "pillarbox";
+  const src = bbConfig.barDisplay[from];
+  const patch = { [BAR_AXES[to].leds]: src[BAR_AXES[from].leds], fillCornerColor: src.fillCornerColor };
+  bbConfig = { ...bbConfig, barDisplay: { ...bbConfig.barDisplay, [to]: { ...bbConfig.barDisplay[to], ...patch } } };
+  renderBbConfig();
+  saveBb({ barDisplay: { [to]: patch } }, to === "pillarbox" ? "Pillarbox-Darstellung" : "Letterbox-Darstellung");
+}));
 document.querySelectorAll("[data-gs-edge]").forEach(b => b.addEventListener("click", () =>
   saveBb({ grayStillImageDetector: { edgeWidthPercent: Number(b.dataset.gsEdge) } }, "Randbereich")));
 
